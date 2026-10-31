@@ -4,6 +4,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+import { formatGrade, scaleMax, usesPointsSum } from "@gestarahub/core/grades";
 import { ClipboardList, FileText } from "lucide-react";
 import type { Id, ReportCardModality } from "@gestarahub/contracts";
 import {
@@ -25,32 +26,68 @@ import { Button } from "@/components/ui/button";
 import { useCategories } from "@/features/categories";
 import { useModalityVocabulary } from "@/features/settings";
 import { useStudentReportCard } from "../hooks/use-grades";
-import { AverageValue, GradeStatusValue, SCALE_LABEL, passingLabel, weightLabel } from "./grade-ui";
+import {
+  AverageValue,
+  GradeStatusValue,
+  SCALE_LABEL,
+  attendanceRuleLabel,
+  passingLabel,
+  pointsLabel,
+  resultWord,
+  weightLabel,
+} from "./grade-ui";
 
 function ModalityCard({ modality }: { modality: ReportCardModality }) {
   const { data: categories } = useCategories();
   const category = (categories ?? []).find((c) => c.id === modality.modalityId);
   // Palavras da trilha da modalidade (Nível, Módulo, Fase, Faixa).
   const vocabulary = useModalityVocabulary(category ?? { name: modality.modalityName });
-  const { scale } = modality.settings;
+  const { settings } = modality;
+  const { scale } = settings;
   const leveled = modality.levels.some((l) => l.levelId);
+  const word = resultWord(settings);
+  const sum = usesPointsSum(settings);
+  const top = scaleMax(scale);
+  const { overall, attendance } = modality;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border bg-muted/30 px-3 py-2.5">
-        <div>
-          <p className="text-sm font-semibold">Média geral</p>
-          <p className="text-xs text-muted-foreground">
-            {SCALE_LABEL[scale]} · {passingLabel(modality.settings)}
-          </p>
+      <div className="space-y-2 rounded-lg border bg-muted/30 px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">{sum ? "Total" : "Média geral"}</p>
+            <p className="text-xs text-muted-foreground">
+              {[SCALE_LABEL[scale], passingLabel(settings), attendanceRuleLabel(settings)].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5">
+            <AverageValue scale={scale} average={overall} className="text-sm" />
+            {sum && overall && top ? <span className="text-xs text-muted-foreground">de {top}</span> : null}
+          </span>
         </div>
-        <AverageValue scale={scale} average={modality.overall} className="text-sm" />
+        {/* Situacao ate aqui: nota e, com a regra, frequencia (o periodo pode nao ter acabado). */}
+        {overall || attendance ? (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+            {overall ? (
+              <span className={overall.belowPassing ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}>
+                {overall.belowPassing ? "Nota abaixo da mínima" : "Nota acima da mínima"}
+              </span>
+            ) : null}
+            {attendance ? (
+              <span className={attendance.below ? "text-red-700 dark:text-red-400" : "text-muted-foreground"}>
+                {attendance.percent === null
+                  ? "Sem chamada ainda"
+                  : `Frequência ${attendance.percent}%${attendance.below ? ", abaixo da mínima" : ""}`}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {leveled ? (
         <div className="space-y-1.5">
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Média por {vocabulary.level.toLowerCase()}
+            {word} por {vocabulary.level.toLowerCase()}
           </p>
           <ul className="divide-y rounded-lg border">
             {modality.levels.map((l) => (
@@ -84,12 +121,26 @@ function ModalityCard({ modality }: { modality: ReportCardModality }) {
                 )}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">{e.name}</p>
+                  <p className="text-sm font-medium break-words">{e.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {[format(parseISO(e.date), "dd/MM/yyyy"), weightLabel(e.weight), e.levelName, e.classGroupName]
+                    {[
+                      format(parseISO(e.date), "dd/MM/yyyy"),
+                      e.recoveryOf
+                        ? `Recuperação de ${e.recoveryOfName ?? "outra avaliação"}`
+                        : sum && e.points !== undefined
+                          ? pointsLabel(e.points)
+                          : weightLabel(e.weight),
+                      e.levelName,
+                      e.classGroupName,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
+                  {e.recoveredValue !== undefined ? (
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      Vale {formatGrade(scale, e.recoveredValue)} pela recuperação
+                    </p>
+                  ) : null}
                 </div>
                 <GradeStatusValue scale={scale} status={e.status} value={e.value} below={e.belowPassing} />
               </li>

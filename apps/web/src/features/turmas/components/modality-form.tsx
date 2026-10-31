@@ -113,6 +113,8 @@ function toDefaults(modality: Category | undefined, segment: BusinessSegmentPres
     assessmentsEnabled: Boolean(assessments?.enabled),
     assessmentScale: scale,
     passingGrade: passingGradeText(scale, assessments?.passingGrade ?? defaultPassingGrade(scale)),
+    resultMode: assessments?.resultMode ?? "average",
+    minAttendance: assessments?.minAttendancePercent ? String(assessments.minAttendancePercent) : "",
   };
 }
 
@@ -120,7 +122,12 @@ const SCALE_OPTIONS: { value: AssessmentScale; label: string }[] = [
   { value: "zero_ten", label: "0 a 10" },
   { value: "zero_hundred", label: "0 a 100" },
   { value: "concept", label: "A a E" },
-  { value: "pass_fail", label: "Apto" },
+  { value: "pass_fail", label: "Apto ou não" },
+];
+
+const RESULT_MODE_OPTIONS = [
+  { value: "average", label: "Média com pesos" },
+  { value: "sum", label: "Soma dos pontos" },
 ];
 
 const BELT_COLORS = Object.keys(BELT_COLOR_META) as ProgressionBeltColor[];
@@ -216,6 +223,10 @@ export function ModalityForm({
   });
   const assessmentsOn = useWatch({ control: form.control, name: "assessmentsEnabled" });
   const assessmentScale = useWatch({ control: form.control, name: "assessmentScale" });
+  const resultMode = useWatch({ control: form.control, name: "resultMode" });
+  const numericScale = assessmentScale === "zero_ten" || assessmentScale === "zero_hundred";
+  const scaleTop = assessmentScale === "zero_hundred" ? 100 : 10;
+  const sumMode = numericScale && resultMode === "sum";
   // Trocar a escala volta a nota minima para o padrao dela (6 / 60 / C / apto).
   const lastScaleRef = useRef(assessmentScale);
   useEffect(() => {
@@ -406,10 +417,13 @@ export function ModalityForm({
     }
 
     const passing = normalizePassingGrade(values.assessmentScale, values.passingGrade);
+    const numericScale = values.assessmentScale === "zero_ten" || values.assessmentScale === "zero_hundred";
     const assessments: ModalityAssessmentSettings = {
       enabled: values.assessmentsEnabled,
       scale: values.assessmentScale,
       passingGrade: passing.ok ? passing.value : defaultPassingGrade(values.assessmentScale),
+      ...(numericScale && values.resultMode === "sum" ? { resultMode: "sum" as const } : {}),
+      ...(values.minAttendance.trim() ? { minAttendancePercent: Number(values.minAttendance.trim()) } : {}),
     };
 
     try {
@@ -438,7 +452,12 @@ export function ModalityForm({
       const fields = getFieldErrors(error);
       if (fields && fields.length > 0) {
         for (const f of fields) {
-          const field = f.field.startsWith("assessments.") ? "passingGrade" : f.field;
+          const field =
+            f.field === "assessments.minAttendancePercent"
+              ? "minAttendance"
+              : f.field.startsWith("assessments.")
+                ? "passingGrade"
+                : f.field;
           form.setError(field as Path<ModalityFormValues>, {
             message: f.message,
           });
@@ -1204,39 +1223,82 @@ export function ModalityForm({
                     options={SCALE_OPTIONS}
                   />
                 </div>
-                {assessmentScale === "concept" ? (
-                  <SelectField<ModalityFormValues>
-                    name="passingGrade"
-                    label="Nota mínima para aprovar"
-                    clearable={false}
-                    disabled={pending}
-                    options={CONCEPT_GRADES.map((c) => ({ value: c, label: c }))}
-                  />
-                ) : assessmentScale === "pass_fail" ? (
-                  <p className="text-xs text-muted-foreground">Aprova quem fica apto.</p>
-                ) : (
+                {numericScale ? (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Como fecha o resultado</p>
+                    <SegmentedChoiceField<ModalityFormValues>
+                      name="resultMode"
+                      ariaLabel="Como fecha o resultado"
+                      disabled={pending}
+                      options={RESULT_MODE_OPTIONS}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {sumMode
+                        ? `Cada avaliação vale uma parte dos ${scaleTop} pontos.`
+                        : "Cada avaliação tem um peso na média."}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+                  {assessmentScale === "concept" ? (
+                    <div className="w-40">
+                      <SelectField<ModalityFormValues>
+                        name="passingGrade"
+                        label="Nota mínima para aprovar"
+                        clearable={false}
+                        disabled={pending}
+                        options={CONCEPT_GRADES.map((c) => ({ value: c, label: c }))}
+                      />
+                    </div>
+                  ) : assessmentScale === "pass_fail" ? null : (
+                    <Controller
+                      control={form.control}
+                      name="passingGrade"
+                      render={({ field, fieldState }) => (
+                        <FieldShell
+                          id="passingGrade"
+                          label={sumMode ? "Total mínimo para aprovar" : "Nota mínima para aprovar"}
+                          error={fieldState.error?.message}
+                        >
+                          <Input
+                            id="passingGrade"
+                            inputMode={assessmentScale === "zero_ten" ? "decimal" : "numeric"}
+                            autoComplete="off"
+                            className="w-28 text-base tabular-nums md:text-sm"
+                            disabled={pending}
+                            {...field}
+                            {...fieldAria("passingGrade", fieldState.error?.message)}
+                          />
+                        </FieldShell>
+                      )}
+                    />
+                  )}
                   <Controller
                     control={form.control}
-                    name="passingGrade"
+                    name="minAttendance"
                     render={({ field, fieldState }) => (
                       <FieldShell
-                        id="passingGrade"
-                        label="Nota mínima para aprovar"
+                        id="minAttendance"
+                        label="Frequência mínima (%)"
+                        hint="Vazio, só a nota conta."
                         error={fieldState.error?.message}
                       >
                         <Input
-                          id="passingGrade"
-                          inputMode={assessmentScale === "zero_ten" ? "decimal" : "numeric"}
+                          id="minAttendance"
+                          inputMode="numeric"
                           autoComplete="off"
                           className="w-28 text-base tabular-nums md:text-sm"
                           disabled={pending}
                           {...field}
-                          {...fieldAria("passingGrade", fieldState.error?.message)}
+                          {...fieldAria("minAttendance", fieldState.error?.message, "Vazio, só a nota conta.")}
                         />
                       </FieldShell>
                     )}
                   />
-                )}
+                </div>
+                {assessmentScale === "pass_fail" ? (
+                  <p className="text-xs text-muted-foreground">Aprova quem fica apto.</p>
+                ) : null}
               </div>
             ) : null}
           </div>

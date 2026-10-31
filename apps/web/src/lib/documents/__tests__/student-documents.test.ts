@@ -55,9 +55,9 @@ describe("documentos do aluno", () => {
           modalityName: "Jiu-jitsu",
           summary: "Média geral 7,8 · aprovação a partir de 6,0.",
           rows: [
-            { date: "2026-10-10", name: "Prova técnica", className: "Adulto", levelName: "Azul", weight: 2, grade: "8,5" },
-            { date: "2026-09-10", name: "Prova teórica", className: "Adulto", weight: 1, grade: "5,0", tone: "negative" },
-            { date: "2026-08-10", name: "Simulado", className: "Adulto", weight: 1, grade: "Faltou", tone: "muted" },
+            { date: "2026-10-10", name: "Prova técnica", className: "Adulto", levelName: "Azul", weight: "2", grade: "8,5" },
+            { date: "2026-09-10", name: "Prova teórica", className: "Adulto", weight: "1", grade: "5,0", tone: "negative" },
+            { date: "2026-08-10", name: "Simulado", className: "Adulto", weight: "1", grade: "Faltou", tone: "muted" },
           ],
         },
       ],

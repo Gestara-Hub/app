@@ -1,5 +1,5 @@
 import type { Id, ReportCardEntry, ReportCardModality, StudentReportCard } from "@gestarahub/contracts";
-import { averageGrades, averagesByLevel, isBelowPassing } from "@gestarahub/core/grades";
+import { averagesByLevel, isGradeBelowPassing, resultOf } from "@gestarahub/core/grades";
 import { notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
@@ -10,6 +10,10 @@ import {
   levelName,
   sortAssessments,
   className,
+  effectiveItems,
+  modalityAttendancePercent,
+  pointsOf,
+  recoveryOfName,
 } from "./gradeRules";
 
 /** Boletim do aluno por modalidade (notas, medias por etapa e geral). */
@@ -43,37 +47,50 @@ export const reportCardService = {
         if (!settings) continue;
         const track = resolveModalityTrack(category);
         const list = sortAssessments(relevant.filter((a) => a.modalityId === category.id));
+        // Notas que valem (com a melhor recuperacao de cada avaliacao).
+        const effective = effectiveItems(settings, list, studentId);
+        const effectiveById = new Map(effective.map((e) => [e.assessmentId, e]));
         const entries: ReportCardEntry[] = list.map((a) => {
           const grade = a.grades.find((g) => g.studentId === studentId);
           const status = grade?.status ?? "none";
+          const points = pointsOf(settings, a);
+          const used = effectiveById.get(a.id);
+          const original = recoveryOfName(a);
           return {
             assessmentId: a.id,
             name: a.name,
             date: a.date,
             weight: a.weight,
+            ...(points !== undefined ? { points } : {}),
             classGroupId: a.classGroupId,
             classGroupName: className(a.classGroupId),
             ...(a.levelId ? { levelId: a.levelId, levelName: levelName(category.id, a.levelId) } : {}),
+            ...(a.recoveryOf ? { recoveryOf: a.recoveryOf, ...(original ? { recoveryOfName: original } : {}) } : {}),
             status,
             ...(grade?.value !== undefined ? { value: grade.value } : {}),
+            ...(used?.recovered && used.value !== undefined ? { recoveredValue: used.value } : {}),
             belowPassing:
               status === "graded" && grade?.value !== undefined
-                ? isBelowPassing(settings.scale, grade.value, settings.passingGrade)
+                ? isGradeBelowPassing(settings, grade.value, points)
                 : false,
           };
         });
-        const weighted = entries.map((e) => ({ levelId: e.levelId, status: e.status, value: e.value, weight: e.weight }));
         const levelOrder = track.enabled ? track.levels.map((l) => l.id) : [];
+        const minAttendance = settings.minAttendancePercent;
+        const attendancePct = minAttendance ? modalityAttendancePercent(category.id, studentId) : null;
         modalities.push({
           modalityId: category.id,
           modalityName: category.name,
           settings,
           entries,
-          levels: averagesByLevel(settings, weighted, levelOrder).map((row) => ({
+          levels: averagesByLevel(settings, effective, levelOrder).map((row) => ({
             ...(row.levelId ? { levelId: row.levelId, levelName: levelName(category.id, row.levelId) } : {}),
             average: row.average,
           })),
-          overall: averageGrades(settings, weighted),
+          overall: resultOf(settings, effective),
+          ...(minAttendance
+            ? { attendance: { percent: attendancePct, below: attendancePct !== null && attendancePct < minAttendance } }
+            : {}),
         });
       }
       return clone({ studentId, studentName: student.name, modalities });

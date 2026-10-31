@@ -26,9 +26,11 @@ Guia: /classes/modalities
 + botão "Ações de": Abra o menu da modalidade.
 + item "Editar / Trilha|Editar": Abra a modalidade para editar.
 + texto "Esta modalidade tem avaliações": Ligue a chave para poder lançar notas nas turmas.
-+ texto "Escala da nota": Escolha como a nota é dada (0 a 10, 0 a 100, A a E ou Apto).
++ texto "Escala da nota": Escolha como a nota é dada (0 a 10, 0 a 100, A a E ou Apto ou não).
++ texto "Como fecha o resultado": Média com pesos ou soma dos pontos (só nas notas de 0 a 10 e 0 a 100).
++ texto "Frequência mínima (%)": Opcional. Com ela, o boletim mostra se o aluno ficou abaixo.
 + botão "Salvar": Clique aqui para guardar.
-Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim.
+Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim. Na soma dos pontos, cada avaliação diz quanto vale. Para dar uma segunda chance, crie uma avaliação e escolha "Recuperação de": vale a maior nota de cada aluno.
 
 ## Buscar modalidades
 Resumo: Ache uma modalidade pelo nome e veja as inativas.

@@ -116,7 +116,7 @@ test.describe("modalidade", () => {
     await expect(minimum).toHaveAttribute("inputmode", "numeric");
     await scale.getByRole("radio", { name: "A a E", exact: true }).click();
     await expect(dialog.getByRole("combobox", { name: /Nota mínima para aprovar/ })).toContainText("C");
-    await scale.getByRole("radio", { name: "Apto", exact: true }).click();
+    await scale.getByRole("radio", { name: "Apto ou não", exact: true }).click();
     await expect(dialog.getByText("Aprova quem fica apto.")).toBeVisible();
 
     // Minima fora da escala nao salva.
@@ -619,5 +619,127 @@ test.describe("boletim 'Notas'", () => {
     await page.getByRole("button", { name: "Ações de Aluno Beta", exact: true }).click();
     await page.getByRole("menuitem", { name: "Notas" }).click();
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova do módulo 1");
+  });
+});
+
+test.describe("fase A: soma dos pontos, recuperação e frequência mínima (31/10/2026)", () => {
+  test("modalidade: soma dos pontos troca a mínima por total; frequência mínima de 1 a 100", async ({ page }) => {
+    await seedSchool(page);
+    await page.goto("/classes/modalities");
+    await page.getByRole("button", { name: "Ações de Inglês", exact: true }).click();
+    await page.getByRole("menuitem", { name: /^Editar/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar modalidade" });
+    const mode = dialog.getByRole("radiogroup", { name: "Como fecha o resultado" });
+    await expect(mode.getByRole("radio", { name: "Média com pesos" })).toHaveAttribute("aria-checked", "true");
+    await expect(dialog.getByText("Cada avaliação tem um peso na média.")).toBeVisible();
+    await mode.getByRole("radio", { name: "Soma dos pontos" }).click();
+    await expect(dialog.getByText("Cada avaliação vale uma parte dos 10 pontos.")).toBeVisible();
+    await expect(dialog.getByLabel("Total mínimo para aprovar")).toHaveValue("6");
+    // Conceito e apto nao somam pontos.
+    await dialog.getByRole("radiogroup", { name: "Escala da nota" }).getByRole("radio", { name: "A a E", exact: true }).click();
+    await expect(mode).toHaveCount(0);
+    await dialog.getByRole("radiogroup", { name: "Escala da nota" }).getByRole("radio", { name: "0 a 10", exact: true }).click();
+
+    await dialog.getByLabel("Frequência mínima (%)").fill("0");
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(dialog.getByText("Use um número inteiro de 1 a 100.")).toBeVisible();
+    await dialog.getByLabel("Frequência mínima (%)").fill("75");
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Modalidade atualizada com sucesso.")).toBeVisible();
+
+    await openAssessments(page);
+    await expect(page.getByText("0 a 10 · Mínimo 6 de 10 · Frequência mínima 75% · Total da turma")).toBeVisible();
+  });
+
+  test("soma dos pontos: cada avaliação vale uma parte e o boletim mostra o total", async ({ page }) => {
+    await seedSchool(page, {
+      extra: (t) => {
+        t.categories[1].assessments = { ...gradedSettings("zero_ten"), resultMode: "sum" };
+        t.assessments = [
+          assessment("as-1", "cg-ing", "m-ing", "Prova 1", { points: 4, grades: [grade("c-a", 3)] }),
+          assessment("as-2", "cg-ing", "m-ing", "Trabalho", { date: "2026-09-16", points: 6, grades: [grade("c-a", 5)] }),
+        ];
+      },
+    });
+    await openAssessments(page);
+    await expect(rowOf(page, "Prova 1")).toContainText("15/09/2026 · Vale 4");
+
+    const sheet = await openSheet(page, "Prova 1");
+    await expect(sheet).toContainText("Mínimo 6 de 10 · Vale 4");
+    await sheet.getByLabel("Aluno Beta").fill("4,5");
+    await expect(sheet.getByText("A nota vai de 0 a 4.")).toBeVisible();
+    await sheet.getByRole("button", { name: "Cancelar" }).click();
+
+    await skipClientsCoachmark(page);
+    await page.goto("/clients");
+    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Notas" }).click();
+    const card = page.getByRole("dialog", { name: "Notas" });
+    const total = card.locator("div.rounded-lg").filter({ hasText: "Total" }).first();
+    await expect(total).toContainText("8");
+    await expect(total).toContainText("de 10");
+    await expect(total).toContainText("Nota acima da mínima");
+  });
+
+  test("recuperação: escolhe a prova, mostra a nota original e o boletim usa a maior", async ({ page }) => {
+    await seedSchool(page, {
+      extra: (t) => {
+        t.assessments = [
+          assessment("as-1", "cg-ing", "m-ing", "Prova 1", { grades: [grade("c-a", 4), grade("c-b", undefined, "absent")] }),
+        ];
+      },
+    });
+    await openAssessments(page);
+    await page.getByRole("button", { name: "Nova avaliação" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Nova avaliação" });
+    await dialog.getByLabel("Nome").fill("Recuperação");
+    await dialog.getByRole("combobox", { name: /Recuperação de/ }).click();
+    await page.getByRole("menuitem", { name: "Prova 1" }).click();
+    // A recuperacao herda o peso: sem o campo.
+    await expect(dialog.getByLabel("Peso")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(page.getByText("Avaliação criada.")).toBeVisible();
+    await expect(rowOf(page, "Recuperação")).toContainText("Recuperação de Prova 1");
+
+    await page.getByRole("button", { name: /^Recuperação/ }).first().click();
+    const sheet = page.getByRole("dialog", { name: "Lançar notas" });
+    await expect(sheet).toContainText("Recuperação de Prova 1: vale a maior nota de cada aluno.");
+    await expect(sheetRow(sheet, "Aluno Alfa")).toContainText("Prova 1: 4");
+    await expect(sheetRow(sheet, "Aluno Beta")).toContainText("Prova 1: faltou");
+    await sheet.getByLabel("Aluno Alfa").fill("7");
+    await sheet.getByLabel("Aluno Beta").fill("8");
+    await sheet.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Notas salvas.")).toBeVisible();
+
+    await skipClientsCoachmark(page);
+    await page.goto("/clients");
+    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Notas" }).click();
+    const card = page.getByRole("dialog", { name: "Notas" });
+    await expect(card.locator("div.rounded-lg").filter({ hasText: "Média geral" }).first()).toContainText("7");
+    await expect(
+      card.getByRole("listitem").filter({ has: page.getByText("Prova 1", { exact: true }) }),
+    ).toContainText("Vale 7 pela recuperação");
+  });
+
+  test("frequência mínima: o boletim mostra a frequência nas turmas da modalidade", async ({ page }) => {
+    await seedSchool(page, {
+      extra: (t) => {
+        t.categories[1].assessments = { ...gradedSettings("zero_ten"), minAttendancePercent: 75 };
+        t.assessments = [assessment("as-1", "cg-ing", "m-ing", "Prova 1", { grades: [grade("c-a", 8)] })];
+        t.attendances = [
+          { id: "at-1", sessionId: "cg-ing~2026-09-14~17:00", studentId: "c-a", status: "present", markedAt: "2026-09-14T20:00:00.000Z" },
+          { id: "at-2", sessionId: "cg-ing~2026-09-15~17:00", studentId: "c-a", status: "absent", markedAt: "2026-09-15T20:00:00.000Z" },
+        ];
+      },
+    });
+    await skipClientsCoachmark(page);
+    await page.goto("/clients");
+    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Notas" }).click();
+    const card = page.getByRole("dialog", { name: "Notas" });
+    await expect(card).toContainText("Frequência mínima 75%");
+    await expect(card).toContainText("Nota acima da mínima");
+    await expect(card).toContainText("Frequência 50%, abaixo da mínima");
   });
 });

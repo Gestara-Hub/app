@@ -107,6 +107,24 @@ Aprovada com todas as recomendações acima: liga por modalidade com o padrão d
 
 **Fase 2 (não entrou):** recuperação e segunda chamada (maior nota), nota como critério da trilha, `{nota}` no certificado, boletim em PDF, relatórios de desempenho e aviso "nota lançada" no WhatsApp.
 
+### 2.3 Fase A entregue (31/10/2026)
+
+Revisão da seção de avaliações da modalidade, pedida pelo usuário: as quatro escalas cobriam a prova com nota, mas faltavam soma de pontos, recuperação e frequência mínima. Aprovado com a fase B (testes e medidas, seção 2.4) para depois.
+
+- **Escala:** "Apto" virou "Apto ou não".
+- **Como fecha o resultado** (`ModalityAssessmentSettings.resultMode`), só nas escalas 0 a 10 e 0 a 100:
+  - "Média com pesos" (padrão, como antes);
+  - "Soma dos pontos": cada avaliação diz quanto vale (`Assessment.points`, coluna `points`, até o topo da escala); a nota vai de 0 ao que ela vale; o resultado é o total, até o topo ("Total 7,5 de 10"). A mínima vira "Total mínimo para aprovar".
+  - O vermelho da soma segue o ritmo: o total contra os pontos já dados (3 de 3 não fica vermelho só porque faltam provas). Uma avaliação sozinha fica vermelha pela proporção do que vale. Faltou conta nos pontos dados (vale zero).
+- **Recuperação** (`Assessment.recoveryOf`, coluna `recovery_of`): ao criar uma avaliação, "Recuperação de (opcional)" escolhe outra avaliação da turma que não seja recuperação e ainda não tenha uma. Vale a maior nota de cada aluno; quem faltou na original fica com a da recuperação (segunda chamada). A recuperação herda peso, pontos e etapa, não entra sozinha na conta e aparece no boletim marcada; a original mostra "Vale 7 pela recuperação". O lançamento da recuperação mostra a nota original de cada aluno. Excluir a original leva a recuperação junto.
+- **Frequência mínima** (`minAttendancePercent`, 1 a 100, opcional): o boletim mostra a frequência do aluno nas turmas da modalidade (presenças sobre presenças e faltas) e se ficou abaixo. A situação aparece como "Nota acima/abaixo da mínima" e "Frequência X%", e não como "Aprovado", porque o boletim é ao vivo e o período pode não ter acabado.
+- **Boletim em PDF:** mesmas regras ("Total ... de 10", coluna "Vale", recuperação no nome e "4 → 7" na nota, frequência no resumo). A coluna do peso deixou de arredondar (peso 1,5 aparecia como 2).
+- **Código:** regras puras em `packages/core/src/grades.ts` (`resultOf`, `assessmentAverage`, `withRecovery`, `isGradeBelowPassing`, `validatePoints`, `validateMinAttendance`); serviço `services/grades/gradeRules.ts` (`effectiveItems`, `pointsOf`, `modalityAttendancePercent`); migração 72; testes em `packages/core/test/grades.test.ts`, `services/__tests__/grades-sum-recovery.test.ts` e e2e `notas` (fase A).
+
+### 2.4 Fase B: testes e medidas (aprovada em 31/10/2026, a fazer)
+
+Para funcional e crossfit, pilates e yoga, natação e esportes: a modalidade define as medidas (nome, unidade e se é melhor subir ou descer, por exemplo peso em kg, prancha em segundos, 25 m crawl em segundos), com sugestões pela área. A avaliação é por aluno, não por turma (a de entrada e as periódicas); a ficha mostra a última, a anterior e quanto mudou.
+
 ## Texto padrão do certificado (24/10/2026)
 
 O padrão diz "... de {inicio} a {fim}, que teve {aulas}, com frequência de {frequencia}." — as aulas são as do curso e a frequência é a real do aluno. "Concluído" segue pelo calendário do curso (frequência mínima fica para quando um espaço pedir). A assinatura usa a palavra da área (Instrutor ou Professor).

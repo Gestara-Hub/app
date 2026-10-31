@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import { ClipboardCheck, ClipboardList, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { AssessmentView, ClassGroupView, ModalityProgressionTrack } from "@gestarahub/contracts";
-import { formatAverage } from "@gestarahub/core/grades";
+import { formatAverage, scaleMax, usesPointsSum } from "@gestarahub/core/grades";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,16 @@ import { normalizeText } from "@/lib/text";
 import { useClassAssessments, useRemoveAssessment } from "../hooks/use-grades";
 import { AssessmentFormDialog } from "./assessment-form-dialog";
 import { GradeEntryDialog } from "./grade-entry-dialog";
-import { AverageValue, SCALE_LABEL, passingLabel, useCanManageGrades, weightLabel } from "./grade-ui";
+import {
+  AverageValue,
+  SCALE_LABEL,
+  attendanceRuleLabel,
+  passingLabel,
+  pointsLabel,
+  resultWord,
+  useCanManageGrades,
+  weightLabel,
+} from "./grade-ui";
 
 /**
  * Aba "Avaliações" da turma (so quando a modalidade tem avaliacoes): lista com
@@ -63,9 +72,12 @@ export function ClassAssessmentsTab({
   };
 
   const remove = async (a: AssessmentView) => {
+    const recovery = all.find((r) => r.recoveryOf === a.id);
     const ok = await confirm({
       title: "Excluir avaliação?",
-      description: `${a.name} e as notas lançadas saem do boletim dos alunos.`,
+      description: recovery
+        ? `${a.name}, a recuperação dela e as notas lançadas saem do boletim dos alunos.`
+        : `${a.name} e as notas lançadas saem do boletim dos alunos.`,
       confirmLabel: "Excluir",
       variant: "destructive",
     });
@@ -107,7 +119,8 @@ export function ClassAssessmentsTab({
             className="flex items-center gap-3"
           />
           <span className="inline-flex flex-wrap items-center gap-1.5">
-            {SCALE_LABEL[settings.scale]} · {passingLabel(settings)} · Média da turma
+            {[SCALE_LABEL[settings.scale], passingLabel(settings), attendanceRuleLabel(settings)].filter(Boolean).join(" · ")} ·{" "}
+            {resultWord(settings)} da turma
             <AverageValue scale={settings.scale} average={data?.classAverage ?? null} />
           </span>
         </div>
@@ -164,9 +177,12 @@ export function ClassAssessmentsTab({
                 },
               ]
             : [];
-          const meta = [format(parseISO(a.date), "dd/MM/yyyy"), weightLabel(a.weight), a.levelName]
-            .filter(Boolean)
-            .join(" · ");
+          const amount = a.recoveryOf
+            ? `Recuperação de ${a.recoveryOfName ?? "outra avaliação"}`
+            : settings && usesPointsSum(settings)
+              ? pointsLabel(a.points ?? scaleMax(settings.scale) ?? 0)
+              : weightLabel(a.weight);
+          const meta = [format(parseISO(a.date), "dd/MM/yyyy"), amount, a.levelName].filter(Boolean).join(" · ");
           const row = (
             <ListRow
               key={a.id}
@@ -215,6 +231,8 @@ export function ClassAssessmentsTab({
         classGroupName={turma.name}
         assessment={editing}
         track={track}
+        settings={settings}
+        classAssessments={all}
       />
       <GradeEntryDialog
         assessmentId={entryId}

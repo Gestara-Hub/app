@@ -28,6 +28,8 @@ import {
   studentName,
   validateLevel,
   validateFields,
+  validatePointsAndRecovery,
+  pointsOf,
   toView,
   sortAssessments,
   studentAverage,
@@ -62,18 +64,31 @@ export const assessmentsService = {
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
       const settings = requireSettings(group);
+      // Recuperacao: a nota da avaliacao recuperada fica de referencia em cada linha.
+      const original = a.recoveryOf ? assessmentsStore().find((o) => o.id === a.recoveryOf) : undefined;
       const rows = enrolledOnDate(group.id, a.date)
         .map((e) => {
           const grade = a.grades.find((g) => g.studentId === e.studentId);
+          const before = original?.grades.find((g) => g.studentId === e.studentId);
           return {
             studentId: e.studentId,
             studentName: studentName(e.studentId),
             status: grade?.status ?? "none",
             ...(grade?.value !== undefined ? { value: grade.value } : {}),
+            ...(original
+              ? { original: { status: before?.status ?? "none", ...(before?.value !== undefined ? { value: before.value } : {}) } }
+              : {}),
           };
         })
         .sort((x, y) => x.studentName.localeCompare(y.studentName, "pt-BR"));
-      return clone({ assessment: toView(a, settings), classGroupName: group.name, settings, rows });
+      const maxGrade = pointsOf(settings, a);
+      return clone({
+        assessment: toView(a, settings),
+        classGroupName: group.name,
+        settings,
+        ...(maxGrade !== undefined ? { maxGrade } : {}),
+        rows,
+      });
     });
   },
   create(payload: CreateAssessment): Promise<AssessmentView> {
@@ -85,10 +100,13 @@ export const assessmentsService = {
       const fields: ApiErrorField[] = [];
       validateFields(payload, false, fields);
       validateLevel(modalityId, payload.levelId, fields);
+      validatePointsAndRecovery(settings, group.id, payload, undefined, fields);
       if (fields.length > 0) throw validationError(fields);
 
       const ts = nowIso();
       const weight = payload.weight ?? DEFAULT_ASSESSMENT_WEIGHT;
+      // A recuperacao herda peso, pontos e etapa da recuperada.
+      const recoveryOf = payload.recoveryOf || undefined;
       const assessment: Assessment = {
         id: newId(),
         organizationId: store.organization.id,
@@ -96,8 +114,10 @@ export const assessmentsService = {
         modalityId,
         name: payload.name.trim(),
         date: payload.date,
-        weight,
-        ...(payload.levelId ? { levelId: payload.levelId } : {}),
+        weight: recoveryOf ? DEFAULT_ASSESSMENT_WEIGHT : weight,
+        ...(recoveryOf ? { recoveryOf } : {}),
+        ...(!recoveryOf && payload.points !== undefined ? { points: Number(payload.points) } : {}),
+        ...(!recoveryOf && payload.levelId ? { levelId: payload.levelId } : {}),
         grades: [],
         createdAt: ts,
         updatedAt: ts,
@@ -121,13 +141,23 @@ export const assessmentsService = {
       const fields: ApiErrorField[] = [];
       validateFields(payload, true, fields);
       if (payload.levelId) validateLevel(current.modalityId, payload.levelId, fields);
+      validatePointsAndRecovery(settings, group.id, payload, current, fields);
       if (fields.length > 0) throw validationError(fields);
 
       if (payload.name !== undefined) current.name = payload.name.trim();
       if (payload.date !== undefined) current.date = payload.date;
       if (payload.weight !== undefined) current.weight = payload.weight;
+      if (payload.points !== undefined) current.points = Number(payload.points);
       if (payload.levelId === null || payload.levelId === "") delete current.levelId;
       else if (payload.levelId !== undefined) current.levelId = payload.levelId;
+      if (payload.recoveryOf === null || payload.recoveryOf === "") delete current.recoveryOf;
+      else if (payload.recoveryOf !== undefined) current.recoveryOf = payload.recoveryOf;
+      // A recuperacao herda peso, pontos e etapa da recuperada.
+      if (current.recoveryOf) {
+        current.weight = DEFAULT_ASSESSMENT_WEIGHT;
+        delete current.points;
+        delete current.levelId;
+      }
       current.updatedAt = nowIso();
       auditLogService.record({
         action: "updated",
@@ -137,14 +167,14 @@ export const assessmentsService = {
       return clone(toView(current, settings));
     });
   },
-  /** Exclui a avaliacao e as notas dela (a tela confirma antes). */
+  /** Exclui a avaliacao e as notas dela, com as recuperacoes dela (a tela confirma antes). */
   remove(id: Id): Promise<void> {
     return writeOp(async () => {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
 
-      store.assessments = assessmentsStore().filter((a) => a.id !== id);
+      store.assessments = assessmentsStore().filter((a) => a.id !== id && a.recoveryOf !== id);
       auditLogService.record({
         action: "deleted",
         target: { type: "assessment", id, label: current.name },
@@ -163,6 +193,7 @@ export const assessmentsService = {
       const group = findClass(current.classGroupId);
       assertCanManage(group);
       const settings = requireSettings(group);
+      const maxGrade = pointsOf(settings, current);
       const enrolled = new Set(enrolledOnDate(group.id, current.date).map((e) => e.studentId));
       const enrolledLater = new Set(activeEnrollments(group.id).map((e) => e.studentId));
 
@@ -180,7 +211,7 @@ export const assessmentsService = {
           continue;
         }
         if (entry.status === "graded") {
-          const check = normalizeGrade(settings.scale, entry.value);
+          const check = normalizeGrade(settings.scale, entry.value, maxGrade);
           if (!check.ok) {
             fields.push({ field, message: check.message });
             continue;

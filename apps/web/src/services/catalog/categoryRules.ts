@@ -7,9 +7,12 @@ import type {
 } from "@gestarahub/contracts";
 import { validationError } from "@gestarahub/core/api-error";
 import {
+  ASSESSMENT_RESULT_MODES,
   ASSESSMENT_SCALES,
   assessmentsEnabled,
   normalizePassingGrade,
+  scaleMax,
+  validateMinAttendance,
 } from "@gestarahub/core/grades";
 import { getSegmentPreset, segmentDefaultAssessments } from "@/lib/business-segment-presets";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
@@ -41,12 +44,19 @@ export function validateCategoryPayload(
   }
 
   if (payload.assessments) {
-    const { scale, passingGrade } = payload.assessments;
+    const { scale, passingGrade, resultMode, minAttendancePercent } = payload.assessments;
     if (!ASSESSMENT_SCALES.includes(scale)) {
       fields.push({ field: "assessments.scale", message: "Escolha a escala das notas." });
     } else {
       const check = normalizePassingGrade(scale, passingGrade);
       if (!check.ok) fields.push({ field: "assessments.passingGrade", message: check.message });
+    }
+    if (resultMode !== undefined && !ASSESSMENT_RESULT_MODES.includes(resultMode)) {
+      fields.push({ field: "assessments.resultMode", message: "Escolha como fecha o resultado." });
+    }
+    if (minAttendancePercent !== undefined && minAttendancePercent !== null) {
+      const check = validateMinAttendance(minAttendancePercent);
+      if (!check.ok) fields.push({ field: "assessments.minAttendancePercent", message: check.message });
     }
   }
 
@@ -57,12 +67,27 @@ export function duplicateCategoryNameError(noun: string) {
   return validationError([{ field: "name", message: `Já existe uma ${noun} com esse nome.` }]);
 }
 
-/** Avaliacoes normalizadas (nota minima na escala); desligada sem config = ausente. */
+/**
+ * Avaliacoes normalizadas, campo a campo (so o que o contrato conhece): nota
+ * minima na escala, soma dos pontos so nas escalas numericas e frequencia
+ * minima valida. Desligada sem config = ausente.
+ */
 export function normalizedAssessments(payload: Pick<CreateCategory, "assessments">): Category["assessments"] {
   const settings = payload.assessments;
   if (!settings) return undefined;
   const check = normalizePassingGrade(settings.scale, settings.passingGrade);
-  return { ...settings, passingGrade: check.ok ? check.value : settings.passingGrade };
+  const sum = settings.resultMode === "sum" && scaleMax(settings.scale) !== undefined;
+  const minAttendance =
+    settings.minAttendancePercent !== undefined && settings.minAttendancePercent !== null
+      ? validateMinAttendance(settings.minAttendancePercent)
+      : null;
+  return {
+    enabled: Boolean(settings.enabled),
+    scale: settings.scale,
+    passingGrade: check.ok ? check.value : settings.passingGrade,
+    ...(sum ? { resultMode: "sum" as const } : {}),
+    ...(minAttendance?.ok ? { minAttendancePercent: minAttendance.value } : {}),
+  };
 }
 
 /**

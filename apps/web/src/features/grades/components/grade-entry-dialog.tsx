@@ -13,10 +13,10 @@ import type {
 } from "@gestarahub/contracts";
 import {
   CONCEPT_GRADES,
-  averageGrades,
+  assessmentAverage,
   formatAverage,
   formatGrade,
-  isBelowPassing,
+  isGradeBelowPassing,
   normalizeGrade,
 } from "@gestarahub/core/grades";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAssessmentSheet, useSetGrades } from "../hooks/use-grades";
-import { passingLabel } from "./grade-ui";
+import { passingLabel, pointsLabel } from "./grade-ui";
 
 /** Rascunho de uma linha: `raw` e o texto digitado ou a letra/apto escolhido. */
 interface Draft {
@@ -56,8 +56,9 @@ const chipOn = "border-foreground/40 bg-foreground/5 text-foreground";
 const chipBelow = "border-red-300 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400";
 
 function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => void }) {
-  const { settings, rows } = sheet;
+  const { settings, rows, maxGrade } = sheet;
   const { scale } = settings;
+  const recoveryOfName = sheet.assessment.recoveryOfName;
   const setGradesMut = useSetGrades();
   const pending = setGradesMut.isPending;
   const initial = useMemo(() => new Map(rows.map((r) => [r.studentId, draftOf(r, scale)])), [rows, scale]);
@@ -77,19 +78,20 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
   const checks = useMemo(() => {
     const out = new Map<Id, ReturnType<typeof normalizeGrade>>();
     for (const [id, d] of drafts) {
-      if (d.status === "graded" && d.raw.trim() !== "") out.set(id, normalizeGrade(scale, d.raw));
+      if (d.status === "graded" && d.raw.trim() !== "") out.set(id, normalizeGrade(scale, d.raw, maxGrade));
     }
     return out;
-  }, [drafts, scale]);
+  }, [drafts, scale, maxGrade]);
 
   // Media ao vivo: so as notas validas digitadas (faltou e sem nota ficam fora).
   const liveAverage = useMemo(
     () =>
-      averageGrades(
+      assessmentAverage(
         settings,
-        [...checks.values()].flatMap((c) => (c.ok ? [{ status: "graded" as const, value: c.value, weight: 1 }] : [])),
+        [...checks.values()].flatMap((c) => (c.ok ? [{ status: "graded" as const, value: c.value }] : [])),
+        maxGrade,
       ),
-    [checks, settings],
+    [checks, settings, maxGrade],
   );
   const filled = [...drafts.values()].filter((d) => d.status === "absent" || (d.status === "graded" && d.raw.trim() !== "")).length;
 
@@ -106,7 +108,7 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
         continue;
       }
       if (d.status === "graded") {
-        const check = normalizeGrade(scale, d.raw);
+        const check = normalizeGrade(scale, d.raw, maxGrade);
         if (!check.ok) {
           nextErrors.set(row.studentId, check.message);
           continue;
@@ -145,6 +147,7 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border/40 px-6 py-2 text-xs text-muted-foreground">
         <span>
           Lançadas {filled} de {rows.length} · {passingLabel(settings)}
+          {maxGrade !== undefined ? ` · ${pointsLabel(maxGrade)}` : ""}
         </span>
         <span className="inline-flex items-center gap-1.5">
           Média
@@ -159,6 +162,11 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
         </span>
       </div>
       <DialogBody className="space-y-2">
+        {recoveryOfName ? (
+          <p className="text-xs text-muted-foreground">
+            Recuperação de {recoveryOfName}: vale a maior nota de cada aluno.
+          </p>
+        ) : null}
         {rows.length === 0 ? (
           <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
             Nenhum aluno matriculado nesta turma.
@@ -168,7 +176,7 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
             const d = drafts.get(row.studentId) ?? { status: "none", raw: "" };
             const check = checks.get(row.studentId);
             const below =
-              d.status === "graded" && check?.ok ? isBelowPassing(scale, check.value, settings.passingGrade) : false;
+              d.status === "graded" && check?.ok ? isGradeBelowPassing(settings, check.value, maxGrade) : false;
             const error = errors.get(row.studentId) ?? (check && !check.ok ? check.message : undefined);
             const inputId = `grade-${row.studentId}`;
             const isNumeric = scale === "zero_ten" || scale === "zero_hundred";
@@ -185,9 +193,21 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
                     <InitialsAvatar name={row.studentName} />
                     {/* So o campo de nota leva o rotulo: nos botoes (conceito, apto) o nome de cada
                         opcao e a propria letra; o grupo ja se chama "Conceito de {aluno}". */}
-                    <label htmlFor={isNumeric ? inputId : undefined} className="text-sm font-medium">
-                      {row.studentName}
-                    </label>
+                    <div className="min-w-0">
+                      <label htmlFor={isNumeric ? inputId : undefined} className="block text-sm font-medium break-words">
+                        {row.studentName}
+                      </label>
+                      {row.original ? (
+                        <p className="text-xs text-muted-foreground">
+                          {recoveryOfName}:{" "}
+                          {row.original.status === "absent"
+                            ? "faltou"
+                            : row.original.value !== undefined
+                              ? formatGrade(scale, row.original.value)
+                              : "sem nota"}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {isNumeric ? (

@@ -165,6 +165,18 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     await call("grades.setGrades", assessment.id, [{ studentId: student.id, status: "graded", value: 9 }]);
     const { data: grades } = await admin.from("assessments").select("grades").eq("id", assessment.id).single();
     expect(grades?.grades).toEqual([expect.objectContaining({ studentId: student.id, value: 9 })]);
+    // Recuperacao (fase A, 31/10/2026): a coluna recovery_of e a exclusao junto com a recuperada.
+    const recovery = await call<{ id: string }>("grades.create", {
+      classGroupId: group.id,
+      name: "Recuperação",
+      date: today(),
+      recoveryOf: assessment.id,
+    });
+    const { data: recoveryRow } = await admin.from("assessments").select("recovery_of").eq("id", recovery.id).single();
+    expect(recoveryRow).toEqual({ recovery_of: assessment.id });
+    await call("grades.remove", assessment.id);
+    const { data: left } = await admin.from("assessments").select("id").in("id", [assessment.id, recovery.id]);
+    expect(left).toEqual([]);
 
     // Mensagem assistida (WhatsApp do aparelho).
     await call("communication.registerAssistedMessage", {

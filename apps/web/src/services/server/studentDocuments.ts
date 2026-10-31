@@ -1,6 +1,6 @@
 import type { Client, DocumentModel, Id } from "@gestarahub/contracts";
 import { notFoundError } from "@gestarahub/core/api-error";
-import { formatAverage, formatGrade } from "@gestarahub/core/grades";
+import { formatAverage, formatGrade, scaleMax, usesPointsSum } from "@gestarahub/core/grades";
 import { onlineFundsLabel, onlinePaymentMethodLabel } from "@gestarahub/core/payment-fees";
 import { getSegmentPreset } from "@/lib/business-segment-presets";
 import { competenceLongLabel, documentDate, unitHeaderLine } from "@/lib/documents/format";
@@ -83,30 +83,56 @@ export async function reportCardModel(studentId: Id): Promise<DocumentModel> {
         label: levelText(p.levelName, p.subLevel),
         since: p.promotedAt,
       })),
-    modalities: card.modalities.map((m) => ({
-      modalityName: m.modalityName,
-      summary: [
-        m.overall ? `Média geral ${formatAverage(m.settings.scale, m.overall)}` : "Sem média ainda",
-        m.settings.scale === "pass_fail" ? null : `aprovação a partir de ${formatGrade(m.settings.scale, m.settings.passingGrade)}`,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-        .concat("."),
-      rows: m.entries.map((e) => ({
-        date: e.date,
-        name: e.name,
-        className: e.classGroupName,
-        levelName: e.levelName,
-        weight: e.weight,
-        grade:
-          e.status === "absent"
-            ? "Faltou"
-            : e.status === "graded" && e.value !== undefined
-              ? formatGrade(m.settings.scale, e.value)
-              : undefined,
-        tone: e.status === "absent" ? "muted" : e.belowPassing ? "negative" : "default",
-      })),
-    })),
+    modalities: card.modalities.map((m) => {
+      // Soma dos pontos: "Total 7,5 de 10"; media: "Média geral 7,5" (fase A, 31/10/2026).
+      const sum = usesPointsSum(m.settings);
+      const top = scaleMax(m.settings.scale);
+      const passing = formatGrade(m.settings.scale, m.settings.passingGrade);
+      return {
+        modalityName: m.modalityName,
+        weightLabel: sum ? "Vale" : "Peso",
+        summary: [
+          m.overall
+            ? sum
+              ? `Total ${formatAverage(m.settings.scale, m.overall)} de ${top}`
+              : `Média geral ${formatAverage(m.settings.scale, m.overall)}`
+            : sum
+              ? "Sem total ainda"
+              : "Sem média ainda",
+          m.settings.scale === "pass_fail" ? null : `aprovação a partir de ${passing}${sum ? ` de ${top}` : ""}`,
+          m.attendance
+            ? m.attendance.percent === null
+              ? "sem chamada ainda"
+              : `frequência ${m.attendance.percent}% (mínima ${m.settings.minAttendancePercent}%)`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+          .concat("."),
+        rows: m.entries.map((e) => {
+          const grade =
+            e.status === "absent"
+              ? "Faltou"
+              : e.status === "graded" && e.value !== undefined
+                ? formatGrade(m.settings.scale, e.value)
+                : undefined;
+          return {
+            date: e.date,
+            name: e.recoveryOf ? `${e.name} (recuperação de ${e.recoveryOfName ?? "outra avaliação"})` : e.name,
+            className: e.classGroupName,
+            levelName: e.levelName,
+            weight: e.recoveryOf
+              ? undefined
+              : (sum ? (e.points ?? top ?? 0) : e.weight).toLocaleString("pt-BR"),
+            grade:
+              e.recoveredValue !== undefined && grade
+                ? `${grade} → ${formatGrade(m.settings.scale, e.recoveredValue)}`
+                : grade,
+            tone: e.status === "absent" ? "muted" : e.belowPassing ? "negative" : "default",
+          };
+        }),
+      };
+    }),
     promotions: progressions
       .flatMap((p) =>
         p.promotionHistory.map((h) => ({

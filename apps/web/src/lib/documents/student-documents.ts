@@ -71,7 +71,8 @@ export interface ReportCardGradeRow {
   name: string;
   className: string;
   levelName?: string;
-  weight: number;
+  /** Peso na media ("1", "1,5") ou, na soma dos pontos, quanto vale ("2,5"). Vazio na recuperacao. */
+  weight?: string;
   /** Nota pronta para mostrar ("7,5", "B", "Apto", "Faltou"). */
   grade?: string;
   tone?: DocumentTone;
@@ -81,6 +82,8 @@ export interface ReportCardModalityInput {
   modalityName: string;
   /** "Média geral 7,8 · Aprovação a partir de 6,0". */
   summary: string;
+  /** Rotulo da coluna do peso: "Peso" ou, na soma dos pontos, "Vale". */
+  weightLabel?: string;
   rows: ReportCardGradeRow[];
 }
 
@@ -132,7 +135,7 @@ export function reportCardDocument(input: ReportCardInput): DocumentModel {
         { key: "name", label: "Avaliação", width: 1.9 },
         { key: "className", label: "Turma", width: 1.5 },
         { key: "level", label: input.levelLabel, width: 1.1 },
-        { key: "weight", label: "Peso", format: "integer", width: 0.6 },
+        { key: "weight", label: modality.weightLabel ?? "Peso", width: 0.6 },
         { key: "grade", label: "Nota", align: "right", width: 0.8 },
       ],
       rows: modality.rows.map((r) => ({

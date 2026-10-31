@@ -13,8 +13,14 @@ import {
   isBelowPassing,
   normalizeGrade,
   normalizePassingGrade,
+  resultOf,
   roundHalfUp,
+  validateMinAttendance,
+  validatePoints,
   validateWeight,
+  withRecovery,
+  assessmentAverage,
+  isGradeBelowPassing,
 } from "../src/grades.ts";
 
 const ten = defaultAssessmentSettings(true, "zero_ten");
@@ -194,5 +200,84 @@ describe("notas: exibição", () => {
     assert.equal(formatGrade("zero_hundred", 85), "85");
     assert.equal(formatGrade("concept", "B"), "B");
     assert.equal(formatGrade("pass_fail", "fail"), "Não apto");
+  });
+});
+
+describe("soma dos pontos, recuperação e frequência mínima (fase A, 31/10/2026)", () => {
+  const sumTen = { ...ten, resultMode: "sum" as const };
+  const p = (value: number, points: number) => ({ status: "graded" as const, value, weight: 1, points });
+
+  it("nota vai de 0 ao que a avaliação vale", () => {
+    assert.deepEqual(normalizeGrade("zero_ten", "2,5", 3), { ok: true, value: 2.5 });
+    assert.deepEqual(normalizeGrade("zero_ten", "3,5", 3), { ok: false, message: "A nota vai de 0 a 3." });
+    assert.deepEqual(normalizeGrade("zero_hundred", "35", 30), { ok: false, message: "A nota vai de 0 a 30." });
+  });
+
+  it("quanto a avaliação vale: até o topo da escala", () => {
+    assert.deepEqual(validatePoints("zero_ten", "2,5"), { ok: true, value: 2.5 });
+    assert.equal(validatePoints("zero_ten", "11").ok, false);
+    assert.equal(validatePoints("zero_hundred", "30,5").ok, false);
+    assert.equal(validatePoints("zero_ten", "0").ok, false);
+  });
+
+  it("total é a soma, até o topo; o vermelho segue o ritmo dos pontos dados", () => {
+    // 3 de 3: total 3, sem vermelho, embora a mínima final seja 6.
+    const first = resultOf(sumTen, [p(3, 3)]);
+    assert.deepEqual(first, { value: 3, numeric: 3, count: 1, belowPassing: false, outOf: 3 });
+    // 3 + 1 de 3 + 3: total 4 de 6 dados (66%) fica acima da mínima de 60%.
+    assert.equal(resultOf(sumTen, [p(3, 3), p(1, 3)])?.belowPassing, false);
+    // 3 + 0,5 de 6 dados (58%): abaixo.
+    assert.equal(resultOf(sumTen, [p(3, 3), p(0.5, 3)])?.belowPassing, true);
+    // Faltou conta nos pontos dados.
+    const absent = resultOf(sumTen, [p(3, 3), { status: "absent", weight: 1, points: 4 }]);
+    assert.equal(absent?.outOf, 7);
+    assert.equal(absent?.belowPassing, true);
+    // Ponto extra nao passa do topo.
+    assert.equal(resultOf(sumTen, [p(6, 6), p(5, 5)])?.value, 10);
+  });
+
+  it("média da turma na soma: total médio pelo ritmo médio", () => {
+    const a = resultOf(sumTen, [p(3, 3)]);
+    const b = resultOf(sumTen, [p(1, 3)]);
+    assert.deepEqual(averageOfAverages(sumTen, [a, b]), { value: 2, numeric: 2, count: 2, belowPassing: false, outOf: 3 });
+  });
+
+  it("avaliação na soma: vermelho proporcional ao que ela vale", () => {
+    assert.equal(isGradeBelowPassing(sumTen, 2, 3), false);
+    assert.equal(isGradeBelowPassing(sumTen, 1.5, 3), true);
+    assert.equal(assessmentAverage(sumTen, [g(2), g(1)], 3)?.belowPassing, true);
+    // Fora da soma, a regra de sempre.
+    assert.equal(isGradeBelowPassing(ten, 2, 3), true);
+  });
+
+  it("média com pesos continua igual com o modo padrão", () => {
+    assert.deepEqual(resultOf(ten, [g(5, 1), g(8, 2)]), averageGrades(ten, [g(5, 1), g(8, 2)]));
+  });
+
+  it("recuperação: vale a maior; sem nota na original, vale a recuperação", () => {
+    assert.deepEqual(withRecovery("zero_ten", { status: "graded", value: 4 }, { status: "graded", value: 7 }), {
+      status: "graded",
+      value: 7,
+      recovered: true,
+    });
+    assert.deepEqual(withRecovery("zero_ten", { status: "graded", value: 8 }, { status: "graded", value: 7 }), {
+      status: "graded",
+      value: 8,
+      recovered: false,
+    });
+    assert.deepEqual(withRecovery("concept", { status: "absent" }, { status: "graded", value: "C" }), {
+      status: "graded",
+      value: "C",
+      recovered: true,
+    });
+    assert.equal(withRecovery("pass_fail", { status: "graded", value: "fail" }, { status: "graded", value: "pass" }).value, "pass");
+    assert.equal(withRecovery("zero_ten", { status: "graded", value: 4 }, { status: "absent" }).value, 4);
+  });
+
+  it("frequência mínima: inteiro de 1 a 100", () => {
+    assert.deepEqual(validateMinAttendance("75"), { ok: true, value: 75 });
+    assert.equal(validateMinAttendance("0").ok, false);
+    assert.equal(validateMinAttendance("75,5").ok, false);
+    assert.equal(validateMinAttendance("101").ok, false);
   });
 });

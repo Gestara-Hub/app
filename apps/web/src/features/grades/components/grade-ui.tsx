@@ -8,7 +8,7 @@ import type {
   Id,
   ModalityAssessmentSettings,
 } from "@gestarahub/contracts";
-import { formatAverage, formatGrade } from "@gestarahub/core/grades";
+import { formatAverage, formatGrade, scaleMax, usesPointsSum } from "@gestarahub/core/grades";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +20,23 @@ export const SCALE_LABEL: Record<AssessmentScale, string> = {
   pass_fail: "Apto ou não",
 };
 
-/** "Mínima 6", "Mínima C", "Mínima: apto". */
+/** "Mínima 6", "Mínima C", "Mínima: apto"; na soma, "Mínimo 6 de 10". */
 export function passingLabel(settings: ModalityAssessmentSettings): string {
   if (settings.scale === "pass_fail") return "Mínima: apto";
+  if (usesPointsSum(settings)) {
+    return `Mínimo ${formatGrade(settings.scale, settings.passingGrade)} de ${scaleMax(settings.scale)}`;
+  }
   return `Mínima ${formatGrade(settings.scale, settings.passingGrade)}`;
+}
+
+/** "Média" ou, na soma dos pontos, "Total". */
+export function resultWord(settings: ModalityAssessmentSettings): string {
+  return usesPointsSum(settings) ? "Total" : "Média";
+}
+
+/** Frequencia minima na linha de resumo: "Frequência mínima 75%". */
+export function attendanceRuleLabel(settings: ModalityAssessmentSettings): string | null {
+  return settings.minAttendancePercent ? `Frequência mínima ${settings.minAttendancePercent}%` : null;
 }
 
 /**
@@ -97,4 +110,9 @@ export function GradeStatusValue({
 /** "Peso 1", "Peso 1,5". */
 export function weightLabel(weight: number): string {
   return `Peso ${weight.toLocaleString("pt-BR")}`;
+}
+
+/** "Vale 2,5" (soma dos pontos). */
+export function pointsLabel(points: number): string {
+  return `Vale ${points.toLocaleString("pt-BR")}`;
 }

@@ -2,19 +2,29 @@ import type {
   ApiErrorField,
   Assessment,
   AssessmentGrade,
+  AssessmentGradeStatus,
   AssessmentView,
   Category,
   ClassGroup,
   GradeAverage,
+  GradeValue,
   Id,
   ModalityAssessmentSettings,
 } from "@gestarahub/contracts";
 import {
   MAX_ASSESSMENT_NAME_LENGTH,
-  averageGrades,
+  assessmentAverage,
   assessmentsEnabled,
+  resultOf,
+  scaleMax,
+  usesPointsSum,
+  validatePoints,
   validateWeight,
+  withRecovery,
+  type LevelGrade,
 } from "@gestarahub/core/grades";
+import { attendancePercent } from "@gestarahub/core/certificate";
+import { SEP } from "../classes/classShared";
 import { getCurrentActor } from "@/services/world/actor";
 import { apiError, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -157,6 +167,105 @@ export function validateFields(
   }
 }
 
+/**
+ * Pontos e recuperacao da avaliacao (fase A, 31/10/2026). Na soma, a avaliacao
+ * que nao e recuperacao precisa dizer quanto vale. A recuperacao aponta uma
+ * avaliacao da mesma turma que nao seja recuperacao, e herda os pontos dela.
+ */
+export function validatePointsAndRecovery(
+  settings: ModalityAssessmentSettings,
+  classGroupId: Id,
+  payload: { points?: unknown; recoveryOf?: Id | null },
+  current: Assessment | undefined,
+  fields: ApiErrorField[],
+): void {
+  const recoveryOf = payload.recoveryOf === undefined ? current?.recoveryOf : payload.recoveryOf || undefined;
+  if (recoveryOf) {
+    const original = assessmentsStore().find((a) => a.id === recoveryOf);
+    if (!original || original.classGroupId !== classGroupId || original.id === current?.id) {
+      fields.push({ field: "recoveryOf", message: "Escolha uma avaliação desta turma." });
+    } else if (original.recoveryOf) {
+      fields.push({ field: "recoveryOf", message: "Escolha uma avaliação que não seja recuperação." });
+    } else if (current && assessmentsStore().some((a) => a.recoveryOf === current.id)) {
+      fields.push({ field: "recoveryOf", message: "Esta avaliação já tem recuperação." });
+    }
+    return;
+  }
+  if (!usesPointsSum(settings)) return;
+  const points = payload.points === undefined ? current?.points : payload.points;
+  const check = validatePoints(settings.scale, points);
+  if (!check.ok) fields.push({ field: "points", message: check.message });
+}
+
+/** Quanto a avaliacao vale na soma (a recuperacao herda da recuperada); fora da soma, nada. */
+export function pointsOf(settings: ModalityAssessmentSettings, a: Assessment): number | undefined {
+  if (!usesPointsSum(settings)) return undefined;
+  const source = a.recoveryOf ? (assessmentsStore().find((o) => o.id === a.recoveryOf) ?? a) : a;
+  return source.points ?? scaleMax(settings.scale);
+}
+
+/** Nome da avaliacao recuperada. */
+export function recoveryOfName(a: Assessment): string | undefined {
+  return a.recoveryOf ? assessmentsStore().find((o) => o.id === a.recoveryOf)?.name : undefined;
+}
+
+/**
+ * Notas que valem para o aluno: uma por avaliacao que nao e recuperacao, ja
+ * com a melhor recuperacao dela (a maior nota). Com o peso, os pontos e a etapa.
+ */
+export function effectiveItems(
+  settings: ModalityAssessmentSettings,
+  assessments: Assessment[],
+  studentId: Id,
+): (LevelGrade & { assessmentId: Id; recovered: boolean })[] {
+  const gradeOf = (a: Assessment): { status: AssessmentGradeStatus; value?: GradeValue } => {
+    const g = a.grades.find((x) => x.studentId === studentId);
+    return { status: g?.status ?? "none", value: g?.value };
+  };
+  const out: (LevelGrade & { assessmentId: Id; recovered: boolean })[] = [];
+  for (const a of assessments) {
+    if (a.recoveryOf) continue;
+    let effective: { status: AssessmentGradeStatus; value?: GradeValue; recovered: boolean } = {
+      ...gradeOf(a),
+      recovered: false,
+    };
+    for (const r of assessments.filter((x) => x.recoveryOf === a.id)) {
+      const next = withRecovery(settings.scale, effective, gradeOf(r));
+      effective = { ...next, recovered: effective.recovered || next.recovered };
+    }
+    out.push({
+      assessmentId: a.id,
+      status: effective.status,
+      value: effective.value,
+      recovered: effective.recovered,
+      weight: a.weight,
+      points: pointsOf(settings, a),
+      levelId: a.levelId,
+    });
+  }
+  return out;
+}
+
+/** Frequencia do aluno nas turmas da modalidade (presencas / presencas + faltas, em %). */
+export function modalityAttendancePercent(modalityId: Id, studentId: Id): number | null {
+  const classIds = new Set(
+    store.enrollments
+      .filter((e) => e.studentId === studentId)
+      .map((e) => e.classGroupId)
+      .filter((id) => store.classGroups.find((g) => g.id === id)?.modalityId === modalityId),
+  );
+  let present = 0;
+  let absent = 0;
+  for (const a of store.attendances) {
+    if (a.studentId !== studentId) continue;
+    const classId = a.sessionId.split(SEP)[0];
+    if (!classIds.has(classId)) continue;
+    if (a.status === "present") present += 1;
+    else if (a.status === "absent") absent += 1;
+  }
+  return attendancePercent(present, absent);
+}
+
 /** Notas dos matriculados de hoje (as de quem saiu ficam guardadas, fora da conta). */
 export function enrolledGrades(a: Assessment): AssessmentGrade[] {
   const enrolled = new Set(activeEnrollments(a.classGroupId).map((e) => e.studentId));
@@ -167,15 +276,18 @@ export function toView(a: Assessment, settings: ModalityAssessmentSettings | und
   const { grades: _grades, ...rest } = a;
   void _grades;
   const grades = enrolledGrades(a);
+  const original = recoveryOfName(a);
   return {
     ...rest,
     levelName: levelName(a.modalityId, a.levelId),
+    ...(original ? { recoveryOfName: original } : {}),
     gradedCount: grades.filter((g) => g.status !== "none").length,
     enrolledCount: activeEnrollments(a.classGroupId).length,
     average: settings
-      ? averageGrades(
+      ? assessmentAverage(
           settings,
-          grades.map((g) => ({ status: g.status, value: g.value, weight: 1 })),
+          grades.map((g) => ({ status: g.status, value: g.value })),
+          pointsOf(settings, a),
         )
       : null,
   };
@@ -185,19 +297,13 @@ export function sortAssessments(list: Assessment[]): Assessment[] {
   return [...list].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Media geral do aluno nas avaliacoes dadas (ponderada). */
+/** Resultado do aluno nas avaliacoes dadas: media com pesos ou total, ja com a recuperacao. */
 export function studentAverage(
   settings: ModalityAssessmentSettings,
   assessments: Assessment[],
   studentId: Id,
 ): GradeAverage | null {
-  return averageGrades(
-    settings,
-    assessments.map((a) => {
-      const grade = a.grades.find((g) => g.studentId === studentId);
-      return { status: grade?.status ?? "none", value: grade?.value, weight: a.weight };
-    }),
-  );
+  return resultOf(settings, effectiveItems(settings, assessments, studentId));
 }
 
 export function className(classGroupId: Id): string {

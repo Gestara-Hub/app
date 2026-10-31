@@ -1766,7 +1766,7 @@
     "article": "Modalidades e trilha de progressão",
     "title": "Avaliações e notas da modalidade",
     "route": "/classes/modalities",
-    "text": "Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim.",
+    "text": "Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim. Na soma dos pontos, cada avaliação diz quanto vale. Para dar uma segunda chance, crie uma avaliação e escolha \"Recuperação de\": vale a maior nota de cada aluno.",
     "summary": "Ligue as avaliações para lançar notas nas turmas.",
     "guide": {
       "route": "/classes/modalities",
@@ -1789,7 +1789,17 @@
         {
           "kind": "texto",
           "label": "Escala da nota",
-          "text": "Escolha como a nota é dada (0 a 10, 0 a 100, A a E ou Apto)."
+          "text": "Escolha como a nota é dada (0 a 10, 0 a 100, A a E ou Apto ou não)."
+        },
+        {
+          "kind": "texto",
+          "label": "Como fecha o resultado",
+          "text": "Média com pesos ou soma dos pontos (só nas notas de 0 a 10 e 0 a 100)."
+        },
+        {
+          "kind": "texto",
+          "label": "Frequência mínima (%)",
+          "text": "Opcional. Com ela, o boletim mostra se o aluno ficou abaixo."
         },
         {
           "kind": "botão",

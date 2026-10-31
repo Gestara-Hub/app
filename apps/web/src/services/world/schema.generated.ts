@@ -69,6 +69,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "points": {
+        "type": "numeric",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "recovery_of": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

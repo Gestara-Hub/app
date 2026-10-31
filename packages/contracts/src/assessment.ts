@@ -17,6 +17,12 @@ export type ConceptGrade = "A" | "B" | "C" | "D" | "E";
 export type PassFailGrade = "pass" | "fail";
 
 /**
+ * Como fecha o resultado (so 0 a 10 e 0 a 100): media com pesos (padrao) ou
+ * soma dos pontos, em que cada avaliacao vale uma parte do total (31/10/2026).
+ */
+export type AssessmentResultMode = "average" | "sum";
+
+/**
  * Valor da nota conforme a escala: numero em 0 a 10 e 0 a 100, letra no
  * conceito, `pass`/`fail` no apto.
  */
@@ -31,6 +37,10 @@ export interface ModalityAssessmentSettings {
    * Abaixo dela a nota e a media aparecem em destaque.
    */
   passingGrade: GradeValue;
+  /** Ausente = "average". "sum" so vale nas escalas 0 a 10 e 0 a 100. */
+  resultMode?: AssessmentResultMode;
+  /** Frequencia minima para aprovar (1 a 100, em %). Ausente = sem exigencia. */
+  minAttendancePercent?: number;
 }
 
 /**
@@ -61,6 +71,13 @@ export interface Assessment {
   date: DateISO;
   /** Peso na media (> 0, padrao 1). */
   weight: number;
+  /** Na soma dos pontos: quanto a avaliacao vale (ate o total da escala). */
+  points?: number;
+  /**
+   * Recuperacao (ou segunda chamada) de outra avaliacao da turma: vale a maior
+   * nota de cada aluno, e esta avaliacao nao entra sozinha na conta.
+   */
+  recoveryOf?: Id;
   /** Etapa da trilha a que se refere (modulo, nivel). Opcional. */
   levelId?: string;
   /** Notas lancadas; aluno sem linha = sem nota. */
@@ -75,12 +92,17 @@ export interface CreateAssessment {
   date: DateISO;
   /** Ausente = 1. */
   weight?: number;
+  /** Obrigatorio na soma dos pontos (fora da recuperacao). */
+  points?: number;
+  recoveryOf?: Id;
   levelId?: string;
 }
 
-export type UpdateAssessment = Partial<Pick<Assessment, "name" | "date" | "weight">> & {
+export type UpdateAssessment = Partial<Pick<Assessment, "name" | "date" | "weight" | "points">> & {
   /** `null` tira a etapa. */
   levelId?: string | null;
+  /** `null` deixa de ser recuperacao. */
+  recoveryOf?: Id | null;
 };
 
 /** Uma linha do lancamento: `none` apaga a nota do aluno. */
@@ -101,13 +123,20 @@ export interface GradeAverage {
   numeric: number;
   /** Notas que entraram na conta. */
   count: number;
-  /** Abaixo da nota minima da modalidade. */
+  /**
+   * Abaixo da nota minima da modalidade. Na soma, pelo ritmo: o total contra
+   * os pontos ja dados (3 de 3 nao fica vermelho so porque faltam provas).
+   */
   belowPassing: boolean;
+  /** Na soma: pontos ja dados ate aqui (das avaliacoes com nota ou falta). */
+  outOf?: number;
 }
 
 /** Linha da lista de avaliacoes da turma. */
 export interface AssessmentView extends Omit<Assessment, "grades"> {
   levelName?: string;
+  /** Nome da avaliacao recuperada (so na recuperacao). */
+  recoveryOfName?: string;
   /** Alunos matriculados com nota ou falta lancada. */
   gradedCount: number;
   /** Alunos matriculados hoje na turma. */
@@ -133,6 +162,8 @@ export interface AssessmentSheetRow {
   studentName: string;
   status: AssessmentGradeStatus;
   value?: GradeValue;
+  /** Na recuperacao: a nota da avaliacao recuperada, de referencia. */
+  original?: { status: AssessmentGradeStatus; value?: GradeValue };
 }
 
 /** Tela "Lançar notas". */
@@ -140,6 +171,8 @@ export interface AssessmentSheet {
   assessment: AssessmentView;
   classGroupName: string;
   settings: ModalityAssessmentSettings;
+  /** Nota maxima de cada aluno: os pontos na soma, senao o topo da escala. */
+  maxGrade?: number;
   rows: AssessmentSheetRow[];
 }
 
@@ -149,12 +182,18 @@ export interface ReportCardEntry {
   name: string;
   date: DateISO;
   weight: number;
+  points?: number;
   classGroupId: Id;
   classGroupName: string;
   levelId?: string;
   levelName?: string;
+  /** Recuperacao: nao entra sozinha na conta. */
+  recoveryOf?: Id;
+  recoveryOfName?: string;
   status: AssessmentGradeStatus;
   value?: GradeValue;
+  /** A nota da recuperacao, quando foi maior e passou a valer no lugar desta. */
+  recoveredValue?: GradeValue;
   belowPassing: boolean;
 }
 
@@ -173,8 +212,10 @@ export interface ReportCardModality {
   entries: ReportCardEntry[];
   /** Na ordem da trilha; as sem etapa por ultimo. */
   levels: ReportCardLevelAverage[];
-  /** Media geral ponderada de todas as notas da modalidade. */
+  /** Media geral ponderada (ou total, na soma) de todas as notas da modalidade. */
   overall: GradeAverage | null;
+  /** So com frequencia minima na modalidade: a frequencia do aluno nas turmas dela. */
+  attendance?: { percent: number | null; below: boolean };
 }
 
 /** Boletim "Notas" do aluno: so modalidades com avaliacoes ligadas. */

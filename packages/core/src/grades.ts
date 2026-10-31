@@ -1,5 +1,6 @@
 import type {
   AssessmentGradeStatus,
+  AssessmentResultMode,
   AssessmentScale,
   ConceptGrade,
   GradeAverage,
@@ -23,9 +24,14 @@ import type {
  *   (metade ou mais).
  * "Faltou" e "Sem nota" ficam fora da media. A media geral pondera todas as
  * notas (nao e a media das medias das etapas).
+ *
+ * Fase A de 31/10/2026: soma dos pontos (cada avaliacao vale uma parte do
+ * total da escala; o resultado e o total, ate o topo), recuperacao (vale a
+ * maior nota) e frequencia minima (no boletim).
  */
 
 export const ASSESSMENT_SCALES: readonly AssessmentScale[] = ["zero_ten", "zero_hundred", "concept", "pass_fail"];
+export const ASSESSMENT_RESULT_MODES: readonly AssessmentResultMode[] = ["average", "sum"];
 export const CONCEPT_GRADES: readonly ConceptGrade[] = ["A", "B", "C", "D", "E"];
 export const DEFAULT_ASSESSMENT_SCALE: AssessmentScale = "zero_ten";
 export const DEFAULT_ASSESSMENT_WEIGHT = 1;
@@ -33,6 +39,16 @@ export const MAX_ASSESSMENT_WEIGHT = 100;
 export const MAX_ASSESSMENT_NAME_LENGTH = 80;
 
 const CONCEPT_POINTS: Record<ConceptGrade, number> = { A: 10, B: 8, C: 6, D: 4, E: 2 };
+
+/** Topo da escala numerica (10 ou 100); conceito e apto nao tem. */
+export function scaleMax(scale: AssessmentScale): number | undefined {
+  return scale === "zero_ten" ? 10 : scale === "zero_hundred" ? 100 : undefined;
+}
+
+/** Soma dos pontos ligada (so vale nas escalas numericas). */
+export function usesPointsSum(settings: Pick<ModalityAssessmentSettings, "scale" | "resultMode">): boolean {
+  return settings.resultMode === "sum" && scaleMax(settings.scale) !== undefined;
+}
 
 /** Nota minima padrao de cada escala. */
 export function defaultPassingGrade(scale: AssessmentScale): GradeValue {
@@ -82,22 +98,25 @@ function toNumber(raw: unknown): number | null {
 /**
  * Valida e normaliza uma nota na escala. Aceita numero ou texto ("7,5", "7.5",
  * "b", "apto"). 0 a 10: uma casa decimal; 0 a 100: inteiro; conceito: A a E;
- * apto/nao apto: `pass`/`fail`.
+ * apto/nao apto: `pass`/`fail`. `max`: na soma dos pontos, quanto a avaliacao
+ * vale (a nota vai de 0 a ele).
  */
-export function normalizeGrade(scale: AssessmentScale, raw: unknown): GradeCheck {
+export function normalizeGrade(scale: AssessmentScale, raw: unknown, max?: number): GradeCheck {
   if (raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "")) {
     return { ok: false, message: "Informe a nota." };
   }
   switch (scale) {
     case "zero_ten": {
+      const top = max ?? 10;
       const n = toNumber(raw);
-      if (n === null || n < 0 || n > 10) return { ok: false, message: "A nota vai de 0 a 10." };
+      if (n === null || n < 0 || n > top) return { ok: false, message: `A nota vai de 0 a ${decimal(top, 1)}.` };
       if (roundHalfUp(n, 1) !== n) return { ok: false, message: "Use no máximo uma casa decimal." };
       return { ok: true, value: n };
     }
     case "zero_hundred": {
+      const top = max ?? 100;
       const n = toNumber(raw);
-      if (n === null || n < 0 || n > 100) return { ok: false, message: "A nota vai de 0 a 100." };
+      if (n === null || n < 0 || n > top) return { ok: false, message: `A nota vai de 0 a ${decimal(top, 0)}.` };
       if (!Number.isInteger(n)) return { ok: false, message: "Use uma nota inteira." };
       return { ok: true, value: n };
     }
@@ -157,6 +176,86 @@ export interface WeightedGrade {
   weight: number;
 }
 
+/** Nota com o que a avaliacao vale na soma dos pontos. */
+export interface ResultItem extends WeightedGrade {
+  points?: number;
+}
+
+type ResultSettings = Pick<ModalityAssessmentSettings, "scale" | "passingGrade" | "resultMode">;
+
+/**
+ * Nota abaixo da minima nesta avaliacao. Na soma, proporcional ao que ela vale
+ * (2 de 3 pontos com minima 6 de 10 fica acima).
+ */
+export function isGradeBelowPassing(settings: ResultSettings, value: GradeValue, points?: number): boolean {
+  const top = scaleMax(settings.scale);
+  if (usesPointsSum(settings) && top && points && typeof value === "number" && typeof settings.passingGrade === "number") {
+    return value / points < settings.passingGrade / top;
+  }
+  return isBelowPassing(settings.scale, value, settings.passingGrade);
+}
+
+/**
+ * Total na soma dos pontos: as notas somadas (ate o topo da escala). Faltou
+ * conta nos pontos dados (vale zero). O vermelho segue o ritmo: o total contra
+ * os pontos ja dados.
+ */
+function sumResult(settings: ResultSettings, items: readonly ResultItem[]): GradeAverage | null {
+  const top = scaleMax(settings.scale) as number;
+  let total = 0;
+  let outOf = 0;
+  let count = 0;
+  for (const item of items) {
+    if (item.status === "graded" && typeof item.value === "number") {
+      total += item.value;
+      outOf += item.points ?? 0;
+      count += 1;
+    } else if (item.status === "absent") {
+      outOf += item.points ?? 0;
+    }
+  }
+  if (count === 0) return null;
+  const decimals = settings.scale === "zero_ten" ? 1 : 0;
+  const numeric = roundHalfUp(Math.min(total, top), decimals);
+  const passing = typeof settings.passingGrade === "number" ? settings.passingGrade : 0;
+  const belowPassing = outOf > 0 ? numeric / Math.min(outOf, top) < passing / top : numeric < passing;
+  return { value: numeric, numeric, count, belowPassing, outOf: roundHalfUp(Math.min(outOf, top), decimals) };
+}
+
+/** Resultado do aluno: media com pesos ou, na soma dos pontos, o total. */
+export function resultOf(settings: ResultSettings, items: readonly ResultItem[]): GradeAverage | null {
+  return usesPointsSum(settings) ? sumResult(settings, items) : averageGrades(settings, items);
+}
+
+/** Media de uma avaliacao (peso 1 por aluno); na soma, o vermelho e proporcional ao que ela vale. */
+export function assessmentAverage(
+  settings: ResultSettings,
+  items: readonly Pick<WeightedGrade, "status" | "value">[],
+  points?: number,
+): GradeAverage | null {
+  const avg = averageGrades(settings, items.map((i) => ({ ...i, weight: 1 })));
+  if (!avg || !usesPointsSum(settings) || !points) return avg;
+  return { ...avg, belowPassing: isGradeBelowPassing(settings, avg.numeric, points), outOf: points };
+}
+
+/**
+ * Nota que vale com a recuperacao: a maior das duas; sem nota na original
+ * (faltou), vale a da recuperacao (segunda chamada).
+ */
+export function withRecovery(
+  scale: AssessmentScale,
+  original: Pick<WeightedGrade, "status" | "value">,
+  recovery: Pick<WeightedGrade, "status" | "value"> | undefined,
+): { status: AssessmentGradeStatus; value?: GradeValue; recovered: boolean } {
+  if (!recovery || recovery.status !== "graded" || recovery.value === undefined) return { ...original, recovered: false };
+  if (original.status !== "graded" || original.value === undefined) {
+    return { status: "graded", value: recovery.value, recovered: true };
+  }
+  return gradeToNumeric(scale, recovery.value) > gradeToNumeric(scale, original.value)
+    ? { status: "graded", value: recovery.value, recovered: true }
+    : { ...original, recovered: false };
+}
+
 /**
  * Media ponderada das notas lancadas (faltou e sem nota ficam fora). Devolve
  * null sem nenhuma nota. Ver as regras de arredondamento no topo do arquivo.
@@ -204,11 +303,20 @@ export function averageGrades(
 
 /** Media simples de medias (media da turma = media das medias dos alunos). */
 export function averageOfAverages(
-  settings: Pick<ModalityAssessmentSettings, "scale" | "passingGrade">,
+  settings: ResultSettings,
   averages: readonly (GradeAverage | null)[],
 ): GradeAverage | null {
   const present = averages.filter((a): a is GradeAverage => a !== null);
   if (present.length === 0) return null;
+  if (usesPointsSum(settings)) {
+    // Total medio da turma, com o vermelho pelo ritmo medio (pontos dados em media).
+    const top = scaleMax(settings.scale) as number;
+    const decimals = settings.scale === "zero_ten" ? 1 : 0;
+    const numeric = roundHalfUp(present.reduce((s, a) => s + a.numeric, 0) / present.length, decimals);
+    const outOf = roundHalfUp(present.reduce((s, a) => s + (a.outOf ?? top), 0) / present.length, decimals);
+    const passing = typeof settings.passingGrade === "number" ? settings.passingGrade : 0;
+    return { value: numeric, numeric, count: present.length, belowPassing: outOf > 0 && numeric / outOf < passing / top, outOf };
+  }
   // Reusa a media ponderada em cima da escala interna (peso 1 por aluno).
   const { scale } = settings;
   if (scale === "concept") {
@@ -230,7 +338,7 @@ export function averageOfAverages(
   return avg ? { ...avg, count: present.length } : null;
 }
 
-export interface LevelGrade extends WeightedGrade {
+export interface LevelGrade extends ResultItem {
   levelId?: string;
 }
 
@@ -240,7 +348,7 @@ export interface LevelGrade extends WeightedGrade {
  * alguma avaliacao aparecem.
  */
 export function averagesByLevel(
-  settings: Pick<ModalityAssessmentSettings, "scale" | "passingGrade">,
+  settings: ResultSettings,
   items: readonly LevelGrade[],
   levelOrder: readonly string[],
 ): { levelId?: string; average: GradeAverage | null }[] {
@@ -253,10 +361,10 @@ export function averagesByLevel(
   const out: { levelId?: string; average: GradeAverage | null }[] = [];
   for (const levelId of levelOrder) {
     const group = groups.get(levelId);
-    if (group) out.push({ levelId, average: averageGrades(settings, group) });
+    if (group) out.push({ levelId, average: resultOf(settings, group) });
   }
   const loose = groups.get(undefined);
-  if (loose) out.push({ average: averageGrades(settings, loose) });
+  if (loose) out.push({ average: resultOf(settings, loose) });
   return out;
 }
 
@@ -266,6 +374,31 @@ export function validateWeight(raw: unknown): { ok: true; value: number } | { ok
   if (n === null || n <= 0) return { ok: false, message: "O peso precisa ser maior que zero." };
   if (n > MAX_ASSESSMENT_WEIGHT) return { ok: false, message: `O peso vai até ${MAX_ASSESSMENT_WEIGHT}.` };
   if (roundHalfUp(n, 1) !== n) return { ok: false, message: "Use no máximo uma casa decimal no peso." };
+  return { ok: true, value: n };
+}
+
+/**
+ * Quanto a avaliacao vale na soma dos pontos: maior que zero, ate o topo da
+ * escala; uma casa decimal no 0 a 10, inteiro no 0 a 100.
+ */
+export function validatePoints(scale: AssessmentScale, raw: unknown): { ok: true; value: number } | { ok: false; message: string } {
+  const top = scaleMax(scale) ?? 100;
+  const n = toNumber(raw);
+  if (n === null || n <= 0) return { ok: false, message: "Informe quanto a avaliação vale." };
+  if (n > top) return { ok: false, message: `Vale no máximo ${decimal(top, 1)} pontos.` };
+  const decimals = scale === "zero_ten" ? 1 : 0;
+  if (roundHalfUp(n, decimals) !== n) {
+    return { ok: false, message: decimals === 1 ? "Use no máximo uma casa decimal." : "Use um número inteiro." };
+  }
+  return { ok: true, value: n };
+}
+
+/** Frequencia minima valida: inteiro de 1 a 100 (%). */
+export function validateMinAttendance(raw: unknown): { ok: true; value: number } | { ok: false; message: string } {
+  const n = toNumber(raw);
+  if (n === null || !Number.isInteger(n) || n < 1 || n > 100) {
+    return { ok: false, message: "Use um número inteiro de 1 a 100." };
+  }
   return { ok: true, value: n };
 }
 
