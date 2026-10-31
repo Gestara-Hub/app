@@ -2,7 +2,7 @@
 
 Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para a doc com o detalhe. Ao resolver um item, apague a linha daqui e atualize a doc dele.
 
-Última revisão: 24/10/2026 (decisões do dono aplicadas depois da execução noturna).
+Última revisão: 31/10/2026 (revisão geral do web: o que ficou para depois entrou abaixo).
 
 ## Decidido, falta implementar
 
@@ -20,7 +20,8 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Assinatura do plano: o Pix aberto não volta ao recarregar a página (o QR some e gera outro) | `qa/2026-10-24-teste-geral-2.md` | Baixa |
 | Expansão fora da venda até existir multiunidade: o card e o botão voltam, e o teste e2e do upgrade para Expansão (`plano-gestarahub.spec.ts`, marcado `fixme`) | `technical/24-plano-gestarahub.md` | Voltar com a multiunidade |
 | Categoria financeira "Professores" (dado semeado) continua com esse nome mesmo em áreas que dizem "instrutor" | `qa/2026-10-23-teste-geral.md`, achado 23 | Renomear exige migrar dado; deixado |
-| Lista de alunos para o professor: o serviço de listagem (`clientsService.list`) ainda não é escopado por turma (a tela do professor não usa) | `services/classes/teacherScope.ts` | Escopar com a fatia de leitura |
+| Valores, sobras da revisão geral: o texto "R$ 1,99" das configurações quando falta a carteira principal; o fim de período na soma dos pontos não fica vermelho quando os pontos dados não somaram o total | `handoff/2026-10-31-revisao-geral.md`, O que ficou para depois | Baixa |
+| Organização do código, sobras da revisão geral: datas `dd/MM` formatadas em 16 lugares, `clone` com 18 cópias, `forbiddenError` à mão, um `FormDrawer` comum, `queryKeys` à mão, páginas importando o interior das features, `client-form.tsx` com 2 mil linhas, placeholders "Ex.:" e um `line-clamp` | `handoff/2026-10-31-revisao-geral.md`, O que ficou para depois | Aos poucos, ao mexer em cada área |
 | Etiqueta "atraso" na lista de alunos (a decisão 10A cita atraso, termo pendente e pausa; atraso ainda não aparece) | `qa/2026-10-23-teste-geral.md`, achado 10 | Falta o dado de atraso na lista |
 | Cancelar aula e feriados | `product/25-lembretes-e-seguranca.md` §7 | Construir depois; há decisões abertas lá (avulsa, pacote, pagamento do professor, chamada, feriados) |
 | Resumo diário de lembretes por e-mail | `product/25-lembretes-e-seguranca.md` §7 | Adiado |
@@ -34,7 +35,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 
 ## Testes deixados para o fim
 
-Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes, 5 ajustados por textos que mudaram de propósito), smoke (42), e2e novos do plano, da rotina diária, do aviso do Asaas, do fuso e do filtro da Auditoria, e a passada de tela de 104 telas (`qa/2026-10-24-teste-final.md`). Na noite de 30 para 31/10/2026, o e2e completo rodou duas vezes no build de produção (415 verdes; depois 414, com 1 corrida do teste da landing corrigida) e 21 telas foram revisadas no celular por captura (`handoff/2026-10-31-diario-noturno.md`). Só o que depende de você ou do Asaas de verdade ficou:
+Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes, 5 ajustados por textos que mudaram de propósito), smoke (42), e2e novos do plano, da rotina diária, do aviso do Asaas, do fuso e do filtro da Auditoria, e a passada de tela de 104 telas (`qa/2026-10-24-teste-final.md`). Na noite de 30 para 31/10/2026, o e2e completo rodou duas vezes no build de produção (415 verdes; depois 414, com 1 corrida do teste da landing corrigida) e 21 telas foram revisadas no celular por captura (`handoff/2026-10-31-diario-noturno.md`). Na revisão geral de 31/10/2026, o e2e completo rodou de novo depois das correções (429 verdes) e as 10 telas novas de notas e testes e medidas foram capturadas no celular e no computador (`handoff/2026-10-31-revisao-geral.md`). Só o que depende de você ou do Asaas de verdade ficou:
 
 | O que | Cobre | Como (tempo) |
 | --- | --- | --- |
@@ -68,6 +69,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | `ASAAS_API_URL` da API real antes do build (desliga os botões de simular pagamento) | `technical/14-asaas-mcp.md` |
 | `NEXT_PUBLIC_APP_URL` com o domínio do app na Vercel: sem ele, os links dos e-mails de senha, convite e consentimento usam o endereço da requisição (auditoria de 30/10/2026) | `handoff/2026-10-31-diario-noturno.md`, O que ficou de fora |
 | `ASAAS_MASTER_WALLET_ID` da conta principal na Vercel: sem ele o Pix e o link saem sem a taxa do GestaraHub (desde 31/10/2026 o app zera a taxa nesse caso, então o aluno não paga a mais, mas o GestaraHub não recebe nada) | `handoff/2026-10-31-diario-noturno.md`, Decisões |
+| Segurança, sobras da revisão geral de 31/10/2026: passar para o servidor a escrita de categorias, cargos, equipe, planos, pacotes, anexos e pagamentos online; estreitar a leitura direta de presenças, matrículas, reservas, espera e equipe; registro de serviços negando por padrão (permissão obrigatória em todo método); reconferir no Asaas o pagamento do webhook antes da baixa; `organizations.settings` (chave Pix) legível por todos do espaço; `/p/<código>` gravando `opened_at` | `handoff/2026-10-31-revisao-geral.md`, O que ficou para depois |
 | `ASAAS_WEBHOOK_EMAIL` (contato@gestarahub.com.br) na Vercel; webhooks de subcontas já criadas só pegam ao registrar de novo | `technical/19-desempenho-e-escala.md` |
 | Aprovar a conta do MailerSend ("Get approved"); hoje só entrega para 1 destinatário | Painel do MailerSend (ação sua, não é código) |
 | App da Meta: revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management` e virada para o modo de produção (precisa do domínio com `/privacy` e `/terms`) | `technical/07-integracao-whatsapp.md` |

@@ -95,6 +95,8 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [qa/2026-10-24-teste-final.md](qa/2026-10-24-teste-final.md) — **Teste final de 24/10/2026:** passada de tela de 104 telas (4 perfis, desktop claro e celular escuro), e2e completo e smoke; 4 achados novos.
 - [qa/2026-10-24-teste-geral-2.md](qa/2026-10-24-teste-geral-2.md) — **Teste geral 2 (web e painel admin, 24/10/2026):** navegador real contra o Asaas sandbox (conta, Pix, link, cancelar, avisos, assinatura), 2FA com códigos de recuperação, comunicados, equipe, LGPD, suporte; e2e completo (401 passaram); 12 achados corrigidos e os que ficam para decisão.
 - [handoff/2026-10-24-execucao-noturna.md](handoff/2026-10-24-execucao-noturna.md) — **Execução noturna de 24/10/2026:** plano dos achados em aberto, organização das docs e rodada final de testes; o andamento está em [handoff/2026-10-24-diario-noturno.md](handoff/2026-10-24-diario-noturno.md).
+- [handoff/2026-10-31-diario-noturno.md](handoff/2026-10-31-diario-noturno.md) — **Execução noturna de 30 para 31/10/2026:** revisão de dinheiro, auditoria de segurança e revisão do celular, com o e2e completo duas vezes; as 5 decisões já validadas.
+- [handoff/2026-10-31-revisao-geral.md](handoff/2026-10-31-revisao-geral.md) — **Revisão geral do web (31/10/2026):** segurança (S1 a S13), valores e cálculos (V1 a V14), usabilidade e refatoração, cada um com commit; decisões para validar e o que ficou para depois.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
