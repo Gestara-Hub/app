@@ -1,5 +1,7 @@
 import type { Charge, Client, CreateClientInitialCharge, Id } from "@gestarahub/contracts";
-import { chargesDueIn, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
+import { chargesDueIn, firstCharge, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
+import { can } from "@/lib/permissions";
+import { getCurrentActor } from "../world/actor";
 import { store } from "@/services/world/store";
 import { newId, nowIso } from "@/services/world/ops";
 import {
@@ -16,15 +18,32 @@ import { todayISO } from "./clientStore";
  * usa o motor de cobranca e permite ajuste); o periodo de referencia garante
  * que a geracao em lote reconheca esta cobranca e nao a duplique.
  */
-export function initialMembershipCharge(client: Client, input: CreateClientInitialCharge): Charge {
+export function initialMembershipCharge(client: Client, requested: CreateClientInitialCharge): Charge {
   const ts = nowIso();
-  const competence = input.dueDate.slice(0, 7);
   const plan = store.plans.find((p) => p.id === client.planId);
-  const slot = plan
-    ? chargesDueIn(studentMembershipTerms(client, plan), competence).find(
-        (c) => c.periodStart === input.periodStart,
-      )
+  const terms = plan ? studentMembershipTerms(client, plan) : undefined;
+  const requestedSlot = terms
+    ? chargesDueIn(terms, requested.dueDate.slice(0, 7)).find((c) => c.periodStart === requested.periodStart)
     : undefined;
+  // Revisao de valores de 30/10/2026: o periodo vinha do navegador sem conferir
+  // (um periodo errado travava a geracao das seguintes pela regra da sobreposicao).
+  // Sem periodo do motor que bata, vale o primeiro periodo do motor.
+  const engineFirst = terms && !requestedSlot ? firstCharge(terms) : undefined;
+  const slot = requestedSlot ?? engineFirst;
+  // Valor ajustado so para quem cobra (billing:manage); o atendente que cadastra fica com o do motor.
+  const actor = getCurrentActor();
+  const mayAdjust = !actor || can(actor.profile, "billing:manage");
+  const input: CreateClientInitialCharge = engineFirst
+    ? {
+        amountCents: mayAdjust ? requested.amountCents : engineFirst.amountCents,
+        dueDate: engineFirst.dueDate,
+        periodStart: engineFirst.periodStart,
+        periodEnd: engineFirst.periodEnd,
+        isProrated: engineFirst.isProrated,
+        proratedDays: engineFirst.proratedDays,
+      }
+    : { ...requested, amountCents: mayAdjust || !slot ? requested.amountCents : slot.amountCents };
+  const competence = input.dueDate.slice(0, 7);
   return {
     id: newId(),
     organizationId: store.organization.id,
@@ -42,8 +61,8 @@ export function initialMembershipCharge(client: Client, input: CreateClientIniti
       discountApplied: slot?.discountApplied ?? Boolean(client.discount),
       listAmountCents: slot?.listAmountCents ?? input.amountCents,
     }),
-    cycleIndex: slot?.cycleIndex ?? 1,
-    cycleTotal: slot?.cycleTotal ?? 1,
+    cycleIndex: requestedSlot?.cycleIndex ?? 1,
+    cycleTotal: requestedSlot?.cycleTotal ?? 1,
     isProrated: input.isProrated,
     proratedDays: input.proratedDays,
     notes: input.isProrated
