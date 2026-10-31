@@ -527,11 +527,6 @@ if (canPersist() && typeof window.addEventListener === "function") {
 /** O proxy dos servicos (resolve o espaco do servidor ou este mundo local). */
 export { inServerWorld, store };
 
-/** organizationId do tenant ativo (para os services carimbarem escritas). */
-export function currentOrganizationId(): Id {
-  return world.activeOrganizationId;
-}
-
 /**
  * Todos os tenants do mundo — uso restrito ao login/troca de usuario (demo),
  * que precisa listar usuarios de todas as organizacoes (cross-tenant). O resto

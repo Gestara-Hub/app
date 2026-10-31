@@ -239,5 +239,3 @@ export function ClassRecordsDialog({
     </Sheet>
   );
 }
-
-export const ClassRecordsDrawer = ClassRecordsDialog;

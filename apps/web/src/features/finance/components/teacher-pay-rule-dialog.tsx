@@ -98,7 +98,6 @@ export function TeacherPayRuleDialog({ teacher: current, competence, onOpenChang
   );
 }
 
-export const TeacherPayRuleDrawer = TeacherPayRuleDialog;
 
 function TeacherPayRuleForm({
   teacher,

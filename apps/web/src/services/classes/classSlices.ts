@@ -152,7 +152,6 @@ export const classSlices: Record<string, MethodSlice> = {
   clearAttendance: sessionOfInput,
   reserveSession: sessionWithStudent,
   cancelReservation: sessionWithStudent,
-  cancelReserva: sessionWithStudent,
   // Professor ocupado: confere as substituicoes de todas as turmas no mesmo dia (sao poucas).
   substituteInstructor: async ([id], load) => {
     await session(id as Id, load);

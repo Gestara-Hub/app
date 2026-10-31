@@ -157,5 +157,3 @@ export function BlockFormDialog({
     </Sheet>
   );
 }
-
-export const BlockFormDrawer = BlockFormDialog;

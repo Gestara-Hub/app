@@ -65,7 +65,6 @@ export function toGroupView(g: ClassGroup): ClassGroupView {
       : undefined,
     enrolledCount,
     availableSpots: g.capacity - enrolledCount,
-    vagasRestantes: g.capacity - enrolledCount,
     isEnded: hasEnded(g, todayISO()),
   };
 }

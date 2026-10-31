@@ -305,5 +305,3 @@ export function SellPackageDialog({
     </Sheet>
   );
 }
-
-export const SellPackageDrawer = SellPackageDialog;

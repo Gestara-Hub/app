@@ -640,10 +640,6 @@ export function isThemeSyncingFromServer(): boolean {
   return isSyncingFromServer;
 }
 
-export function getCurrentThemeState(): ThemeState {
-  return currentState;
-}
-
 export function applyThemeStateFromServer(styling: Partial<ThemeState>): void {
   if (!styling || typeof window === "undefined") return;
 

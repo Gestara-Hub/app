@@ -320,5 +320,4 @@ export function useCancelReservation() {
     },
   });
 }
-export const useCancelReserva = useCancelReservation;
 

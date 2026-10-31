@@ -93,8 +93,6 @@ export interface ClassGroupView extends ClassGroup {
   availableSpots: number; // capacity - enrolledCount
   /** Ja terminou: `endDate` antes de hoje (derivado na leitura). */
   isEnded: boolean;
-  /** @deprecated use availableSpots */
-  vagasRestantes?: number;
 }
 
 /** Matricula — vinculo Aluno <-> Turma (turma fixa). */

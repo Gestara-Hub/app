@@ -64,5 +64,3 @@ export function AppointmentFormDialog({
     </Sheet>
   );
 }
-
-export const AppointmentFormDrawer = AppointmentFormDialog;

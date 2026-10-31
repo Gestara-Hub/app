@@ -62,8 +62,7 @@ const dueDateLabel = (iso: string) =>
 /** D8: pago online ou por Pix Automatico nao se desfaz (seria estorno). */
 export const isPaidOnline = (c: ChargeView) =>
   c.status === "paid" && (c.paidVia === "online" || c.paidVia === "recurring");
-export const PAID_ONLINE_HINT =
-  "Pago online: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+
 export const PAID_RECURRING_HINT =
   "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
 

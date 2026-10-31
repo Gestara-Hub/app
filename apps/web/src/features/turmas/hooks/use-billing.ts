@@ -91,14 +91,6 @@ export function useCharges(filter?: ChargeFilter, enabled = true) {
   });
 }
 
-export function usePaginatedCharges(filter?: ChargeFilter, enabled = true) {
-  return useQuery({
-    queryKey: [...queryKeys.billing.charges(filter), "paginated", filter?.page ?? 1, filter?.pageSize ?? 20],
-    queryFn: () => billingService.listChargesPaginated(filter),
-    enabled,
-  });
-}
-
 /** Cobranca avulsa (a vista ou parcelada). */
 export function useCreateExtraCharge() {
   const qc = useQueryClient();

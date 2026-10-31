@@ -199,8 +199,4 @@ export const reservationsService = {
       });
     });
   },
-
-  cancelReserva(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return this.cancelReservation(input);
-  },
 };

@@ -346,5 +346,3 @@ export function GradeEntryDialog({
     </Sheet>
   );
 }
-
-export const GradeEntryDrawer = GradeEntryDialog;

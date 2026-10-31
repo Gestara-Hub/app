@@ -58,5 +58,3 @@ export function UserPreferencesDialog({
     </Sheet>
   );
 }
-
-export const UserPreferencesDrawer = UserPreferencesDialog;

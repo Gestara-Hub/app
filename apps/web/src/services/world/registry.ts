@@ -59,7 +59,6 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
           "removeFromWaitlist",
           "reserveSession",
           "cancelReservation",
-          "cancelReserva",
         ],
         MANAGE_ENROLLMENT,
       ),

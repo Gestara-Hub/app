@@ -617,5 +617,3 @@ export function StudentRecordsDialog({
     </Sheet>
   );
 }
-
-export const StudentRecordsDrawer = StudentRecordsDialog;

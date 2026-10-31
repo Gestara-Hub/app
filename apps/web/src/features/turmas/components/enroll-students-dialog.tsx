@@ -632,7 +632,6 @@ export function EnrollStudentsDialog({
   );
 }
 
-export const EnrollStudentsDrawer = EnrollStudentsDialog;
 
 /** Mensalidade ou Pacote, por aluno (so quem tem pacote da modalidade). */
 function PaymentToggle({

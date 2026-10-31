@@ -326,5 +326,3 @@ export function AssessmentFormDialog({
     </Sheet>
   );
 }
-
-export const AssessmentFormDrawer = AssessmentFormDialog;

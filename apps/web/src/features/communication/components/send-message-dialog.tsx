@@ -373,5 +373,3 @@ export function SendMessageDialog({
     </>
   );
 }
-
-export const SendMessageDrawer = SendMessageDialog;

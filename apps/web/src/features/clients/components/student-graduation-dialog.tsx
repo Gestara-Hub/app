@@ -548,5 +548,3 @@ export function StudentGraduationDialog({
     </Sheet>
   );
 }
-
-export const StudentGraduationDrawer = StudentGraduationDialog;

@@ -249,5 +249,3 @@ export function StudentGradesDialog({
     </Sheet>
   );
 }
-
-export const StudentGradesDrawer = StudentGradesDialog;

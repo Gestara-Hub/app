@@ -255,5 +255,3 @@ export function PackageFormDialog({
     </Sheet>
   );
 }
-
-export const PackageFormDrawer = PackageFormDialog;

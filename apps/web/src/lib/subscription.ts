@@ -21,8 +21,6 @@ export function proOnlyFeatures(): PaidFeature[] {
   return TIER_FEATURES.pro.filter((feature) => !TIER_FEATURES.free.includes(feature));
 }
 
-export const SUBSCRIPTION_TIERS: readonly SubscriptionTier[] = ["free", "pro", "scale"];
-
 /** Tier efetivo da organizacao (sem assinatura = free). */
 export function tierOf(org: Pick<Organization, "subscription"> | null | undefined): SubscriptionTier {
   return org?.subscription?.tier ?? "free";

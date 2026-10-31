@@ -743,5 +743,3 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
     </Sheet>
   );
 }
-
-export const TwoFactorDrawer = TwoFactorDialog;
