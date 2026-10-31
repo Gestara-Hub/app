@@ -59,8 +59,13 @@ function normalizeArtwork(payload: SaveCertificateTemplate): CertificateArtwork 
     textPosition: art.textPosition,
     ink: art.ink,
     hidden: Array.isArray(art.hidden) ? [...new Set(art.hidden)] : [],
+    ...(art.verification
+      ? { verification: { x: round2(Number(art.verification.x)), y: round2(Number(art.verification.y)) } }
+      : {}),
   };
 }
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Tira espacos das pontas; o texto guarda as quebras de linha do meio. */
 function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {

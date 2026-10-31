@@ -418,7 +418,7 @@
     "article": "Certificados de conclusão",
     "title": "Usar a minha própria arte",
     "route": "/settings?tab=certificado",
-    "text": "Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Depois, salve na barra que aparece embaixo.",
+    "text": "Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Se a moldura da arte esconder o QR Code, arraste o bloco do QR na prévia para onde houver espaço; \"Voltar ao canto\" desfaz. Depois, salve na barra que aparece embaixo.",
     "summary": "Use a imagem que você já tem como fundo do certificado.",
     "guide": {
       "route": "/settings?tab=certificado",

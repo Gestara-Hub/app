@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { CertificateArtwork, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
 import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/certificate";
 import { QRCodeSVG } from "qrcode.react";
@@ -10,14 +10,64 @@ import { certificateLookupAddress, certificateVerifyUrl } from "../certificate-v
  * Rodape de verificacao (doc 21 §1.3): codigo e QR no canto, por cima de
  * qualquer layout. A previa do editor nao tem codigo e fica sem ele.
  */
-function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
+type SheetPosition = { x: number; y: number };
+
+/**
+ * Rodape de verificacao: QR, codigo e endereco curto. No canto inferior direito,
+ * ou onde a pessoa arrastou na arte propria (`position`, em % da folha).
+ */
+function Verification({
+  code,
+  ink,
+  position,
+  onMove,
+}: {
+  code: string;
+  ink: "dark" | "light";
+  position?: SheetPosition;
+  /** Com ele, o bloco se arrasta dentro da folha (editor, "Minha arte"). */
+  onMove?: (position: SheetPosition) => void;
+}) {
   const url = certificateVerifyUrl(code);
+  const ref = useRef<HTMLDivElement>(null);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!onMove || !ref.current) return;
+    const sheet = ref.current.closest("article");
+    if (!sheet) return;
+    event.preventDefault();
+    ref.current.setPointerCapture(event.pointerId);
+    const bounds = sheet.getBoundingClientRect();
+    const block = ref.current.getBoundingClientRect();
+    const grabX = event.clientX - block.left;
+    const grabY = event.clientY - block.top;
+    const move = (e: PointerEvent) => {
+      const maxX = bounds.width - block.width;
+      const maxY = bounds.height - block.height;
+      const left = Math.min(Math.max(e.clientX - grabX - bounds.left, 0), maxX);
+      const top = Math.min(Math.max(e.clientY - grabY - bounds.top, 0), maxY);
+      onMove({ x: Math.round((left / bounds.width) * 10000) / 100, y: Math.round((top / bounds.height) * 10000) / 100 });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   return (
     <div
+      ref={ref}
+      onPointerDown={onMove ? onPointerDown : undefined}
+      style={position ? { left: `${position.x}%`, top: `${position.y}%` } : undefined}
       className={cn(
-        "absolute right-[2.2cqw] bottom-[1.8cqw] flex flex-col items-center gap-[0.4cqw]",
+        "absolute flex flex-col items-center gap-[0.4cqw]",
+        position ? "" : "right-[2.2cqw] bottom-[1.8cqw]",
         ink === "light" ? "text-white/85" : "text-zinc-500",
+        onMove && "cursor-grab touch-none select-none rounded-[0.5cqw] outline-dashed outline-1 outline-offset-[0.4cqw] outline-current/60 active:cursor-grabbing",
       )}
+      title={onMove ? "Arraste para mudar de lugar" : undefined}
       data-testid="certificate-verification"
     >
       {/* QR, o codigo embaixo e o endereco curto para quem digita (o QR ja leva direto). */}
@@ -233,6 +283,7 @@ export function CertificateSheet({
   logoUrl = null,
   artworkUrl = null,
   className,
+  onVerificationMove,
 }: {
   certificate: CourseCertificate;
   template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures" | "showAttendance"> & {
@@ -242,14 +293,19 @@ export function CertificateSheet({
   /** Imagem da arte de fundo (layout "custom"). */
   artworkUrl?: string | null;
   className?: string;
+  /** Editor da arte propria: arrastar o bloco do QR muda `artwork.verification`. */
+  onVerificationMove?: (position: SheetPosition) => void;
 }) {
   const text = renderCertificate(certificate, template);
+  const isCustom = template.layout === "custom" && Boolean(template.artwork);
+  const verificationPosition = isCustom ? template.artwork?.verification : undefined;
   const accent = ACCENT_COLORS[template.accentColor]?.hex ?? ACCENT_COLORS.graphite.hex;
   const props: SheetProps = {
     text,
     organizationName: certificate.organizationName,
     logoUrl,
-    reserveFooter: Boolean(certificate.verificationCode),
+    // Com o QR arrastado para outro lugar, as assinaturas nao precisam subir.
+    reserveFooter: Boolean(certificate.verificationCode) && !verificationPosition,
   };
   return (
     // A4 deitado; na impressao (folha de 277 x 190 mm uteis) a altura fica fixa para caber em 1 pagina.
@@ -270,7 +326,9 @@ export function CertificateSheet({
         {certificate.verificationCode ? (
           <Verification
             code={certificate.verificationCode}
-            ink={template.layout === "custom" && template.artwork?.ink === "light" ? "light" : "dark"}
+            ink={isCustom && template.artwork?.ink === "light" ? "light" : "dark"}
+            position={verificationPosition}
+            onMove={isCustom ? onVerificationMove : undefined}
           />
         ) : null}
       </article>

@@ -33,7 +33,7 @@ Guia: /settings?tab=certificado
 + texto "Arte de fundo": Envie uma imagem PNG ou JPG, no formato de folha deitada, até 2 MB.
 + texto "Posição do texto": Escolha se o texto fica em cima, no centro ou embaixo da arte.
 + texto "Partes que aparecem": Desligue o que a sua arte já traz impresso, como o título ou a logo.
-Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Depois, salve na barra que aparece embaixo.
+Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Se a moldura da arte esconder o QR Code, arraste o bloco do QR na prévia para onde houver espaço; "Voltar ao canto" desfaz. Depois, salve na barra que aparece embaixo.
 
 ## Voltar ao texto padrão
 Resumo: Volte o título e o texto do certificado aos originais.

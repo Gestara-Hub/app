@@ -245,10 +245,30 @@ function CustomSheet({
 }
 
 /** Rodape de verificacao (doc 21 §1.3): codigo, endereco e QR no canto. */
-function Verification({ code, qr, lookup, light }: { code: string; url: string; qr: DocumentLogo; lookup: string; light: boolean }) {
+/** Pagina A4 deitada em pontos (a posicao do QR vem em % da folha). */
+const PAGE_W = 841.89;
+const PAGE_H = 595.28;
+
+function Verification({
+  code,
+  qr,
+  lookup,
+  light,
+  position,
+}: {
+  code: string;
+  url: string;
+  qr: DocumentLogo;
+  lookup: string;
+  light: boolean;
+  position?: { x: number; y: number };
+}) {
   const color = light ? "#ffffffd9" : GRAY_500;
+  const place = position
+    ? { left: (position.x / 100) * PAGE_W, top: (position.y / 100) * PAGE_H }
+    : { right: cq(2.2), bottom: cq(1.8) };
   return (
-    <View style={{ position: "absolute", right: cq(2.2), bottom: cq(1.8), alignItems: "center", gap: cq(0.4) }}>
+    <View style={{ position: "absolute", ...place, alignItems: "center", gap: cq(0.4) }}>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
       <Image src={qr.src} style={{ width: cq(4.5), height: cq(4.5), backgroundColor: "#ffffff", padding: cq(0.3) }} />
       <Text style={{ fontSize: cq(0.85), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
@@ -272,7 +292,8 @@ export interface CertificatePageProps {
 
 /** Uma folha (A4 deitado) no modelo escolhido. */
 function CertificatePage({ text, layout, organizationName, accent, logo, artwork = null, artworkSettings, verification }: CertificatePageProps) {
-  const props: SheetProps = { text, organizationName, logo, accent, reserveFooter: Boolean(verification) };
+  const position = layout === "custom" ? artworkSettings?.verification : undefined;
+  const props: SheetProps = { text, organizationName, logo, accent, reserveFooter: Boolean(verification) && !position };
   return (
     <Page size="A4" orientation="landscape" style={styles.page}>
       {layout === "custom" && artworkSettings ? (
@@ -285,7 +306,7 @@ function CertificatePage({ text, layout, organizationName, accent, logo, artwork
         <ClassicSheet {...props} />
       )}
       {verification ? (
-        <Verification {...verification} light={layout === "custom" && artworkSettings?.ink === "light"} />
+        <Verification {...verification} light={layout === "custom" && artworkSettings?.ink === "light"} position={position} />
       ) : null}
     </Page>
   );

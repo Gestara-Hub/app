@@ -137,6 +137,13 @@ export const CERTIFICATE_PARTS = [
   "signatures",
 ] as const satisfies readonly CertificatePart[];
 
+/** Posicao dentro da folha: x e y em % (0 a 100), com 2 casas no maximo. */
+export function isSheetPosition(value: unknown): value is { x: number; y: number } {
+  if (!value || typeof value !== "object") return false;
+  const { x, y } = value as { x?: unknown; y?: unknown };
+  return [x, y].every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100);
+}
+
 /** Ajustes iniciais da arte (texto no centro, escuro, tudo aparecendo). */
 export function defaultCertificateArtwork(fileId: string): CertificateArtwork {
   return { fileId, textPosition: "center", ink: "dark", hidden: [] };
@@ -434,6 +441,10 @@ export function validateCertificateTemplate(
         push({ field: "artwork.hidden", message: "Parte desconhecida." });
       } else if (hidden.includes("title") && hidden.includes("body")) {
         push({ field: "artwork.hidden", message: "Mostre pelo menos o título ou o texto." });
+      }
+      const pos = art.verification;
+      if (pos !== undefined && !isSheetPosition(pos)) {
+        push({ field: "artwork.verification", message: "Posição do QR fora da folha." });
       }
     }
   }

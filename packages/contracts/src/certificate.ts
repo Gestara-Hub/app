@@ -27,6 +27,12 @@ export interface CertificateArtwork {
   ink: CertificateInk;
   /** Partes que nao aparecem sobre a arte. */
   hidden: CertificatePart[];
+  /**
+   * Onde fica o bloco do QR e do codigo, em % da folha (canto superior esquerdo
+   * do bloco; x da largura, y da altura). Ausente = canto inferior direito. So na
+   * arte propria, arrastando na previa (31/10/2026).
+   */
+  verification?: { x: number; y: number };
 }
 
 /** Cor de destaque (paleta fechada, legivel na impressao). */

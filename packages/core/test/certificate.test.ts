@@ -242,6 +242,10 @@ describe("certificado: validação do modelo", () => {
     ]);
     assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: ["qr"] }), ["artwork.hidden"]);
     assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: ["title", "body"] }), ["artwork.hidden"]);
+    // Posicao do QR arrastado: % da folha, de 0 a 100.
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: 12.5, y: 80 } }), []);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: 101, y: 0 } }), ["artwork.verification"]);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: "a" } }), ["artwork.verification"]);
     // Nos outros layouts a arte nao e conferida.
     assert.deepEqual(validateCertificateTemplate({ ...defaultCertificateTemplate(), artwork: { fileId: "" } as never }), []);
   });

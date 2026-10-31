@@ -109,13 +109,21 @@ const schema = z
     textPosition: z.enum(CERTIFICATE_TEXT_POSITIONS),
     ink: z.enum(CERTIFICATE_INKS),
     hidden: z.array(z.enum(CERTIFICATE_PARTS)),
+    /** Onde o QR foi arrastado na arte (% da folha); ausente = canto inferior direito. */
+    verificationPosition: z.object({ x: z.number(), y: z.number() }).optional(),
   })
   // Mesmas regras do servico (titulo, texto, assinaturas, variaveis e arte), numa fonte so.
   .superRefine((values, ctx) => {
     const hasArtwork = values.keepArtwork || values.artwork.length > 0;
     const issues = validateCertificateTemplate({
       ...values,
-      artwork: { fileId: hasArtwork ? "pending" : "", textPosition: values.textPosition, ink: values.ink, hidden: values.hidden },
+      artwork: {
+        fileId: hasArtwork ? "pending" : "",
+        textPosition: values.textPosition,
+        ink: values.ink,
+        hidden: values.hidden,
+        verification: values.verificationPosition,
+      },
     });
     for (const issue of issues) {
       // Os ajustes da arte sao campos soltos no formulario (`artwork.hidden` -> `hidden`);
@@ -145,12 +153,19 @@ function toValues(template: CertificateTemplate): Values {
     textPosition: template.artwork?.textPosition ?? "center",
     ink: template.artwork?.ink ?? "dark",
     hidden: template.artwork?.hidden ?? [],
+    verificationPosition: template.artwork?.verification,
   };
 }
 
 /** Os ajustes da arte, como a folha e o servico esperam. */
-function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden">, fileId = "") {
-  return { fileId, textPosition: values.textPosition, ink: values.ink, hidden: values.hidden };
+function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden" | "verificationPosition">, fileId = "") {
+  return {
+    fileId,
+    textPosition: values.textPosition,
+    ink: values.ink,
+    hidden: values.hidden,
+    ...(values.verificationPosition ? { verification: values.verificationPosition } : {}),
+  };
 }
 
 const SPACE = "space";
@@ -651,6 +666,23 @@ function CertificateTemplateForm({
                       </p>
                     ) : null}
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">QR Code e código</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Na prévia, arraste o bloco do QR para onde a arte deixa espaço.
+                    </p>
+                    {values.verificationPosition ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => form.setValue("verificationPosition", undefined, { shouldDirty: true })}
+                        className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <RotateCcw className="size-3" aria-hidden />
+                        Voltar ao canto
+                      </button>
+                    ) : null}
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -832,6 +864,11 @@ function CertificateTemplateForm({
               template={{ ...values, artwork: artworkOf(values) }}
               logoUrl={logoUrl}
               artworkUrl={artworkUrl}
+              onVerificationMove={
+                isCustom && !pending
+                  ? (position) => form.setValue("verificationPosition", position, { shouldDirty: true })
+                  : undefined
+              }
             />
             <p className="text-xs text-muted-foreground">
               {previewEnrollmentId && realPreview.data ? "Dados de verdade, como sairiam agora." : "Dados de exemplo."}

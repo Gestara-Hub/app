@@ -550,11 +550,33 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByText("Mostre pelo menos o título ou o texto.")).toBeVisible();
     await panel.getByRole("switch", { name: "Texto" }).click();
 
+    // Arrasta o QR para o canto superior esquerdo da previa; "Voltar ao canto" desfaz.
+    const qr = panel.getByTestId("certificate-verification");
+    const sheetBox = (await panel.locator("article.certificate-sheet").boundingBox())!;
+    const qrBox = (await qr.boundingBox())!;
+    await page.mouse.move(qrBox.x + qrBox.width / 2, qrBox.y + qrBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(sheetBox.x + qrBox.width / 2 + 20, sheetBox.y + qrBox.height / 2 + 20, { steps: 8 });
+    await page.mouse.up();
+    const movedBox = (await qr.boundingBox())!;
+    expect(movedBox.x - sheetBox.x).toBeLessThan(60);
+    expect(movedBox.y - sheetBox.y).toBeLessThan(60);
+    const back = panel.getByRole("button", { name: "Voltar ao canto" });
+    await expect(back).toBeVisible();
+    await back.click();
+    expect(((await qr.boundingBox())!.x)).toBeGreaterThan(sheetBox.x + sheetBox.width / 2);
+    await page.mouse.move(qrBox.x + qrBox.width / 2, qrBox.y + qrBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(sheetBox.x + qrBox.width / 2 + 20, sheetBox.y + qrBox.height / 2 + 20, { steps: 8 });
+    await page.mouse.up();
+
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
     await waitForStore(page, (t) => t.certificateTemplate?.layout === "custom");
     const saved = (await readTenant(page)).certificateTemplate;
     expect(saved.artwork).toMatchObject({ textPosition: "bottom", ink: "light", hidden: ["title"] });
+    expect(saved.artwork.verification.x).toBeLessThan(10);
+    expect(saved.artwork.verification.y).toBeLessThan(10);
     expect(saved.artwork.fileId).toBeTruthy();
 
     // Recarregado: a arte atual, os ajustes e a previa com a imagem.
@@ -563,6 +585,10 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByRole("radio", { name: "Embaixo" })).toHaveAttribute("aria-checked", "true");
     await expect(panel.getByRole("switch", { name: "Título" })).not.toBeChecked();
     await expect(sheet.locator("img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
+    // O QR volta onde foi deixado.
+    const reloadedSheet = (await sheet.boundingBox())!;
+    const reloadedQr = (await panel.getByTestId("certificate-verification").boundingBox())!;
+    expect(reloadedQr.x - reloadedSheet.x).toBeLessThan(60);
   });
 
   test("Pro: logo válida, recusada por formato e por tamanho", async ({ page }, testInfo) => {

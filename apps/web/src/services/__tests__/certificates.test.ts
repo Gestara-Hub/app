@@ -275,6 +275,12 @@ describe("modelo de certificado", () => {
     const artwork = { fileId: art.id, textPosition: "bottom" as const, ink: "light" as const, hidden: ["title" as const, "logo" as const, "logo" as const] };
     const saved = await certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork }));
     expect(saved.artwork).toEqual({ ...artwork, hidden: ["title", "logo"] });
+    // Posicao do QR arrastado: guardada com 2 casas; fora da folha e recusada.
+    const moved = await certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork: { ...artwork, verification: { x: 10.123, y: 70.456 } } }));
+    expect(moved.artwork?.verification).toEqual({ x: 10.12, y: 70.46 });
+    await expect(
+      certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork: { ...artwork, verification: { x: 120, y: 0 } } })),
+    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "artwork.verification", message: "Posição do QR fora da folha." }] });
     // Em outro layout a arte e esquecida.
     const modern = await certificatesService.saveTemplate(customTemplate({ layout: "modern", artwork }));
     expect("artwork" in modern).toBe(false);
