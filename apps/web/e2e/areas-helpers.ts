@@ -295,6 +295,7 @@ const COLLECTIONS = [
   "reservations",
   "sessionOverrides",
   "assessments",
+  "studentMeasurements",
   "financialEntries",
   "financialRecurrences",
   "teacherPayRules",

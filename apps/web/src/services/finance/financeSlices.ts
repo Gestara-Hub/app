@@ -9,7 +9,14 @@ import type { MethodSlice, SliceLoader } from "../world/slices";
  * linhas de um espaco com tempo de uso: o recorte e o espaco sem eles.
  * Conferido nos testes contra o espaco inteiro (`WORLD_SLICE_CHECK=1`).
  */
-const NOT_USED_BY_FINANCE = new Set(["attendances", "messageLogs", "messageTemplates", "assessments", "waitlist"]);
+const NOT_USED_BY_FINANCE = new Set([
+  "attendances",
+  "messageLogs",
+  "messageTemplates",
+  "assessments",
+  "studentMeasurements",
+  "waitlist",
+]);
 
 async function financeWorld(load: SliceLoader): Promise<void> {
   await Promise.all(

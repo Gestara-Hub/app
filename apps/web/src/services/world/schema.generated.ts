@@ -249,6 +249,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "measurements": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1664,6 +1669,61 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "text",
         "nullable": false,
         "hasDefault": true
+      },
+      "created_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "updated_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
+  "student_measurements": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "student_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "modality_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "date": {
+        "type": "date",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "values": {
+        "type": "jsonb",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "notes": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "created_by": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
       },
       "created_at": {
         "type": "timestamptz",

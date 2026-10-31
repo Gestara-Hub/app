@@ -14,6 +14,7 @@ export function categoryFromRow(row: Record<string, unknown>): Category {
     position: typeof row.position === "number" ? row.position : 0,
     progressionTrack: (row.progression_track as Category["progressionTrack"]) || undefined,
     assessments: (row.assessments as Category["assessments"]) || undefined,
+    measurements: (row.measurements as Category["measurements"]) || undefined,
     status: (row.status as Category["status"]) || "active",
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),

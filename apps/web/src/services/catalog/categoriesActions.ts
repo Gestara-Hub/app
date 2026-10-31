@@ -15,6 +15,7 @@ import {
   defaultAssessmentsForNewModality,
   duplicateCategoryNameError,
   normalizedAssessments,
+  normalizedMeasurements,
   resetMissingLevels,
   sortCategories,
   validateCategoryPayload,
@@ -97,6 +98,7 @@ export async function createCategoryAction(payload: CreateCategory): Promise<Act
         position,
         progression_track: payload.progressionTrack ?? null,
         assessments: assessments ?? null,
+        measurements: normalizedMeasurements(payload) ?? null,
         status: payload.status ?? "active",
       })
       .select()
@@ -125,6 +127,7 @@ export async function updateCategoryAction(
     if (payload.position !== undefined) patch.position = payload.position;
     if (payload.progressionTrack !== undefined) patch.progression_track = payload.progressionTrack ?? null;
     if (payload.assessments !== undefined) patch.assessments = normalizedAssessments(payload) ?? null;
+    if (payload.measurements !== undefined) patch.measurements = normalizedMeasurements(payload) ?? null;
     if (payload.status !== undefined) patch.status = payload.status;
 
     const { data, error } = await ctx.client

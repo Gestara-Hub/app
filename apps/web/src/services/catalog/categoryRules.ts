@@ -14,7 +14,9 @@ import {
   scaleMax,
   validateMinAttendance,
 } from "@gestarahub/core/grades";
+import { validateMeasures } from "@gestarahub/core/measurements";
 import { getSegmentPreset, segmentDefaultAssessments } from "@/lib/business-segment-presets";
+import { newId } from "@/services/world/ops";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
 
 /**
@@ -60,7 +62,30 @@ export function validateCategoryPayload(
     }
   }
 
+  if (payload.measurements) {
+    const check = validateMeasures(payload.measurements.measures ?? []);
+    if (!check.ok) fields.push({ field: "measurements", message: check.message });
+    else if (payload.measurements.enabled && check.value.length === 0) {
+      fields.push({ field: "measurements", message: "Adicione pelo menos uma medida." });
+    }
+  }
+
   if (fields.length > 0) throw validationError(fields);
+}
+
+/**
+ * Testes e medidas normalizados (doc 21 §2.4): lista limpa e id para as
+ * medidas novas (as que ja existiam mantem o id, para a historia seguir).
+ */
+export function normalizedMeasurements(payload: Pick<CreateCategory, "measurements">): Category["measurements"] {
+  const settings = payload.measurements;
+  if (!settings) return undefined;
+  const check = validateMeasures(settings.measures ?? []);
+  const measures = check.ok ? check.value : [];
+  return {
+    enabled: Boolean(settings.enabled) && measures.length > 0,
+    measures: measures.map((m) => ({ ...m, id: m.id?.trim() || newId() })),
+  };
 }
 
 export function duplicateCategoryNameError(noun: string) {

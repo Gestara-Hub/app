@@ -66,6 +66,7 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
       createCategoryAction({
         name: "Inglês",
         assessments: { enabled: true, scale: "zero_ten", passingGrade: 6 },
+        measurements: { enabled: true, measures: [{ id: "", name: "Peso", unit: "kg", better: "lower" }] },
       }),
     );
     const teacher = await unwrap(
@@ -177,6 +178,26 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     await call("grades.remove", assessment.id);
     const { data: left } = await admin.from("assessments").select("id").in("id", [assessment.id, recovery.id]);
     expect(left).toEqual([]);
+
+    // Testes e medidas (fase B, 31/10/2026): medidas na modalidade e a avaliacao do aluno.
+    const weight = modality.measurements!.measures[0];
+    const measurement = await call<{ id: string }>("measurements.create", {
+      studentId: student.id,
+      modalityId: modality.id,
+      date: today(),
+      values: { [weight.id]: 72.5 },
+    });
+    const { data: measured } = await admin
+      .from("student_measurements")
+      .select("values, student_id")
+      .eq("id", measurement.id)
+      .single();
+    expect(measured).toEqual({ values: { [weight.id]: 72.5 }, student_id: student.id });
+    const view = await call<{ modalities: { progress: { latest?: { value: number } }[] }[] }>(
+      "measurements.getStudentMeasurements",
+      student.id,
+    );
+    expect(view.modalities[0].progress[0].latest?.value).toBe(72.5);
 
     // Mensagem assistida (WhatsApp do aparelho).
     await call("communication.registerAssistedMessage", {

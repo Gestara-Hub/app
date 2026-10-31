@@ -87,7 +87,53 @@ export interface BusinessSegmentPreset {
    * graduacao). Cada modalidade liga ou desliga no proprio editor.
    */
   assessmentsByDefault: boolean;
+  /**
+   * Sugestoes de testes e medidas (doc 21 §2.4) no editor da modalidade.
+   * Ausente = as gerais (`GENERAL_MEASURES`).
+   */
+  measureSuggestions?: readonly MeasureSuggestion[];
   vocabulary: SegmentVocabulary;
+}
+
+/** Medida sugerida pela area: nome, unidade e se e melhor subir ou descer. */
+export interface MeasureSuggestion {
+  name: string;
+  unit: string;
+  better: "higher" | "lower";
+}
+
+const FITNESS_MEASURES: readonly MeasureSuggestion[] = [
+  { name: "Peso", unit: "kg", better: "lower" },
+  { name: "Gordura corporal", unit: "%", better: "lower" },
+  { name: "Cintura", unit: "cm", better: "lower" },
+  { name: "Flexões em 1 min", unit: "rep", better: "higher" },
+  { name: "Prancha", unit: "s", better: "higher" },
+];
+
+const PILATES_MEASURES: readonly MeasureSuggestion[] = [
+  { name: "Flexibilidade", unit: "cm", better: "higher" },
+  { name: "Dor (0 a 10)", unit: "", better: "lower" },
+  { name: "Peso", unit: "kg", better: "lower" },
+  { name: "Prancha", unit: "s", better: "higher" },
+];
+
+const SWIM_MEASURES: readonly MeasureSuggestion[] = [
+  { name: "25 m crawl", unit: "s", better: "lower" },
+  { name: "50 m crawl", unit: "s", better: "lower" },
+  { name: "25 m costas", unit: "s", better: "lower" },
+  { name: "Apneia", unit: "s", better: "higher" },
+];
+
+/** Sugestoes das areas sem lista propria. */
+export const GENERAL_MEASURES: readonly MeasureSuggestion[] = [
+  { name: "Peso", unit: "kg", better: "lower" },
+  { name: "Flexibilidade", unit: "cm", better: "higher" },
+  { name: "Prancha", unit: "s", better: "higher" },
+];
+
+/** Sugestoes de testes e medidas da area. */
+export function measureSuggestionsFor(preset: BusinessSegmentPreset): readonly MeasureSuggestion[] {
+  return preset.measureSuggestions ?? GENERAL_MEASURES;
 }
 
 function vocabulary(
@@ -179,6 +225,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     defaultBillingMode: "membership",
     teacherTitle: "Instrutor",
     assessmentsByDefault: false,
+    measureSuggestions: PILATES_MEASURES,
     vocabulary: LEVEL_VOCABULARY,
   },
   functional_training: {
@@ -192,6 +239,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     defaultBillingMode: "membership",
     teacherTitle: "Instrutor",
     assessmentsByDefault: false,
+    measureSuggestions: FITNESS_MEASURES,
     vocabulary: LEVEL_VOCABULARY,
   },
   dance: {
@@ -244,6 +292,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     defaultBillingMode: "membership",
     teacherTitle: "Professor",
     assessmentsByDefault: false,
+    measureSuggestions: SWIM_MEASURES,
     vocabulary: STAGE_VOCABULARY,
   },
   gastronomy: {

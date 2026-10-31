@@ -1,6 +1,7 @@
 import type {
   Appointment,
   Assessment,
+  StudentMeasurement,
   Attendance,
   AuditLogEntry,
   Category,
@@ -74,6 +75,8 @@ export interface TenantWorld {
   // Avaliacoes e notas (doc 21 §2.1). Opcional: nasce vazio no 1o lancamento,
   // sem migracao (ver gradesService.assessmentsStore).
   assessments?: Assessment[];
+  // Testes e medidas dos alunos (doc 21 §2.4). Opcional como as avaliacoes.
+  studentMeasurements?: StudentMeasurement[];
   // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
   // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
   financialCategories: FinancialCategory[];

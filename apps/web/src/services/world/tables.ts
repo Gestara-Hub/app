@@ -51,6 +51,7 @@ export const WORLD_COLLECTIONS: WorldCollection[] = [
   { key: "reservations", table: "class_reservations", kind: "list" },
   { key: "sessionOverrides", table: "class_session_overrides", kind: "list", identity: "sessionId" },
   { key: "assessments", table: "assessments", kind: "list" },
+  { key: "studentMeasurements", table: "student_measurements", kind: "list" },
   { key: "financialCategories", table: "financial_categories", kind: "list" },
   { key: "financialRecurrences", table: "financial_recurrences", kind: "list" },
   { key: "teacherPayRules", table: "teacher_pay_rules", kind: "list" },

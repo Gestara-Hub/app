@@ -31,6 +31,7 @@ import {
   defaultAssessmentsForNewModality,
   duplicateCategoryNameError,
   normalizedAssessments,
+  normalizedMeasurements,
   resetMissingLevels,
   sortCategories,
   validateCategoryPayload,
@@ -142,6 +143,7 @@ export const categoriesService = {
         position: nextPosition,
         progressionTrack: payload.progressionTrack,
         ...(assessments ? { assessments } : {}),
+        ...(payload.measurements ? { measurements: normalizedMeasurements(payload) } : {}),
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,
@@ -182,6 +184,7 @@ export const categoriesService = {
         ...payload,
         name: payload.name !== undefined ? payload.name.trim() : current.name,
         ...(payload.assessments !== undefined ? { assessments: normalizedAssessments(payload) } : {}),
+        ...(payload.measurements !== undefined ? { measurements: normalizedMeasurements(payload) } : {}),
         updatedAt: nowIso(),
       };
       store.categories[idx] = updated;

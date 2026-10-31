@@ -114,6 +114,11 @@ export const queryKeys = {
     sheet: (assessmentId: Id) => ["grades", "sheet", assessmentId] as const,
     reportCard: (studentId: Id) => ["grades", "reportCard", studentId] as const,
   },
+  // Testes e medidas dos alunos (doc 21 §2.4).
+  measurements: {
+    all: ["measurements"] as const,
+    student: (studentId: Id) => ["measurements", "student", studentId] as const,
+  },
   billing: {
     all: ["billing"] as const,
     plans: (filter?: PlanFilter) => ["billing", "plans", filter] as const,

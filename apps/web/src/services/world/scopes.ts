@@ -37,6 +37,7 @@ export const SCOPE_FIELDS: Record<string, readonly string[]> = {
   messageLogs: ["clientId", "trigger"],
   onlinePayments: ["chargeId"],
   assessments: ["classGroupId"],
+  studentMeasurements: ["studentId"],
   // Carga parcial da auditoria (`partialLoad`): so a dos lancamentos.
   auditLog: ["target.type"],
 };

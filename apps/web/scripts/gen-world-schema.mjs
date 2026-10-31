@@ -18,7 +18,7 @@ const DB_CONTAINER = process.env.SUPABASE_DB_CONTAINER || "supabase_db_gestarahu
 const TABLES = [
   "organizations", "units", "users", "roles", "categories", "professionals", "clients", "plans",
   "lesson_packages", "student_packages", "charges", "class_groups", "enrollments", "attendances",
-  "waitlist", "class_reservations", "class_session_overrides", "assessments", "financial_categories",
+  "waitlist", "class_reservations", "class_session_overrides", "assessments", "student_measurements", "financial_categories",
   "financial_recurrences", "financial_entries", "teacher_pay_rules", "teacher_payouts", "online_payments",
   "whatsapp_connections", "message_templates", "message_logs", "audit_logs",
 ];

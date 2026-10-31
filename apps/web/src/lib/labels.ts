@@ -98,6 +98,7 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   class_group: "Turma",
   enrollment: "Matrícula",
   assessment: "Avaliação",
+  measurement: "Testes e medidas",
   financial_entry: "Lançamento financeiro",
   financial_category: "Categoria financeira",
   teacher_payout: "Pagamento de professor",

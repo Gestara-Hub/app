@@ -13,6 +13,7 @@
     "./packages": "./src/packages.ts",
     "./certificate": "./src/certificate.ts",
     "./grades": "./src/grades.ts",
+    "./measurements": "./src/measurements.ts",
     "./phone": "./src/phone.ts",
     "./payer": "./src/payer.ts",
     "./support-protocol": "./src/support-protocol.ts",

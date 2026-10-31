@@ -30,6 +30,7 @@ const MANAGE_BILLING: Permission[] = ["billing:manage"];
 const VIEW_FINANCE: Permission[] = ["finance:view"];
 const MANAGE_FINANCE: Permission[] = ["finance:manage"];
 const MANAGE_GRADES: Permission[] = ["grades:manage"];
+const MANAGE_PROGRESSION: Permission[] = ["progression:manage"];
 const VIEW_COMMUNICATION: Permission[] = ["communication:view"];
 const MANAGE_COMMUNICATION: Permission[] = ["communication:manage"];
 
@@ -111,6 +112,11 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     load: async () => (await import("../grades")).gradesServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../grades/gradeSlices")).gradeSlices,
     permissions: all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
+  },
+  measurements: {
+    load: async () => (await import("../measurements")).measurementsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../measurements/measurementSlices")).measurementSlices,
+    permissions: all(["create", "update", "remove"], MANAGE_PROGRESSION),
   },
   communication: {
     load: async () => (await import("../communication")).communicationServiceImpl as unknown as ServiceObject,

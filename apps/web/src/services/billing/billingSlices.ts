@@ -14,6 +14,7 @@ const NOT_USED_BY_BILLING = new Set([
   "messageLogs",
   "messageTemplates",
   "assessments",
+  "studentMeasurements",
   "financialEntries",
   "financialRecurrences",
   "financialCategories",

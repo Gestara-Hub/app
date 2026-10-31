@@ -14,6 +14,7 @@ export * from "./recurrence-series";
 export * from "./audit-log";
 export * from "./class";
 export * from "./assessment";
+export * from "./measurement";
 export * from "./certificate";
 export * from "./billing";
 export * from "./package";

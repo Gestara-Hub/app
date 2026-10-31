@@ -1,4 +1,5 @@
 import type { ModalityAssessmentSettings } from "./assessment";
+import type { ModalityMeasurementSettings } from "./measurement";
 import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 export type ProgressionBeltColor =
@@ -79,6 +80,8 @@ export interface Category {
   progressionTrack?: ModalityProgressionTrack;
   /** Avaliacoes e notas (doc 21 §2.1). Ausente = desligado. */
   assessments?: ModalityAssessmentSettings;
+  /** Testes e medidas (doc 21 §2.4). Ausente = desligado. */
+  measurements?: ModalityMeasurementSettings;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
@@ -94,7 +97,7 @@ export type CreateCategory = Omit<
   status?: RecordStatus;
 };
 export type UpdateCategory = Partial<
-  Pick<Category, "name" | "position" | "progressionTrack" | "assessments" | "status">
+  Pick<Category, "name" | "position" | "progressionTrack" | "assessments" | "measurements" | "status">
 >;
 
 export interface CategoryFilter {
