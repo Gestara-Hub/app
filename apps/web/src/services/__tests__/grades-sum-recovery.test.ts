@@ -137,3 +137,32 @@ describe("frequência mínima", () => {
     ).rejects.toMatchObject({ fields: [{ field: "assessments.minAttendancePercent" }] });
   });
 });
+
+describe("troca de escala com notas lançadas (achado V5 de 31/10/2026)", () => {
+  it("modalidade com nota não troca para soma nem de escala; sem nota, troca", async () => {
+    const group = await setupClass(TEN);
+    const ana = await enroll(group.id, "Ana");
+    const modalityId = group.modalityId!;
+    await expect(categoriesService.update(modalityId, { assessments: SUM })).resolves.toBeTruthy();
+    await categoriesService.update(modalityId, { assessments: TEN });
+    const prova = await gradesService.create({ classGroupId: group.id, name: "Prova", date: "2026-09-15" });
+    await gradesService.setGrades(prova.id, [{ studentId: ana, status: "graded", value: 5 }]);
+    await expect(categoriesService.update(modalityId, { assessments: SUM })).rejects.toMatchObject({
+      fields: [{ field: "assessments.scale" }],
+    });
+    await expect(
+      categoriesService.update(modalityId, { assessments: { enabled: true, scale: "zero_hundred", passingGrade: 60 } }),
+    ).rejects.toMatchObject({ fields: [{ field: "assessments.scale" }] });
+    // Mudar so a minima segue valendo.
+    await expect(categoriesService.update(modalityId, { assessments: { ...TEN, passingGrade: 7 } })).resolves.toBeTruthy();
+  });
+
+  it("na soma, a avaliação não vale menos do que uma nota já lançada", async () => {
+    const group = await setupClass(SUM);
+    const ana = await enroll(group.id, "Ana");
+    const prova = await gradesService.create({ classGroupId: group.id, name: "Prova", date: "2026-09-15", points: 4 });
+    await gradesService.setGrades(prova.id, [{ studentId: ana, status: "graded", value: 3.5 }]);
+    await expect(gradesService.update(prova.id, { points: 3 })).rejects.toMatchObject({ fields: [{ field: "points" }] });
+    await expect(gradesService.update(prova.id, { points: 3.5 })).resolves.toBeTruthy();
+  });
+});

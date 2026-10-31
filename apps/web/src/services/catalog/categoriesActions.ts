@@ -19,6 +19,7 @@ import {
   resetMissingLevels,
   sortCategories,
   validateCategoryPayload,
+  assertGradingKept,
 } from "./categoryRules";
 
 /**
@@ -119,8 +120,18 @@ export async function updateCategoryAction(
     ctx.require(...MANAGE);
     const org = await loadOrganization(ctx);
     const noun = categoryNounFor(org);
-    await fetchCategory(ctx, id);
+    const before = await fetchCategory(ctx, id);
     validateCategoryPayload(payload, { partial: true, noun });
+    if (payload.assessments !== undefined && before.assessments) {
+      const { data: graded } = await createSupabaseAdminClient()
+        .from("assessments")
+        .select("id")
+        .eq("organization_id", ctx.organizationId)
+        .eq("modality_id", id)
+        .neq("grades", "[]")
+        .limit(1);
+      assertGradingKept(before.assessments, normalizedAssessments(payload), (graded ?? []).length > 0);
+    }
 
     const patch: Record<string, unknown> = {};
     if (payload.name !== undefined) patch.name = payload.name.trim();

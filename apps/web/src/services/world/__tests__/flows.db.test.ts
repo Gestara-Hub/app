@@ -10,7 +10,7 @@ import type {
   StudentPackageView,
 } from "@gestarahub/contracts";
 import type { ActionResult } from "@/services/server/action";
-import { createCategoryAction } from "@/services/catalog/categoriesActions";
+import { createCategoryAction, updateCategoryAction } from "@/services/catalog/categoriesActions";
 import { createProfessionalAction } from "@/services/catalog/teamActions";
 import { createPackageAction, createPlanAction } from "@/services/billing/catalogActions";
 import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
@@ -166,6 +166,11 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     await call("grades.setGrades", assessment.id, [{ studentId: student.id, status: "graded", value: 9 }]);
     const { data: grades } = await admin.from("assessments").select("grades").eq("id", assessment.id).single();
     expect(grades?.grades).toEqual([expect.objectContaining({ studentId: student.id, value: 9 })]);
+    // Com nota lancada, a modalidade nao troca de escala nem para a soma (achado V5).
+    const switched = await updateCategoryAction(modality.id, {
+      assessments: { enabled: true, scale: "zero_ten", passingGrade: 6, resultMode: "sum" },
+    });
+    expect(switched.ok).toBe(false);
     // Recuperacao (fase A, 31/10/2026): a coluna recovery_of e a exclusao junto com a recuperada.
     const recovery = await call<{ id: string }>("grades.create", {
       classGroupId: group.id,

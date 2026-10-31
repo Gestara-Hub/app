@@ -173,3 +173,24 @@ export function resetMissingLevels(
   }
   return { changed, reset };
 }
+
+/**
+ * Modalidade com notas lancadas nao troca de escala nem de forma de fechar o
+ * resultado (revisao geral de 31/10/2026, achado V5): as notas antigas viravam
+ * 10 de 10 na soma, ou pontos lidos como media na volta.
+ */
+export function assertGradingKept(
+  current: Category["assessments"],
+  next: Category["assessments"] | undefined,
+  hasGrades: boolean,
+): void {
+  if (!hasGrades || !current || !next) return;
+  const mode = (s: NonNullable<Category["assessments"]>) => (s.resultMode === "sum" ? "sum" : "average");
+  if (current.scale === next.scale && mode(current) === mode(next)) return;
+  throw validationError([
+    {
+      field: "assessments.scale",
+      message: "Esta modalidade já tem notas lançadas: a escala e a forma de fechar o resultado não mudam.",
+    },
+  ]);
+}

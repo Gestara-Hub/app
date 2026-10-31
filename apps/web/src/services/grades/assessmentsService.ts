@@ -146,6 +146,13 @@ export const assessmentsService = {
       validateFields(payload, true, fields);
       if (payload.levelId) validateLevel(current.modalityId, payload.levelId, fields);
       validatePointsAndRecovery(settings, group.id, payload, current, fields);
+      // Menos pontos do que uma nota ja lancada deixaria a nota acima do maximo (achado V5).
+      if (payload.points !== undefined && !current.recoveryOf) {
+        const highest = Math.max(0, ...current.grades.map((g) => (typeof g.value === "number" ? g.value : 0)));
+        if (Number(payload.points) < highest) {
+          fields.push({ field: "points", message: `Já há nota ${highest.toLocaleString("pt-BR")}: vale pelo menos isso.` });
+        }
+      }
       if (fields.length > 0) throw validationError(fields);
 
       if (payload.name !== undefined) current.name = payload.name.trim();

@@ -35,6 +35,7 @@ import {
   resetMissingLevels,
   sortCategories,
   validateCategoryPayload,
+  assertGradingKept,
 } from "./categoryRules";
 import { encodeArgs } from "../world/transport";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -179,6 +180,10 @@ export const categoriesService = {
         throw duplicateCategoryNameError(categoryNoun());
       }
       const current = store.categories[idx];
+      if (payload.assessments !== undefined) {
+        const hasGrades = (store.assessments ?? []).some((a) => a.modalityId === id && a.grades.length > 0);
+        assertGradingKept(current.assessments, normalizedAssessments(payload), hasGrades);
+      }
       const updated: Category = {
         ...current,
         ...payload,
