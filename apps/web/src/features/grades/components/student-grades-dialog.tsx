@@ -118,7 +118,8 @@ function ModalityCard({ modality }: { modality: ReportCardModality }) {
                 key={e.assessmentId}
                 className={cn(
                   "flex items-center justify-between gap-3 px-3 py-2.5",
-                  e.belowPassing && "bg-red-50/60 dark:bg-red-950/20",
+                  (e.recoveredValue !== undefined ? e.recoveredBelowPassing : e.belowPassing) &&
+                    "bg-red-50/60 dark:bg-red-950/20",
                 )}
               >
                 <div className="min-w-0">
@@ -138,8 +139,15 @@ function ModalityCard({ modality }: { modality: ReportCardModality }) {
                       .join(" · ")}
                   </p>
                   {e.recoveredValue !== undefined ? (
-                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      Vale {formatGrade(scale, e.recoveredValue)} pela recuperação
+                    <p
+                      className={cn(
+                        "text-xs font-medium",
+                        e.recoveredBelowPassing
+                          ? "text-red-700 dark:text-red-400"
+                          : "text-emerald-700 dark:text-emerald-400",
+                      )}
+                    >
+                      Ficou {formatGrade(scale, e.recoveredValue)} com a recuperação
                     </p>
                   ) : null}
                 </div>

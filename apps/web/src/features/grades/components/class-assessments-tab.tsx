@@ -120,8 +120,10 @@ export function ClassAssessmentsTab({
           />
           <span className="inline-flex flex-wrap items-center gap-1.5">
             {[SCALE_LABEL[settings.scale], passingLabel(settings), attendanceRuleLabel(settings)].filter(Boolean).join(" · ")} ·{" "}
-            {resultWord(settings)} da turma
-            <AverageValue scale={settings.scale} average={data?.classAverage ?? null} />
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              {resultWord(settings)} da turma
+              <AverageValue scale={settings.scale} average={data?.classAverage ?? null} />
+            </span>
           </span>
         </div>
       ) : (

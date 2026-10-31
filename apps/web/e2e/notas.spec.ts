@@ -719,7 +719,7 @@ test.describe("fase A: soma dos pontos, recuperação e frequência mínima (31/
     await expect(card.locator("div.rounded-lg").filter({ hasText: "Média geral" }).first()).toContainText("7");
     await expect(
       card.getByRole("listitem").filter({ has: page.getByText("Prova 1", { exact: true }) }),
-    ).toContainText("Vale 7 pela recuperação");
+    ).toContainText("Ficou 7 com a recuperação");
   });
 
   test("frequência mínima: o boletim mostra a frequência nas turmas da modalidade", async ({ page }) => {

@@ -71,7 +71,12 @@ export const reportCardService = {
             ...(a.recoveryOf ? { recoveryOf: a.recoveryOf, ...(original ? { recoveryOfName: original } : {}) } : {}),
             status,
             ...(grade?.value !== undefined ? { value: grade.value } : {}),
-            ...(used?.recovered && used.value !== undefined ? { recoveredValue: used.value } : {}),
+            ...(used?.recovered && used.value !== undefined
+              ? {
+                  recoveredValue: used.value,
+                  recoveredBelowPassing: isGradeBelowPassing(settings, used.value, points),
+                }
+              : {}),
             belowPassing:
               status === "graded" && grade?.value !== undefined
                 ? isGradeBelowPassing(settings, grade.value, points)

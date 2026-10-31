@@ -194,7 +194,10 @@ export interface ReportCardEntry {
   value?: GradeValue;
   /** A nota da recuperacao, quando foi maior e passou a valer no lugar desta. */
   recoveredValue?: GradeValue;
+  /** A nota original (a que aparece) ficou abaixo da minima. */
   belowPassing: boolean;
+  /** Com recuperacao: a nota que passou a valer ainda ficou abaixo da minima. */
+  recoveredBelowPassing?: boolean;
 }
 
 /** Media de uma etapa da trilha no boletim (sem etapa = `levelId` ausente). */

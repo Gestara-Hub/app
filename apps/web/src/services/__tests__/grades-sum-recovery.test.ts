@@ -72,10 +72,12 @@ describe("recuperação", () => {
     const group = await setupClass(TEN);
     const ana = await enroll(group.id, "Ana");
     const bia = await enroll(group.id, "Bia");
+    const caio = await enroll(group.id, "Caio");
     const prova = await gradesService.create({ classGroupId: group.id, name: "Prova 1", date: "2026-09-15" });
     await gradesService.setGrades(prova.id, [
       { studentId: ana, status: "graded", value: 4 },
       { studentId: bia, status: "absent" },
+      { studentId: caio, status: "graded", value: 3 },
     ]);
     const rec = await gradesService.create({ classGroupId: group.id, name: "Recuperação", date: "2026-09-18", recoveryOf: prova.id });
     expect(rec.recoveryOfName).toBe("Prova 1");
@@ -84,11 +86,21 @@ describe("recuperação", () => {
     await gradesService.setGrades(rec.id, [
       { studentId: ana, status: "graded", value: 7 },
       { studentId: bia, status: "graded", value: 8 },
+      { studentId: caio, status: "graded", value: 5 },
     ]);
 
     const anaCard = await card(ana);
     expect(anaCard.overall).toMatchObject({ value: 7, count: 1, belowPassing: false });
-    expect(anaCard.entries.find((e) => e.assessmentId === prova.id)?.recoveredValue).toBe(7);
+    // A nota original segue abaixo; a que passou a valer, nao.
+    expect(anaCard.entries.find((e) => e.assessmentId === prova.id)).toMatchObject({
+      belowPassing: true,
+      recoveredValue: 7,
+      recoveredBelowPassing: false,
+    });
+    expect((await card(caio)).entries.find((e) => e.assessmentId === prova.id)).toMatchObject({
+      recoveredValue: 5,
+      recoveredBelowPassing: true,
+    });
     expect(anaCard.entries.find((e) => e.assessmentId === rec.id)).toMatchObject({ recoveryOf: prova.id, recoveryOfName: "Prova 1" });
     // Faltou na prova: a recuperacao vale como segunda chamada.
     expect((await card(bia)).overall).toMatchObject({ value: 8, count: 1 });
