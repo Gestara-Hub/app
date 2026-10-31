@@ -23,6 +23,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createOwnerAccount } from "@/services/server/accountSetup";
 import { finishSignIn, needsSecondFactor } from "./sign-in-session";
 import { logError } from "@/lib/log";
+import { likeExact } from "@/lib/supabase/like";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -156,7 +157,7 @@ export async function requestSignupLink(input: {
     const { data: existingUsers, error: userErr } = await admin
       .from("users")
       .select("id, email, auth_user_id")
-      .ilike("email", normalizedEmail)
+      .ilike("email", likeExact(normalizedEmail))
       .limit(1);
 
     if (userErr) {
@@ -181,7 +182,7 @@ export async function requestSignupLink(input: {
     const { data: pendingTokens, error: tokenQueryErr } = await admin
       .from("signup_tokens")
       .select("id, name, email, status, expires_at")
-      .ilike("email", normalizedEmail)
+      .ilike("email", likeExact(normalizedEmail))
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
@@ -335,7 +336,7 @@ export async function validateSignupToken(
     const { data: existingUser } = await admin
       .from("users")
       .select("id, email")
-      .ilike("email", row.email)
+      .ilike("email", likeExact(row.email))
       .maybeSingle();
 
     if (existingUser || row.status === "consumed") {
@@ -518,7 +519,7 @@ export async function completeSignupWithPassword(input: {
         status: "revoked",
         consumed_at: nowIso,
       })
-      .ilike("email", normalizedEmail)
+      .ilike("email", likeExact(normalizedEmail))
       .eq("status", "pending");
 
     // 4. Autentica na sessao do Supabase e grava o cookie de sessao da aplicacao
@@ -636,7 +637,7 @@ export async function signInWithPasswordAction(input: {
       const { data: googleUser } = await admin
         .from("users")
         .select("auth_user_id")
-        .ilike("email", normalizedEmail)
+        .ilike("email", likeExact(normalizedEmail))
         .limit(1)
         .maybeSingle();
       if (await isGoogleOnlyAuthUser(admin, googleUser?.auth_user_id)) {

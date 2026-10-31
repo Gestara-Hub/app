@@ -14,6 +14,7 @@ import type {
   UserView,
 } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";
+import { likeExact } from "@/lib/supabase/like";
 
 /**
  * Criacao e carga da conta no banco, comuns ao cadastro por e-mail e ao
@@ -300,7 +301,7 @@ export async function resolveGoogleAccount(
     return byAuth.status === "inactive" ? { ok: false, code: "inactive" } : { ok: true, dbUser: byAuth, created: false };
   }
 
-  const { data: byEmail } = await admin.from("users").select("*").ilike("email", email);
+  const { data: byEmail } = await admin.from("users").select("*").ilike("email", likeExact(email));
   const sameEmail = (byEmail ?? []) as Row[];
   if (sameEmail.some((u) => u.auth_user_id && u.auth_user_id !== identity.authUserId)) {
     return { ok: false, code: "email_in_use" };
@@ -326,7 +327,7 @@ export async function resolveGoogleAccount(
   await admin
     .from("signup_tokens")
     .update({ status: "revoked", consumed_at: new Date().toISOString() })
-    .ilike("email", email)
+    .ilike("email", likeExact(email))
     .eq("status", "pending");
   const { data: dbUser } = await admin.from("users").select("*").eq("id", identity.authUserId).maybeSingle();
   return dbUser ? { ok: true, dbUser, created: true } : { ok: false, code: "error" };

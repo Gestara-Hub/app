@@ -1,8 +1,18 @@
 import type { DocumentModel } from "@gestarahub/contracts";
 import { csvCell } from "./format";
 
+/**
+ * Celula que comeca como formula (`=`, `+`, `-`, `@`, tab) ganha um apostrofo:
+ * o Excel a mostra como texto em vez de executar (auditoria de 30/10/2026: um
+ * nome de aluno malicioso virava formula na planilha do dono). Numero negativo
+ * ("-150,00", "-R$ 150,00") continua numero.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/;
+const NUMBER_LIKE = /^-?\s*(R\$\s*)?[\d.,]+%?$/;
+export const csvSafe = (value: string) => (FORMULA_START.test(value) && !NUMBER_LIKE.test(value) ? `'${value}` : value);
+
 /** Campo entre aspas (aspas internas dobradas), separador ";" do Excel em pt-BR. */
-const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
+const quote = (value: string) => `"${csvSafe(value).replace(/"/g, '""')}"`;
 const line = (cells: string[]) => `${cells.map(quote).join(";")}\n`;
 
 /**
