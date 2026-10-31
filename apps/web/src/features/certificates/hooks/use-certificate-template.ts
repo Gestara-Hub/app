@@ -42,14 +42,6 @@ export function useSaveCertificateTemplate() {
   });
 }
 
-export function useResetCertificateTemplate() {
-  const invalidate = useInvalidateCertificates();
-  return useMutation({
-    mutationFn: () => certificatesService.resetTemplate(),
-    onSuccess: invalidate,
-  });
-}
-
 /**
  * Endereco temporario (object URL) de um arquivo guardado, para o <img>.
  * Revogado ao trocar o id ou desmontar. `null` enquanto carrega ou sem arquivo.

@@ -4,14 +4,15 @@ import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
-import { Award, Check, Loader2, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
+import { Award, Check, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import type { CertificateTemplate } from "@gestarahub/contracts";
-import { getErrorMessage } from "@gestarahub/core/api-error";
 import {
   CERTIFICATE_ACCENT_COLORS,
   CERTIFICATE_LAYOUTS,
   CERTIFICATE_LIMITS,
   CERTIFICATE_VARIABLES,
+  DEFAULT_CERTIFICATE_BODY,
+  DEFAULT_CERTIFICATE_TITLE,
   validateCertificateTemplate,
   type CertificateVariable,
 } from "@gestarahub/core/certificate";
@@ -26,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -41,17 +43,39 @@ import {
   sampleCertificate,
   useCertificateTemplate,
   useLocalFileUrl,
-  useResetCertificateTemplate,
   useSaveCertificateTemplate,
   useStoredFileUrl,
 } from "@/features/certificates";
 import { useOrganization, useUnit } from "../hooks/use-settings";
-import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
+import { SettingsSaveBar } from "./settings-save-bar";
+import { useReportDirty } from "./unsaved-changes";
 
 /** Texto do upsell (uma linha, como os outros recursos do Pro). */
 export const CERTIFICATE_TEMPLATE_LOCKED_HINT = "Modelo de certificado no Plano Profissional.";
 
 const BODY_ID = "certificate-body";
+
+/**
+ * Quem assina (31/10/2026): escolha em vez de digitar {professor} ou {empresa}.
+ * O modelo continua guardando o nome com a variavel; "Outro nome" e texto livre.
+ */
+type Signer = "teacher" | "space" | "custom";
+const SIGNER_NAMES: Record<Exclude<Signer, "custom">, string> = {
+  teacher: "{professor}",
+  space: "{empresa}",
+};
+const SIGNER_OPTIONS: { value: Signer; label: string }[] = [
+  { value: "teacher", label: "Professor da turma" },
+  { value: "space", label: "Nome do espaço" },
+  { value: "custom", label: "Outro nome" },
+];
+
+function signerOf(name: string): Signer {
+  const trimmed = name.trim();
+  if (trimmed === SIGNER_NAMES.teacher) return "teacher";
+  if (trimmed === SIGNER_NAMES.space) return "space";
+  return "custom";
+}
 
 const schema = z
   .object({
@@ -196,7 +220,6 @@ function CertificateTemplateForm({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const save = useSaveCertificateTemplate();
-  const reset = useResetCertificateTemplate();
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const { data: organization } = useOrganization();
   const { data: unit } = useUnit();
@@ -209,7 +232,7 @@ function CertificateTemplateForm({
   const signatures = useFieldArray({ control: form.control, name: "signatures" });
   const dirty = form.formState.isDirty;
   useReportDirty(dirty, onDirtyChange);
-  const pending = save.isPending || reset.isPending;
+  const pending = save.isPending;
 
   const values = useWatch({ control: form.control }) as Values;
   const newLogo = values.logo?.[0];
@@ -266,24 +289,20 @@ function CertificateTemplateForm({
     }
   });
 
-  async function restoreDefault() {
+  // Volta o titulo e o texto padrao no rascunho; quem grava e o "Salvar" da barra.
+  async function restoreDefaultText() {
     const ok = await confirm({
-      title: "Restaurar o modelo padrão?",
-      description: "Layout, cor, texto, assinaturas e logo voltam ao padrão.",
-      confirmLabel: "Restaurar",
-      variant: "destructive",
+      title: "Voltar ao texto padrão?",
+      description: "O título e o texto do certificado voltam ao padrão. Salve para valer.",
+      confirmLabel: "Voltar ao padrão",
+      cancelLabel: "Cancelar",
     });
     if (!ok) return;
-    try {
-      const saved = await reset.mutateAsync();
-      toast.success("Modelo padrão restaurado.");
-      form.reset(toValues(saved));
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível restaurar o modelo."));
-    }
+    form.setValue("title", DEFAULT_CERTIFICATE_TITLE, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+    form.setValue("body", DEFAULT_CERTIFICATE_BODY, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
   }
 
-  const canRestore = Boolean(template.updatedAt) || dirty;
+  const textIsDefault = values.title === DEFAULT_CERTIFICATE_TITLE && values.body === DEFAULT_CERTIFICATE_BODY;
 
   return (
     <FormProvider {...form}>
@@ -316,8 +335,19 @@ function CertificateTemplateForm({
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
                 <CardTitle>Texto</CardTitle>
+                {!textIsDefault ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => void restoreDefaultText()}
+                    className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <RotateCcw className="size-3" aria-hidden />
+                    Voltar ao texto padrão
+                  </button>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-4">
                 <InputText<Values>
@@ -355,7 +385,7 @@ function CertificateTemplateForm({
                 <SwitchField<Values>
                   name="showAttendance"
                   label="Mostrar frequência"
-                  hint="Desligada, o trecho da frequência sai."
+                  hint="Inclui a frequência no texto."
                   disabled={pending}
                 />
               </CardContent>
@@ -364,20 +394,50 @@ function CertificateTemplateForm({
             <Card>
               <CardHeader>
                 <CardTitle>Assinaturas</CardTitle>
-                <CardDescription>Use {"{professor}"} ou {"{empresa}"} para o nome automático.</CardDescription>
+                <CardDescription>O professor da turma e o nome do espaço saem de cada curso.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {signatures.fields.map((field, index) => (
+                {signatures.fields.map((field, index) => {
+                  const signer = signerOf(values.signatures?.[index]?.name ?? "");
+                  return (
                   <div key={field.id} className="flex items-start gap-2">
+                    {/* "Quem assina" na linha toda: na coluna estreita do editor o nome cortava. */}
                     <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-                      <InputText<Values>
-                        id={`signature-${index}-name`}
-                        name={`signatures.${index}.name`}
-                        label="Nome"
-                        required
-                        placeholder="Informe o nome"
-                        disabled={pending}
-                      />
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor={`signature-${index}-signer`}>Quem assina</Label>
+                        <Select
+                          value={signer}
+                          disabled={pending}
+                          onValueChange={(next) =>
+                            form.setValue(
+                              `signatures.${index}.name`,
+                              next === "custom" ? "" : SIGNER_NAMES[next as Exclude<Signer, "custom">],
+                              { shouldDirty: true, shouldValidate: form.formState.isSubmitted },
+                            )
+                          }
+                        >
+                          <SelectTrigger id={`signature-${index}-signer`} className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SIGNER_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {signer === "custom" ? (
+                        <InputText<Values>
+                          id={`signature-${index}-name`}
+                          name={`signatures.${index}.name`}
+                          label="Nome"
+                          required
+                          placeholder="Informe o nome"
+                          disabled={pending}
+                        />
+                      ) : null}
                       <InputText<Values>
                         id={`signature-${index}-role`}
                         name={`signatures.${index}.role`}
@@ -400,7 +460,8 @@ function CertificateTemplateForm({
                       </Button>
                     ) : null}
                   </div>
-                ))}
+                  );
+                })}
                 {signatures.fields.length < CERTIFICATE_LIMITS.maxSignatures ? (
                   <Button
                     type="button"
@@ -460,34 +521,7 @@ function CertificateTemplateForm({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <UnsavedChangesStatus dirty={dirty} />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-1.5"
-              disabled={pending || !canRestore}
-              onClick={() => void restoreDefault()}
-            >
-              <RotateCcw className="size-4" />
-              Restaurar padrão
-            </Button>
-            <Button type="submit" disabled={pending} className="min-w-36">
-              {save.isPending ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 size-4" />
-                  Salvar
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
+        <SettingsSaveBar visible={dirty} onDiscard={() => form.reset()} pending={pending} />
       </form>
       {confirmDialog}
     </FormProvider>
