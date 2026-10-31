@@ -81,6 +81,19 @@ export async function validateInvitationTokenAction(
 /**
  * Aceite do convite e definição de senha.
  */
+/** Conta do Supabase Auth pelo e-mail, em todas as paginas da lista (ate 50 mil contas). */
+async function findAuthUserByEmail(admin: ReturnType<typeof createSupabaseAdminClient>, email: string) {
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) return undefined;
+    const users = data?.users ?? [];
+    const found = users.find((u) => u.email?.toLowerCase() === email);
+    if (found || users.length < perPage) return found;
+  }
+  return undefined;
+}
+
 export async function acceptInvitationAction(input: {
   token: string;
   password: string;
@@ -123,11 +136,10 @@ export async function acceptInvitationAction(input: {
     if (createdAuth?.user) {
       authUserId = createdAuth.user.id;
     } else {
-      // Se já existe no Auth (ex: convidado para outra org antes), atualiza senha
-      const { data: existingUsers } = await admin.auth.admin.listUsers();
-      const match = (existingUsers?.users ?? []).find(
-        (u) => u.email?.toLowerCase() === normalizedEmail,
-      );
+      // Se já existe no Auth (ex: convidado para outra org antes), atualiza senha.
+      // Procura em todas as paginas: antes lia so a primeira (50 contas) e, com mais
+      // contas na plataforma, quem ja tinha conta nao conseguia aceitar o convite.
+      const match = await findAuthUserByEmail(admin, normalizedEmail);
       if (!match) {
         logError("[usersBackend] Erro ao criar conta de autenticação:", createAuthErr);
         return {
