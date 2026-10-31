@@ -1,5 +1,6 @@
 "use client";
 
+import { dateInSpace } from "@gestarahub/core/date";
 import { useState } from "react";
 import { AlertCircle, FileText, RotateCw, Wallet } from "lucide-react";
 import {
@@ -66,7 +67,8 @@ function matchesSearch(c: ChargeView, query: string): boolean {
 function paidYears(charges: ChargeView[]): number[] {
   const years = new Set<number>();
   for (const c of charges) {
-    if (c.status === "paid" && c.paidAt) years.add(Number(c.paidAt.slice(0, 4)));
+    // Ano no fuso do espaco: pago em 31/12 depois das 21h nao vira o ano seguinte (achado V13).
+    if (c.status === "paid" && c.paidAt) years.add(Number(dateInSpace(c.paidAt).slice(0, 4)));
   }
   return [...years].sort((a, b) => b - a);
 }
