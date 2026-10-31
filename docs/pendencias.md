@@ -60,6 +60,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | --- | --- |
 | Escrever o roteiro de publicação: Supabase (`db push` antes do deploy do app), Vercel sem `DEMO_PASSWORD`, segredos no Vault, conferências depois do primeiro deploy | Ainda sem doc (combinado em 22/10, a escrever quando começar o deploy) |
 | GitHub Actions com as conferências rápidas e o e2e completo, e `main` protegida | `technical/20-tempo-dos-testes.md`, Etapa 2 |
+| Segredos novos da auditoria de 30/10/2026: `META_APP_SECRET` (assinatura do webhook do WhatsApp; sem ele, produção recusa o webhook) e, se quiser trocar o derivado da chave de serviço, `SESSION_SECRET` (cookie do app). Na publicação, as sessões abertas caem uma vez (cookie assinado). Se uma chave real de subconta do Asaas já esteve num banco com a coluna exposta, trocar no Asaas | `handoff/2026-10-31-diario-noturno.md`, Segurança |
 | Mínimo de senha do Supabase Auth em 8 caracteres no projeto de produção (o local segue em 6 em `apps/supabase/config.toml`; o app já exige 8 em todas as telas e no servidor) | `qa/2026-10-23-teste-geral.md`, achado 14 |
 | Webhook na conta principal do Asaas (eventos de cobrança e de assinatura, mesmo token): hoje só as subcontas têm | `product/13-modelo-de-negocio.md` §6, Pendente |
 | `ASAAS_API_URL` da API real antes do build (desliga os botões de simular pagamento) | `technical/14-asaas-mcp.md` |

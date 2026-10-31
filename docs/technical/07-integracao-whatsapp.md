@@ -72,6 +72,7 @@ Mensagem que o espaço inicia (lembrete, parabéns, boas-vindas, falta) só sai 
 - [ ] Tarefas agendadas (Supabase Cron, ver [08](08-backend-supabase.md)): lembretes de cobrança (antes, no dia, depois e crítico da mensalidade; o `charge_reminder` das outras cobranças, 3 dias antes por padrão), pacote acabando (última aula e 7 dias antes de vencer) e parabéns, sem duplicar.
 
 ### 3.5 Avisos da Meta (webhooks)
+- **Assinatura (30/10/2026, auditoria):** o POST só vale com `X-Hub-Signature-256` certa (HMAC-SHA256 do corpo com `META_APP_SECRET`, comparação em tempo constante, `lib/security/webhook-signature.ts`). Sem o segredo, produção recusa (503) e o desenvolvimento aceita. Antes, qualquer um mudava a situação das mensagens de qualquer espaço.
 - [ ] Rota no backend para receber: **enviada, entregue, lida, falhou** e **mensagens recebidas**.
 - [ ] Conferir a assinatura do aviso; tratar avisos repetidos sem duplicar.
 - [ ] Atualizar o status do `MessageLog` (hoje simulado) e o motivo da falha.

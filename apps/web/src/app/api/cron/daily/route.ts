@@ -7,6 +7,7 @@ import { runDailySpaceTasks, type DailySpaceTotals } from "@/services/server/dai
 import { reportError } from "@/lib/log";
 import { sendDailyErrorDigest } from "@/services/server/errorDigest";
 import { runPlanDailyTasks } from "@/services/server/subscriptionPlan";
+import { safeEqual } from "@/lib/security/webhook-signature";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   if (!secret) {
     return NextResponse.json({ error: "CRON_SECRET não configurado." }, { status: 503 });
   }
-  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!safeEqual(req.headers.get("authorization"), `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

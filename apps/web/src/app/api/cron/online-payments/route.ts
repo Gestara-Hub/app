@@ -5,6 +5,7 @@ import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/ser
 import { reportError } from "@/lib/log";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { finishJobRun, startJobRun } from "@/services/server/backgroundRuns";
+import { safeEqual } from "@/lib/security/webhook-signature";
 
 /**
  * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (!secret) {
     return NextResponse.json({ error: "CRON_SECRET não configurado." }, { status: 503 });
   }
-  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!safeEqual(req.headers.get("authorization"), `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

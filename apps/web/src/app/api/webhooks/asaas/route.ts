@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError, logWarn, reportError } from "@/lib/log";
 import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgroundRuns";
 import { auditOnlinePaymentConflict, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
+import { safeEqual } from "@/lib/security/webhook-signature";
 
 export async function POST(req: Request) {
   // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   const webhookSecret = process.env.ASAAS_WEBHOOK_SECRET?.trim();
   if (webhookSecret) {
     const headerToken = req.headers.get("asaas-access-token");
-    if (headerToken !== webhookSecret) {
+    if (!safeEqual(headerToken, webhookSecret)) {
       logWarn("[Asaas Webhook] Token de autenticação ausente ou inválido.");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
