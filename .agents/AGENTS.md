@@ -1,6 +1,6 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
-> **Current state (26/10/2026):** all recent work is on the branch `painel-admin` (ahead of `main`, not merged, no push): work there, never on `main`. What is decided and still to do, the tests left for the final round, the decisions waiting for the user and the pre-production checklist are in [`docs/pendencias.md`](docs/pendencias.md); the "Mapa por assunto" of [`docs/README.md`](docs/README.md) says where each subject lives. The overnight run of 24/10 is finished (report in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md)). `CLAUDE.md` has the full, current rules (this file is a summary). `.agents/` (read by Antigravity) is a copy of this file and of `.claude/skills`: refresh it with `pnpm agents:sync` after changing either.
+> **Current state (30/10/2026):** work happens on `main` (`painel-admin` and the overnight branch were merged and deleted on 30/10; nothing is pushed until the user asks). What is decided and still to do, the tests left for the final round, the decisions waiting for the user and the pre-production checklist are in [`docs/pendencias.md`](docs/pendencias.md); the "Mapa por assunto" of [`docs/README.md`](docs/README.md) says where each subject lives. The overnight run of 24/10 is finished (report in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md)). `CLAUDE.md` has the full, current rules (this file is a summary). `.agents/` (read by Antigravity) is a copy of this file and of `.claude/skills`: refresh it with `pnpm agents:sync` after changing either.
 
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
@@ -65,8 +65,8 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ---
 
 ## 5. Git Workflow (USER RULE)
-- **Never run `git commit` or `git push` on your own.** Only commit or push when the user explicitly asks for it, and only the action requested (a request to commit is NOT a request to push).
-- Leave changes in the working tree at the end of a task and tell the user what changed; the user decides when to commit and push.
+- **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
+- **Commit:** Claude Code commits on its own after the checks pass (user rule of 30/10/2026, `CLAUDE.md` §6). Other agents commit only when the user asks: leave changes in the working tree and tell the user what changed.
 
 ---
 

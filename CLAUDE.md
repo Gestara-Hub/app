@@ -122,6 +122,7 @@ pnpm e2e                                 # all browser flows (Playwright, one at
 
 ---
 
-## 6. Git Workflow (USER RULE)
-- **Never run `git commit` or `git push` on your own.** Only commit or push when the user explicitly asks for it, and only the action requested (a request to commit is NOT a request to push).
-- Leave changes in the working tree at the end of a task and tell the user what changed; the user decides when to commit and push.
+## 6. Git Workflow (USER RULE, 2026-10-30)
+- **Commit on your own** when a piece of work is done and the checks of §5 pass: small commits, one subject each, in the repo message style (`feat(area): ...`). Tell the user the hash.
+- **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
+- Work happens on `main` (`painel-admin` and the overnight branch were merged and deleted on 2026-10-30).
