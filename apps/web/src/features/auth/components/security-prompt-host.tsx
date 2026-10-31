@@ -17,6 +17,7 @@ import {
 } from "../security-prompt";
 import { TwoFactorDialog } from "./two-factor-dialog";
 import { dateInSpace } from "@gestarahub/core/date";
+import { markInterruption, requestAccountMenuTip } from "@/lib/account-menu-tip";
 
 const COPY: Record<SecurityPromptReason, string> = {
   online_payments: "Sua conta agora recebe pagamentos. Proteja o acesso.",
@@ -79,6 +80,7 @@ export function SecurityPromptHost() {
       const status = await getTwoFactorStatusAction();
       if (!status.ok || status.googleOnly || status.demo || status.enabled) return;
       markAsked();
+      markInterruption();
       setReason(next);
     } finally {
       checking.current = false;
@@ -101,6 +103,8 @@ export function SecurityPromptHost() {
       securityPrompt: { ...state, dismissCount: (state?.dismissCount ?? 0) + 1, lastDismissedAt: today },
     });
     setReason(null);
+    // Mostra onde ativar depois (dica do menu da conta, 31/10/2026).
+    requestAccountMenuTip("security");
   }
 
   return (

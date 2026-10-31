@@ -22,6 +22,7 @@ import {
   viewModeTipSeenKey,
   type ListViewMode,
 } from "./view-mode-script";
+import { markInterruption } from "@/lib/account-menu-tip";
 
 const ViewModeServerContext = createContext<Record<string, ListViewMode>>({});
 
@@ -364,6 +365,8 @@ export function ViewModeCoachmark({
       } catch {
         // ignore
       }
+      // Conta como a interrupcao deste acesso (a dica do menu da conta espera).
+      markInterruption();
       setTarget(selector);
     };
 

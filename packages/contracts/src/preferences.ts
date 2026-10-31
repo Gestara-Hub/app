@@ -37,6 +37,13 @@ export interface UserPreferences {
     dismissCount?: number;
     lastDismissedAt?: string;
   };
+  /** Dica do menu da conta no avatar (31/10/2026): uma vez por pessoa. */
+  accountMenuTip?: {
+    /** Primeiro dia no app (o "segundo dia de uso" conta daqui). */
+    firstSeenAt?: string;
+    /** Dia em que a dica apareceu; depois dele, nunca mais. */
+    shownAt?: string;
+  };
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
   themeStyling?: ThemeStylingPreferences;

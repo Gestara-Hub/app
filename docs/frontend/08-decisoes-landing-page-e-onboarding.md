@@ -364,6 +364,20 @@ Quem termina a configuração inicial costuma fechar a comemoração sem ler, e 
 - Código: `features/onboarding/components/discovery-next-step-bar.tsx` (montado no `app/(app)/layout.tsx`, abaixo do `OnboardingTopBanner`), ícones em `features/onboarding/discovery-icons.ts`, comemoração em `features/turmas/components/setup-complete-dialog.tsx`.
 - **Celular** (revisão de 31/10/2026): a faixa e os itens do card mostram só a seta, sem o texto "Fazer agora" (que segue no nome acessível), para o título caber numa linha. No card, o item inteiro abre o passo.
 
+### 4.9. Dica do menu da conta no avatar (31/10/2026)
+
+O menu do avatar (Preferências, Segurança, Ajuda e suporte, Sair) ganhou uma dica de um passo, com o mesmo balão da dica de Lista e Cartões (`ProductTour`, "Entendi"). Não aparece no primeiro acesso, que já tem a configuração inicial, o "Próximo passo" e o "Descubra o dia a dia": aparece quando a pessoa precisa de algo que está no menu.
+
+- **Uma vez por pessoa, no primeiro destes momentos:**
+  1. logo depois do "Agora não" no aviso da verificação em duas etapas: "Segurança fica aqui";
+  2. com uma resposta do suporte ainda não lida, em qualquer tela: "Resposta do suporte";
+  3. no Painel, a partir do segundo dia de uso: "Sua conta fica aqui".
+- **No máximo uma interrupção por acesso:** o aviso de segurança e a dica de Lista e Cartões contam. O momento 1 é a continuação do próprio aviso; os outros esperam o próximo acesso.
+- **Espera a tela livre e carregada:** nenhuma janela, painel, menu, tour ou guia na tela aberto, e sem esqueleto de carregamento.
+- **Nunca** na configuração inicial nem na demonstração.
+- **O "visto" fica na conta** (`UserPreferences.accountMenuTip`): não repete em outro aparelho. O primeiro dia de uso conta a partir do primeiro acesso depois desta mudança.
+- Código: regras em `apps/web/src/lib/account-menu-tip.ts` (testadas), balão em `components/layout/account-menu-tip.tsx`, alvo `[data-account-menu]` no avatar; e2e `menu-da-conta`.
+
 ---
 
 ## 5. Mapeamento de Arquivos Atuais no Working Tree

@@ -30,6 +30,7 @@ import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
+import { AccountMenuTip } from "./account-menu-tip";
 import { openHelp, useSupportUnread } from "@/features/support";
 
 export function AppTopbar() {
@@ -92,6 +93,7 @@ export function AppTopbar() {
             <Button
               variant="ghost"
               className="size-8 rounded-full p-0"
+              data-account-menu=""
               aria-label={supportUnread > 0 ? `Menu do usuário (${supportUnread} resposta do suporte)` : "Menu do usuário"}
             >
               <span className="relative">
@@ -175,6 +177,7 @@ export function AppTopbar() {
             </form>
           </DropdownMenuContent>
         </DropdownMenu>
+        <AccountMenuTip supportUnread={supportUnread} demo={isDemoSpace(user.organizationId)} />
       </div>
     </header>
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
