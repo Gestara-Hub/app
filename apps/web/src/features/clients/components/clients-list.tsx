@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Ban,
   ClipboardList,
+  Ruler,
   GraduationCap,
   Mail,
   MessageCircle,
@@ -205,6 +206,8 @@ interface ClientsListProps {
   onOpenRecords?: (client: Client) => void;
   /** Boletim "Notas" (so quando alguma modalidade tem avaliacoes). */
   onOpenGrades?: (client: Client) => void;
+  /** "Testes e medidas" (so quando alguma modalidade tem medidas). */
+  onOpenMeasurements?: (client: Client) => void;
   /** Nova cobranca avulsa (so com permissao de cobranca). */
   onNewCharge?: (client: Client) => void;
   /** Venda e cancelamento de pacote de aulas (mesma permissao). */
@@ -224,6 +227,7 @@ function ClientRow({
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
+  onOpenMeasurements,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -240,6 +244,7 @@ function ClientRow({
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onOpenGrades?: (c: Client) => void;
+  onOpenMeasurements?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
@@ -299,6 +304,16 @@ function ClientRow({
                 label: "Notas",
                 icon: <ClipboardList className="size-4" />,
                 onSelect: () => onOpenGrades(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onOpenMeasurements
+          ? [
+              {
+                key: "measurements",
+                label: "Testes e medidas",
+                icon: <Ruler className="size-4" />,
+                onSelect: () => onOpenMeasurements(client),
               },
             ]
           : []),
@@ -430,6 +445,7 @@ function ClientCard({
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
+  onOpenMeasurements,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -446,6 +462,7 @@ function ClientCard({
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onOpenGrades?: (c: Client) => void;
+  onOpenMeasurements?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
@@ -505,6 +522,16 @@ function ClientCard({
                 label: "Notas",
                 icon: <ClipboardList className="size-4" />,
                 onSelect: () => onOpenGrades(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onOpenMeasurements
+          ? [
+              {
+                key: "measurements",
+                label: "Testes e medidas",
+                icon: <Ruler className="size-4" />,
+                onSelect: () => onOpenMeasurements(client),
               },
             ]
           : []),
@@ -726,6 +753,7 @@ export function ClientsList({
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
+  onOpenMeasurements,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -772,6 +800,10 @@ export function ClientsList({
   // "Notas" no menu so quando alguma modalidade ativa tem avaliacoes.
   const gradesAction = (categories ?? []).some((c) => c.status === "active" && c.assessments?.enabled)
     ? onOpenGrades
+    : undefined;
+  // "Testes e medidas" so quando alguma modalidade ativa tem medidas.
+  const measurementsAction = (categories ?? []).some((c) => c.status === "active" && c.measurements?.enabled)
+    ? onOpenMeasurements
     : undefined;
 
   const hasSearch = Boolean(filter.search);
@@ -851,6 +883,7 @@ export function ClientsList({
         onOpenGraduation={onOpenGraduation}
         onOpenRecords={onOpenRecords}
         onOpenGrades={gradesAction}
+        onOpenMeasurements={measurementsAction}
         onNewCharge={onNewCharge}
         onSellPackage={onSellPackage}
         onCancelPackage={onCancelPackage}
@@ -930,6 +963,7 @@ export function ClientsList({
               onOpenGraduation={onOpenGraduation}
               onOpenRecords={onOpenRecords}
               onOpenGrades={gradesAction}
+              onOpenMeasurements={measurementsAction}
               onNewCharge={onNewCharge}
               onSellPackage={onSellPackage}
               onCancelPackage={onCancelPackage}

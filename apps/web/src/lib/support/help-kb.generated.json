@@ -124,7 +124,7 @@
         {
           "kind": "botão",
           "label": "Evolução",
-          "text": "Veja o nível do aluno e os registros de aula."
+          "text": "Veja o nível do aluno, os registros de aula e os testes e medidas."
         },
         {
           "kind": "botão",
@@ -1800,6 +1800,44 @@
           "kind": "texto",
           "label": "Frequência mínima (%)",
           "text": "Opcional. Com ela, o boletim mostra se o aluno ficou abaixo."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "modalidades#testes-e-medidas-da-modalidade",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Testes e medidas da modalidade",
+    "route": "/classes/modalities",
+    "text": "Depois, na ficha do aluno (Evolução) ou no menu dele em Alunos, abra \"Testes e medidas\" e registre a avaliação. A mudança fica verde quando melhora e vermelha quando piora.",
+    "summary": "Acompanhe medidas do aluno, como peso e tempo.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da modalidade."
+        },
+        {
+          "kind": "item",
+          "label": "Editar / Trilha|Editar",
+          "text": "Abra a modalidade para editar."
+        },
+        {
+          "kind": "texto",
+          "label": "Esta modalidade tem testes e medidas",
+          "text": "Ligue a chave e escolha as medidas."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar medida",
+          "text": "Dê nome e unidade; diga se é melhor subir ou descer."
         },
         {
           "kind": "botão",

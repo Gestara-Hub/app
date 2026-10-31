@@ -82,6 +82,7 @@ Quando uma pessoa física vinculada ao espaço solicita o "direito ao esquecimen
   * Dados financeiros históricos são **anonimizados**: o registro de pagamento continua existindo para o caixa da academia bater, mas o nome é mascarado para `Aluno Anonimizado #ID` e o CPF é destruído (`***.***.***-**`).
   * As matrículas e cobranças futuras são canceladas.
   * **CPF (22/10/2026):** o do aluno (`clients.cpf`) e o do responsável financeiro (`guardians[].cpf`) existem só para a cobrança online (o parceiro de pagamentos exige o CPF de quem paga). Na anonimização os dois são destruídos.
+  * **Testes e medidas (31/10/2026):** peso, % de gordura, dor e afins (`student_measurements`) são dado de saúde, sensível na LGPD (art. 11). Entram no "histórico de avaliações físicas" acima: na anonimização são **eliminados**, não pseudonimizados. Já vão na exportação dos dados do espaço (`platform.export_space`, migração 75). A anonimização ainda não está no código; quando entrar, apaga as linhas do aluno nesta tabela.
 
 ### 3.2. Professor / Instrutor
 * **Travas de Bloqueio:**

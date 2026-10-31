@@ -32,6 +32,16 @@ Guia: /classes/modalities
 + botão "Salvar": Clique aqui para guardar.
 Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim. Na soma dos pontos, cada avaliação diz quanto vale. Para dar uma segunda chance, crie uma avaliação e escolha "Recuperação de": vale a maior nota de cada aluno.
 
+## Testes e medidas da modalidade
+Resumo: Acompanhe medidas do aluno, como peso e tempo.
+Guia: /classes/modalities
++ botão "Ações de": Abra o menu da modalidade.
++ item "Editar / Trilha|Editar": Abra a modalidade para editar.
++ texto "Esta modalidade tem testes e medidas": Ligue a chave e escolha as medidas.
++ botão "Adicionar medida": Dê nome e unidade; diga se é melhor subir ou descer.
++ botão "Salvar": Clique aqui para guardar.
+Depois, na ficha do aluno (Evolução) ou no menu dele em Alunos, abra "Testes e medidas" e registre a avaliação. A mudança fica verde quando melhora e vermelha quando piora.
+
 ## Buscar modalidades
 Resumo: Ache uma modalidade pelo nome e veja as inativas.
 Guia: /classes/modalities

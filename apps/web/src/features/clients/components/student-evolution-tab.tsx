@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpCircle, ClipboardCheck, GraduationCap, MessageSquarePlus, TrendingUp } from "lucide-react";
+import { ArrowUpCircle, ClipboardCheck, GraduationCap, MessageSquarePlus, Ruler, TrendingUp } from "lucide-react";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function StudentEvolutionTab({
   onOpenLevels,
   gradedModalityIds,
   onOpenGrades,
+  onOpenMeasurements,
   inAnyClass = false,
 }: {
   levels: StudentSummaryLevel[];
@@ -30,27 +31,43 @@ export function StudentEvolutionTab({
   /** Modalidades com avaliacoes ligadas: mostram o atalho "Notas". */
   gradedModalityIds?: ReadonlySet<Id>;
   onOpenGrades?: (modalityId: Id) => void;
+  /** Aluno em modalidade com testes e medidas (doc 21 §2.4): o atalho vale mesmo sem trilha. */
+  onOpenMeasurements?: () => void;
   /** Esta em alguma turma: entao as modalidades dela nao tem trilha (ALU-27). */
   inAnyClass?: boolean;
 }) {
+  const measurementsBar = onOpenMeasurements ? (
+    <div className="flex justify-end">
+      <Button variant="outline" onClick={onOpenMeasurements}>
+        <Ruler className="size-4" />
+        Testes e medidas
+      </Button>
+    </div>
+  ) : null;
+
   if (levels.length === 0) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card/40">
-        <ModuleEmptyGuide
-          icon={<TrendingUp className="size-8" />}
-          title="Sem trilha de evolução ainda."
-          description={
-            inAnyClass
-              ? "As turmas deste aluno são de modalidades sem trilha de níveis."
-              : "Aparece quando o aluno entra numa turma de modalidade com trilha."
-          }
-        />
+      <div className="space-y-3">
+        {measurementsBar}
+        <div className="rounded-xl border border-border/60 bg-card/40">
+          <ModuleEmptyGuide
+            icon={<TrendingUp className="size-8" />}
+            title="Sem trilha de evolução ainda."
+            description={
+              inAnyClass
+                ? "As turmas deste aluno são de modalidades sem trilha de níveis."
+                : "Aparece quando o aluno entra numa turma de modalidade com trilha."
+            }
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <div className="space-y-3">
+      {measurementsBar}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {levels.map((level) => (
         <section key={level.modalityId} className="flex flex-col rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -124,6 +141,7 @@ export function StudentEvolutionTab({
           </div>
         </section>
       ))}
+      </div>
     </div>
   );
 }

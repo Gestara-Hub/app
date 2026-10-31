@@ -44,6 +44,7 @@ import { useCan, useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { SendMessageDialog, StudentMessagesPanel } from "@/features/communication";
 import { StudentGradesDialog } from "@/features/grades";
+import { StudentMeasurementsDialog } from "@/features/measurements";
 import { useOrganization } from "@/features/settings";
 import {
   NewExtraChargeDialog,
@@ -234,6 +235,16 @@ export function StudentProfileView({ id }: { id: Id }) {
   const { data: categories } = useCategories();
   const gradedModalityIds = new Set(
     (categories ?? []).filter((c) => c.assessments?.enabled).map((c) => c.id),
+  );
+  // Testes e medidas: aluno em turma (ativa ou pausada) de modalidade com medidas ligadas.
+  const [measurementsOpen, setMeasurementsOpen] = useState(false);
+  const measuredModalityIds = new Set(
+    (categories ?? []).filter((c) => c.measurements?.enabled).map((c) => c.id),
+  );
+  const showMeasurements = Boolean(
+    summary?.enrollments.some(
+      (e) => e.modalityId && measuredModalityIds.has(e.modalityId) && (e.state === "active" || e.state === "paused"),
+    ),
   );
   const [recordsModality, setRecordsModality] = useState<Id | null>(null);
   const { data: organization } = useOrganization();
@@ -509,6 +520,7 @@ export function StudentProfileView({ id }: { id: Id }) {
                 onOpenLevels={setLevelsModality}
                 gradedModalityIds={gradedModalityIds}
                 onOpenGrades={setGradesModality}
+                onOpenMeasurements={showMeasurements ? () => setMeasurementsOpen(true) : undefined}
               />
             ),
           },
@@ -627,6 +639,11 @@ export function StudentProfileView({ id }: { id: Id }) {
               if (!open) setLevelsModality(null);
             }}
             initialModalityId={levelsModality ?? undefined}
+          />
+          <StudentMeasurementsDialog
+            client={student}
+            open={measurementsOpen}
+            onOpenChange={setMeasurementsOpen}
           />
           <StudentGradesDialog
             client={student}

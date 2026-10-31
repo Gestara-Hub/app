@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizePassingGrade, validateMinAttendance } from "@gestarahub/core/grades";
+import { validateMeasures } from "@gestarahub/core/measurements";
 
 /**
  * Schema de formulário da Modalidade (Category no M3). Mensagens alinhadas ao
@@ -17,8 +18,26 @@ export const modalityFormSchema = z
     passingGrade: z.string(),
     resultMode: z.enum(["average", "sum"]),
     minAttendance: z.string(),
+    // Testes e medidas (doc 21 §2.4, fase B).
+    measurementsEnabled: z.boolean(),
+    measures: z.array(
+      z.object({
+        key: z.string(),
+        id: z.string(),
+        name: z.string(),
+        unit: z.string(),
+        better: z.enum(["higher", "lower"]),
+      }),
+    ),
   })
   .superRefine((values, ctx) => {
+    if (values.measurementsEnabled) {
+      const check = validateMeasures(values.measures);
+      if (!check.ok) ctx.addIssue({ code: "custom", path: ["measures"], message: check.message });
+      else if (check.value.length === 0) {
+        ctx.addIssue({ code: "custom", path: ["measures"], message: "Adicione pelo menos uma medida." });
+      }
+    }
     if (!values.assessmentsEnabled) return;
     const check = normalizePassingGrade(values.assessmentScale, values.passingGrade);
     if (!check.ok) ctx.addIssue({ code: "custom", path: ["passingGrade"], message: check.message });

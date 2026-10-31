@@ -10,6 +10,7 @@ import type { Client, StudentPackageView } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
 import { NewExtraChargeDialog, SellPackageDialog, useCancelStudentPackage } from "@/features/turmas";
 import { StudentGradesDialog } from "@/features/grades";
+import { StudentMeasurementsDialog } from "@/features/measurements";
 import { SendMessageDialog } from "@/features/communication";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
@@ -29,6 +30,8 @@ export function ClientsView() {
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
   // Boletim "Notas" (modalidades com avaliacoes).
   const [gradesClient, setGradesClient] = useState<Client | null>(null);
+  // Testes e medidas (modalidades com medidas).
+  const [measurementsClient, setMeasurementsClient] = useState<Client | null>(null);
   // Cobranca avulsa com o aluno fixo.
   const [chargeClient, setChargeClient] = useState<Client | null>(null);
   // Venda de pacote de aulas com o aluno fixo.
@@ -122,6 +125,7 @@ export function ClientsView() {
         onOpenGraduation={isClasses && can("progression:manage") ? setGraduationClient : undefined}
         onOpenRecords={isClasses && can("progression:manage") ? setRecordsClient : undefined}
         onOpenGrades={isClasses ? setGradesClient : undefined}
+        onOpenMeasurements={isClasses ? setMeasurementsClient : undefined}
         onNewCharge={canCharge ? setChargeClient : undefined}
         onSellPackage={canCharge ? setPackageClient : undefined}
         onCancelPackage={canCharge ? (pkg) => void cancelPackage(pkg) : undefined}
@@ -157,6 +161,13 @@ export function ClientsView() {
             open={Boolean(gradesClient)}
             onOpenChange={(open) => {
               if (!open) setGradesClient(null);
+            }}
+          />
+          <StudentMeasurementsDialog
+            client={measurementsClient}
+            open={Boolean(measurementsClient)}
+            onOpenChange={(open) => {
+              if (!open) setMeasurementsClient(null);
             }}
           />
           <StudentRecordsDialog

@@ -7,6 +7,7 @@ import {
   Award,
   ChevronDown,
   ClipboardCheck,
+  Ruler,
   ChevronUp,
   GripVertical,
   Plus,
@@ -69,11 +70,13 @@ import type {
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
 import {
+  measureSuggestionsFor,
   segmentDefaultAssessments,
   segmentDefaultTrack,
   vocabularyForTrack,
   type BusinessSegmentPreset,
 } from "@/lib/business-segment-presets";
+import { ModalityMeasuresEditor, newMeasureKey } from "@/features/measurements";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCategories, useCreateCategory, useUpdateCategory } from "@/features/categories";
 import { suggestionsNotTaken } from "@/lib/text";
@@ -115,6 +118,8 @@ function toDefaults(modality: Category | undefined, segment: BusinessSegmentPres
     passingGrade: passingGradeText(scale, assessments?.passingGrade ?? defaultPassingGrade(scale)),
     resultMode: assessments?.resultMode ?? "average",
     minAttendance: assessments?.minAttendancePercent ? String(assessments.minAttendancePercent) : "",
+    measurementsEnabled: Boolean(modality?.measurements?.enabled),
+    measures: (modality?.measurements?.measures ?? []).map((m) => ({ ...m, key: newMeasureKey() })),
   };
 }
 
@@ -222,6 +227,7 @@ export function ModalityForm({
     defaultValues: toDefaults(modality, segment),
   });
   const assessmentsOn = useWatch({ control: form.control, name: "assessmentsEnabled" });
+  const measurementsOn = useWatch({ control: form.control, name: "measurementsEnabled" });
   const assessmentScale = useWatch({ control: form.control, name: "assessmentScale" });
   const resultMode = useWatch({ control: form.control, name: "resultMode" });
   const numericScale = assessmentScale === "zero_ten" || assessmentScale === "zero_hundred";
@@ -425,6 +431,15 @@ export function ModalityForm({
       ...(numericScale && values.resultMode === "sum" ? { resultMode: "sum" as const } : {}),
       ...(values.minAttendance.trim() ? { minAttendancePercent: Number(values.minAttendance.trim()) } : {}),
     };
+    // Medidas: sempre vai a lista (desligar guarda as medidas para religar depois).
+    const measurements = {
+      enabled: values.measurementsEnabled,
+      measures: values.measures.map(({ key: _key, ...m }) => {
+        void _key;
+        return m;
+      }),
+    };
+    const sendMeasurements = values.measurementsEnabled || values.measures.length > 0 || Boolean(modality?.measurements);
 
     try {
       if (isEdit && modality) {
@@ -434,6 +449,7 @@ export function ModalityForm({
             name: values.name,
             progressionTrack: sanitizedTrack,
             assessments,
+            ...(sendMeasurements ? { measurements } : {}),
             status: values.active ? "active" : "inactive",
           },
         });
@@ -443,6 +459,7 @@ export function ModalityForm({
           name: values.name,
           progressionTrack: sanitizedTrack,
           assessments,
+          ...(sendMeasurements ? { measurements } : {}),
         };
         await createMut.mutateAsync(payload);
         toast.success("Modalidade criada com sucesso.");
@@ -455,9 +472,11 @@ export function ModalityForm({
           const field =
             f.field === "assessments.minAttendancePercent"
               ? "minAttendance"
-              : f.field.startsWith("assessments.")
-                ? "passingGrade"
-                : f.field;
+              : f.field === "measurements"
+                ? "measures"
+                : f.field.startsWith("assessments.")
+                  ? "passingGrade"
+                  : f.field;
           form.setError(field as Path<ModalityFormValues>, {
             message: f.message,
           });
@@ -1299,6 +1318,48 @@ export function ModalityForm({
                 {assessmentScale === "pass_fail" ? (
                   <p className="text-xs text-muted-foreground">Aprova quem fica apto.</p>
                 ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Testes e medidas (doc 21 §2.4, fase B) */}
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Ruler className="size-4 text-primary shrink-0" />
+                <label htmlFor="measurementsEnabled" className="text-sm font-semibold text-foreground leading-tight">
+                  Esta modalidade tem testes e medidas
+                </label>
+              </div>
+              <Controller
+                control={form.control}
+                name="measurementsEnabled"
+                render={({ field }) => (
+                  <Switch
+                    id="measurementsEnabled"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={pending}
+                  />
+                )}
+              />
+            </div>
+            {measurementsOn ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Medidas do aluno ao longo do tempo, como peso e tempo.</p>
+                <Controller
+                  control={form.control}
+                  name="measures"
+                  render={({ field, fieldState }) => (
+                    <ModalityMeasuresEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      suggestions={measureSuggestionsFor(segment)}
+                      disabled={pending}
+                      error={fieldState.error?.message}
+                    />
+                  )}
+                />
               </div>
             ) : null}
           </div>

@@ -121,9 +121,17 @@ Revisão da seção de avaliações da modalidade, pedida pelo usuário: as quat
 - **Boletim em PDF:** mesmas regras ("Total ... de 10", coluna "Vale", recuperação no nome e "4 → 7" na nota, frequência no resumo). A coluna do peso deixou de arredondar (peso 1,5 aparecia como 2).
 - **Código:** regras puras em `packages/core/src/grades.ts` (`resultOf`, `assessmentAverage`, `withRecovery`, `isGradeBelowPassing`, `validatePoints`, `validateMinAttendance`); serviço `services/grades/gradeRules.ts` (`effectiveItems`, `pointsOf`, `modalityAttendancePercent`); migração 72; testes em `packages/core/test/grades.test.ts`, `services/__tests__/grades-sum-recovery.test.ts` e e2e `notas` (fase A).
 
-### 2.4 Fase B: testes e medidas (aprovada em 31/10/2026, a fazer)
+### 2.4 Fase B entregue: testes e medidas (31/10/2026)
 
-Para funcional e crossfit, pilates e yoga, natação e esportes: a modalidade define as medidas (nome, unidade e se é melhor subir ou descer, por exemplo peso em kg, prancha em segundos, 25 m crawl em segundos), com sugestões pela área. A avaliação é por aluno, não por turma (a de entrada e as periódicas); a ficha mostra a última, a anterior e quanto mudou.
+Para funcional e crossfit, pilates e yoga, natação e esportes, que não tinham onde registrar a evolução em números.
+
+- **Modalidade** (`Category.measurements`, coluna jsonb `categories.measurements`): "Esta modalidade tem testes e medidas" e a lista de medidas, cada uma com nome, unidade (opcional, até 10 caracteres) e "Melhor subir" ou "Melhor descer". Até 20 medidas, sem nome repetido; ligada pede pelo menos uma. Sugestões pela área (`measureSuggestionsFor`): funcional (peso, gordura, cintura, flexões em 1 min, prancha), pilates (flexibilidade, dor de 0 a 10, peso, prancha), natação (25 m e 50 m crawl, 25 m costas, apneia); as outras áreas, uma lista geral. Não liga sozinha em nenhuma área. As medidas novas ganham id no servidor; as que já existiam guardam o id, então renomear não perde a história.
+- **Avaliação do aluno** (`StudentMeasurement`, tabela `student_measurements`): data (até hoje), valor por medida (número com até duas casas, pode ser negativo; vazio = não medido; pelo menos uma) e observação. É por aluno numa modalidade, não por turma.
+- **Tela "Testes e medidas"** (painel lateral): por modalidade com medidas em que o aluno tem turma ativa ou alguma avaliação. Cada medida mostra a última, "antes X" e a mudança, verde quando melhora pela direção da medida e vermelha quando piora; abaixo, o histórico com editar e excluir (com confirmação). Entra pelo menu do aluno em Alunos e pelo botão "Testes e medidas" na Evolução da ficha, que aparece mesmo sem trilha (pilates e funcional costumam não ter).
+- **Permissão:** gravar pede `progression:manage`, como a evolução: dono e gerente em todos os alunos; o professor só nos alunos das turmas dele na modalidade (`assertCanManageProgression`). Ver: o professor só os alunos das turmas dele. Atendente vê, não registra.
+- **Banco:** migração 73 (tabela, leitura só do próprio espaço, escrita só pelo servidor, duas etapas exigidas), 74 (a tabela entra na lista de gravação do mundo, `apply_world_changes`) e 75 (entra na exportação dos dados do espaço). Peso e gordura são dado de saúde: ver doc 24, seção 3.1.
+- **Auditoria:** "registrou", "editou" e "excluiu testes e medidas de {aluno} · {modalidade}" (tipo "Testes e medidas").
+- **Código:** regras em `packages/core/src/measurements.ts` (`validateMeasures`, `normalizeMeasureValue`, `measureProgress`, formato); serviço `apps/web/src/services/measurements`; tela `apps/web/src/features/measurements`; testes em `packages/core/test/measurements.test.ts`, `services/__tests__/measurements.test.ts`, no fluxo de banco e no e2e `medidas`.
 
 ## Texto padrão do certificado (24/10/2026)
 
