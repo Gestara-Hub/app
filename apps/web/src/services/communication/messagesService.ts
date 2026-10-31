@@ -94,7 +94,7 @@ export const messagesService = {
         if (view.isQuotaExhausted) {
           throw apiError(
             "CONFLICT",
-            `Franquia de mensagens automáticas atingida (${view.monthlyQuota.used} de ${view.monthlyQuota.included}). Use o envio assistido até a franquia renovar, no próximo pagamento do plano.`,
+            `Franquia de mensagens automáticas atingida (${view.monthlyQuota.used} de ${view.monthlyQuota.included}). Use o envio assistido até a franquia renovar, no próximo ciclo do plano.`,
             { httpStatus: 409 },
           );
         }

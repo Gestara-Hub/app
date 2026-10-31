@@ -2,11 +2,10 @@
 
 import { useTeamWords } from "@/features/settings";
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
-import { Building2, Bug, Check, CircleHelp, Crown, Lightbulb, LifeBuoy, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -26,20 +25,18 @@ import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { TwoFactorDialog, useCurrentUser } from "@/features/auth";
-import { useOrganization, useSubscription, useUnit } from "@/features/settings";
+import { useOrganization, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
-import { openHelp, openSupport, useSupportUnread } from "@/features/support";
+import { openHelp, useSupportUnread } from "@/features/support";
 
 export function AppTopbar() {
   const team = useTeamWords();
   const user = useCurrentUser();
   const { data: unit } = useUnit();
   const { data: organization, isError: orgError } = useOrganization();
-  const { data: subscription } = useSubscription();
-  const tier = subscription?.tier ?? "free";
   const router = useRouter();
   // Demonstracao no banco: troca de perfil entrando como o usuario dele.
   const demo = isDemoOrganization(user.organizationId);
@@ -90,29 +87,6 @@ export function AppTopbar() {
         </Button>
         */}
         <RemindersBell />
-        <Button
-          asChild
-          variant="outline"
-          className="hidden sm:inline-flex gap-1.5 rounded-full border-border/80 hover:border-primary/50 transition-colors shadow-2xs"
-          title="Ver todos os planos e recursos"
-        >
-          <Link href="/plans">
-            {tier === "scale" ? (
-              <Crown className="size-3.5 text-indigo-500" />
-            ) : tier === "pro" ? (
-              <Sparkles className="size-3.5 text-amber-500" />
-            ) : (
-              <Sparkles className="size-3.5 text-primary" />
-            )}
-            <span>
-              {tier === "scale"
-                ? "Plano Expansão"
-                : tier === "pro"
-                  ? "Plano Profissional"
-                  : "Ver planos"}
-            </span>
-          </Link>
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -140,35 +114,6 @@ export function AppTopbar() {
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/plans" className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                <span>Planos & Assinatura</span>
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onSelect={() => openHelp()} className="cursor-pointer">
-              <CircleHelp className="size-4" />
-              <span>Ajuda</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => openSupport()} className="cursor-pointer">
-              <LifeBuoy className="size-4" />
-              <span>Fale com a gente</span>
-              {supportUnread > 0 ? (
-                <span className="ml-auto rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-destructive-foreground">
-                  {supportUnread}
-                </span>
-              ) : null}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => openSupport({ kind: "bug" })} className="cursor-pointer">
-              <Bug className="size-4" />
-              <span>Relatar um problema</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => openSupport({ kind: "suggestion" })} className="cursor-pointer">
-              <Lightbulb className="size-4" />
-              <span>Sugerir uma melhoria</span>
-            </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => setPreferencesOpen(true)}
               className="cursor-pointer"
@@ -179,6 +124,18 @@ export function AppTopbar() {
             <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
               <ShieldCheck className="size-4" />
               <span>Segurança</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Ajuda e o Fale com a gente num item so: o painel de Ajuda termina
+                com falar com a gente, relatar problema e sugerir melhoria. */}
+            <DropdownMenuItem onSelect={() => openHelp()} className="cursor-pointer">
+              <CircleHelp className="size-4" />
+              <span>Ajuda e suporte</span>
+              {supportUnread > 0 ? (
+                <span className="ml-auto rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-destructive-foreground">
+                  {supportUnread}
+                </span>
+              ) : null}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
 
@@ -204,10 +161,10 @@ export function AppTopbar() {
                     {demoUser.profile === user.profile ? <Check className="mt-0.5 size-4" /> : null}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
               </>
             ) : null}
 
-            <DropdownMenuSeparator />
             <form action={signOut}>
               <DropdownMenuItem asChild variant="destructive">
                 <button type="submit" onClick={resetAnalytics} className="w-full cursor-pointer">

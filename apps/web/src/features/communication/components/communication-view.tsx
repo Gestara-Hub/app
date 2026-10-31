@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { History, MessageCircle, MessageSquareText, Plus, Smartphone } from "lucide-react";
 import type { CommunicationMetrics, WhatsAppConnectionView } from "@gestarahub/contracts";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
@@ -169,8 +170,20 @@ function SummaryCards({ metrics }: { metrics: CommunicationMetrics }) {
   );
 }
 
+const isTab = (value: string | null): value is Tab => TABS.some((t) => t.value === value);
+
 export function CommunicationView() {
-  const [tab, setTab] = useState<Tab>("messages");
+  // A aba vem do endereco (`?tab=connection`, o link do aviso da franquia no sino).
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const paramTab = searchParams.get("tab");
+  const tab: Tab = isTab(paramTab) ? paramTab : "messages";
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
   const [sendOpen, setSendOpen] = useState(false);
   const { data: connection } = useWhatsAppConnection();
   const { data: metrics, isPending: metricsPending } = useCommunicationMetrics();

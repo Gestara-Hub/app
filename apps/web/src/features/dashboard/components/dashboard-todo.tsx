@@ -15,6 +15,7 @@ import {
   HandCoins,
   HeartHandshake,
   MessageCircle,
+  Receipt,
   Ticket,
   UserPlus,
 } from "lucide-react";
@@ -37,6 +38,7 @@ import {
 } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
 import { SellPackageDialog } from "@/features/turmas";
+import type { BellAlert } from "../bell-alerts";
 import { useLevelChangePending } from "./use-level-change-pending";
 
 /** Ate 3 nomes e "e mais N". */
@@ -177,6 +179,12 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   broadcast: { icon: <MessageCircle className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
 };
 
+const ALERT_TONE: Record<BellAlert["tone"], string> = {
+  info: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  danger: "bg-destructive/15 text-destructive",
+};
+
 /** Rotulo do botao do WhatsApp pelo tipo de lembrete. */
 function whatsAppLabel(item: ReminderItem): string {
   if (item.trigger === "birthday_greeting") return `Mandar parabéns para ${item.studentName} no WhatsApp`;
@@ -195,7 +203,17 @@ function whatsAppLabel(item: ReminderItem): string {
  * Cada aluno: WhatsApp com o modelo pronto e, no menu, adiar ou nao lembrar.
  * O ja avisado aparece marcado e nao conta como pendencia.
  */
-export function DashboardTodo({ today, bare = false }: { today: string; /** Sem o cartao (no painel do sino). */ bare?: boolean }) {
+export function DashboardTodo({
+  today,
+  bare = false,
+  alerts = [],
+}: {
+  today: string;
+  /** Sem o cartao (no painel do sino). */
+  bare?: boolean;
+  /** Avisos do espaco (plano, franquia), so no sino, antes dos lembretes. */
+  alerts?: BellAlert[];
+}) {
   const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
   const can = useCan();
@@ -214,7 +232,7 @@ export function DashboardTodo({ today, bare = false }: { today: string; /** Sem 
     levelPending.map((p) => p.track),
     areaVocabulary,
   ).level.toLowerCase();
-  const count = reminders.pending + levelPending.length;
+  const count = alerts.length + reminders.pending + levelPending.length;
 
   function itemActions(item: ReminderItem): ListItemAction[] {
     return [
@@ -225,6 +243,18 @@ export function DashboardTodo({ today, bare = false }: { today: string; /** Sem 
 
   const list = (
     <ul className="divide-y divide-border/60">
+      {alerts.map((alert) => (
+        <TodoRow
+          key={alert.key}
+          icon={alert.kind === "plan" ? <Receipt className="size-4" /> : <MessageCircle className="size-4" />}
+          tone={ALERT_TONE[alert.tone]}
+          title={alert.title}
+          detail={alert.text}
+          action={alert.action}
+          href={alert.href}
+        />
+      ))}
+
       {reminders.groups.map((group) => (
         <TodoRow
           key={group.key}

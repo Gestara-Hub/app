@@ -5,7 +5,8 @@ import { currentAcademy, expect, seedAcademy, skipWelcome, test } from "./fixtur
 /**
  * Plano GestaraHub (doc product/13 §6, technical/24): troca de plano com a
  * conta antes de cobrar, troca marcada e "Desmarcar", histórico do plano,
- * aviso fixo da renovação no topo e o aviso (toast) fora do rodapé das janelas.
+ * avisos do plano (no sino; fixo no topo só com o plano caindo) e o aviso
+ * (toast) fora do rodapé das janelas.
  * Hoje e terca 22/09/2026. O servidor do e2e roda sem chave do Asaas: a
  * cobranca da diferenca e simulada ("Simular pagamento (testes)").
  */
@@ -99,12 +100,22 @@ test("voltar ao Grátis fica marcado para o fim do período e dá para desmarcar
   await expect(panel).toContainText("Troca desmarcada");
 });
 
-test("aviso fixo no topo: o plano renova em 24/09 (Pix) para o dono", async ({ page }) => {
+test("o plano renova em 24/09 (Pix): aviso no sino, não fixo no topo", async ({ page }) => {
   await seedPlan(page, { ...PRO, renewsOn: "2026-09-24", nextDueDate: "2026-09-24" });
   await page.goto("/dashboard");
-  const notice = page.getByRole("status").filter({ hasText: "Seu plano renova em 24/09" });
+  await page.getByRole("button", { name: /^Lembretes:/ }).click();
+  const bell = page.getByRole("dialog", { name: "Lembretes" });
+  await expect(bell).toContainText("Seu plano renova em 24/09");
+  await expect(bell).toContainText("Pague o Pix do Plano Profissional até o dia para seguir sem pausa.");
+  await expect(bell.getByRole("link", { name: "Ver o plano" })).toHaveAttribute("href", "/settings?tab=plano");
+  await expect(page.getByRole("status").filter({ hasText: "Seu plano renova" })).toHaveCount(0);
+});
+
+test("faltam 2 dias para voltar ao Grátis: aviso fixo no topo", async ({ page }) => {
+  await seedPlan(page, { ...PRO, renewsOn: "2026-09-19", nextDueDate: "2026-09-19" });
+  await page.goto("/dashboard");
+  const notice = page.getByRole("status").filter({ hasText: "Faltam 2 dias para o plano voltar ao Grátis" });
   await expect(notice).toBeVisible();
-  await expect(notice).toContainText("Pague o Pix do Plano Profissional até o dia para seguir sem pausa.");
   await expect(notice.getByRole("link", { name: "Ver o plano" })).toHaveAttribute("href", "/settings?tab=plano");
 });
 

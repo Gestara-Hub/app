@@ -5,7 +5,11 @@ import { Bell } from "lucide-react";
 import { plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useCan, useModel } from "@/features/auth";
+import { useCan, useCurrentUser, useModel } from "@/features/auth";
+import { useWhatsAppConnection } from "@/features/communication";
+import { useSubscription } from "@/features/settings";
+import { seesPlanNotices } from "@/lib/plan-notice-copy";
+import { planBellAlert, quotaBellAlert, type BellAlert } from "../bell-alerts";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -13,6 +17,7 @@ import { dateInSpace } from "@gestarahub/core/date";
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
  * tocar, a mesma lista do painel num painel lateral. Some sem pendencia. So no
  * modelo de turmas, para quem manda mensagem e para o professor (so os alunos dele).
+ * Dono e gerente veem tambem os avisos do plano e da franquia de mensagens.
  */
 export function RemindersBell() {
   const can = useCan();
@@ -21,9 +26,19 @@ export function RemindersBell() {
   return <RemindersBellButton />;
 }
 
+/** Avisos do plano e da franquia, so para quem ve os avisos do plano. */
+function useBellAlerts(today: string): BellAlert[] {
+  const eligible = seesPlanNotices(useCurrentUser().profile);
+  const { data: subscription } = useSubscription();
+  const { data: connection } = useWhatsAppConnection(eligible);
+  if (!eligible) return [];
+  return [planBellAlert(subscription, today), quotaBellAlert(connection)].filter((alert) => alert !== null);
+}
+
 function RemindersBellButton() {
   const today = dateInSpace();
-  const count = useReminderCount(today);
+  const alerts = useBellAlerts(today);
+  const count = useReminderCount(today) + alerts.length;
   const [open, setOpen] = useState(false);
   if (count === 0 && !open) return null;
   const label = plural(count, "lembrete pendente", "lembretes pendentes");
@@ -57,7 +72,7 @@ function RemindersBellButton() {
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <DashboardTodo today={today} bare />
+            <DashboardTodo today={today} bare alerts={alerts} />
           </div>
         </SheetContent>
       </Sheet>

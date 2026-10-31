@@ -34,10 +34,11 @@ function useInvalidateCommunication() {
   };
 }
 
-export function useWhatsAppConnection() {
+export function useWhatsAppConnection(enabled = true) {
   return useQuery({
     queryKey: queryKeys.communication.session,
     queryFn: () => communicationService.getConnection(),
+    enabled,
   });
 }
 

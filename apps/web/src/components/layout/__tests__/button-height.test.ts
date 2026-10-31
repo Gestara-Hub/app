@@ -6,10 +6,9 @@ const read = (relative: string) => readFileSync(fileURLToPath(new URL(relative, 
 
 /** Doc 07 §1.5: botão com texto na altura padrão (36 px), sem size sm/xs/lg nem altura no className. */
 describe("altura dos botões no topo e na abertura de Recebimentos online (achado 9)", () => {
-  it("o botão Ver planos do topo e o Ativar conta de recebimento seguem a altura padrão", () => {
+  it("o topo não tem o selo do plano (fica no cartão do menu lateral) e o Ativar conta de recebimento segue a altura padrão", () => {
     const topbar = read("../app-topbar.tsx");
-    const plansButton = topbar.slice(topbar.indexOf("Ver todos os planos e recursos") - 400, topbar.indexOf("Ver todos os planos e recursos") + 50);
-    expect(plansButton).not.toMatch(/size="sm"|\bh-8\b/);
+    expect(topbar).not.toContain("Ver todos os planos e recursos");
     const onboarding = read("../../../features/online-payments/components/online-payments-onboarding.tsx");
     const activate = onboarding.slice(onboarding.indexOf("<Button\n                onClick={() => setDialogOpen(true)}") - 80, onboarding.indexOf("Ativar conta de recebimento"));
     expect(activate).not.toMatch(/size="lg"/);

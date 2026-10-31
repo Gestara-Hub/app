@@ -1,8 +1,20 @@
-import type { PlanNotice } from "@gestarahub/core/subscription-plan";
+import type { UserProfile } from "@gestarahub/contracts";
+import type { PlanNotice, PlanNoticeKind } from "@gestarahub/core/subscription-plan";
 import { graceEndsOn } from "@gestarahub/core/subscription-plan";
 
 /** "13/11" de "2026-11-13". */
 const ddmm = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
+
+/** Quem ve os avisos do plano no app (o e-mail vai para os mesmos). */
+export const seesPlanNotices = (profile: UserProfile) => profile === "owner" || profile === "manager";
+
+/**
+ * Avisos fixos no topo: o plano esta para voltar ao Gratis ou ja voltou. Os
+ * outros (renova logo, pagamento pendente, assinatura encerrada) ficam so no
+ * sino, pedido do usuario de 30/10/2026; cada aviso num lugar so.
+ */
+const PINNED_KINDS: ReadonlySet<PlanNoticeKind> = new Set(["grace_ending", "reverted", "revert_reminder", "closing_soon"]);
+export const isPinnedPlanNotice = (notice: PlanNotice) => PINNED_KINDS.has(notice.kind);
 
 export interface PlanNoticeCopy {
   /** Titulo curto (aviso fixo e assunto do e-mail). */
@@ -16,7 +28,7 @@ export interface PlanNoticeCopy {
 
 /**
  * Textos dos avisos da renovacao do plano (doc product/13 §6): os mesmos no
- * aviso fixo do topo e no e-mail ao dono e ao gerente.
+ * aviso fixo do topo, no sino e no e-mail ao dono e ao gerente.
  */
 export function planNoticeCopy(notice: PlanNotice, planName: string): PlanNoticeCopy {
   switch (notice.kind) {

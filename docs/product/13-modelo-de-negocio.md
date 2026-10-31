@@ -139,17 +139,17 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
   - Anual → mensal: no fim do ano pago.
   - Combinações (Pro mensal → Scale anual) seguem a regra do upgrade.
 - **Uma assinatura por espaço no Asaas.** Troca de plano atualiza a assinatura existente (valor e ciclo) e cobra a diferença numa cobrança avulsa; nunca cria uma segunda assinatura ativa.
-- **Renovação não paga: 5 dias de tolerância**, com o plano funcionando nesse prazo. Avisos para **dono e gerente**, por **e-mail** e por **aviso fixo no topo do sistema**:
+- **Renovação não paga: 5 dias de tolerância**, com o plano funcionando nesse prazo. Avisos para **dono e gerente**, por **e-mail** e no sistema: no **sino** enquanto o plano funciona normalmente, e no **aviso fixo no topo** quando ele está para cair ou já caiu (30/10/2026: o usuário pediu os avisos no sino; o fixo ficou só para o plano caindo, para não repetir o mesmo aviso):
 
-  | Quando | Aviso |
-  | --- | --- |
-  | 3 dias antes (só Pix) | "Seu plano renova em 13/11" |
-  | No vencimento, sem pagamento | "Pagamento do plano pendente", com o Pix |
-  | 3 dias depois | "Faltam 2 dias para o plano voltar ao Grátis" |
-  | 5 dias depois | Volta ao Grátis e avisa |
+  | Quando | Aviso | Onde no sistema |
+  | --- | --- | --- |
+  | 3 dias antes (só Pix) | "Seu plano renova em 13/11" | sino |
+  | No vencimento, sem pagamento | "Pagamento do plano pendente", com o Pix | sino |
+  | 3 dias depois | "Faltam 2 dias para o plano voltar ao Grátis" | aviso fixo |
+  | 5 dias depois | Volta ao Grátis e avisa | aviso fixo |
 
   Ao voltar ao Grátis os dados ficam guardados e só os recursos pagos ficam bloqueados. Pagar a cobrança atrasada depois religa o plano.
-- **Depois de voltar ao Grátis: 15 dias para pagar e religar** (decisão do usuário, 23/10/2026). No 15º dia a assinatura é encerrada no Asaas, para de gerar cobranças, e o espaço assina de novo quando quiser, pelo checkout. Avisos ao dono e ao gerente, por e-mail e no aviso fixo do topo:
+- **Depois de voltar ao Grátis: 15 dias para pagar e religar** (decisão do usuário, 23/10/2026). No 15º dia a assinatura é encerrada no Asaas, para de gerar cobranças, e o espaço assina de novo quando quiser, pelo checkout. Avisos ao dono e ao gerente, por e-mail e no aviso fixo do topo; o "assinatura encerrada" fica no sino por 7 dias:
 
   | Quando | Aviso |
   | --- | --- |
@@ -197,7 +197,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 - **Telas:**
   - Planos: quem já tem plano pago troca pela janela com a conta, e nada é cobrado sem confirmar.
   - Configurações → Plano: renovação, troca marcada com "Desmarcar" e "Voltar ao Grátis" no fim do período.
-  - Aviso fixo no topo para dono e gerente (`PlanNoticeBanner`), com os mesmos textos do e-mail (`lib/plan-notice-copy.ts`).
+  - Avisos para dono e gerente com os mesmos textos do e-mail (`lib/plan-notice-copy.ts`): no sino (`planBellAlert`, `features/dashboard/bell-alerts.ts`) e, com o plano caindo, no aviso fixo do topo (`PlanNoticeBanner`). Quem vai para cada lugar: `isPinnedPlanNotice`.
 - **Testes:**
   - `packages/core/test/subscription-plan.test.ts` (regras e exemplos da doc);
   - `services/subscription/__tests__/planChange.db.test.ts` (servidor com o Asaas simulado);

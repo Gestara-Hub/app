@@ -109,3 +109,12 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (abre S
 ## Mensagem para vários alunos (24/10/2026)
 
 "Nova mensagem" aceita vários alunos ("Selecionar todos com WhatsApp"). O texto vale para todos (`{aluno}` e `{empresa}` são trocados por aluno) e o envio segue pela janela "Enviar em sequência" (um toque por aluno). O calendário de turmas segue só com Grade e Lista.
+
+## Avisos do espaço no sino (30/10/2026)
+
+A pedido do usuário, o selo do plano saiu do topo e os avisos do espaço foram para o sino, acima dos lembretes dos alunos. Só dono e gerente veem, os mesmos que recebem o e-mail do plano.
+
+- **Plano:** "Seu plano renova em 13/11" (Pix), "Pagamento do plano pendente" e "A assinatura do plano foi encerrada", com os textos do e-mail (`lib/plan-notice-copy.ts`). Levam a Configurações → Plano, onde fica o Pix; a encerrada leva aos Planos. Com o plano para cair ou já no Grátis, o aviso fica fixo no topo e sai do sino (doc 13 §6).
+- **Mensagens automáticas:** restando 20% ou menos da franquia do ciclo, "Restam 50 mensagens automáticas no ciclo"; ao acabar, "As mensagens automáticas do ciclo acabaram". Só com o envio automático ligado e saindo de verdade. Leva a Comunicação → Conexão (`/communication?tab=connection`).
+- Somem quando resolvidos; não têm "Lembrar amanhã" nem "Não lembrar deste". Contam no número do sino, não no bloco Lembretes do painel.
+- Código: `features/dashboard/bell-alerts.ts` (`planBellAlert`, `quotaBellAlert`), no sino (`reminders-bell.tsx`). Testes: `features/dashboard/__tests__/bell-alerts.test.ts`; e2e em `plano-gestarahub` (aviso no sino e aviso fixo com 2 dias).

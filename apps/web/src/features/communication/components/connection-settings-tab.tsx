@@ -360,7 +360,7 @@ export function ConnectionSettingsTab() {
             </span>
             {connection.isQuotaExhausted && (
               <span className="font-medium text-amber-600 dark:text-amber-400">
-                Franquia atingida — envio assistido ativo
+                Franquia atingida: mensagens com 1 toque
               </span>
             )}
           </div>
@@ -380,8 +380,8 @@ export function ConnectionSettingsTab() {
           </div>
           <p className="text-[11px] text-muted-foreground">
             {connection.isQuotaExhausted
-              ? "Franquia de mensagens automáticas atingida. As mensagens seguem com 1 toque (envio assistido) até a franquia renovar, no próximo pagamento do plano."
-              : "A franquia de mensagens automáticas é renovada automaticamente a cada pagamento mensal confirmado da assinatura."}
+              ? "As mensagens seguem com 1 toque (envio assistido) até a franquia renovar, no próximo ciclo do plano."
+              : "A franquia renova todo mês: no pagamento do plano mensal ou no dia do ciclo do plano anual."}
           </p>
         </div>
       </section>

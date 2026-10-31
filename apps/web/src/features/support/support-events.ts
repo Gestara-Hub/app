@@ -1,6 +1,6 @@
 import type { SupportKind } from "@/services/support/supportTypes";
 
-/** Abrir o "Fale com a gente" de qualquer tela (menu, Planos, aviso de erro). */
+/** Abrir o "Fale com a gente" de qualquer tela (painel de Ajuda, Planos, aviso de erro). */
 const EVENT = "gestarahub:open-support";
 
 export interface OpenSupportDetail {

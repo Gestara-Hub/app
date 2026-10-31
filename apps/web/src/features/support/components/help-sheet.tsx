@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCurrentUser, useModel } from "@/features/auth";
+import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import { screenName } from "@/lib/support/screen-names";
 import { HELP_CHUNKS, describeChunk, helpForRoute, parseHelpLinks, routePath, searchHelp, type HelpChunk } from "@/lib/support/help-search";
 import { replayTour, startGuide } from "../help-events";
 import { useLogHelpEvent } from "../hooks/use-help-events";
+import { useSupportUnread } from "../hooks/use-support";
 import { openSupport } from "../support-events";
 
 const FALLBACK_ARTICLE = "Primeiros passos";
@@ -35,6 +37,8 @@ export function HelpSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
   const user = useCurrentUser();
   const model = useModel();
   const logEvent = useLogHelpEvent();
+  // Respostas do suporte ainda nao lidas (a mesma consulta do menu do usuario).
+  const { data: supportUnread = 0 } = useSupportUnread(!isDemoSpace(user.organizationId));
   const [query, setQuery] = useState("");
   const typed = query.trim();
   const loggedMisses = useRef(new Set<string>());
@@ -157,6 +161,14 @@ export function HelpSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
         <div className="shrink-0 space-y-2 border-t border-border/40 p-4">
           <Button variant={missed ? "default" : "outline"} className="w-full" onClick={askSupport}>
             <LifeBuoy className="size-4" /> {typed ? "Não achou? Falar com a gente" : "Falar com a gente"}
+            {supportUnread > 0 ? (
+              <span
+                className="rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-destructive-foreground"
+                aria-label={supportUnread === 1 ? "1 resposta nova" : `${supportUnread} respostas novas`}
+              >
+                {supportUnread}
+              </span>
+            ) : null}
           </Button>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="ghost" onClick={() => openKind("bug")}>

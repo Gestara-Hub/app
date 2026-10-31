@@ -38,7 +38,7 @@ Guia: /plans
 + botão "Desmarcar": Clique no aviso da troca marcada e confirme.
 
 ## Renovação e atraso
-O aviso no topo mostra a data da renovação. Se o pagamento não cair, há 5 dias de tolerância; depois o espaço volta ao Grátis, sem perder dados. Pagando em até 15 dias o plano volta.
+O sino, no topo, avisa quando o plano renova e quando o pagamento está pendente. Se o pagamento não cair, há 5 dias de tolerância; nos últimos dias, um aviso fica fixo no topo. Depois o espaço volta ao Grátis, sem perder dados. Pagando em até 15 dias o plano volta.
 
 ## Cortesia
 Se o GestaraHub deu um período de cortesia do Profissional, o aviso mostra até quando vale. Ao terminar, o espaço volta ao Grátis, sem apagar nada.

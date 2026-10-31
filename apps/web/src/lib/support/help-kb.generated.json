@@ -2067,7 +2067,7 @@
     "article": "Plano GestaraHub (Grátis e Profissional)",
     "title": "Renovação e atraso",
     "route": "/plans",
-    "text": "O aviso no topo mostra a data da renovação. Se o pagamento não cair, há 5 dias de tolerância; depois o espaço volta ao Grátis, sem perder dados. Pagando em até 15 dias o plano volta."
+    "text": "O sino, no topo, avisa quando o plano renova e quando o pagamento está pendente. Se o pagamento não cair, há 5 dias de tolerância; nos últimos dias, um aviso fica fixo no topo. Depois o espaço volta ao Grátis, sem perder dados. Pagando em até 15 dias o plano volta."
   },
   {
     "id": "plano-gestarahub#cortesia",
@@ -2383,7 +2383,7 @@
     "article": "Primeiros passos",
     "title": "Falar com o suporte",
     "route": "/dashboard",
-    "text": "Use o botão \"Fale com a gente\" para tirar dúvidas, relatar um problema ou sugerir uma melhoria. Cada conversa recebe um protocolo, como GH-1042, que aparece na lista e no topo da conversa, com um botão para copiar. Se for falar com a gente por outro canal, como e-mail ou WhatsApp, cite o protocolo para localizarmos a conversa na hora.",
+    "text": "No menu do usuário (a bolinha com suas iniciais, no topo), abra \"Ajuda e suporte\" e toque em \"Falar com a gente\" para tirar dúvidas. Ali também ficam \"Relatar problema\" e \"Sugerir melhoria\". Cada conversa recebe um protocolo, como GH-1042, que aparece na lista e no topo da conversa, com um botão para copiar. Se for falar com a gente por outro canal, como e-mail ou WhatsApp, cite o protocolo para localizarmos a conversa na hora.",
     "summary": "Cada conversa do Fale com a gente tem um protocolo GH-n; cite-o por outro canal."
   },
   {
