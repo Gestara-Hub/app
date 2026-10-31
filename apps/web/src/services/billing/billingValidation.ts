@@ -61,7 +61,8 @@ export function validatePlan(payload: Partial<CreatePlan>): void {
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome do plano." });
   }
-  if (payload.priceCents === undefined || payload.priceCents <= 0) {
+  // Centavos inteiros (achado V14 de 31/10/2026: aceitava 1500,5).
+  if (payload.priceCents === undefined || !Number.isInteger(payload.priceCents) || payload.priceCents <= 0) {
     fields.push({ field: "priceCents", message: "Informe um valor maior que zero." });
   }
   if (fields.length > 0) throw validationError(fields);
