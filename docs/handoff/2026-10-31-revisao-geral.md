@@ -42,6 +42,7 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 | e2e completo, rodada 2 (build de produção, depois das correções) | 429 passaram, 2 pulados de propósito, nenhuma falha | Celular e computador, 25,6 min |
 | Depois das decisões (S14, S15) | typecheck e lint sem erro; Vitest 1356 de 1356; banco 206 de 206 | 10 testes de banco novos; e2e não rodou de novo |
 | Smoke depois das decisões (build de produção) | 42 de 42; nenhum erro no servidor | 7 avisos de recorte: 5 corrigidos (`1c7d746`, Vitest 1358 de 1358); os 2 da lista de alunos do professor já existiam (pendências) |
+| Verificação em duas etapas (3 arquivos fora do smoke) | 8 de 8 | Um erro de auditoria ao ligar o código por e-mail vem do relógio fixo do e2e, que deixa a prova da sessão vencida para o banco; não acontece fora do e2e (`technical/04-estrategia-de-testes.md`) |
 
 ## Correções de segurança
 
