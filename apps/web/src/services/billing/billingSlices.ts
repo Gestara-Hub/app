@@ -40,7 +40,6 @@ export const billingSlices: Record<string, MethodSlice> = Object.fromEntries(
     "listChargesPaginated",
     "generateCharges",
     "createExtraCharge",
-    "clearCharges",
     "markPaid",
     "markPending",
     "cancelCharge",

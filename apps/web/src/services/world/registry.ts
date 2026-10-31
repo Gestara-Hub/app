@@ -71,11 +71,13 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     permissions: {
       ...all(["listCharges", "listChargesPaginated"], VIEW_BILLING),
       ...all(
-        ["generateCharges", "createExtraCharge", "clearCharges", "markPaid", "markPending", "cancelCharge", "reopenCharge"],
+        ["generateCharges", "createExtraCharge", "markPaid", "markPending", "cancelCharge", "reopenCharge"],
         MANAGE_BILLING,
       ),
     },
-    browserOnly: ["listPlans", "createPlan", "updatePlan"],
+    // clearCharges: so a demonstracao e os testes. Na conta real apagava as
+    // mensalidades em aberto e, em cascata, os Pix delas, que seguiam valendo no Asaas.
+    browserOnly: ["listPlans", "createPlan", "updatePlan", "clearCharges"],
   },
   packages: {
     load: async () => (await import("../billing")).packagesServiceImpl as unknown as ServiceObject,
@@ -115,7 +117,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../communication/communicationSlices")).communicationSlices,
     permissions: {
       ...all(
-        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
+        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage", "syncMetaTemplates"],
         VIEW_COMMUNICATION,
       ),
       // Lembretes: o professor ve so os dos alunos dele (faltas seguidas e aniversarios).

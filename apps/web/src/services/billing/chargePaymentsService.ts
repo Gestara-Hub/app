@@ -19,6 +19,12 @@ export const chargePaymentsService = {
       if (c.status === "paid") {
         throw apiError("VALIDATION", "Esta cobrança já está paga.", { httpStatus: 409 });
       }
+      // Cancelada: primeiro reabrir (com as travas do periodo e do cancelamento
+      // pelo sistema). Pagar direto deixava "cancelada pelo sistema" e "substituida"
+      // numa cobranca paga, ao lado da que a substituiu (revisao de valores, 30/10/2026).
+      if (c.status === "canceled") {
+        throw apiError("VALIDATION", "Esta cobrança está cancelada. Reabra antes de registrar o pagamento.", { httpStatus: 409 });
+      }
       const paidAt = paidAtFromDate(details.paidOn);
       c.status = "paid";
       c.paidAt = paidAt;
@@ -39,6 +45,11 @@ export const chargePaymentsService = {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
+      // So desfaz pagamento: numa cancelada, voltar a "em aberto" pulava as travas
+      // do "Reabrir" (cancelada pelo sistema, periodo ja cobrado) e cobrava em dobro.
+      if (c.status !== "paid") {
+        throw apiError("VALIDATION", "Só dá para desfazer o pagamento de uma cobrança paga.", { httpStatus: 409 });
+      }
       assertNotPaidOnline(c, "desfazer");
       c.status = "pending";
       c.paidAt = undefined;

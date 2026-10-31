@@ -112,6 +112,25 @@ describe("status e operações", () => {
     expect(undone).toMatchObject({ status: "overdue", method: undefined });
   });
 
+  // Revisao de valores de 30/10/2026: o servidor aceitava baixa e "desfazer" numa
+  // cancelada, o que pulava as travas do "Reabrir" e cobrava em dobro.
+  it("cobrança cancelada não recebe baixa nem volta a aberto pelo 'desfazer'", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    const [charge] = await billingService.listCharges({ studentId: s.id });
+    await billingService.cancelCharge(charge.id);
+    await expect(billingService.markPaid(charge.id, "cash")).rejects.toMatchObject({ httpStatus: 409 });
+    await expect(billingService.markPending(charge.id)).rejects.toMatchObject({ httpStatus: 409 });
+    expect(store.charges.find((c) => c.id === charge.id)?.status).toBe("canceled");
+  });
+
+  it("'desfazer' só vale para cobrança paga", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    const [charge] = await billingService.listCharges({ studentId: s.id });
+    await expect(billingService.markPending(charge.id)).rejects.toMatchObject({ httpStatus: 409 });
+  });
+
   it("resetar a competência nunca apaga cobranças pagas", async () => {
     const plan = await createPlan("monthly", 15000);
     const a = await enrollStudent({ plan, startDate: "2026-09-20", name: "A" });
