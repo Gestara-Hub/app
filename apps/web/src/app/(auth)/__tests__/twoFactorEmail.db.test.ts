@@ -10,6 +10,9 @@ import {
   consumeTrustedDevice,
   disableTwoFactor,
   issueEmailCode,
+  issueRecoveryCodes,
+  listTrustedDevices,
+  recoveryCodesLeft,
   rememberDevice,
   setEmailTwoFactor,
   verifyEmailCode,
@@ -20,6 +23,7 @@ import {
   enableEmailTwoFactorAction,
   getTwoFactorStatusAction,
   listTrustedDevicesAction,
+  removeTwoFactorMethodAction,
 } from "../two-factor-actions";
 
 /**
@@ -292,6 +296,78 @@ describe("ligar e desligar pela janela Segurança", () => {
     const { data: factors } = await admin.auth.admin.mfa.listFactors({ userId: authUserId });
     expect(factors?.factors ?? []).toHaveLength(0);
     expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: false, app: false, email: false });
+    await disableTwoFactor(admin, authUserId);
+  });
+});
+
+describe("remover um método e manter o outro", () => {
+  /** App e e-mail ligados, com a sessao atual no AAL2 (app), codigos e um dispositivo lembrado. */
+  async function bothOn() {
+    const supabase = sessionClient();
+    const { data: enrolled } = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "GestaraHub" });
+    await supabase.auth.mfa.challengeAndVerify({ factorId: enrolled!.id, code: totp(enrolled!.totp.secret) });
+    await setEmailTwoFactor(admin, authUserId, true);
+    await issueRecoveryCodes(admin, authUserId);
+    await rememberDevice(admin, authUserId, null);
+    return { supabase, secret: enrolled!.totp.secret };
+  }
+
+  async function auditSummaries() {
+    const { data } = await admin.from("audit_logs").select("summary").eq("organization_id", tenant.organizationId).order("timestamp");
+    return (data ?? []).map((row) => row.summary);
+  }
+
+  it("remover o e-mail pede o código do aplicativo, que continua; códigos e dispositivos ficam", async () => {
+    const { supabase, secret } = await bothOn();
+    const sessionId = (await currentSessionId(supabase))!;
+    await markSessionVerified(admin, authUserId, sessionId, "email");
+
+    expect(await removeTwoFactorMethodAction({ method: "email", code: "999999" })).toMatchObject({ ok: false });
+    expect(
+      await removeTwoFactorMethodAction({ method: "email", code: totp(secret, Date.now() + 30_000) }),
+    ).toEqual({ ok: true });
+
+    expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: true, app: true, email: false, recoveryLeft: 8 });
+    expect(await listTrustedDevices(admin, authUserId, undefined, new Date())).toHaveLength(1);
+    // Sessoes verificadas pelo e-mail pedem o codigo de novo; esta segue pelo app.
+    const { count } = await admin
+      .from("two_factor_sessions")
+      .select("session_id", { count: "exact", head: true })
+      .eq("auth_user_id", authUserId)
+      .eq("method", "email");
+    expect(count).toBe(0);
+    expect(await readsData()).toBe(true);
+    expect(await auditSummaries()).toContain("Teste owner removeu o código por e-mail da verificação em duas etapas");
+    await disableTwoFactor(admin, authUserId);
+  });
+
+  it("remover o aplicativo pede o código do e-mail, que continua; esta sessão segue lendo", async () => {
+    const { supabase } = await bothOn();
+
+    expect(await removeTwoFactorMethodAction({ method: "app", code: await knownCode("disable") })).toEqual({ ok: true });
+
+    const { data: factors } = await admin.auth.admin.mfa.listFactors({ userId: authUserId });
+    expect(factors?.factors ?? []).toHaveLength(0);
+    expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: true, app: false, email: true, recoveryLeft: 8 });
+    const sessionId = (await currentSessionId(supabase))!;
+    const { data: proof } = await admin.from("two_factor_sessions").select("method").eq("session_id", sessionId).single();
+    expect(proof?.method).toBe("email");
+    expect(await readsData()).toBe(true);
+    // Um login novo pede o codigo do e-mail.
+    expect(await needsSecondFactor(await freshLogin())).toBe(true);
+    expect(await auditSummaries()).toContain("Teste owner removeu o aplicativo da verificação em duas etapas");
+    await disableTwoFactor(admin, authUserId);
+  });
+
+  it("com um método só, remover não desliga: fica no Desligar", async () => {
+    await setEmailTwoFactor(admin, authUserId, true);
+
+    expect(await removeTwoFactorMethodAction({ method: "email", code: "123456" })).toEqual({
+      ok: false,
+      message: "Com um método só, use Desligar.",
+    });
+    expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: true, email: true });
+    expect(await recoveryCodesLeft(admin, authUserId)).toBe(0);
     await disableTwoFactor(admin, authUserId);
   });
 });

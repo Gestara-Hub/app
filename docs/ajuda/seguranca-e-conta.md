@@ -9,6 +9,10 @@ Guia: /dashboard
 + botão "Usar aplicativo|Usar e-mail": Escolha receber o código por aplicativo ou por e-mail.
 Em Segurança, no menu do usuário (a bolinha com suas iniciais no topo), ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias.
 
+## Remover um método
+Resumo: Com aplicativo e e-mail ligados, remova um e mantenha o outro.
+Em Segurança, no menu do usuário, cada método ligado tem "Remover" quando os dois estão ligados. Para remover um, confirme com o código do outro, que continua pedindo o código no login. Os códigos de recuperação e os dispositivos lembrados continuam. Para tirar a verificação inteira, use "Desligar".
+
 ## Códigos de recuperação
 Resumo: Gere códigos de reserva para o caso de perder o aplicativo ou o e-mail.
 Guia: /dashboard

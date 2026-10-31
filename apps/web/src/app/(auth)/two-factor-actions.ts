@@ -22,6 +22,8 @@ import {
   issueRecoveryCodes,
   listTrustedDevices,
   recoveryCodesLeft,
+  removeAppTwoFactor,
+  removeEmailTwoFactor,
   setEmailTwoFactor,
   verifyEmailCode,
   type EmailCodeCheck,
@@ -393,6 +395,47 @@ export async function disableTwoFactorAction(input: { code: string; method: "app
   }
   await clearTrustedDeviceCookie();
   await auditSecurity(session.current, "desligou a verificação em duas etapas");
+  return { ok: true };
+}
+
+/**
+ * Remove um metodo e mantem o outro (doc 17, pedido do usuario de 30/10/2026).
+ * Confirma com um codigo do metodo que FICA: prova que ele funciona (ninguem se
+ * tranca para fora) e a sessao atual segue verificada por ele. Codigos de
+ * recuperacao e dispositivos lembrados continuam. Com um metodo so, e o
+ * "Desligar".
+ */
+export async function removeTwoFactorMethodAction(input: { method: "app" | "email"; code: string }): Promise<ActionResult> {
+  const code = input.code.replace(/\s/g, "");
+  const keepsApp = input.method === "email";
+  if (!CODE_RE.test(code)) return { ok: false, message: keepsApp ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
+  const session = await sessionToChange();
+  if (!session) return { ok: false, message: SESSION_EXPIRED };
+  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+
+  const { supabase, user } = session;
+  const admin = createSupabaseAdminClient();
+  const info = await secondFactorInfo(supabase, user);
+  if (!info.app || !info.email) return { ok: false, message: "Com um método só, use Desligar." };
+  const failed = { ok: false as const, message: "Não foi possível remover agora. Tente novamente." };
+
+  if (keepsApp) {
+    const { verified } = await totpFactors(supabase);
+    if (!verified) return { ok: false, message: INVALID_APP_CODE };
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+    if (error) return { ok: false, message: INVALID_APP_CODE };
+    if (!(await removeEmailTwoFactor(admin, user.id))) return failed;
+    await auditSecurity(session.current, "removeu o código por e-mail da verificação em duas etapas");
+    return { ok: true };
+  }
+
+  const check = await verifyEmailCode(admin, user.id, "disable", code);
+  if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+  // Antes de remover o app: a prova desta sessao passa a ser o e-mail.
+  const sessionId = await currentSessionId(supabase);
+  if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "email"))) return failed;
+  if (!(await removeAppTwoFactor(admin, user.id))) return failed;
+  await auditSecurity(session.current, "removeu o aplicativo da verificação em duas etapas");
   return { ok: true };
 }
 

@@ -65,6 +65,7 @@ Constantes em `lib/security/two-factor-rules.ts`:
 | Tentativas de código no geral | 6 a cada 5 minutos por usuário (app e e-mail, `allowCodeAttempt`) |
 | Lembrar dispositivo | 30 dias; token de 32 bytes no cookie `gestarahub_trusted_device` (`httpOnly`, `secure` em produção, `sameSite=lax`, validade relativa com `maxAge`); só o hash no banco |
 | Desligar | pede um código (do app ou do e-mail); remove o app, o e-mail, todos os dispositivos lembrados e as `two_factor_sessions` do usuário |
+| Remover um método (30/10/2026) | só com os dois ligados; pede o código do método que **fica** (prova que ele funciona e a sessão atual segue verificada por ele). Remover o e-mail apaga as `two_factor_sessions` com `method = email`; remover o app derruba o AAL2 das sessões. Códigos de recuperação e dispositivos lembrados continuam |
 | Sair | apaga a `two_factor_sessions` da sessão; o dispositivo lembrado continua |
 
 ## Fluxos
@@ -85,7 +86,8 @@ Constantes em `lib/security/two-factor-rules.ts`:
 - Ao ligar pelo e-mail, a sessão atual já conta como verificada (senão a barreira trancaria quem acabou de ligar).
 - Ligada: lista "Dispositivos lembrados" (nome, "Último uso há 2 dias", "Este dispositivo"), com "Esquecer" e "Esquecer todos".
 - "Desligar" pede o código do app (com "Receber código por e-mail" se o e-mail estiver ligado) ou do e-mail. O app é removido pela chave de serviço, porque quem entrou por dispositivo lembrado está em AAL1.
-- **Auditoria:** ligar (app ou e-mail) e desligar viram evento de segurança no histórico, com o próprio usuário como alvo (o gerente não vê eventos do dono).
+- Com os dois ligados, cada método tem "Remover" (`removeTwoFactorMethodAction`, `removeAppTwoFactor` e `removeEmailTwoFactor` em `services/server/twoFactor.ts`). Remover o app pede o código do e-mail e grava a prova desta sessão pelo e-mail antes de apagar o fator; remover o e-mail pede o código do app. Com um método só não há "Remover": é o "Desligar".
+- **Auditoria:** ligar (app ou e-mail), remover um método e desligar viram evento de segurança no histórico, com o próprio usuário como alvo (o gerente não vê eventos do dono).
 
 **E-mail** (`sendTwoFactorCodeEmail`, `lib/email/mailersend.ts`): assunto "Seu código de acesso ao GestaraHub", o código em destaque e "Vale por 10 minutos. Se não foi você, troque sua senha." Sem `MAILERSEND_API_KEY` em desenvolvimento, o código sai no terminal do `pnpm dev`; em produção sem chave, `logError` e mensagem de falha.
 
@@ -106,7 +108,7 @@ Constantes em `lib/security/two-factor-rules.ts`:
 ## Testes
 
 - Vitest (`lib/__tests__/two-factor-rules.test.ts`): código, hash, validade, tentativas, reenvio, máscara do e-mail, nome do dispositivo, último uso e conta só do Google.
-- Banco (`app/(auth)/__tests__/twoFactorRecovery.db.test.ts`: 8 códigos uma vez só, uso único, prova da sessão, desligar e gerar novos; `twoFactor.db.test.ts` e `twoFactorEmail.db.test.ts`): senha sem verificação entra; com o e-mail ligado, a senha sozinha não lê dados (`getClientForTenant` e `requireTenant` recusam) até o código; outra sessão segue barrada; 5 erros revogam, vencido e usado não valem, código novo revoga o anterior, o propósito separa; limite de reenvio; dispositivo lembrado entra sem código (vencido, revogado ou de outro usuário não vale); app + dispositivo lembrado entra sem o código do app; ligar pelo e-mail e desligar (revoga dispositivos e sessões, auditoria); desligar com o app remove o fator.
+- Banco (`app/(auth)/__tests__/twoFactorRecovery.db.test.ts`: 8 códigos uma vez só, uso único, prova da sessão, desligar e gerar novos; `twoFactor.db.test.ts` e `twoFactorEmail.db.test.ts`): senha sem verificação entra; com o e-mail ligado, a senha sozinha não lê dados (`getClientForTenant` e `requireTenant` recusam) até o código; outra sessão segue barrada; 5 erros revogam, vencido e usado não valem, código novo revoga o anterior, o propósito separa; limite de reenvio; dispositivo lembrado entra sem código (vencido, revogado ou de outro usuário não vale); app + dispositivo lembrado entra sem o código do app; ligar pelo e-mail e desligar (revoga dispositivos e sessões, auditoria); desligar com o app remove o fator; remover o e-mail com o código do app e remover o app com o código do e-mail (o outro fica, códigos e dispositivos ficam, a sessão segue lendo, auditoria) e, com um método só, remover recusa.
 - E2E (área `acesso`): `e2e/verificacao-email.spec.ts` (ligar pelo e-mail, sair, entrar com código, lembrar, entrar sem código, esquecer) e `e2e/seguranca-aviso.spec.ts` ("Ativar agora" abre a escolha). O código vem de `setKnownTwoFactorEmailCode` (`e2e/db.ts`), que grava um hash conhecido.
 
 ## Ainda não feito
@@ -119,7 +121,7 @@ Constantes em `lib/security/two-factor-rules.ts`:
 
 Registradas em 23/10/2026 durante a entrega 2, com a escolha feita para seguir:
 
-1. **Desligar um método só.** Hoje "Desligar" desliga tudo (app, e-mail e dispositivos), como pedia o plano. Quem tem os dois e quer tirar só um precisa desligar e ligar de novo o que quer manter. Escolha: manter assim. Quer um "Remover" por método?
+1. **Desligar um método só.** Decidido em 30/10/2026: "Remover" por método, com os dois ligados (ver Regras e Fluxos). "Desligar" segue desligando tudo.
 2. **Demonstração sem verificação.** Bloqueei ligar a verificação no espaço de demonstração (todos usam as mesmas contas). O aviso de segurança também não aparece lá. Escolha: bloquear. Confirma?
 3. **Esquecer um dispositivo não encerra a sessão aberta nele.** O próximo login nele pede o código; a sessão que já está aberta segue até sair ou vencer (7 dias). Escolha: manter, como fazem Google e bancos. Quer encerrar também?
 4. **Login de convidado.** `finishSignIn` busca o usuário por `users.id = id da conta de login`, mas o convidado tem `users.id` próprio (ligado por `auth_user_id`). Parece impedir o login com senha de quem entrou por convite. Não mexi (fora do escopo); fica para conferir no teste geral (Parte B).

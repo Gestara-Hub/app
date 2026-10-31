@@ -152,14 +152,11 @@ export async function setEmailTwoFactor(admin: SupabaseClient, authUserId: strin
   return !error;
 }
 
-/**
- * Desliga tudo: o app (se houver), o e-mail, os dispositivos lembrados e as
- * sessoes ja verificadas. O codigo ja foi conferido por quem chama.
- */
-export async function disableTwoFactor(admin: SupabaseClient, authUserId: string, now = new Date()): Promise<boolean> {
+/** Remove o app (os fatores TOTP da conta). O codigo ja foi conferido por quem chama. */
+export async function removeAppTwoFactor(admin: SupabaseClient, authUserId: string): Promise<boolean> {
   const { data: factors, error: listError } = await admin.auth.admin.mfa.listFactors({ userId: authUserId });
   if (listError) {
-    logError("[two-factor] Erro ao listar os fatores para desligar:", listError);
+    logError("[two-factor] Erro ao listar os fatores para remover:", listError);
     return false;
   }
   for (const factor of factors?.factors ?? []) {
@@ -169,6 +166,26 @@ export async function disableTwoFactor(admin: SupabaseClient, authUserId: string
       return false;
     }
   }
+  return true;
+}
+
+/**
+ * Remove so o codigo por e-mail: as sessoes verificadas por ele pedem o codigo
+ * de novo (pelo app). Codigos de recuperacao e dispositivos lembrados ficam.
+ */
+export async function removeEmailTwoFactor(admin: SupabaseClient, authUserId: string): Promise<boolean> {
+  if (!(await setEmailTwoFactor(admin, authUserId, false))) return false;
+  const { error } = await admin.from("two_factor_sessions").delete().eq("auth_user_id", authUserId).eq("method", "email");
+  if (error) logError("[two-factor] Erro ao limpar as sessoes verificadas pelo e-mail:", error);
+  return true;
+}
+
+/**
+ * Desliga tudo: o app (se houver), o e-mail, os dispositivos lembrados e as
+ * sessoes ja verificadas. O codigo ja foi conferido por quem chama.
+ */
+export async function disableTwoFactor(admin: SupabaseClient, authUserId: string, now = new Date()): Promise<boolean> {
+  if (!(await removeAppTwoFactor(admin, authUserId))) return false;
   if (!(await setEmailTwoFactor(admin, authUserId, false))) return false;
   await forgetAllTrustedDevices(admin, authUserId, now);
   await admin.from("two_factor_sessions").delete().eq("auth_user_id", authUserId);

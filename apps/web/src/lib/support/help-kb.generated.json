@@ -2660,6 +2660,14 @@
     }
   },
   {
+    "id": "seguranca-e-conta#remover-um-metodo",
+    "article": "Conta, senha e segurança",
+    "title": "Remover um método",
+    "route": "/settings",
+    "text": "Em Segurança, no menu do usuário, cada método ligado tem \"Remover\" quando os dois estão ligados. Para remover um, confirme com o código do outro, que continua pedindo o código no login. Os códigos de recuperação e os dispositivos lembrados continuam. Para tirar a verificação inteira, use \"Desligar\".",
+    "summary": "Com aplicativo e e-mail ligados, remova um e mantenha o outro."
+  },
+  {
     "id": "seguranca-e-conta#codigos-de-recuperacao",
     "article": "Conta, senha e segurança",
     "title": "Códigos de recuperação",

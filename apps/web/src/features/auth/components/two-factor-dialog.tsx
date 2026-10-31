@@ -25,6 +25,7 @@ import {
   getTwoFactorStatusAction,
   listTrustedDevicesAction,
   regenerateRecoveryCodesAction,
+  removeTwoFactorMethodAction,
   sendSecurityEmailCodeAction,
   startTotpEnrollmentAction,
   type TrustedDeviceItem,
@@ -41,6 +42,8 @@ type View =
   | { kind: "enroll-app"; factorId: string; qrCode: string; secret: string }
   | { kind: "enroll-email" }
   | { kind: "disable"; method: "app" | "email" | "recovery" }
+  /** Remove `method` e mantem o outro: confirma com o codigo do que fica. */
+  | { kind: "remove"; method: "app" | "email" }
   | { kind: "regenerate"; method: "app" | "email" }
   | { kind: "recovery-codes"; codes: string[] };
 
@@ -164,7 +167,8 @@ function MethodRow({
 /**
  * "Seguranca" no menu do usuario (doc 17): liga a verificacao em duas etapas
  * com aplicativo autenticador ou codigo por e-mail, mostra os dispositivos
- * lembrados e desliga tudo. Conta so do Google nao usa: a verificacao fica na
+ * lembrados, remove um metodo (com os dois ligados) e desliga tudo. Conta so
+ * do Google nao usa: a verificacao fica na
  * conta Google. Desligada, abre na escolha dos dois metodos (tambem pelo aviso
  * de seguranca).
  */
@@ -253,7 +257,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (view.kind !== "enroll-app" && view.kind !== "enroll-email" && view.kind !== "disable" && view.kind !== "regenerate") return;
+    if (view.kind !== "enroll-app" && view.kind !== "enroll-email" && view.kind !== "disable" && view.kind !== "regenerate" && view.kind !== "remove") return;
     setError(null);
     startTransition(async () => {
       const result =
@@ -263,7 +267,9 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
             ? await enableEmailTwoFactorAction({ code })
             : view.kind === "regenerate"
               ? await regenerateRecoveryCodesAction({ code, method: view.method })
-              : await disableTwoFactorAction({ code, method: view.method });
+              : view.kind === "remove"
+                ? await removeTwoFactorMethodAction({ code, method: view.method })
+                : await disableTwoFactorAction({ code, method: view.method });
       if (!result.ok) {
         setError(result.message);
         setCode("");
@@ -272,7 +278,13 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
       setCode("");
       const codes: string[] | undefined = "recoveryCodes" in result ? (result.recoveryCodes as string[] | undefined) : undefined;
       if (view.kind === "regenerate") toast.success("Novos códigos de recuperação gerados.");
-      else toast.success(view.kind === "disable" ? "Verificação em duas etapas desligada." : "Verificação em duas etapas ligada.");
+      else if (view.kind === "remove") {
+        toast.success(
+          view.method === "app"
+            ? "Aplicativo removido. O login pede o código do e-mail."
+            : "Código por e-mail removido. O login pede o código do aplicativo.",
+        );
+      } else toast.success(view.kind === "disable" ? "Verificação em duas etapas desligada." : "Verificação em duas etapas ligada.");
       await refresh();
       // Os codigos aparecem so desta vez: a pessoa precisa guardar antes de fechar.
       if (codes && codes.length > 0) go({ kind: "recovery-codes", codes });
@@ -326,9 +338,15 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
   };
 
   const enabled = status.app || status.email;
-  const isForm = view.kind === "enroll-app" || view.kind === "enroll-email" || view.kind === "disable" || view.kind === "regenerate";
-  const emailStep = view.kind === "enroll-email" || ((view.kind === "disable" || view.kind === "regenerate") && view.method === "email");
-  const emailPurpose = view.kind === "disable" ? "disable" : view.kind === "regenerate" ? "recovery" : "enable";
+  // Com os dois ligados, cada um tem "Remover"; com um so, e o "Desligar".
+  const bothOn = status.app && status.email;
+  const isForm =
+    view.kind === "enroll-app" || view.kind === "enroll-email" || view.kind === "disable" || view.kind === "regenerate" || view.kind === "remove";
+  const emailStep =
+    view.kind === "enroll-email" ||
+    ((view.kind === "disable" || view.kind === "regenerate") && view.method === "email") ||
+    (view.kind === "remove" && view.method === "app");
+  const emailPurpose = view.kind === "disable" || view.kind === "remove" ? "disable" : view.kind === "regenerate" ? "recovery" : "enable";
   const codeReady = view.kind === "disable" && view.method === "recovery" ? code.replace(/-/g, "").length === 8 : code.length === 6;
   const waitingSend = emailStep && !sentTo;
 
@@ -375,7 +393,13 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                     description={status.app ? "O login pede o código do aplicativo." : "Mais seguro. Código no app do celular."}
                     on={status.app}
                     action={
-                      status.app ? undefined : (
+                      status.app ? (
+                        bothOn ? (
+                          <Button type="button" variant="outline" onClick={() => go({ kind: "remove", method: "app" })} disabled={pending}>
+                            Remover
+                          </Button>
+                        ) : undefined
+                      ) : (
                         <Button type="button" variant="outline" onClick={startAppEnrollment} disabled={pending}>
                           Usar aplicativo
                         </Button>
@@ -392,7 +416,13 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                     }
                     on={status.email}
                     action={
-                      status.email ? undefined : (
+                      status.email ? (
+                        bothOn ? (
+                          <Button type="button" variant="outline" onClick={() => go({ kind: "remove", method: "email" })} disabled={pending}>
+                            Remover
+                          </Button>
+                        ) : undefined
+                      ) : (
                         <Button type="button" variant="outline" onClick={() => go({ kind: "enroll-email" })} disabled={pending}>
                           Usar e-mail
                         </Button>
@@ -506,9 +536,11 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <p className="text-sm text-muted-foreground">
                   {view.kind === "disable"
                     ? "Para desligar, confirme com um código do e-mail."
-                    : view.kind === "regenerate"
-                      ? "Para gerar novos códigos, confirme com um código do e-mail. Os antigos deixam de valer."
-                      : `Vamos mandar um código para ${status.maskedEmail}.`}
+                    : view.kind === "remove"
+                      ? "Para remover o aplicativo, confirme com um código do e-mail. Depois, o login pede o código do e-mail."
+                      : view.kind === "regenerate"
+                        ? "Para gerar novos códigos, confirme com um código do e-mail. Os antigos deixam de valer."
+                        : `Vamos mandar um código para ${status.maskedEmail}.`}
                 </p>
                 {sentTo ? (
                   <>
@@ -572,6 +604,22 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                     </button>
                   ) : null}
                 </div>
+              </div>
+            ) : null}
+
+            {view.kind === "remove" && view.method === "email" ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Para remover o código por e-mail, digite um código do aplicativo. Depois, o login pede o código do aplicativo.
+                </p>
+                <CodeField
+                  id="two-factor-remove-code"
+                  label="Código do aplicativo"
+                  value={code}
+                  onChange={setCode}
+                  disabled={pending}
+                  error={error}
+                />
               </div>
             ) : null}
 
@@ -652,10 +700,18 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 ) : (
                   <Button
                     type="submit"
-                    variant={view.kind === "disable" ? "destructive" : "default"}
+                    variant={view.kind === "disable" || view.kind === "remove" ? "destructive" : "default"}
                     disabled={pending || !codeReady}
                   >
-                    {pending ? "Conferindo..." : view.kind === "disable" ? "Desligar" : view.kind === "regenerate" ? "Gerar códigos" : "Ligar"}
+                    {pending
+                      ? "Conferindo..."
+                      : view.kind === "disable"
+                        ? "Desligar"
+                        : view.kind === "remove"
+                          ? "Remover"
+                          : view.kind === "regenerate"
+                            ? "Gerar códigos"
+                            : "Ligar"}
                   </Button>
                 )}
               </>
