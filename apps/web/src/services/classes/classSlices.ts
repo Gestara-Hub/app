@@ -53,12 +53,16 @@ async function session(sessionId: Id, load: SliceLoader, extraStudents: Id[] = [
   load.none("auditLog");
 }
 
-/** Uma turma: matriculas e lista de espera dela, com os alunos. */
+/**
+ * Uma turma: matriculas e lista de espera dela, com os alunos. As substituicoes
+ * (poucas) dizem se o professor que nao e o titular ve a lista da turma.
+ */
 async function classGroup(classGroupId: Id, load: SliceLoader): Promise<void> {
   await catalog(load);
   const [enrollments, waitlist] = await Promise.all([
     load.where("enrollments", "classGroupId", [classGroupId]),
     load.where("waitlist", "classGroupId", [classGroupId]),
+    load.all("sessionOverrides"),
   ]);
   await load.where("clients", "id", [...enrollments, ...waitlist].map((row) => row.studentId as string));
   load.none("auditLog");

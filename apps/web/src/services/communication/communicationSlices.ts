@@ -23,7 +23,8 @@ const STREAK_WINDOW_DAYS = 120;
 
 /**
  * Lembretes (doc product/25): o espaco das cobrancas, as presencas recentes,
- * as mensagens dos tipos com lembrete e os modelos.
+ * as mensagens dos tipos com lembrete, os modelos e as substituicoes (o
+ * professor ve as faltas dos alunos das turmas em que substitui).
  */
 const reminderSources: MethodSlice = async (_args, load) => {
   await billingWorld(load);
@@ -38,6 +39,7 @@ const reminderSources: MethodSlice = async (_args, load) => {
     load.where("attendances", "sessionId", ids),
     load.where("messageLogs", "trigger", REMINDER_TRIGGERS),
     load.all("messageTemplates"),
+    load.all("sessionOverrides"),
   ]);
 };
 

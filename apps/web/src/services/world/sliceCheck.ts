@@ -161,6 +161,10 @@ export async function checkSlice(name: string, slice: MethodSlice, args: unknown
     const sliced = changesOf(key, sliceBefore.get(key), slicedWorld[key]);
     const fullText = canonical(Object.fromEntries(full));
     const slicedText = canonical(Object.fromEntries(sliced));
-    if (fullText !== slicedText) throw new Error(`${where}: gravações diferentes em "${key}"`);
+    if (fullText !== slicedText) {
+      // Quais linhas diferem (o id e o que ajuda a achar a regra que leu fora do recorte).
+      const ids = [...new Set([...full.keys(), ...sliced.keys()])].filter((id) => full.get(id) !== sliced.get(id));
+      throw new Error(`${where}: gravações diferentes em "${key}" (${ids.slice(0, 5).join(", ")})`);
+    }
   }
 }
