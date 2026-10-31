@@ -32,6 +32,16 @@
 
 **Cuidado no desenho atual:** os dados do certificado ficam separados do layout, para o gerador entrar sem reescrever a emissão.
 
+### 1.1 Modo avançado do certificado (decisão de 31/10/2026)
+
+**Decisão:** o "modo avançado" é a **arte própria como fundo**, não um editor livre. O espaço manda a arte que já tem e o sistema desenha os textos por cima.
+
+- **Plano:** tudo isso é **Pro** (parecer profissional é do Pro). Scale continua significando várias unidades; um gatilho de Scale dentro do certificado seria modelo por unidade ou marca da rede com o nome da unidade. Nada de addon avulso nem marketplace agora (ver doc 13, "Addons, marketplace e integrações").
+- **Etapa 1, "Minha arte" (entregue em 31/10/2026):** 4º layout (`layout: "custom"`, `artwork` no modelo: `fileId`, `textPosition`, `ink`, `hidden`). Imagem PNG ou JPG, A4 deitado, até 2 MB (PDF não: o gerador de PDF não desenha PDF como imagem). Com a arte, o resto do editor continua igual (texto, variáveis, assinaturas, logo). Três ajustes, sem arrastar nada: **posição do texto** (em cima, no centro, embaixo), **cor do texto** (escura ou clara, para arte escura) e **partes que aparecem** (logo, nome do espaço, título, texto, data, assinaturas): quem tem arte com o título já impresso desliga o título. A cor de destaque não vale nesse layout. Prévia ao vivo, como nos outros. A tela (`CertificateSheet`) e o PDF (`certificate-pdf.tsx`) desenham a arte com `object-fit: cover`; o PDF lê a imagem pelo `loadSpaceImage` (só PNG e JPG da pasta do espaço). A arte sobe pelo caminho dos anexos (`uploadArtwork`, `CERTIFICATE_ARTWORK_RULES`). Em outro layout a arte é esquecida ao salvar.
+- **Etapa 2, campos no lugar (só se um cliente pedir com caso concreto):** na prévia, cada bloco vira uma caixa que a pessoa arrasta e redimensiona, só no computador; fonte entre 3 ou 4 opções, tamanho e alinhamento por bloco.
+- **Fora:** importar `.docx` ou `.pptx` para editar por dentro; editor de HTML ou de código.
+- **Ordem do que falta** (da lista acima): modelo por curso ou modalidade, código de verificação com página pública, emitir em lote. Etapa 2 depois disso.
+
 ## 2. Notas dos alunos (avaliações)
 
 **Motivo:** várias áreas lançam nota: idiomas (provas por nível), reforço escolar e cursinho, música (prova prática), cursos profissionalizantes, natação e lutas (avaliação técnica em exame). Hoje a evolução tem trilha, registros de aula e metas, mas não tem nota.

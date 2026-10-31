@@ -209,6 +209,14 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 ### Pendente
 - **Antes de produção:** cadastrar o webhook na conta principal do Asaas, com os eventos de cobrança e de assinatura e o mesmo token (`ASAAS_WEBHOOK_SECRET`). Hoje o webhook é cadastrado só nas subcontas. Sem ele, a rotina diária ainda confere a renovação, mas o upgrade pago com a tela fechada só liga na próxima conferência.
 
+## 7. Addons, marketplace e integrações (decisão de 31/10/2026)
+
+**Decisão:** nada de addon avulso, marketplace de addons nem integração com ERP agora. O sentido de cada plano fica simples: Grátis = operar o dia a dia; Pro = parecer profissional e automatizar; Scale = várias unidades. Recurso de acabamento (ex.: arte própria no certificado, doc 21 §1.1) é Pro, nunca Scale.
+
+- **Addon:** só depois de o Pro ter preço e clientes pagando, e de um pedido claro que não cabe nele (ex.: SMS, nota fiscal). Cada addon multiplica as regras de troca de plano (§6) e a assinatura no Asaas; Pro fatiado passa a sensação de "tudo custa à parte".
+- **Marketplace:** ideia de empresa com ecossistema (API pública, permissões por app, revisão de terceiros, divisão de receita). Antes precisa de volume de clientes. O alicerce que vale já pensar: **API pública com chave por espaço e webhooks** (aluno cadastrado, pagamento recebido, presença marcada), que serve para Zapier/Make e integrações.
+- **ERP, SAP, TOTVS:** o público (academia, estúdio, escola de música e de idiomas) não usa. O que uma rede pede: **exportação contábil** (CSV e Excel por período e unidade), **NFS-e**, integração com contabilidade online (Omie, Conta Azul, Bling) e a API pública. Esse é o pacote de Scale que convence, junto com relatório consolidado e usuário em mais de uma unidade. Sem prazo; detalhar como itens de produto quando o Scale for vendido.
+
 ## Tela de Planos (decisão de 24/10/2026)
 
 A tela mostra só o que existe: Grátis e Profissional (WhatsApp automático, relatórios de resultado e retenção, certificado, taxa menor). Sem preço nos cards (o valor aparece no checkout antes de cobrar) e sem Expansão à venda até existir multiunidade. A taxa do Pix tem uma frase única (`platformFeeSentence`). O botão "Fale com a gente" depende do canal de atendimento (ver `docs/pendencias.md`).
