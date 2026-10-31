@@ -5,7 +5,8 @@ import { ArrowRight, Check, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { PaidFeature } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { formatDateTime } from "@gestarahub/core/format";
+import { formatCents, formatDateTime } from "@gestarahub/core/format";
+import { platformSplitCents } from "@gestarahub/core/payment-fees";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,7 @@ const FEATURE_DESCRIPTION: Record<PaidFeature, string> = {
 const PRO_FEATURES = proOnlyFeatures();
 
 /**
- * Aba "Plano GestaraHub": plano atual, o que o Pro inclui e (so o proprietario,
+ * Aba "Plano GestaraHub": plano atual, o que o Profissional inclui e (so o proprietario,
  * `subscription:manage`) a troca do plano, com confirmacao e auditoria. Ativar
  * o Profissional sem pagar so no espaco de demonstracao; a conta real assina
  * pelo checkout (achado 66 do teste de 23/10).
@@ -166,6 +167,21 @@ export function SubscriptionPlanCard() {
                   </div>
                 </li>
               ))}
+              {/* A taxa menor tambem e do Profissional (doc product/13), mas nao e um recurso ligado. */}
+              <li className="flex items-start gap-2 rounded-lg border p-3">
+                {isPro ? (
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                ) : (
+                  <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                )}
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Taxa menor no Pix</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCents(platformSplitCents("pro"))} por pagamento online, em vez de{" "}
+                    {formatCents(platformSplitCents("free"))}.
+                  </p>
+                </div>
+              </li>
             </ul>
           </div>
 

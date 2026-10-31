@@ -152,7 +152,7 @@ export function PendingSubscriptionInvoiceCard({
           <div className="space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-foreground">
-                {hasPendingInvoice ? "Fatura de Renovação do Plano" : "Próxima Fatura do Plano"}
+                {hasPendingInvoice ? "Fatura de renovação do plano" : "Próxima fatura do plano"}
               </h3>
               <Badge
                 variant={isUrgent ? "destructive" : isDueSoon || hasPendingPayment ? "default" : "secondary"}

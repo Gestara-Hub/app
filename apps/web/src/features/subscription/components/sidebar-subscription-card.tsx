@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ArrowRight, Crown, Sparkles } from "lucide-react";
+import { formatCents } from "@gestarahub/core/format";
+import { platformSplitCents } from "@gestarahub/core/payment-fees";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/features/settings";
 
@@ -31,7 +33,7 @@ export function SidebarSubscriptionCard() {
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-sidebar-foreground/75 pt-0.5">
-            <span>WhatsApp e Pix R$ 1,29</span>
+            <span>Taxa online {formatCents(platformSplitCents("pro"))}</span>
             <span className="font-semibold text-sidebar-foreground group-hover:underline inline-flex items-center gap-0.5">
               Gerenciar <ArrowRight className="size-2.5" />
             </span>
