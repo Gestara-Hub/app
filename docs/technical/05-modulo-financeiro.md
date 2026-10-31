@@ -327,7 +327,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 | D7 | Cobranças dos alunos na aba Lançamentos | Agregadas por mês, com link para Mensalidades |
 | D8 | Desfazer pagamento feito online | Não permitido (seria estorno) |
 | D9 | Onde fica o Financeiro no menu | Item próprio "Financeiro", depois de "Mensalidades" |
-| D10 | Mês do DRE (30/10/2026, revisão de valores, decidido por mim, validar) | **Pelo dia do pagamento**, como o Resumo do Financeiro (regime de caixa): cobranças, lançamentos e o repasse dos professores. Antes o DRE contava lançamentos pelo vencimento e o repasse pelo mês trabalhado, e não fechava com o Resumo (o repasse de setembro pago em 05/10 entrava em setembro no DRE e em outubro no Resumo). A outra opção seria o regime de competência nos dois. |
+| D10 | Mês do DRE (30/10/2026, revisão de valores; confirmado pelo usuário em 31/10/2026) | **Pelo dia do pagamento**, como o Resumo do Financeiro (regime de caixa): cobranças, lançamentos e o repasse dos professores. Antes o DRE contava lançamentos pelo vencimento e o repasse pelo mês trabalhado, e não fechava com o Resumo (o repasse de setembro pago em 05/10 entrava em setembro no DRE e em outubro no Resumo). A outra opção seria o regime de competência nos dois. |
 | D11 | Dia de um pagamento (30/10/2026) | Sempre no **fuso do espaço** (`localDateOf`/`competenceOf` do core usam `dateInSpace`), não no relógio do servidor: um pagamento às 23:30 de 31/10 em Manaus é outubro. |
 
 ## 14. Desvios e detalhes da implementação

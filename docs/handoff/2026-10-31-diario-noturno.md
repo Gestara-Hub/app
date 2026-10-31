@@ -67,6 +67,14 @@ Pedido do usuário (30/10/2026, à noite): rodar todos os testes do `apps/web` (
 4. **Pix e link sem repasse quando falta `ASAAS_MASTER_WALLET_ID`.** Sem a carteira da conta principal, o Asaas não separa a taxa do GestaraHub, mas o app ainda soma essa taxa ao valor repassado ao aluno (R$ 1,99 ou R$ 1,29 a mais, que ficam com o espaço) e mostra o líquido menor. Deixei como está: é configuração obrigatória em produção (está na lista de antes da produção), e zerar a taxa no código mudaria os valores da demonstração e do e2e.
 5. **Sem cabeçalho CSP por enquanto.** Ele protege contra script injetado, mas precisa listar PostHog, Asaas, Meta e Supabase e quebra fácil; melhor junto do roteiro de publicação, testado no build de produção.
 
+### Validação do usuário (31/10/2026, de manhã)
+
+1. **DRE pelo dia do pagamento:** confirmado (`technical/05`, D10).
+2. **1ª mensalidade ajustada só por dono e gerente:** confirmado.
+3. **Início antigo:** perguntar no cadastro. Feito em `0d9d5fc`: "Cobrar os meses desde o início?", padrão "A partir deste mês" (`clients.charges_from`, `product/15`, "Aluno antigo: meses passados").
+4. **Sem a carteira principal:** resolver agora. Feito em `b2b4c13`: a taxa do GestaraHub fica zero quando o Asaas não pode retê-la (`technical/25`, Regras).
+5. **CSP:** resolver agora. Feito em `736b4c2`: lista de origens, script inline ainda liberado (`technical/00`, "Cabeçalhos de segurança e CSP"). A área logada ainda não passou pelo e2e com o CSP.
+
 ## Segurança
 
 Um agente auditou o código (só leitura) e eu confirmei cada achado no banco local antes de corrigir. O risco comum: **o token da sessão do Supabase fica num cookie do navegador**, e com ele (ou com a chave pública) qualquer um chama o banco direto pelo PostgREST, sem passar pelo app.
@@ -96,5 +104,5 @@ Um agente auditou o código (só leitura) e eu confirmei cada achado no banco lo
 - **Painel interno (`apps/admin`)**: fora, como pedido.
 - **Pix Automático**: o e2e segue pulado; ainda não tem tabelas no banco (doc 15).
 - **Taxas do pagamento online no DRE**: a linha "Deduções" é sempre zero (`financialReports.ts`), embora cada Pix e link já guarde a tarifa e o líquido. Falta decidir como contar quando a taxa é repassada ao aluno. Está em `pendencias.md`, Esperando decisão sua.
-- **Segurança, baixos sem correção**: cabeçalho CSP (decisão 5); o endereço dos e-mails de senha, convite e consentimento cai para o endereço da requisição quando falta `NEXT_PUBLIC_APP_URL` (pus a variável na lista de antes da produção); e uma regra do armazenamento aceita o espaço `system`, que nenhum usuário tem (sem efeito hoje).
+- **Segurança, baixos sem correção**: o endereço dos e-mails de senha, convite e consentimento cai para o endereço da requisição quando falta `NEXT_PUBLIC_APP_URL` (pus a variável na lista de antes da produção); e uma regra do armazenamento aceita o espaço `system`, que nenhum usuário tem (sem efeito hoje).
 
