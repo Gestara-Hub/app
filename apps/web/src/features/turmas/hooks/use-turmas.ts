@@ -103,6 +103,17 @@ export function useCourseCertificate(enrollmentId: Id) {
   });
 }
 
+/** Emite os certificados de todos os concluidos da turma (doc 21 §1.4). */
+export function useIssueCourseCertificates() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (classGroupId: Id) => turmasService.issueCourseCertificates(classGroupId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.certificates });
+    },
+  });
+}
+
 /** Cancela o certificado emitido (doc 21 §1.3); a tela do certificado recarrega. */
 export function useCancelCertificate() {
   const qc = useQueryClient();

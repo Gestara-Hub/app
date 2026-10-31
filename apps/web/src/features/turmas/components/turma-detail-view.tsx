@@ -73,7 +73,8 @@ import {
   type StudentPackageView,
   type WaitlistEntryView,
 } from "@gestarahub/contracts";
-import { useCan, useHasFeature } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
+import { isSupabaseOrganization } from "@/lib/session";
 import { useCategories } from "@/features/categories";
 import { StudentGraduationDialog, StudentRecordsDialog, useClients } from "@/features/clients";
 import { ClassAssessmentsTab, StudentGradesDialog, useClassAssessments } from "@/features/grades";
@@ -232,6 +233,8 @@ export function TurmaDetailView({
   const canManage = can("enrollment:manage");
   // Certificado de conclusao: Plano Profissional; no gratis o item abre o upsell.
   const hasCertificates = useHasFeature()("certificates");
+  // Conta real: o PDF dos certificados sai do servidor; na demonstracao, a tela para imprimir.
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const canEditTurma = can("classes:manage");
   const canMark = can("attendance:mark");
   // "Pagamento atrasado" na linha so para quem ve cobrancas.
@@ -558,6 +561,21 @@ export function TurmaDetailView({
       icon: <CalendarDays className="size-4" />,
       onSelect: () => router.push(`/classes/calendar?class=${encodeURIComponent(turma.id)}`),
     },
+    // Curso terminado: todos os certificados de uma vez (doc 21 §1.4). Na conta
+    // real abre o PDF do servidor; na demonstracao, a tela para imprimir.
+    ...(isCourse && turma.isEnded && enrolledCount > 0
+      ? [
+          {
+            key: "certificates",
+            label: hasCertificates ? "Emitir certificados" : "Emitir certificados (Plano Profissional)",
+            icon: hasCertificates ? <Award className="size-4" /> : <Lock className="size-4" />,
+            onSelect: () => {
+              if (hasCertificates && serverDocuments) window.open(`/api/documents/certificates/class/${turma.id}`, "_blank", "noopener");
+              else router.push(`/classes/${turma.id}/certificates`);
+            },
+          },
+        ]
+      : []),
   ];
 
   // Alerta de pacote de quem paga a aula com ele (turma de pacote ou mensalidade com pacote).

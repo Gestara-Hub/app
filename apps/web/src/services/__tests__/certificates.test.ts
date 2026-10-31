@@ -327,6 +327,29 @@ describe("modelo de certificado", () => {
     await expect(turmasService.cancelCertificate("enr-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("emitir em lote: todos os ativos do curso, em ordem, reaproveitando o que já tinha código", async () => {
+    setTier("pro");
+    const { g, student, enrollment } = await completedEnrollment();
+    // O curso ja terminou (matricular agora e recusado): as outras matriculas entram direto no mundo.
+    const base = store.enrollments.find((e) => e.id === enrollment.id)!;
+    for (const [id, name] of [["enr-bia", "Bia Lima"], ["enr-ana", "Ana Costa"]] as const) {
+      const other = await createStudent(name);
+      store.enrollments.push({ ...base, id, studentId: other.id });
+    }
+    const first = await turmasService.getCourseCertificate(enrollment.id);
+
+    const batch = await turmasService.issueCourseCertificates(g.id);
+    expect(batch.className).toBe(g.name);
+    expect(batch.items.map((i) => i.certificate.studentName)).toEqual(["Ana Costa", "Bia Lima", student.name].sort((a, b) => a.localeCompare(b, "pt-BR")));
+    expect(batch.items.find((i) => i.certificate.enrollmentId === enrollment.id)?.issued.code).toBe(first.issued.code);
+    expect(store.issuedCertificates).toHaveLength(3);
+    expect(new Set(batch.items.map((i) => i.issued.code)).size).toBe(3);
+    // De novo: nada novo.
+    await turmasService.issueCourseCertificates(g.id);
+    expect(store.issuedCertificates).toHaveLength(3);
+    await expect(turmasService.issueCourseCertificates("cg-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("o certificado do aluno vem com o modelo do espaco", async () => {
     setTier("pro");
     const { g, student, enrollment } = await completedEnrollment();

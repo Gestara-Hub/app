@@ -252,16 +252,7 @@ function Verification({ code, url, qr, light }: { code: string; url: string; qr:
   );
 }
 
-export function CertificatePdf({
-  text,
-  layout,
-  organizationName,
-  accent,
-  logo,
-  artwork = null,
-  artworkSettings,
-  verification,
-}: {
+export interface CertificatePageProps {
   text: RenderedCertificate;
   layout: CertificateLayout;
   organizationName: string;
@@ -272,24 +263,44 @@ export function CertificatePdf({
   artworkSettings?: Omit<CertificateArtwork, "fileId">;
   /** Codigo de verificacao com o QR ja desenhado (a previa do editor nao tem). */
   verification?: { code: string; url: string; qr: DocumentLogo };
-}) {
+}
+
+/** Uma folha (A4 deitado) no modelo escolhido. */
+function CertificatePage({ text, layout, organizationName, accent, logo, artwork = null, artworkSettings, verification }: CertificatePageProps) {
   const props: SheetProps = { text, organizationName, logo, accent };
   return (
-    <Document title={text.title} author={organizationName} creator="GestaraHub" producer="GestaraHub">
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        {layout === "custom" && artworkSettings ? (
-          <CustomSheet {...props} artwork={artwork} settings={artworkSettings} />
-        ) : layout === "modern" ? (
-          <ModernSheet {...props} />
-        ) : layout === "minimal" ? (
-          <MinimalSheet {...props} />
-        ) : (
-          <ClassicSheet {...props} />
-        )}
-        {verification ? (
-          <Verification {...verification} light={layout === "custom" && artworkSettings?.ink === "light"} />
-        ) : null}
-      </Page>
+    <Page size="A4" orientation="landscape" style={styles.page}>
+      {layout === "custom" && artworkSettings ? (
+        <CustomSheet {...props} artwork={artwork} settings={artworkSettings} />
+      ) : layout === "modern" ? (
+        <ModernSheet {...props} />
+      ) : layout === "minimal" ? (
+        <MinimalSheet {...props} />
+      ) : (
+        <ClassicSheet {...props} />
+      )}
+      {verification ? (
+        <Verification {...verification} light={layout === "custom" && artworkSettings?.ink === "light"} />
+      ) : null}
+    </Page>
+  );
+}
+
+export function CertificatePdf(props: CertificatePageProps) {
+  return (
+    <Document title={props.text.title} author={props.organizationName} creator="GestaraHub" producer="GestaraHub">
+      <CertificatePage {...props} />
+    </Document>
+  );
+}
+
+/** Varios certificados num PDF so (emissao em lote, doc 21 §1.4): uma folha por aluno. */
+export function CertificatesPdf({ title, organizationName, pages }: { title: string; organizationName: string; pages: CertificatePageProps[] }) {
+  return (
+    <Document title={title} author={organizationName} creator="GestaraHub" producer="GestaraHub">
+      {pages.map((page, index) => (
+        <CertificatePage key={index} {...page} />
+      ))}
     </Document>
   );
 }

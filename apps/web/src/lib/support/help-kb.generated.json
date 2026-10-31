@@ -457,6 +457,29 @@
     }
   },
   {
+    "id": "certificados#emitir-todos-de-uma-vez",
+    "article": "Certificados de conclusão",
+    "title": "Emitir todos de uma vez",
+    "route": "/settings?tab=certificado",
+    "text": "Sai um PDF com um certificado por aluno, cada um com o próprio código de verificação. Quem já tinha certificado continua com o mesmo código; os cancelados ficam de fora. Também dá para imprimir pela tela, com uma folha por aluno.",
+    "summary": "No fim do curso, os certificados de toda a turma num PDF só.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Abra a turma do curso que terminou."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações da turma",
+          "text": "Abra o menu e escolha \"Emitir certificados\"."
+        }
+      ]
+    }
+  },
+  {
     "id": "certificados#codigo-de-verificacao",
     "article": "Certificados de conclusão",
     "title": "Código de verificação",

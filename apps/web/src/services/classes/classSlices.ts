@@ -174,6 +174,11 @@ export const classSlices: Record<string, MethodSlice> = {
     await classOfRow("enrollments")([id], load);
     await load.where("issuedCertificates", "enrollmentId", [id as Id]);
   },
+  // Emissao em lote (doc 21 §1.4): a turma com os alunos e os certificados ja emitidos dela.
+  issueCourseCertificates: async ([id], load) => {
+    await classWithStudents(id as Id, load);
+    await load.where("issuedCertificates", "classGroupId", [id as Id]);
+  },
   cancelCertificate: async ([id], load) => {
     await catalog(load);
     await load.where("issuedCertificates", "enrollmentId", [id as Id]);

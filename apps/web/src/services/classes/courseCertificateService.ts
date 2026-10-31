@@ -1,5 +1,5 @@
 import { assertTeacherSeesClass } from "./teacherScope";
-import type { CourseCertificateDocument, Id, IssuedCertificate } from "@gestarahub/contracts";
+import type { CourseCertificateDocument, CourseCertificatesBatch, Id, IssuedCertificate } from "@gestarahub/contracts";
 import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate, newCertificateCode } from "@gestarahub/core/certificate";
 import { getCurrentActor } from "@/mocks/currentActor";
@@ -21,6 +21,73 @@ export function issuedCertificateOf(enrollmentId: Id): IssuedCertificate | undef
   return (store.issuedCertificates ?? []).find((c) => c.enrollmentId === enrollmentId);
 }
 
+type Enrollment = (typeof store.enrollments)[number];
+type ClassGroup = (typeof store.classGroups)[number];
+
+/** Emite (1a vez) ou devolve o ja emitido; a turma ja foi conferida por quem chama. */
+function issueFor(e: Enrollment, g: ClassGroup & { endDate: string }): IssuedCertificate {
+  const existing = issuedCertificateOf(e.id);
+  if (existing) return existing;
+  const address = store.unit.address;
+  const { presentCount, absentCount } = frequencyOf(g.id, e.studentId);
+  const certificate = buildCourseCertificate({
+    enrollmentId: e.id,
+    classGroupId: g.id,
+    organizationName: store.organization.name,
+    studentName: studentName(e.studentId),
+    courseName: g.name,
+    modalityName: modalityName(g.modalityId),
+    startDate: g.startDate,
+    endDate: g.endDate,
+    meetingSlots: g.meetingSlots,
+    presentCount,
+    absentCount,
+    instructorName: instructorName(g.instructorId),
+    city: typeof address === "object" ? address?.city : undefined,
+    issuedOn: todayISO(),
+  });
+  const now = nowIso();
+  const issued: IssuedCertificate = {
+    id: newId(),
+    organizationId: store.organization.id,
+    enrollmentId: e.id,
+    classGroupId: g.id,
+    studentId: e.studentId,
+    code: newCertificateCode(),
+    snapshot: certificate,
+    status: "valid",
+    issuedBy: getCurrentActor()?.userId,
+    issuedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  issuedStore().push(issued);
+  auditLogService.record({
+    action: "created",
+    target: { type: "certificate", id: issued.id, label: `${certificate.studentName} · ${certificate.courseName}` },
+    predicate: `emitiu o certificado de ${certificate.studentName} em ${certificate.courseName} (código ${issued.code})`,
+  });
+  return issued;
+}
+
+function documentOf(issued: IssuedCertificate): Omit<CourseCertificateDocument, "template"> {
+  return {
+    certificate: { ...issued.snapshot, verificationCode: issued.code },
+    issued: { code: issued.code, status: issued.status, issuedAt: issued.issuedAt, canceledAt: issued.canceledAt },
+  };
+}
+
+/** Turma de curso ja terminada, que o professor ve; senao, o erro certo. */
+function endedCourseOf(classGroupId: Id): ClassGroup & { endDate: string } {
+  const g = store.classGroups.find((x) => x.id === classGroupId);
+  if (!g) throw notFoundError("Turma não encontrada.");
+  assertTeacherSeesClass(g, "Você só emite o certificado dos seus cursos.");
+  if (!isCourseEnded(g, todayISO()) || !g.endDate) {
+    throw apiError("VALIDATION", "O certificado sai quando o curso termina.", { httpStatus: 422 });
+  }
+  return g as ClassGroup & { endDate: string };
+}
+
 export const courseCertificateService = {
   /**
    * Certificado de conclusao (doc 20, fase D; recurso pago `certificates`).
@@ -36,60 +103,27 @@ export const courseCertificateService = {
       assertFeature("certificates");
       const e = store.enrollments.find((x) => x.id === enrollmentId);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
-      const g = store.classGroups.find((x) => x.id === e.classGroupId);
-      if (!g) throw notFoundError("Turma não encontrada.");
-      // Professor: so o certificado do curso dele (revisao geral de 31/10/2026, achado S4).
-      assertTeacherSeesClass(g, "Você só emite o certificado dos seus cursos.");
-      if (!isCourseEnded(g, todayISO()) || !g.endDate) {
-        throw apiError("VALIDATION", "O certificado sai quando o curso termina.", { httpStatus: 422 });
-      }
-      const address = store.unit.address;
-      const { presentCount, absentCount } = frequencyOf(g.id, e.studentId);
-      let issued = issuedCertificateOf(e.id);
-      if (!issued) {
-        const certificate = buildCourseCertificate({
-          enrollmentId: e.id,
-          classGroupId: g.id,
-          organizationName: store.organization.name,
-          studentName: studentName(e.studentId),
-          courseName: g.name,
-          modalityName: modalityName(g.modalityId),
-          startDate: g.startDate,
-          endDate: g.endDate,
-          meetingSlots: g.meetingSlots,
-          presentCount,
-          absentCount,
-          instructorName: instructorName(g.instructorId),
-          city: typeof address === "object" ? address?.city : undefined,
-          issuedOn: todayISO(),
-        });
-        const now = nowIso();
-        issued = {
-          id: newId(),
-          organizationId: store.organization.id,
-          enrollmentId: e.id,
-          classGroupId: g.id,
-          studentId: e.studentId,
-          code: newCertificateCode(),
-          snapshot: certificate,
-          status: "valid",
-          issuedBy: getCurrentActor()?.userId,
-          issuedAt: now,
-          createdAt: now,
-          updatedAt: now,
-        };
-        issuedStore().push(issued);
-        auditLogService.record({
-          action: "created",
-          target: { type: "certificate", id: issued.id, label: `${certificate.studentName} · ${certificate.courseName}` },
-          predicate: `emitiu o certificado de ${certificate.studentName} em ${certificate.courseName} (código ${issued.code})`,
-        });
-      }
-      return clone({
-        certificate: { ...issued.snapshot, verificationCode: issued.code },
-        template: currentCertificateTemplate(g.modalityId),
-        issued: { code: issued.code, status: issued.status, issuedAt: issued.issuedAt, canceledAt: issued.canceledAt },
-      });
+      const g = endedCourseOf(e.classGroupId);
+      const issued = issueFor(e, g);
+      return clone({ ...documentOf(issued), template: currentCertificateTemplate(g.modalityId) });
+    });
+  },
+
+  /**
+   * Emite em lote (doc 21 §1.4): todos os alunos com matricula ativa do curso
+   * terminado, na ordem da lista. Quem ja tinha certificado fica com o mesmo
+   * codigo. Devolve os certificados (cancelados inclusos, para a lista) e o modelo.
+   */
+  issueCourseCertificates(classGroupId: Id): Promise<CourseCertificatesBatch> {
+    return writeOp(async () => {
+      assertFeature("certificates");
+      const g = endedCourseOf(classGroupId);
+      const enrollments = store.enrollments
+        .filter((e) => e.classGroupId === g.id && e.status === "active")
+        .map((e) => ({ e, name: studentName(e.studentId) }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      const items = enrollments.map(({ e }) => documentOf(issueFor(e, g)));
+      return clone({ classGroupId: g.id, className: g.name, template: currentCertificateTemplate(g.modalityId), items });
     });
   },
 

@@ -37,6 +37,13 @@ Guia: /settings?tab=certificado
 + botão "Voltar ao texto padrão": Clique aqui para voltar o título e o texto originais. O sistema pede confirmação. Depois, salve na barra que aparece embaixo.
 O botão só aparece quando o texto está diferente do padrão. Layout, cor, assinaturas e logo não mudam.
 
+## Emitir todos de uma vez
+Resumo: No fim do curso, os certificados de toda a turma num PDF só.
+Guia: /classes
++ texto "Turmas": Abra a turma do curso que terminou.
++ botão "Mais ações da turma": Abra o menu e escolha "Emitir certificados".
+Sai um PDF com um certificado por aluno, cada um com o próprio código de verificação. Quem já tinha certificado continua com o mesmo código; os cancelados ficam de fora. Também dá para imprimir pela tela, com uma folha por aluno.
+
 ## Código de verificação
 Resumo: Quem recebe o certificado confere se ele é verdadeiro.
 Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) abre o endereço do rodapé ou lê o QR e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.

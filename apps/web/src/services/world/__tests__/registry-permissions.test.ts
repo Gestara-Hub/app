@@ -17,8 +17,10 @@ const SELF_CHECKED: Record<string, string> = {
   "clients.addGoal": "assertCanManageProgression",
   "clients.setGoalCompleted": "assertCanManageProgression",
   "clients.removeGoal": "assertCanManageProgression",
-  // Abrir o certificado emite (doc 21 §1.3): quem ve a turma emite, e o professor so a dele.
-  "turmas.getCourseCertificate": "assertTeacherSeesClass",
+  // Abrir o certificado emite (doc 21 §1.3): quem ve a turma emite, e o professor so a dele
+  // (`endedCourseOf` chama assertTeacherSeesClass e confere o plano e o fim do curso).
+  "turmas.getCourseCertificate": "endedCourseOf",
+  "turmas.issueCourseCertificates": "endedCourseOf",
 };
 
 describe("permissão dos métodos que gravam", () => {

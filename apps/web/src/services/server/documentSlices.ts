@@ -51,4 +51,5 @@ export const documentSlices: Record<string, MethodSlice> = {
   },
   // O mesmo recorte de `turmas.getCourseCertificate` (conferido em certificates.test.ts).
   certificate: async (args, load) => classSlices.getCourseCertificate(args, load),
+  certificates: async (args, load) => classSlices.issueCourseCertificates(args, load),
 };

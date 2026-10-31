@@ -77,3 +77,34 @@ test("abrir emite o código; a página pública confirma; cancelar invalida", as
   await expect(pub.getByRole("heading", { name: "Certificado cancelado" })).toBeVisible();
   await anonymous.close();
 });
+
+test("emitir em lote: ação na turma, tela com um certificado por aluno e PDF único", async ({ page }) => {
+  await seedCourse(page);
+  await editWorld(page, "org-academia-x", (t) => {
+    t.clients.push(student("c-b", "Bia Lima"));
+    t.enrollments.push({ ...enrollment("e-course-b", "cg-course", "c-b"), course: { priceCents: 30000, installments: 1 } });
+  });
+  await page.goto("/classes/cg-course");
+  await page.getByRole("button", { name: "Mais ações da turma" }).click();
+  await expect(page.getByRole("menuitem", { name: "Emitir certificados" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Tela de impressao: uma folha por aluno, cada uma com o proprio codigo.
+  await page.goto("/classes/cg-course/certificates");
+  await expect(page.getByText("2 certificados de Defesa Pessoal.")).toBeVisible();
+  const footers = page.getByTestId("certificate-verification");
+  await expect(footers).toHaveCount(2);
+  await waitForStore(page, (t) => t.issuedCertificates?.length === 2);
+  const codes = (await readTenant(page)).issuedCertificates.map((c: { code: string }) => c.code);
+  expect(new Set(codes).size).toBe(2);
+  await expect(page.locator("article.certificate-sheet").first()).toContainText("Ana Souza");
+  await expect(page.locator("article.certificate-sheet").nth(1)).toContainText("Bia Lima");
+
+  // O PDF unico sai do servidor.
+  const pdf = await page.request.get("/api/documents/certificates/class/cg-course");
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toContain("application/pdf");
+  expect(pdf.headers()["content-disposition"]).toContain("certificados-defesa-pessoal.pdf");
+  // De novo nao emite outra vez.
+  expect((await readTenant(page)).issuedCertificates).toHaveLength(2);
+});

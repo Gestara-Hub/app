@@ -21,6 +21,7 @@ export { StudentPackagesPanel } from "./components/student-packages-panel";
 export { ModalitiesView } from "./components/modalities-view";
 export { ModalityFormDrawer } from "./components/modality-form-drawer";
 export { CourseCertificateView, CourseCertificateLocked } from "./components/course-certificate-view";
+export { ClassCertificatesView } from "./components/class-certificates-view";
 export { useChargeActions } from "./components/use-charge-actions";
 export { pickNextSession } from "./next-session";
 export { ScheduleNoticeHost } from "./components/schedule-notice-host";

@@ -22,7 +22,7 @@
 
 **Falta (próximas versões):**
 - ~~modelo por modalidade ou por curso~~ (entregue em 31/10/2026: modelo por modalidade, abaixo);
-- emitir em lote para todos os concluídos de uma turma;
+- ~~emitir em lote para todos os concluídos de uma turma~~ (entregue em 31/10/2026, §1.4);
 - ~~código de verificação no certificado~~ (entregue em 31/10/2026, §1.3);
 - assinatura em imagem;
 - o aluno baixar o próprio certificado pelo app;
@@ -40,7 +40,11 @@
 - **Etapa 1, "Minha arte" (entregue em 31/10/2026):** 4º layout (`layout: "custom"`, `artwork` no modelo: `fileId`, `textPosition`, `ink`, `hidden`). Imagem PNG ou JPG, A4 deitado, até 2 MB (PDF não: o gerador de PDF não desenha PDF como imagem). Com a arte, o resto do editor continua igual (texto, variáveis, assinaturas, logo). Três ajustes, sem arrastar nada: **posição do texto** (em cima, no centro, embaixo), **cor do texto** (escura ou clara, para arte escura) e **partes que aparecem** (logo, nome do espaço, título, texto, data, assinaturas): quem tem arte com o título já impresso desliga o título. A cor de destaque não vale nesse layout. Prévia ao vivo, como nos outros. A tela (`CertificateSheet`) e o PDF (`certificate-pdf.tsx`) desenham a arte com `object-fit: cover`; o PDF lê a imagem pelo `loadSpaceImage` (só PNG e JPG da pasta do espaço). A arte sobe pelo caminho dos anexos (`uploadArtwork`, `CERTIFICATE_ARTWORK_RULES`). Em outro layout a arte é esquecida ao salvar.
 - **Etapa 2, campos no lugar (só se um cliente pedir com caso concreto):** na prévia, cada bloco vira uma caixa que a pessoa arrasta e redimensiona, só no computador; fonte entre 3 ou 4 opções, tamanho e alinhamento por bloco.
 - **Fora:** importar `.docx` ou `.pptx` para editar por dentro; editor de HTML ou de código.
-- **Ordem do que falta** (da lista acima): emitir em lote. Etapa 2 depois disso.
+- **Ordem do que falta:** nada da lista de 14/10; a etapa 2 (campos no lugar) só com pedido.
+
+### 1.4 Emitir em lote (entregue em 31/10/2026)
+
+No menu ⋮ da turma de curso terminada, "Emitir certificados" emite para todos os alunos com matrícula ativa (quem já tinha fica com o mesmo código) e abre um PDF só, uma folha por aluno, pelo servidor (`/api/documents/certificates/class/<turma>`). Na demonstração, e para quem prefere imprimir, a tela `/classes/<turma>/certificates` lista as folhas com quebra de página. Cancelados ficam de fora do PDF e da tela. Mesmo recorte e mesma guarda da emissão individual (`endedCourseOf`: plano, curso terminado e o professor só nas turmas dele).
 
 ### 1.3 Código de verificação (entregue em 31/10/2026)
 

@@ -57,6 +57,14 @@ export interface CertificateTemplate {
   updatedAt?: DateTimeISO;
 }
 
+/** Emissao em lote da turma (doc 21 §1.4): os certificados dos alunos e o modelo que vale para eles. */
+export interface CourseCertificatesBatch {
+  classGroupId: Id;
+  className: string;
+  template: CertificateTemplate;
+  items: Omit<CourseCertificateDocument, "template">[];
+}
+
 /** Salvar troca o modelo inteiro (sem `logoFileId` = sem logo; sem `artwork` = sem arte). */
 export type SaveCertificateTemplate = Omit<CertificateTemplate, "updatedAt">;
 
