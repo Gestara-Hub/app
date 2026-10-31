@@ -86,6 +86,17 @@ export function assertTeacherSeesStudent(studentId: Id, message = "Você só vê
   if (teacherId !== undefined && !teacherTeachesStudent(studentId, teacherId)) throw forbidden(message);
 }
 
+/**
+ * O professor ve a lista da turma (matriculas, espera): titular ou substituto
+ * de alguma aula dela.
+ */
+export function teacherSeesClassRoster(g: Pick<ClassGroup, "id" | "instructorId">, teacherId = actorTeacherId()): boolean {
+  if (teacherId === undefined || g.instructorId === teacherId) return true;
+  return (store.sessionOverrides ?? []).some(
+    (o) => o.instructorId === teacherId && parseSessionId(o.sessionId)?.classGroupId === g.id,
+  );
+}
+
 /** Leitura de uma turma (avaliacoes, lancamento de notas): o professor so a dele. */
 export function assertTeacherSeesClass(g: Pick<ClassGroup, "instructorId">, message = "Você só vê as suas turmas."): void {
   if (!teacherSeesClass(g)) throw forbidden(message);

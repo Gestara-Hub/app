@@ -1,3 +1,4 @@
+import { actorTeacherId, teacherSeesClassRoster } from "./teacherScope";
 import type {
   Attendance,
   AttendanceStatus,
@@ -109,9 +110,17 @@ export const attendanceService = {
    */
   listAbsenceStreaks(minStreak = 3): Promise<AbsenceStreakView[]> {
     return readOp(async () => {
+      // Pelo menos 1 falta (com 0 voltavam todos os alunos, com telefone) e, para
+      // o professor, so as turmas dele (revisao geral de 31/10/2026, achado S4).
+      const min = Math.max(1, Math.floor(Number(minStreak) || 1));
+      const teacherId = actorTeacherId();
       const groupsByStudent = new Map<Id, Set<Id>>();
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;
+        if (teacherId !== undefined) {
+          const g = store.classGroups.find((x) => x.id === e.classGroupId);
+          if (!g || !teacherSeesClassRoster(g, teacherId)) continue;
+        }
         const set = groupsByStudent.get(e.studentId) ?? new Set<Id>();
         set.add(e.classGroupId);
         groupsByStudent.set(e.studentId, set);
@@ -136,7 +145,7 @@ export const attendanceService = {
           since = m.session.date;
           groups.add(m.session.classGroupId);
         }
-        if (streak < minStreak) continue;
+        if (streak < min) continue;
         result.push({
           studentId,
           studentName: client.name,

@@ -1,3 +1,4 @@
+import { assertTeacherSeesClass } from "./teacherScope";
 import type { CourseCertificateDocument, Id } from "@gestarahub/contracts";
 import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
@@ -21,6 +22,8 @@ export const courseCertificateService = {
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
+      // Professor: so o certificado do curso dele (revisao geral de 31/10/2026, achado S4).
+      assertTeacherSeesClass(g, "Você só emite o certificado dos seus cursos.");
       if (!isCourseEnded(g, todayISO()) || !g.endDate) {
         throw apiError("VALIDATION", "O certificado sai quando o curso termina.", { httpStatus: 422 });
       }

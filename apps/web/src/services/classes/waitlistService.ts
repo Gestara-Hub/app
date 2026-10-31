@@ -1,3 +1,4 @@
+import { teacherSeesClassRoster } from "./teacherScope";
 import type {
   EnrollmentCourseChoice,
   EnrollmentView,
@@ -36,6 +37,11 @@ export const waitlistService = {
   // --- Lista de espera ----------------------------------------------------
   listWaitlist(classGroupId: Id): Promise<WaitlistEntryView[]> {
     return readOp(async () => {
+      const group = store.classGroups.find((g) => g.id === classGroupId);
+      // Professor: so a turma dele ou a que substitui (revisao geral de 31/10/2026, achado S4).
+      if (group && !teacherSeesClassRoster(group)) {
+        throw apiError("FORBIDDEN", "Você só vê as suas turmas.", { httpStatus: 403 });
+      }
       const rows = store.waitlist.filter(
         (w) => w.classGroupId === classGroupId && w.status === "waiting",
       );

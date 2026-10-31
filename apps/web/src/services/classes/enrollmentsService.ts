@@ -1,3 +1,4 @@
+import { teacherSeesClassRoster } from "./teacherScope";
 import type { CreateEnrollment, EnrollmentView, Id } from "@gestarahub/contracts";
 import { classBillingMode, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
@@ -22,6 +23,11 @@ export const enrollmentsService = {
   // --- Matriculas ---------------------------------------------------------
   listEnrollments(classGroupId: Id): Promise<EnrollmentView[]> {
     return readOp(async () => {
+      const group = store.classGroups.find((g) => g.id === classGroupId);
+      // Professor: so a turma dele ou a que substitui (revisao geral de 31/10/2026, achado S4).
+      if (group && !teacherSeesClassRoster(group)) {
+        throw apiError("FORBIDDEN", "Você só vê as suas turmas.", { httpStatus: 403 });
+      }
       const rows = store.enrollments.filter(
         (e) => e.classGroupId === classGroupId && e.status !== "canceled",
       );
