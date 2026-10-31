@@ -9,6 +9,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { trackEvent } from "@/lib/analytics";
 import type { GuideStepKind, HelpChunk } from "@/lib/support/help-search";
 import { routePath } from "@/lib/support/help-search";
+import { isGuideTargetDisabled, pressGuideTarget } from "../guide-press";
 import { findGuideElement } from "../guide-target";
 
 interface Rect {
@@ -34,7 +35,10 @@ const sameRect = (a: Rect | null, b: Rect | null) =>
  * a aba ou o campo que a pessoa usa, e segue quando ela clica no destaque. O
  * escuro é só visual (não segura clique): quem faz é a pessoa, no sistema de
  * verdade. Os elementos são achados pelo texto da tela (`guide-target.ts`), então
- * o guia atravessa telas e janelas abertas pelo próprio passo.
+ * o guia atravessa telas e janelas abertas pelo próprio passo. Passo de clique
+ * não tem "Próximo" (seguir sem clicar deixava a janela fechada e o passo
+ * seguinte sem alvo): tem "Fazer por mim", que clica pela pessoa (`guide-press.ts`).
+ * Sem o alvo na tela, o balão oferece voltar ou pular o passo.
  */
 export function GuideRunner({ chunk, onClose }: { chunk: HelpChunk; onClose: () => void }) {
   const guide = chunk.guide!;
@@ -44,6 +48,8 @@ export function GuideRunner({ chunk, onClose }: { chunk: HelpChunk; onClose: () 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [notFound, setNotFound] = useState(false);
+  // Passo em que o "Fazer por mim" achou o botão desligado (o aviso some ao mudar de passo).
+  const [blockedStep, setBlockedStep] = useState<number | null>(null);
   const [tooltipHeight, setTooltipHeight] = useState(150);
   const rootRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -164,6 +170,18 @@ export function GuideRunner({ chunk, onClose }: { chunk: HelpChunk; onClose: () 
     };
   }, [step]);
 
+  // "Fazer por mim": clica no destaque; o passo segue pelo mesmo caminho do clique da pessoa (acima).
+  const doItForMe = () => {
+    const el = targetRef.current;
+    if (!(el instanceof HTMLElement)) return;
+    if (isGuideTargetDisabled(el)) {
+      setBlockedStep(index);
+      return;
+    }
+    trackEvent("help_guide_did_for_me", { guide: chunk.id, step: String(index + 1) });
+    pressGuideTarget(el);
+  };
+
   useLayoutEffect(() => {
     if (tooltipRef.current?.offsetHeight) setTooltipHeight(tooltipRef.current.offsetHeight);
   }, [index, rect]);
@@ -200,6 +218,7 @@ export function GuideRunner({ chunk, onClose }: { chunk: HelpChunk; onClose: () 
     };
   }
   const clickable = ADVANCES_ON_CLICK.includes(step.kind);
+  const canPress = clickable && !notFound && hole !== null;
 
   return createPortal(
     <div ref={rootRef} data-guide-ui className="pointer-events-none fixed inset-0 z-[100]">
@@ -229,17 +248,33 @@ export function GuideRunner({ chunk, onClose }: { chunk: HelpChunk; onClose: () 
         <p className="pr-6 text-xs font-medium text-muted-foreground">
           {chunk.title} · passo {index + 1} de {guide.steps.length}
         </p>
-        <p className="mt-1.5 text-sm font-medium text-foreground">{notFound ? `Não achei isso nesta tela agora. ${step.text}` : step.text}</p>
-        {clickable && !notFound ? <p className="mt-1 text-xs text-muted-foreground">Clique no destaque para seguir.</p> : null}
-        <div className="mt-3 flex items-center justify-end gap-2">
+        <p className="mt-1.5 text-sm font-medium text-foreground">{step.text}</p>
+        {notFound ? (
+          <p role="status" className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+            Não achei isso na tela agora.{index > 0 ? " Volte um passo e faça de novo, ou pule este." : " Pule este passo para seguir."}
+          </p>
+        ) : blockedStep === index ? (
+          <p role="status" className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+            Este botão está desligado agora. Confira o passo anterior.
+          </p>
+        ) : canPress ? (
+          <p className="mt-1 text-xs text-muted-foreground">Clique no destaque ou toque em “Fazer por mim”.</p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
           {index > 0 ? (
             <Button variant="outline" onClick={() => setIndex((i) => Math.max(0, i - 1))}>
               Voltar
             </Button>
           ) : null}
-          <Button variant={clickable && !notFound ? "outline" : "default"} onClick={next}>
-            {isLast ? "Concluir" : "Próximo"}
-          </Button>
+          {canPress ? (
+            <Button onClick={doItForMe}>Fazer por mim</Button>
+          ) : notFound ? (
+            <Button variant="outline" onClick={next}>
+              {isLast ? "Concluir" : "Pular este passo"}
+            </Button>
+          ) : (
+            <Button onClick={next}>{isLast ? "Concluir" : "Próximo"}</Button>
+          )}
         </div>
       </div>
     </div>,

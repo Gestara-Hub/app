@@ -23,6 +23,7 @@ const AREAS = {
   auditoria: ["auditoria"],
   site: ["landing"],
   avisos: ["avisos-erros"],
+  ajuda: ["guia-na-tela"],
   celular: ["mobile", "mobile-areas.mobile", "ficha-notas.mobile", "telas-dinheiro.mobile"],
 };
 
