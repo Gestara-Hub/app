@@ -35,7 +35,22 @@ describe("1ª mensalidade do cadastro", () => {
     expect(firstOf(c.id).amountCents).toBeGreaterThan(100);
   });
 
-  it("dono ajusta o valor; período fora do motor vira o do motor", async () => {
+  it("dono ajusta o valor do período do motor; o fim e o proporcional são sempre os do motor", async () => {
+    setCurrentActor({ userId: "usr-dono", name: "Dono", profile: "owner" });
+    const plan = await createPlan("monthly", 15000);
+    const c = await clientsService.create({
+      ...base(plan.id),
+      // Periodo certo, mas fim forjado: travaria as cobrancas seguintes (achado V3).
+      initialCharge: { amountCents: 9000, dueDate: "2026-09-20", periodStart: "2026-09-20", periodEnd: "2030-12-31", isProrated: false },
+    });
+    const first = firstOf(c.id);
+    expect(first.amountCents).toBe(9000);
+    expect(first.periodStart).toBe("2026-09-20");
+    expect(first.periodEnd).toBe("2026-09-30");
+    expect(first.isProrated).toBe(true);
+  });
+
+  it("período fora do motor: vale o período e o valor do motor, mesmo para o dono (achado V1)", async () => {
     setCurrentActor({ userId: "usr-dono", name: "Dono", profile: "owner" });
     const plan = await createPlan("monthly", 15000);
     const c = await clientsService.create({
@@ -43,8 +58,8 @@ describe("1ª mensalidade do cadastro", () => {
       initialCharge: { amountCents: 9000, dueDate: "2026-01-05", periodStart: "2026-01-01", periodEnd: "2027-12-31" },
     });
     const first = firstOf(c.id);
-    expect(first.amountCents).toBe(9000);
     expect(first.periodStart).toBe("2026-09-20");
-    expect(first.periodEnd).not.toBe("2027-12-31");
+    expect(first.periodEnd).toBe("2026-09-30");
+    expect(first.amountCents).not.toBe(9000);
   });
 });

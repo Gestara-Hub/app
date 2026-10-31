@@ -12,6 +12,7 @@ import {
 } from "../billing";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { todayISO } from "./clientStore";
+import { isIsoDate } from "@gestarahub/core/date";
 
 /**
  * 1a mensalidade do aluno no plano. Valor e vencimento vem do formulario (que
@@ -33,16 +34,21 @@ export function initialMembershipCharge(client: Client, requested: CreateClientI
   // Valor ajustado so para quem cobra (billing:manage); o atendente que cadastra fica com o do motor.
   const actor = getCurrentActor();
   const mayAdjust = !actor || can(actor.profile, "billing:manage");
-  const input: CreateClientInitialCharge = engineFirst
+  // Revisao geral de 31/10/2026 (achados V1 e V3): o periodo, o fim e o
+  // proporcional sao sempre os do motor (um fim forjado travava as cobrancas
+  // seguintes). O valor ajustado vale so quando o periodo pedido bate com o do
+  // motor; se o motor trocou o periodo, vale o valor dele. O vencimento pedido
+  // vale se for uma data de verdade.
+  const input: CreateClientInitialCharge = slot
     ? {
-        amountCents: mayAdjust ? requested.amountCents : engineFirst.amountCents,
-        dueDate: engineFirst.dueDate,
-        periodStart: engineFirst.periodStart,
-        periodEnd: engineFirst.periodEnd,
-        isProrated: engineFirst.isProrated,
-        proratedDays: engineFirst.proratedDays,
+        amountCents: requestedSlot && mayAdjust ? requested.amountCents : slot.amountCents,
+        dueDate: requestedSlot && isIsoDate(requested.dueDate) ? requested.dueDate : slot.dueDate,
+        periodStart: slot.periodStart,
+        periodEnd: slot.periodEnd,
+        isProrated: slot.isProrated,
+        proratedDays: slot.proratedDays,
       }
-    : { ...requested, amountCents: mayAdjust || !slot ? requested.amountCents : slot.amountCents };
+    : requested;
   const competence = input.dueDate.slice(0, 7);
   return {
     id: newId(),

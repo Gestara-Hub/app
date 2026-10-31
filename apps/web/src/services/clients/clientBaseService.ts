@@ -36,7 +36,9 @@ function visibleClients(): Client[] {
 function validChargesFrom(payload: CreateClient): string | undefined {
   const from = payload.chargesFrom;
   if (!from || !payload.planId || !payload.planStartDate) return undefined;
-  return from > payload.planStartDate && from <= todayISO() ? from : undefined;
+  // So o dia 1o do mes atual, o que o cadastro manda (achado V12 de 31/10/2026):
+  // uma data qualquer ate hoje pulava tambem a mensalidade deste mes ja vencida.
+  return from > payload.planStartDate && from === `${todayISO().slice(0, 7)}-01` ? from : undefined;
 }
 
 /** Cadastro, lista e leitura do aluno. */
