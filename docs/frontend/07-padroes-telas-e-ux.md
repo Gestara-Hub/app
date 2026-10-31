@@ -41,6 +41,8 @@ Toda aba ou tela de listagem deve conter:
 />
 ```
 
+**Paginação (30/10/2026, a pedido):** a `PaginationBar` fica só embaixo da lista, logo depois da `ListContainer`, sem repetir no topo (o total já está na `ListSummaryBar`). Trocar de página ou de quantidade por página leva a tela ao início do bloco da lista (o pai da barra, com a busca e os filtros), abaixo do topo fixo, só quando esse início já saiu da tela (`scrollToListStart`, `components/shared/list/list-scroll.ts`). Por isso a barra precisa ficar dentro do mesmo bloco da busca e da lista.
+
 ### 1.4. Linhas de Listagem (`ListRow`) e Menus de Ação (`⋮` + Botão Direito)
 - Toda linha (`ListRow`) ou card de listagem deve oferecer as mesmas ações via:
   1. **`ListItemContextMenu`** envolvendo o elemento da linha/card (abre com clique direito no desktop ou toque longo no mobile).

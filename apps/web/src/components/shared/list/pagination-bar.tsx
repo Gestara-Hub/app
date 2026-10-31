@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { singularLabel } from "@/lib/text";
 import { cn } from "@/lib/utils";
+import { scrollToListStart } from "./list-scroll";
 
 export interface PaginationBarProps {
   page: number;
@@ -34,7 +35,14 @@ export function PaginationBar({
   className,
   disabled = false,
 }: PaginationBarProps) {
+  const rootRef = React.useRef<HTMLDivElement>(null);
   if (total <= 0) return null;
+
+  // A barra fica embaixo: trocar de pagina leva a tela ao inicio da lista.
+  const goTo = (next: number) => {
+    onPageChange(next);
+    scrollToListStart(rootRef.current);
+  };
 
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
@@ -57,6 +65,7 @@ export function PaginationBar({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         "flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between",
         className,
@@ -78,6 +87,7 @@ export function PaginationBar({
               onValueChange={(value) => {
                 const newSize = Number(value);
                 onPageSizeChange(newSize);
+                scrollToListStart(rootRef.current);
                 if (typeof window !== "undefined") {
                   window.dispatchEvent(
                     new CustomEvent("gestarahub:pagesize-change", {
@@ -107,7 +117,7 @@ export function PaginationBar({
         <div className="flex items-center gap-1 sm:hidden">
           <Button
             variant="outline"
-            onClick={() => onPageChange(page - 1)}
+            onClick={() => goTo(page - 1)}
             disabled={page <= 1 || disabled}
             aria-label="Página anterior"
           >
@@ -119,7 +129,7 @@ export function PaginationBar({
           </span>
           <Button
             variant="outline"
-            onClick={() => onPageChange(page + 1)}
+            onClick={() => goTo(page + 1)}
             disabled={page >= totalPages || disabled}
             aria-label="Próxima página"
           >
@@ -133,7 +143,7 @@ export function PaginationBar({
           <Button
             variant="outline"
             size="icon-sm"
-            onClick={() => onPageChange(1)}
+            onClick={() => goTo(1)}
             disabled={page <= 1 || disabled}
             aria-label="Primeira página"
             title="Primeira página"
@@ -143,7 +153,7 @@ export function PaginationBar({
           <Button
             variant="outline"
             size="icon-sm"
-            onClick={() => onPageChange(page - 1)}
+            onClick={() => goTo(page - 1)}
             disabled={page <= 1 || disabled}
             aria-label="Página anterior"
             title="Página anterior"
@@ -165,7 +175,7 @@ export function PaginationBar({
                   key={p}
                   variant={p === page ? "default" : "outline"}
                   size="icon-sm"
-                  onClick={() => onPageChange(p)}
+                  onClick={() => goTo(p)}
                   disabled={disabled}
                   aria-label={`Ir para a página ${p}`}
                   aria-current={p === page ? "page" : undefined}
@@ -179,7 +189,7 @@ export function PaginationBar({
           <Button
             variant="outline"
             size="icon-sm"
-            onClick={() => onPageChange(page + 1)}
+            onClick={() => goTo(page + 1)}
             disabled={page >= totalPages || disabled}
             aria-label="Próxima página"
             title="Próxima página"
@@ -189,7 +199,7 @@ export function PaginationBar({
           <Button
             variant="outline"
             size="icon-sm"
-            onClick={() => onPageChange(totalPages)}
+            onClick={() => goTo(totalPages)}
             disabled={page >= totalPages || disabled}
             aria-label="Última página"
             title="Última página"
