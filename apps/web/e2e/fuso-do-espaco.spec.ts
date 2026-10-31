@@ -18,19 +18,16 @@ async function settingsInDb(): Promise<Record<string, unknown>> {
 test("troca o fuso do espaço em Configurações → Endereço e grava", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings");
-  const address = page.getByRole("button", { name: /Endereço/ });
-  if ((await address.getAttribute("aria-expanded")) !== "true") await address.click();
+  // O bloco Endereco fica aberto (sem sanfona desde 31/10/2026).
 
   const zone = page.getByRole("combobox", { name: "Fuso horário" });
   await expect(zone).toContainText("Brasília (UTC−3)");
   await expect(page.getByText("Define o dia e a hora de cobranças e aulas.")).toBeVisible();
   await zone.click();
   await page.getByRole("menuitem", { name: /Amazonas, Mato Grosso, MS, Rondônia e Roraima/ }).click({ force: true });
-  await page.getByRole("button", { name: "Salvar configurações" }).click();
+  await page.locator("#settings-panel-geral").getByRole("button", { name: "Salvar", exact: true }).click();
 
   await expect.poll(async () => (await settingsInDb()).timeZone).toBe("America/Manaus");
   await page.reload();
-  const reopened = page.getByRole("button", { name: /Endereço/ });
-  if ((await reopened.getAttribute("aria-expanded")) !== "true") await reopened.click();
   await expect(page.getByRole("combobox", { name: "Fuso horário" })).toContainText("Amazonas, Mato Grosso");
 });

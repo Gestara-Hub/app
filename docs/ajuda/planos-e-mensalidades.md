@@ -18,13 +18,12 @@ Guia: /classes/plans
 Quem já tem o plano inativo continua sendo cobrado. Para voltar, mostre os inativos no filtro e use "Reativar".
 
 ## Regras da mensalidade
-Guia: /settings
-+ texto "Regras da mensalidade": Abra esta seção para ver as regras de todas as mensalidades.
+Guia: /settings?tab=cobranca
++ aba "Cobrança": Aqui ficam as regras de todas as mensalidades.
 + texto "Momento do pagamento": Escolha se cobra antes ou depois do uso.
 + texto "Entrada no meio do mês": Escolha se o primeiro mês é proporcional ou cheio.
-+ texto "Dia de vencimento": Defina o dia fixo em que as mensalidades vencem.
-+ botão "Salvar configurações|Confirmar regras": Clique aqui para guardar as regras.
-Em Configurações você define o dia de vencimento padrão, se cobra antes ou depois do uso e como fica o primeiro mês (proporcional aos dias ou mês cheio). Cada aluno pode ter regra própria no cadastro.
++ texto "Dia de vencimento": Defina o dia fixo em que as mensalidades vencem. Depois, salve na barra que aparece embaixo.
+Em Configurações, aba Cobrança, você define o dia de vencimento padrão, se cobra antes ou depois do uso e como fica o primeiro mês (proporcional aos dias ou mês cheio). Cada aluno pode ter regra própria no cadastro.
 
 ## Desconto e bolsa
 Guia: /clients

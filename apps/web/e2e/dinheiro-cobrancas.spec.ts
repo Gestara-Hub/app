@@ -287,7 +287,7 @@ test.describe("WhatsApp", () => {
     await page.goto("/settings");
     await page.getByRole("combobox", { name: /Área do espaço/ }).click();
     await page.getByRole("menuitem", { name: /^Gastronomia/ }).click();
-    await page.getByRole("button", { name: "Salvar configurações" }).click();
+    await page.locator("#settings-panel-geral").getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Configurações salvas.")).toBeVisible();
     await waitForTenant(page, (t) => t.organization.classSegment === "gastronomy");
 

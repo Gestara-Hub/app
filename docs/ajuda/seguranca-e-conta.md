@@ -30,9 +30,8 @@ No primeiro acesso, o proprietário aceita os Termos de uso e a Política de pri
 ## Fuso horário
 Resumo: Escolha o fuso do espaço em Configurações.
 Guia: /settings?tab=geral
-+ botão "Endereço": O fuso fica na seção Endereço. Abra se estiver fechada.
-+ campo "Fuso horário": Escolha o fuso do seu espaço.
-+ botão "Salvar configurações": Clique aqui para guardar.
++ texto "Endereço e fuso horário.": O fuso fica no bloco Endereço.
++ campo "Fuso horário": Escolha o fuso do seu espaço. Depois, salve na barra que aparece embaixo.
 Em Configurações, aba Geral, escolha o fuso do espaço (os quatro fusos do Brasil). Datas e vencimentos seguem esse fuso.
 
 ## Dados dos alunos e LGPD

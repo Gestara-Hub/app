@@ -280,3 +280,14 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Landing com sessão:** "Ir para o painel" no cabeçalho e no lugar do cadastro.
 - **Dia de vencimento nas Configurações:** o erro sai numa linha própria.
 - **Limite de texto da mensagem:** "Nova mensagem" (1000) e modelo (900) com contador "N de M"; emoji conta 1 caractere (`charCount`, em `@/lib/text`), na tela e no serviço (ALU-38).
+
+## Configurações (31/10/2026, decidido com o dono)
+
+- **Abas:** Geral, Horários, Cobrança, Certificado e Plano GestaraHub (Cobrança e Certificado só no modelo de turmas). Todas com a mesma largura (`max-w-5xl`); o Certificado põe a prévia ao lado dentro dela. Links antigos das regras (`/settings#billing-rules`, `?tab=geral#billing-rules`) levam à aba Cobrança.
+- **Preferências de cada pessoa** (tema, cor de destaque e som) ficam só no menu da conta (avatar → Preferências), não nas Configurações do espaço.
+- **Barra de salvar** (`SettingsSaveBar`, `features/settings/components/settings-save-bar.tsx`): presa embaixo da tela (respeita a barra do iPhone), aparece só com alteração não salva e some depois de salvar. Botões "Descartar" e "Salvar", sem ícone e sem variação ("Salvar configurações", "Salvar horários" saíram); no celular os dois dividem a linha. Passo da configuração inicial pendente mostra a barra mesmo sem alteração ("Falta confirmar" e "Confirmar regras recomendadas"). Como o Salvar só aparece depois de mudar algo, os guias da ajuda não apontam para ele: o passo anterior diz "Depois, salve na barra que aparece embaixo".
+- **Geral:** blocos sempre abertos (`SettingsSection`), sem sanfona. Sem "Nome da unidade" até existir multiunidade. Telefone salvo inválido aparece com erro ao abrir a aba, e o serviço também confere o número (`settingsService.updateUnit`).
+- **Gravação por partes:** `updateOrganization` junta `settings` com o que já está salvo; cada aba manda só as suas chaves (Geral o fuso, Cobrança as regras).
+- **Certificado:** "Quem assina" escolhe entre professor da turma, nome do espaço ou outro nome (ninguém digita `{professor}` ou `{empresa}`). "Voltar ao texto padrão", no bloco Texto, volta o título e o texto no rascunho, com confirmação; quem grava é a barra.
+- **Aparência:** tema (claro, escuro ou do sistema), cor de destaque (um cinza só, "Padrão") e som. Cor base, cantos, menu lateral (escuro), fonte e estilo ficam fixos no CSS (`lib/theme-accent.ts`); sem Google Fonts na política de segurança.
+- **Abas segmentadas (`PageTabs`):** o contorno de foco aparece só pelo teclado.

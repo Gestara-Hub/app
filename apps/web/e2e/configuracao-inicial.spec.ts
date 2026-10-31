@@ -120,7 +120,7 @@ test("Configurações: Outra área grava o nome e como os alunos avançam", asyn
   await page.getByLabel("O que você ensina?").fill("Teatro");
   await page.getByRole("combobox", { name: /Como seus alunos avançam/ }).click();
   await page.getByRole("menuitem", { name: "Faixas" }).click();
-  await page.getByRole("button", { name: "Salvar configurações" }).click();
+  await page.locator("#settings-panel-geral").getByRole("button", { name: "Salvar", exact: true }).click();
   await expect(page.getByText("Configurações salvas.")).toBeVisible();
 
   const saved = await savedAcademy(page);

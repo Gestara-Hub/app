@@ -191,7 +191,7 @@ test.describe("configurações: alterações não salvas", () => {
     await page.goto("/settings");
     const name = page.getByLabel("Nome do espaço");
     await name.fill("Academia Rascunho");
-    await expect(page.locator("#settings-panel-geral").getByText("● Alterações não salvas")).toBeVisible();
+    await expect(page.locator("#settings-panel-geral").getByText("Alterações não salvas")).toBeVisible();
     await expect(page.getByRole("tab", { name: /Geral/ })).toHaveAccessibleName(/alterações não salvas/);
 
     await page.getByRole("tab", { name: /Horários/ }).click();
@@ -220,9 +220,9 @@ test.describe("configurações: alterações não salvas", () => {
     await name.click();
     await name.press("End");
     await name.pressSequentially("X");
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
     await name.press("Backspace");
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toHaveCount(0);
     await expectTabClean(page, /Geral/);
     await page.reload();
     expect(seen).toEqual([]);
@@ -230,7 +230,7 @@ test.describe("configurações: alterações não salvas", () => {
     // Com edicao: o navegador pergunta. Recusar mantem a tela e o rascunho.
     await name.click();
     await name.fill("Academia Nova");
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
     await expectTabDirty(page, /Geral/);
     state.mode = "dismiss";
     void page.reload().catch(() => undefined);
@@ -246,9 +246,9 @@ test.describe("configurações: alterações não salvas", () => {
     // Depois de salvar, sai sem aviso.
     await name.click();
     await name.fill("Academia Nova");
-    await page.getByRole("button", { name: "Salvar configurações" }).click();
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Configurações salvas.")).toBeVisible();
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toHaveCount(0);
     await expectTabClean(page, /Geral/);
     await expect
       .poll(async () => (await academyJson()).includes("Academia Nova"))
@@ -267,9 +267,9 @@ test.describe("configurações: alterações não salvas", () => {
 
     // Liga e desliga: nada pendente, navega sem aviso.
     await monday.click();
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
     await monday.click();
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toHaveCount(0);
     await expectTabClean(page, /Horários/);
     await page.goto("/dashboard");
     expect(seen).toEqual([]);
@@ -277,7 +277,7 @@ test.describe("configurações: alterações não salvas", () => {
     // Fecha a segunda e tenta sair: o navegador pergunta; aceitar descarta.
     await page.goto("/settings?tab=horarios");
     await monday.click();
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
     await expectTabDirty(page, /Horários/);
     await page.goto("/dashboard");
     expect(seen).toEqual(["beforeunload"]);
@@ -287,9 +287,9 @@ test.describe("configurações: alterações não salvas", () => {
 
     // Salvo: sai sem aviso.
     await monday.click();
-    await panel.getByRole("button", { name: "Salvar horários" }).click();
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Horários de funcionamento salvos.")).toBeVisible();
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toHaveCount(0);
     await expectTabClean(page, /Horários/);
     await expect
       .poll(async () => {

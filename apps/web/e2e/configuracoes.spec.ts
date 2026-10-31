@@ -1,15 +1,18 @@
 import type { Page } from "@playwright/test";
 import { editWorld, expect, loginAs, seedAcademy, student, test } from "./fixtures";
 
-/** Com a cobranca ja configurada, as Regras da mensalidade abrem pelo clique. */
+/** Regras da mensalidade: aba Cobranca desde 31/10/2026 (antes um bloco da Geral). */
 async function openBillingRules(page: Page) {
-  const trigger = page.getByRole("button", { name: /Regras da mensalidade/ });
-  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+  await page.goto("/settings?tab=cobranca");
+  await expect(page.locator("#billing-rules")).toBeVisible();
 }
+
+/** Barra de salvar da aba (aparece so com alteracao). */
+const saveButton = (page: Page, tab: string) =>
+  page.locator(`#settings-panel-${tab}`).getByRole("button", { name: "Salvar", exact: true });
 
 test("prévia das regras da mensalidade mostra as 4 combinações", async ({ page }) => {
   await seedAcademy(page);
-  await page.goto("/settings#billing-rules");
   await openBillingRules(page);
   const preview = page.locator("[aria-live=polite]").filter({ hasText: "Simulação" });
   // Linha da tabela da previa: vencimento, valor e periodo de aulas.
@@ -40,13 +43,12 @@ test("prévia das regras da mensalidade mostra as 4 combinações", async ({ pag
 
 test("dia de vencimento aceita de 1 a 31 (29 a 31 no último dia dos meses curtos)", async ({ page }) => {
   await seedAcademy(page);
-  await page.goto("/settings#billing-rules");
   await openBillingRules(page);
   await page.locator("input[name=defaultDueDay]").fill("31");
   await expect(page.getByText("Nos meses mais curtos, vence no último dia.")).toBeVisible();
   await page.locator("input[name=defaultDueDay]").fill("35");
-  await page.getByRole("button", { name: "Salvar configurações" }).click();
-  // O erro aparece no campo (e repetido no resumo do cartao).
+  await saveButton(page, "cobranca").click();
+  // O erro aparece numa linha propria, embaixo do campo.
   await expect(page.locator("#defaultDueDay-error")).toHaveText("Use um dia de 1 a 31.");
 });
 
@@ -76,14 +78,14 @@ test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
   // usa `activeGroups ?? []`). Sob carga isso acontecia; espera a leitura do mock.
   await page.waitForTimeout(1000);
   await page.getByRole("switch").nth(1).click(); // segunda-feira
-  await page.getByRole("button", { name: "Salvar horários" }).click();
+  await saveButton(page, "horarios").click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("Jiu-Jitsu Adulto (Segunda 17:00)");
   await confirm.getByRole("button", { name: "Voltar" }).click();
   await expect(page.getByText("Horários de funcionamento salvos.")).toHaveCount(0);
 });
 
-test("configuração inicial: o Continuar leva ao passo e às Regras da mensalidade abertas", async ({ page }) => {
+test("configuração inicial: o Continuar leva ao passo e à aba Cobrança", async ({ page }) => {
   await loginAs(page, "Ana Ribeiro");
   await editWorld(page, "org-academia-x", (t) => {
     t.unit.businessHours = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, closed: true, shifts: [] }));
@@ -101,18 +103,19 @@ test("configuração inicial: o Continuar leva ao passo e às Regras da mensalid
   await expect(banner.getByRole("link", { name: "Continuar" })).toHaveCount(0);
 
   await page.getByRole("switch").nth(1).click(); // segunda-feira
-  await page.getByRole("button", { name: "Salvar horários" }).click();
+  await saveButton(page, "horarios").click();
   await expect(banner).toContainText("Definir regras da mensalidade");
 
-  // O Continuar leva as Regras da mensalidade ja abertas; o cartao pulsa ate o clique.
+  // O Continuar leva a aba Cobranca; a barra ja mostra o confirmar, que treme ate o clique.
   await banner.getByRole("link", { name: "Continuar" }).click();
-  await expect(page).toHaveURL(/tab=geral#billing-rules$/);
-  await expect(page.getByRole("button", { name: /Regras da mensalidade/ })).toHaveAttribute("aria-expanded", "true");
-  // O botao de confirmar treme ate o clique (o destaque saiu do cartao).
-  const confirm = page.getByRole("button", { name: /Confirmar regras/ });
+  await expect(page).toHaveURL(/tab=cobranca#billing-rules$/);
+  await expect(page.locator("#billing-rules")).toBeVisible();
+  const confirm = page.getByRole("button", { name: "Confirmar regras recomendadas" });
+  await expect(page.getByText("Falta confirmar")).toBeVisible();
   await expect(confirm).toHaveClass(/animate-attention/);
   await confirm.click();
-  await expect(page.getByText("● Falta confirmar")).toHaveCount(0);
+  await expect(page.getByText("Falta confirmar")).toHaveCount(0);
+  await expect(confirm).toHaveCount(0);
 });
 
 test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard", async ({ page }) => {
@@ -124,12 +127,13 @@ test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard
   await expect(page.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
 });
 
-test("hash repetido na URL ainda abre as Regras da mensalidade", async ({ page }) => {
+test("link antigo das regras (aba Geral, hash repetido) abre a aba Cobrança", async ({ page }) => {
   await seedAcademy(page);
-  // O link abre o cartao sozinho enquanto a cobranca nao foi configurada.
   await editWorld(page, "org-academia-x", (t) => delete t.organization.settings.billingTiming);
   await page.goto("/settings?tab=geral#billing-rules#billing-rules");
-  await expect(page.getByRole("button", { name: /Regras da mensalidade/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(page).toHaveURL(/tab=cobranca#billing-rules$/);
+  await expect(page.locator("#billing-rules")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirmar regras recomendadas" })).toBeVisible();
 });
 
 test("fora da tela do próximo passo o Continuar pulsa; nela, some", async ({ page }) => {
@@ -198,14 +202,15 @@ test("horários: resumo por dia, edição em modal e aplicar a outros dias", asy
   await expect(summary(3)).toHaveText("06:00–22:00");
 });
 
-test("horários: indicador de não salvo, confirmação ao trocar de aba e salvar", async ({ page }) => {
+test("horários: barra de salvar ao mudar, confirmação ao trocar de aba e salvar", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings?tab=horarios");
   const panel = page.locator("#settings-panel-horarios");
-  await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+  // Sem alteracao, sem barra.
+  await expect(saveButton(page, "horarios")).toHaveCount(0);
 
   await panel.getByRole("switch").nth(1).click(); // fecha a segunda
-  await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+  await expect(panel.getByText("Alterações não salvas")).toBeVisible();
 
   await page.getByRole("tab", { name: /Geral/ }).click();
   const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
@@ -213,11 +218,11 @@ test("horários: indicador de não salvo, confirmação ao trocar de aba e salva
   await confirm.getByRole("button", { name: "Continuar editando" }).click();
   await expect(confirm).toBeHidden();
   await expect(page).toHaveURL(/tab=horarios/);
-  await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+  await expect(panel.getByText("Alterações não salvas")).toBeVisible();
 
-  await panel.getByRole("button", { name: "Salvar horários" }).click();
+  await saveButton(page, "horarios").click();
   await expect(page.getByText("Horários de funcionamento salvos.")).toBeVisible();
-  await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+  await expect(saveButton(page, "horarios")).toHaveCount(0);
 
   // Salvo: troca de aba sem perguntar.
   await page.getByRole("tab", { name: /Geral/ }).click();

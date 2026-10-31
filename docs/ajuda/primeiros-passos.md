@@ -21,9 +21,8 @@ Guia: /dashboard
 ## Mudar a área do espaço
 Resumo: Troque a área e a forma de cobrança em Configurações.
 Guia: /settings?tab=geral
-+ texto "Dados do espaço": Aqui ficam os dados do espaço. Abra esta seção se estiver fechada.
-+ campo "Área do espaço": Escolha a área do seu espaço.
-+ botão "Salvar configurações": Clique aqui para guardar a mudança.
++ texto "Dados do espaço": Aqui ficam os dados do espaço.
++ campo "Área do espaço": Escolha a área do seu espaço. Depois, salve na barra que aparece embaixo.
 Em [Configurações, aba Geral](/settings?tab=geral), você troca a área e a forma de cobrança padrão. As palavras do sistema (Faixa, Nível, Módulo, Instrutor ou Professor) mudam junto.
 
 ## Falar com o suporte

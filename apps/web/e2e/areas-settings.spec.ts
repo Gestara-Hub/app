@@ -22,8 +22,12 @@ async function chooseArea(page: Page, label: string) {
   await expect(page.getByRole("combobox", { name: /Área do espaço/ })).toContainText(label);
 }
 
+/** "Salvar" da barra da aba Geral (aparece so com alteracao). */
+const generalSave = (page: Page) =>
+  page.locator("#settings-panel-geral").getByRole("button", { name: "Salvar", exact: true });
+
 async function saveSettings(page: Page) {
-  await page.getByRole("button", { name: "Salvar configurações" }).click();
+  await generalSave(page).click();
   await expect(page.getByText("Configurações salvas.")).toBeVisible();
 }
 
@@ -162,14 +166,14 @@ test.describe("Configurações: Outra área", () => {
     await seedAcademy(page);
     await page.goto("/settings");
     await chooseArea(page, "Outra área");
-    await page.getByRole("button", { name: "Salvar configurações" }).click();
+    await generalSave(page).click();
     await expect(page.getByText("Informe o que você ensina.")).toBeVisible();
     await expect(page.getByText("Revise os campos destacados.")).toBeVisible();
     await expect(page.getByLabel("O que você ensina?")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByText("Configurações salvas.")).toHaveCount(0);
     // So espacos tambem nao vale.
     await page.getByLabel("O que você ensina?").fill("   ");
-    await page.getByRole("button", { name: "Salvar configurações" }).click();
+    await generalSave(page).click();
     await expect(page.getByText("Informe o que você ensina.")).toBeVisible();
     expect((await readTenant(page)).organization.classSegment).not.toBe("custom");
   });
@@ -203,24 +207,22 @@ test.describe("Configurações: Outra área", () => {
 // ===========================================================================
 test("Regras da mensalidade: valem só para mensalidade e as dicas acompanham a escolha", async ({ page }) => {
   await seedAcademy(page);
-  await page.goto("/settings");
-  const trigger = page.getByRole("button", { name: /Regras da mensalidade/ });
-  await expect(trigger).toContainText("Antecipado · Proporcional · Vence todo dia 10");
-  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+  // Aba propria desde 31/10/2026 (antes um bloco da Geral).
+  await page.goto("/settings?tab=cobranca");
   const card = page.locator("#billing-rules");
   await expect(
     card.getByText("Só para mensalidades. Curso, pacote e avulso têm valor e vencimento próprios."),
   ).toBeVisible();
   await expect(card.getByText("Quando a mensalidade vence.")).toBeVisible();
   await expect(card.getByText("Como fica a 1ª cobrança.")).toBeVisible();
-  await expect(card.getByText("Todos os alunos vencem no mesmo dia fixo.")).toBeVisible();
+  await expect(card.getByText("Todos os alunos vencem no mesmo dia.")).toBeVisible();
 
   await card.getByRole("radio", { name: /^Mês cheio/ }).click();
-  await expect(card.getByText("O vencimento ocorre mensalmente na mesma data em que a matrícula foi realizada.")).toBeVisible();
+  await expect(card.getByText("Vence todo mês no dia da matrícula.")).toBeVisible();
   await expect(card.getByText("Automático (dia da matrícula)")).toBeVisible();
   await card.getByRole("radio", { name: /^Depois do uso/ }).click();
-  await expect(trigger).toContainText("Depois do uso · Mês cheio · Vence no dia da entrada");
-  await saveSettings(page);
+  await page.locator("#settings-panel-cobranca").getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByText("Regras da mensalidade salvas.")).toBeVisible();
   await waitForStore(page, (t) => t.organization.settings.billingTiming === "postpaid");
   expect((await readTenant(page)).organization.settings.midMonthStrategy).toBe("full_cycle");
 });
@@ -370,7 +372,7 @@ test.describe("Configurações: Certificado", () => {
       await expect(panel.getByRole("radio", { name: label, exact: true })).toHaveAttribute("aria-checked", "true");
       await expect(sheet).toHaveAttribute("style", new RegExp(`--cert-accent: ${hex}`));
     }
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
   });
 
   test("Pro: variáveis entram onde está o cursor e a frequência pode sair", async ({ page }) => {
@@ -416,7 +418,12 @@ test.describe("Configurações: Certificado", () => {
     const panel = await openEditor(page);
     await panel.getByLabel("Título").fill("");
     await panel.locator("#certificate-body").fill("");
-    await panel.locator("#signature-0-name").fill("");
+    // "Outro nome" abre o campo do nome, vazio.
+    await expect(panel.locator("#signature-0-signer")).toContainText("Professor da turma");
+    await expect(panel.locator("#signature-0-name")).toHaveCount(0);
+    await panel.locator("#signature-0-signer").click();
+    await page.getByRole("option", { name: "Outro nome" }).click();
+    await expect(panel.locator("#signature-0-name")).toHaveValue("");
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(panel.getByText("Informe o título.")).toBeVisible();
     await expect(panel.getByText("Escreva o texto do certificado.")).toBeVisible();
@@ -469,13 +476,14 @@ test.describe("Configurações: Certificado", () => {
     await expect(sheet.locator("img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
   });
 
-  test("Pro: salvar, recarregar, remover a logo e restaurar o padrão com confirmação", async ({ page }, testInfo) => {
+  test("Pro: salvar, recarregar, remover a logo e voltar ao texto padrão com confirmação", async ({ page }, testInfo) => {
     const files = await logoFiles(testInfo);
     const panel = await openEditor(page);
-    const restore = panel.getByRole("button", { name: "Restaurar padrão" });
-    // Nunca salvo e sem mudancas: nada a restaurar.
-    await expect(restore).toBeDisabled();
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    const restore = panel.getByRole("button", { name: "Voltar ao texto padrão" });
+    const save = panel.getByRole("button", { name: "Salvar", exact: true });
+    // Texto padrao e sem mudancas: sem link de voltar e sem barra de salvar.
+    await expect(restore).toHaveCount(0);
+    await expect(save).toHaveCount(0);
 
     await panel.getByRole("radio", { name: /^Moderno/ }).click();
     await panel.getByRole("radio", { name: "Verde", exact: true }).click();
@@ -483,8 +491,8 @@ test.describe("Configurações: Certificado", () => {
     await panel.getByRole("switch", { name: "Mostrar frequência" }).click();
     await panel.locator("#signature-1-role").fill("Diretora");
     await panel.locator("input[type=file]").setInputFiles(files.png);
-    await expect(restore).toBeEnabled();
-    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(restore).toBeVisible();
+    await save.click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
     await waitForStore(page, (t) => t.certificateTemplate?.layout === "modern");
     const saved = (await readTenant(page)).certificateTemplate;
@@ -507,38 +515,45 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByRole("switch", { name: "Mostrar frequência" })).not.toBeChecked();
     await expect(panel.getByText("Logo atual")).toBeVisible();
     await expect(panel.locator("article.certificate-sheet img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
-    await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+    await expect(save).toHaveCount(0);
 
     // Remover a logo so vale ao salvar.
     await panel.getByRole("button", { name: "Remover", exact: true }).click();
     await expect(panel.getByText("Logo atual")).toHaveCount(0);
     await expect(panel.locator("article.certificate-sheet img")).toHaveCount(0);
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
 
-    // Restaurar pede confirmacao; Voltar nao mexe.
+    // Voltar ao texto padrao pede confirmacao; Cancelar nao mexe.
     await restore.click();
-    const confirm = page.getByRole("alertdialog", { name: "Restaurar o modelo padrão?" });
-    await expect(confirm).toContainText("Layout, cor, texto, assinaturas e logo voltam ao padrão.");
-    await confirm.getByRole("button", { name: "Voltar" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Voltar ao texto padrão?" });
+    await expect(confirm).toContainText("O título e o texto do certificado voltam ao padrão. Salve para valer.");
+    await confirm.getByRole("button", { name: "Cancelar" }).click();
     await expect(confirm).toBeHidden();
-    expect((await readTenant(page)).certificateTemplate?.layout).toBe("modern");
+    await expect(panel.getByLabel("Título")).toHaveValue("Certificado de participação");
 
+    // Confirmado: so o titulo e o texto voltam, no rascunho; o resto fica.
     await restore.click();
-    await confirm.getByRole("button", { name: "Restaurar" }).click();
-    await expect(page.getByText("Modelo padrão restaurado.")).toBeVisible();
-    await waitForStore(page, (t) => t.certificateTemplate === undefined);
-    await expect(panel.getByRole("radio", { name: /^Clássico/ })).toHaveAttribute("aria-checked", "true");
-    await expect(panel.getByRole("radio", { name: "Grafite", exact: true })).toHaveAttribute("aria-checked", "true");
+    await confirm.getByRole("button", { name: "Voltar ao padrão" }).click();
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
-    await expect(panel.getByRole("switch", { name: "Mostrar frequência" })).toBeChecked();
-    await expect(panel.locator("article.certificate-sheet")).toContainText(DEFAULT_BODY_PREVIEW);
-    await expect(restore).toBeDisabled();
+    // Texto padrao, mas a frequencia continua desligada: o trecho dela sai da previa.
+    await expect(panel.locator("article.certificate-sheet")).toContainText(
+      "Certificamos que Ana Souza concluiu o curso Confeitaria Básica, de 04/08/2026 a 22/09/2026, que teve 8 aulas.",
+    );
+    await expect(restore).toHaveCount(0);
+    await expect(panel.getByRole("radio", { name: /^Moderno/ })).toHaveAttribute("aria-checked", "true");
+    await save.click();
+    await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
+    await waitForStore(page, (t) => t.certificateTemplate?.title === "Certificado de conclusão");
+    const restored = (await readTenant(page)).certificateTemplate;
+    expect(restored).toMatchObject({ layout: "modern", accentColor: "green", showAttendance: false });
+    expect(restored.logoFileId).toBeUndefined();
+    await expect(save).toHaveCount(0);
   });
 
   test("Pro: alteração não salva pede confirmação ao trocar de aba", async ({ page }) => {
     const panel = await openEditor(page);
     await panel.getByLabel("Título").fill("Título novo");
-    await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+    await expect(panel.getByText("Alterações não salvas")).toBeVisible();
     await page.getByRole("tab", { name: /Geral/ }).click();
     const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
     await expect(confirm).toContainText("Você tem alterações não salvas na aba Certificado");
