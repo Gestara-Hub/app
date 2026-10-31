@@ -29,6 +29,7 @@ Alternativas avaliadas: **Microsoft Clarity** (grátis e sem limite de gravaçõ
 ## Privacidade
 
 - O que se digita **nunca** é gravado (`maskAllInputs`).
+- **Endereços limpos (30/10/2026, auditoria):** antes de enviar, cada evento passa por `scrubAnalyticsUrl` (`lib/analytics-url.ts`, no `before_send` e nas requisições da gravação): o valor de `token`, `signup_token`, `code`, `email`, `cpf` e `phone` vira `[removido]` e o id dos links públicos vira marcador (`/consent/minor/:id`, `/p/c/:id`, `/p/:code`). Antes, a redefinição de senha, o convite e os links que abrem dados de alunos iam inteiros para o PostHog.
 - **Área logada**: todo texto fica oculto nas gravações (`data-analytics-mask` no `SidebarInset` de `app/(app)/layout.tsx`). O menu lateral fica visível (mostra onde clicam, sem dados de ninguém).
 - Landing, login e configuração inicial aparecem sem máscara (não têm dados de alunos).
 - A Política de privacidade (`/privacy`) cita a análise de uso e os cookies dela.

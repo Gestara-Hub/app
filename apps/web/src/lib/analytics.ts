@@ -1,7 +1,8 @@
 "use client";
 
-import posthog from "posthog-js";
+import posthog, { type CaptureResult } from "posthog-js";
 import { readAnalyticsConsent, writeAnalyticsConsent } from "@/lib/analytics-consent";
+import { URL_PROPERTIES, scrubAnalyticsUrl } from "@/lib/analytics-url";
 
 /**
  * Analise de uso com o PostHog (docs/technical/09): paginas, cliques
@@ -47,11 +48,31 @@ export function initAnalytics(): void {
     session_recording: {
       maskAllInputs: true,
       maskTextSelector: `[${ANALYTICS_MASK_ATTRIBUTE}]`,
+      // A gravacao tambem leva o endereco: o mesmo limpador dos eventos.
+      maskCapturedNetworkRequestFn: (request) => ({ ...request, name: scrubAnalyticsUrl(request.name) }),
     },
+    // Endereco sem tokens, e-mail nem o id dos links publicos (auditoria de 30/10/2026).
+    before_send: scrubEvent,
   });
   // Recusou numa visita anterior e aceitou agora: o PostHog guarda a recusa.
   if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing();
   if (currentIdentity) identify(currentIdentity);
+}
+
+function scrubEvent(event: CaptureResult | null): CaptureResult | null {
+  if (!event?.properties) return event;
+  for (const key of URL_PROPERTIES) {
+    const value = event.properties[key];
+    if (typeof value === "string") event.properties[key] = scrubAnalyticsUrl(value);
+  }
+  for (const bag of [event.$set, event.$set_once]) {
+    if (!bag) continue;
+    for (const key of URL_PROPERTIES) {
+      const value = (bag as Record<string, unknown>)[key];
+      if (typeof value === "string") (bag as Record<string, unknown>)[key] = scrubAnalyticsUrl(value);
+    }
+  }
+  return event;
 }
 
 function identify(user: AnalyticsIdentity): void {
