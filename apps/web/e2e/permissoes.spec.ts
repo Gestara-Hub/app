@@ -223,8 +223,8 @@ test.describe("atendente", () => {
     await expect(rowOf(page, "Mensalidade")).toContainText("Atrasado");
     await expect(charges.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toHaveCount(0);
 
-    // Sem pacote ativo, sem a secao Pacotes (e nada de vender).
-    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+    // Ve o plano e os pacotes, mas nao vende.
+    await openProfileSection(page, "Plano e pacotes");
     await expect(page.getByRole("button", { name: "Vender pacote" })).toHaveCount(0);
 
     // Ve o boletim; registros de aula e graduacao pedem progression:manage (a atendente nao tem).

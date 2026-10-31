@@ -5,6 +5,7 @@ import {
   enrollment,
   expect,
   openProfileSection,
+  profileSection,
   pageAction,
   rollCallRow,
   seedAcademy,
@@ -260,8 +261,7 @@ test.describe("venda", () => {
       },
     });
     await openClients(page);
-    const row = page.locator("div.group").filter({ hasText: "Aluno Renova" }).first();
-    await expect(row).toContainText("Restam 3 de 10");
+    // O saldo fica na ficha (a lista de Alunos nao mostra pacote desde 30/10/2026).
     // Com aula usada, o pacote nao cancela (o item nem aparece).
     await page.getByRole("button", { name: "Ações de Aluno Renova", exact: true }).last().click();
     await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toBeVisible();
@@ -273,21 +273,20 @@ test.describe("venda", () => {
     await expect(dialog).toContainText("saldo de 3 aulas será somado a este novo pacote (total de 13 aulas)");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
-    await expect(row).toContainText("Restam 13 de 13");
     await waitForTenant(page, (t) => t.studentPackages.some((p: { status: string }) => p.status === "renewed"));
 
-    // Ficha > Pacotes: o novo em uso, o antigo renovado, com as aulas usadas.
+    // Ficha > Plano e pacotes: o novo em uso; o antigo renovado em "Mostrar encerrados", com as aulas usadas.
     await page.goto("/clients/c-1?tab=packages");
-    const panel = await openProfileSection(page, "Pacotes");
-    await expect(panel).toContainText("2 pacotes");
-    await pickSelect(page, "Filtrar por situação", "Renovados");
-    await expect(panel).toContainText("1 pacote");
-    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).click();
+    const panel = await openProfileSection(page, "Plano e pacotes");
+    await expect(panel).toContainText("Restam 13 de 13");
+    await panel.getByRole("button", { name: "Mostrar encerrados (1)" }).click();
+    await expect(panel.getByText("Renovado", { exact: true })).toBeVisible();
+    // Em uso primeiro, encerrados depois: o renovado e o ultimo.
+    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).last().click();
     await page.getByRole("menuitem", { name: "Ver aulas usadas" }).click();
     await expect(panel).toContainText("15/09/2026 · Jiu-Jitsu Pacote");
     await expect(panel.getByText("Presença")).toHaveCount(7);
-    await pickSelect(page, "Filtrar por situação", "Em uso");
-    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).click();
+    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).first().click();
     await expect(page.getByRole("menuitem", { name: "Renovar" })).toBeVisible();
     await page.getByRole("menuitem", { name: "Cancelar pacote" }).click();
     await page.getByRole("alertdialog", { name: "Cancelar pacote?" }).getByRole("button", { name: "Cancelar pacote" }).click();
@@ -295,8 +294,7 @@ test.describe("venda", () => {
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-1")?.status === "active");
 
     // O antigo volta a valer com o saldo dele.
-    await openClients(page);
-    await expect(row).toContainText("Restam 3 de 10");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("10 aulas · 3 aulas restantes");
   });
 });
 

@@ -102,7 +102,7 @@
     "article": "Alunos e ficha do aluno",
     "title": "Ficha do aluno",
     "route": "/clients",
-    "text": "Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Cobranças, Pacotes, Evolução, Mensagens e Cadastro.",
+    "text": "Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Plano e pacotes, Cobranças, Evolução, Mensagens e Cadastro. O resumo de \"Plano e pacotes\" já mostra o plano e o valor, ou o saldo do pacote.",
     "guide": {
       "route": "/clients",
       "steps": [

@@ -374,7 +374,7 @@ export async function pageAction(
 }
 
 /** Secoes da ficha do aluno (sanfona). "Pacotes" so aparece com pacote ativo. */
-export type ProfileSectionTitle = "Turmas" | "Cobranças" | "Pacotes" | "Evolução" | "Mensagens" | "Cadastro";
+export type ProfileSectionTitle = "Turmas" | "Plano e pacotes" | "Cobranças" | "Evolução" | "Mensagens" | "Cadastro";
 
 /**
  * Botao de uma secao da ficha do aluno (`aria-expanded`). O nome acessivel e o

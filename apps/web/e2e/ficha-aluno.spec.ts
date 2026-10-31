@@ -210,11 +210,11 @@ test.describe("topo e resumos das seções", () => {
     await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
     await expect(page.locator("h1").locator("..")).toContainText("Ativo");
 
-    // Tudo fechado, cada linha com o resumo dela. Sem pacote ativo, sem "Pacotes".
-    for (const title of ["Turmas", "Cobranças", "Evolução", "Mensagens", "Cadastro"] as const) {
+    // Tudo fechado, cada linha com o resumo dela. O plano no resumo de "Plano e pacotes".
+    for (const title of ["Turmas", "Plano e pacotes", "Cobranças", "Evolução", "Mensagens", "Cadastro"] as const) {
       await expect(profileSection(page, title)).toHaveAttribute("aria-expanded", "false");
     }
-    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Mensal Jiu-Jitsu · R$ 150,00/mês");
     await expect(profileSection(page, "Turmas")).toContainText("1 turma · próxima hoje, 17:00");
     // Mensalidade proporcional de 20 a 30/09 (R$ 55,00), vencida em 20/09.
     await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 55,00 · 1 atrasada");
@@ -225,10 +225,11 @@ test.describe("topo e resumos das seções", () => {
     // Aniversario daqui a 2 dias nao vira aviso (so hoje ou amanha).
     await expect(page.getByText(/^Faz aniversário/)).toHaveCount(0);
 
-    // A mensalidade do plano fica no Cadastro.
-    const data = await openProfileSection(page, "Cadastro");
-    await expect(data).toContainText("Mensal Jiu-Jitsu");
-    await expect(data).toContainText("R$ 150,00/mês");
+    // O plano fica em "Plano e pacotes" (nao no Cadastro, desde 30/10/2026).
+    const plan = await openProfileSection(page, "Plano e pacotes");
+    await expect(plan).toContainText("Mensal Jiu-Jitsu");
+    await expect(plan).toContainText("R$ 150,00/mês");
+    await expect(await openProfileSection(page, "Cadastro")).not.toContainText("Mensal Jiu-Jitsu");
   });
 
   test("Turmas: atalho 'Próxima aula' para a chamada e a presença na linha da turma", async ({ page }) => {
@@ -284,7 +285,7 @@ test.describe("topo e resumos das seções", () => {
     // Trancada segue em andamento (na lista, sem "Mostrar encerradas").
     await expect(classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Trancada");
 
-    const data = await openProfileSection(page, "Cadastro");
+    const data = await openProfileSection(page, "Plano e pacotes");
     await expect(data).toContainText("50% · Atleta");
     await expect(data).toContainText("R$ 75,00/mês");
     // Preco de tabela riscado ao lado.
@@ -292,18 +293,20 @@ test.describe("topo e resumos das seções", () => {
     await expect(data).toContainText("Trancada");
   });
 
-  test("bolsista integral sem plano: bolsa 'Integral' no Cadastro", async ({ page }) => {
+  test("bolsista integral sem plano: 'Bolsista integral' em Plano e pacotes", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.clients[0].planId = undefined;
       t.clients[0].discount = { type: "percentage", value: 100, scholarship: true };
     });
     await page.goto(PROFILE);
-    const data = await openProfileSection(page, "Cadastro");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Bolsista integral");
+    const data = await openProfileSection(page, "Plano e pacotes");
     // A tela mostra a bolsa (nao "Sem mensalidade").
-    await expect(data).toContainText("Integral");
+    await expect(data).toContainText("Bolsista integral");
+    await expect(data).not.toContainText("Sem mensalidade");
   });
 
-  test("sem plano, pacote ou curso: 'Sem mensalidade' no Cadastro e nada em aberto", async ({ page }) => {
+  test("sem plano, pacote ou curso: 'Sem mensalidade' em Plano e pacotes e nada em aberto", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.clients[0].planId = undefined;
     });
@@ -311,19 +314,22 @@ test.describe("topo e resumos das seções", () => {
     await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
     // Sem cobranca, sem aviso de atraso.
     await expect(page.getByText(/atrasadas?$/)).toHaveCount(0);
-    const data = await openProfileSection(page, "Cadastro");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Sem mensalidade");
+    const data = await openProfileSection(page, "Plano e pacotes");
     await expect(data).toContainText("Sem mensalidade");
   });
 
-  test("pacote em uso: seção Pacotes com o saldo no resumo", async ({ page }) => {
+  test("pacote em uso: o saldo no resumo de Plano e pacotes", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.clients[0].planId = undefined;
       t.studentPackages = [studentPackage("sp-1", { lessonsUsed: 2, usages: usages(2) })];
     });
     await page.goto(PROFILE);
-    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 8 aulas restantes");
-    const packages = await openProfileSection(page, "Pacotes");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Pacote 10 aulas · 8 aulas restantes");
+    const packages = await openProfileSection(page, "Plano e pacotes");
     await expect(packages).toContainText("Restam 8 de 10");
+    // So pacote: sem "Sem mensalidade".
+    await expect(packages).not.toContainText("Sem mensalidade");
     await expect(packages).toContainText("vale até 30/11/26");
   });
 });
@@ -395,7 +401,7 @@ test.describe("avisos do topo", () => {
       t.studentPackages = [studentPackage("sp-1", { lessonsUsed: 9 })];
     });
     await page.goto(PROFILE);
-    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 1 aula restante");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Pacote 10 aulas · 1 aula restante");
     // Nome que ja comeca com "Pacote" nao repete a palavra (withKind).
     const ending = profileAlert(page, "Pacote 10 aulas");
     await expect(ending).toContainText("Resta 1 aula");
@@ -441,13 +447,13 @@ test.describe("Editar e o menu ⋮ do aluno", () => {
     await expect(profileAlert(page, "Mensalidade de setembro atrasada")).toContainText("R$ 55,00");
   });
 
-  test("Vender pacote pelo menu: a seção Pacotes aparece com o pacote", async ({ page }) => {
+  test("Vender pacote pelo menu: o pacote aparece em Plano e pacotes", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.lessonPackages = [lessonPackage];
     });
     await page.goto(PROFILE);
-    // Sem pacote ativo, sem a secao.
-    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+    // Sem pacote ativo, o resumo fica so com o plano.
+    await expect(profileSection(page, "Plano e pacotes")).not.toContainText("pacote em uso");
     await moreAction(page, "Vender pacote");
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await expect(dialog).toContainText(`Pacote de aulas para ${NAME}.`);
@@ -457,9 +463,10 @@ test.describe("Editar e o menu ⋮ do aluno", () => {
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
 
-    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 10 aulas restantes");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("Mensal Jiu-Jitsu · R$ 150,00/mês");
+    await expect(profileSection(page, "Plano e pacotes")).toContainText("1 pacote em uso");
     await expect(profileSection(page, "Cobranças")).toContainText("R$ 455,00");
-    await openProfileSection(page, "Pacotes");
+    await openProfileSection(page, "Plano e pacotes");
     await expect(rowOf(page, "Pacote 10 aulas")).toContainText("Restam 10 de 10");
   });
 
@@ -508,7 +515,7 @@ test.describe("seções", () => {
       t.studentPackages = [studentPackage("sp-1")];
     });
     await page.goto(PROFILE);
-    const titles: ProfileSectionTitle[] = ["Turmas", "Cobranças", "Pacotes", "Evolução", "Mensagens", "Cadastro"];
+    const titles: ProfileSectionTitle[] = ["Turmas", "Plano e pacotes", "Cobranças", "Evolução", "Mensagens", "Cadastro"];
     for (const title of titles) await expect(profileSection(page, title)).toHaveAttribute("aria-expanded", "false");
     const expanded = page.getByRole("main").getByRole("button", { expanded: true });
 
@@ -529,8 +536,10 @@ test.describe("seções", () => {
     // `?tab=` (links antigos e de outras telas) abre so aquela secao.
     const ids: [ProfileSectionTitle, string][] = [
       ["Turmas", "classes"],
+      ["Plano e pacotes", "plan"],
+      // Link antigo da secao Pacotes.
+      ["Plano e pacotes", "packages"],
       ["Cobranças", "charges"],
-      ["Pacotes", "packages"],
       ["Evolução", "evolution"],
       ["Mensagens", "messages"],
       ["Cadastro", "data"],
@@ -691,10 +700,14 @@ test.describe("seções", () => {
         studentPackage("sp-old", { status: "renewed", purchasedAt: "2026-06-01", expiresAt: "2026-08-30" }),
       ];
     });
+    // O link antigo `?tab=packages` abre "Plano e pacotes"; o renovado fica em "Mostrar encerrados".
     await page.goto(`${PROFILE}?tab=packages`);
-    await expect(page.getByText("2 pacotes")).toBeVisible();
+    await expect(profileSection(page, "Plano e pacotes")).toHaveAttribute("aria-expanded", "true");
     const used = page.locator("div.group").filter({ hasText: "Restam 8 de 10" });
     await expect(used).toContainText("comprado 01/09/26 · vale até 30/11/26 · todas as turmas");
+    await expect(used.getByRole("progressbar", { name: "Restam 8 de 10 aulas" })).toBeVisible();
+    await expect(page.getByText("Renovado")).toHaveCount(0);
+    await page.getByRole("button", { name: "Mostrar encerrados (1)" }).click();
     await expect(page.getByText("Renovado")).toBeVisible();
 
     // Clicar na linha mostra as aulas usadas.
@@ -714,11 +727,8 @@ test.describe("seções", () => {
     await expect(sell).toContainText("saldo de 8 aulas será somado a este novo pacote (total de 18 aulas)");
     await sell.getByRole("button", { name: "Cancelar" }).click();
 
-    await page.getByRole("combobox", { name: "Filtrar por situação" }).click();
-    await page.getByRole("option", { name: "Renovados" }).click();
-    await expect(page.getByText("1 pacote", { exact: true })).toBeVisible();
-    await page.getByLabel("Buscar pacote").fill("xyz");
-    await expect(page.getByText("Nenhum pacote para esta busca.")).toBeVisible();
+    await page.getByRole("button", { name: "Ocultar encerrados" }).click();
+    await expect(page.getByText("Renovado")).toHaveCount(0);
   });
 
   test("Pacotes: cancelar pacote sem aula usada cancela as cobranças dele", async ({ page }) => {
@@ -736,7 +746,7 @@ test.describe("seções", () => {
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
     await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 400,00");
 
-    await openProfileSection(page, "Pacotes");
+    await openProfileSection(page, "Plano e pacotes");
     await page.getByRole("button", { name: "Ações do Pacote 10 aulas", exact: true }).click();
     await page.getByRole("menuitem", { name: "Cancelar pacote" }).click();
     const confirm = page.getByRole("alertdialog");
@@ -744,18 +754,20 @@ test.describe("seções", () => {
     await confirm.getByRole("button", { name: "Cancelar pacote" }).click();
     await expect(page.getByText("Pacote cancelado.")).toBeVisible();
     await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
-    // Sem pacote ativo, a secao Pacotes sai da ficha.
-    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+    // Sem pacote ativo, nada de pacote no resumo.
+    await expect(profileSection(page, "Plano e pacotes")).not.toContainText("pacote em uso");
+    await expect(profileSection(page, "Plano e pacotes")).not.toContainText("aulas restantes");
 
-    // Cancelado nao trava: vende outro pelo menu e a secao volta com os dois.
+    // Cancelado nao trava: vende outro pelo menu; o cancelado fica em "Mostrar encerrados".
     await moreAction(page, "Vender pacote");
     const again = page.getByRole("dialog", { name: "Vender pacote" });
     await again.getByRole("combobox", { name: "Pacote" }).click();
     await page.getByRole("option", { name: /Pacote 10 aulas/ }).click();
     await again.getByRole("button", { name: "Adicionar" }).click();
     await expect(again).toHaveCount(0);
-    const packages = await openProfileSection(page, "Pacotes");
-    await expect(packages.getByText("2 pacotes", { exact: true })).toBeVisible();
+    const packages = await openProfileSection(page, "Plano e pacotes");
+    await expect(packages.getByText("Cancelado", { exact: true })).toHaveCount(0);
+    await packages.getByRole("button", { name: "Mostrar encerrados (1)" }).click();
     await expect(packages.getByText("Cancelado", { exact: true })).toBeVisible();
     await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 400,00");
   });
@@ -869,11 +881,13 @@ test.describe("seções", () => {
     await expect(panel).toContainText("aluna@ficha.com");
     await expect(panel).toContainText("24/09/1990 · 35 anos");
     await expect(panel).toContainText("Prefere a turma da noite");
-    await expect(panel).toContainText("Mensal Jiu-Jitsu");
-    await expect(panel).toContainText("R$ 150,00/mês");
-    await expect(panel).toContainText("Dia 10");
-    await expect(panel).toContainText("Antecipado");
     await expect(panel).toContainText("Maria Ficha · Mãe");
+    // O plano fica em "Plano e pacotes".
+    const plan = await openProfileSection(page, "Plano e pacotes");
+    await expect(plan).toContainText("Mensal Jiu-Jitsu");
+    await expect(plan).toContainText("R$ 150,00/mês");
+    await expect(plan).toContainText("Vence todo dia 10");
+    await expect(plan).toContainText("Pagamento antecipado");
     await expect(panel).toContainText("(11) 96666-0000");
     await panel.getByRole("button", { name: "Editar" }).click();
     await expect(page.getByRole("dialog", { name: "Editar aluno" })).toBeVisible();

@@ -34,7 +34,7 @@ Guia: /clients
 + botão "Cobranças": Veja as mensalidades do aluno e o que está em aberto.
 + botão "Evolução": Veja o nível do aluno e os registros de aula.
 + botão "Mais ações": Aqui ficam editar, vender pacote, inativar e outras ações.
-Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Cobranças, Pacotes, Evolução, Mensagens e Cadastro.
+Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Plano e pacotes, Cobranças, Evolução, Mensagens e Cadastro. O resumo de "Plano e pacotes" já mostra o plano e o valor, ou o saldo do pacote.
 
 ## Pausar a assinatura
 Guia: /clients

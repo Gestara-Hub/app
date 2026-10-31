@@ -5,7 +5,6 @@ import {
   expect,
   openProfileSection,
   pageAction,
-  profileSection,
   seedAcademy,
   student,
   test,
@@ -98,8 +97,7 @@ test("ficha no celular: seções abrem ali mesmo, a página não rola de lado; E
   await page.keyboard.press("Escape");
   await expect(edit).toBeHidden();
 
-  // Cada secao abre embaixo do titulo, sem sair da tela (sem pacote, sem "Pacotes").
-  await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+  // Cada secao abre embaixo do titulo, sem sair da tela.
   const data = await openProfileSection(page, "Cadastro");
   await expect(data).toContainText("aluna.com.nome.comprido@exemplo.com.br");
   await expectNoPageOverflow(page);

@@ -49,7 +49,6 @@ import {
   NewExtraChargeDialog,
   SellPackageDialog,
   StudentChargesPanel,
-  StudentPackagesPanel,
   displayPackage,
   pickNextSession,
   useClassSessions,
@@ -60,17 +59,21 @@ import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
 import { StudentDataTab } from "./student-data-tab";
+import { StudentPlanPanel } from "./student-plan-panel";
 import { StudentEnrollmentsTab } from "./student-enrollments-tab";
 import { StudentEvolutionTab } from "./student-evolution-tab";
 import { StudentProfileAlerts } from "./student-profile-alerts";
-import { brDate } from "./student-profile-parts";
+import { brDate, PERIOD_SHORT } from "./student-profile-parts";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
 import { ageLabel } from "@/lib/birthdays";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 
-type ProfileSectionId = "classes" | "charges" | "packages" | "evolution" | "messages" | "data";
+type ProfileSectionId = "classes" | "plan" | "charges" | "evolution" | "messages" | "data";
 
-const SECTION_IDS: ProfileSectionId[] = ["classes", "charges", "packages", "evolution", "messages", "data"];
+const SECTION_IDS: ProfileSectionId[] = ["classes", "plan", "charges", "evolution", "messages", "data"];
+
+/** `?tab=packages` (link antigo) abre "Plano e pacotes", que juntou os pacotes e o plano. */
+const LEGACY_SECTION: Record<string, ProfileSectionId> = { packages: "plan" };
 
 function isApiNotFound(error: unknown): boolean {
   return isApiError(error) && error.code === "NOT_FOUND";
@@ -185,8 +188,8 @@ function ProfileSection({
 
 /**
  * Ficha do aluno (`/clients/[id]`, doc 22 item 2, doc 07 §1.8): nome no topo,
- * avisos do que pede acao e uma sanfona com turmas, cobrancas, pacotes,
- * evolucao, mensagens e cadastro (cada linha com um resumo; abre ali mesmo).
+ * avisos do que pede acao e uma sanfona com turmas, plano e pacotes,
+ * cobrancas, evolucao, mensagens e cadastro (cada linha com um resumo; abre ali mesmo).
  * Le o "resumo do aluno" (a mesma leitura que a API vai expor) e reusa os
  * paineis e dialogos de Alunos.
  */
@@ -202,7 +205,8 @@ export function StudentProfileView({ id }: { id: Id }) {
   // `?tab=` (links antigos e de outras telas) abre aquela secao.
   const searchParams = useSearchParams();
   const [openSections, setOpenSections] = useState<Set<ProfileSectionId>>(() => {
-    const param = searchParams.get("tab");
+    const raw = searchParams.get("tab");
+    const param = (raw && LEGACY_SECTION[raw]) ?? raw;
     return new Set(SECTION_IDS.filter((s) => s === param));
   });
   const toggleSection = (section: ProfileSectionId) =>
@@ -408,6 +412,48 @@ export function StudentProfileView({ id }: { id: Id }) {
     : "Sem trilha de evolução";
   const lastMessage = summary.lastMessages[0];
 
+  // "Plano e pacotes": o plano (ou a bolsa) e o pacote em uso no resumo, em destaque.
+  const { membership } = summary;
+  const usablePackages = summary.packages.filter((p) => p.status === "active" && !p.isExpired && p.remaining > 0);
+  const totalRemaining = usablePackages.reduce((sum, p) => sum + p.remaining, 0);
+  const packagesPart =
+    usablePackages.length > 1
+      ? `${usablePackages.length} pacotes em uso · ${plural(totalRemaining, "aula restante", "aulas restantes")}`
+      : pkg
+        ? `${pkg.name} · ${plural(pkg.remaining, "aula restante", "aulas restantes")}`
+        : null;
+  const scholarshipPart = membership.scholarship
+    ? membership.scholarship.full
+      ? "bolsista integral"
+      : `bolsa ${membership.scholarship.percent}%`
+    : null;
+  const membershipPart =
+    membership.planId && membership.planName
+      ? [
+          membership.planName,
+          membership.status === "paused" ? "trancada" : membership.status === "canceled" ? "cancelada" : null,
+          scholarshipPart,
+          membership.priceCents !== undefined
+            ? `${formatCents(membership.priceCents)}/${PERIOD_SHORT[membership.planPeriod ?? "monthly"]}`
+            : null,
+          membership.dueDay && membership.status === "active" ? `vence dia ${membership.dueDay}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : membership.scholarship?.full
+        ? "Bolsista integral"
+        : null;
+  const planSummary =
+    membershipPart && usablePackages.length > 0 ? (
+      <span className="text-foreground">
+        {membershipPart} · {plural(usablePackages.length, "pacote em uso", "pacotes em uso")}
+      </span>
+    ) : membershipPart || packagesPart ? (
+      <span className="text-foreground">{membershipPart ?? packagesPart}</span>
+    ) : (
+      "Sem mensalidade"
+    );
+
   const sections: { id: ProfileSectionId; title: string; summary: ReactNode; content: ReactNode }[] = [
     ...(isClasses
       ? [
@@ -427,40 +473,25 @@ export function StudentProfileView({ id }: { id: Id }) {
     ...(canSeeBilling
       ? [
           {
+            id: "plan" as const,
+            title: "Plano e pacotes",
+            summary: planSummary,
+            content: (
+              <StudentPlanPanel
+                summary={summary}
+                onEditPlan={canManage ? () => setEditOpen(true) : undefined}
+                canManagePackages={canCharge}
+                onSellPackage={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
+              />
+            ),
+          },
+          {
             id: "charges" as const,
             title: "Cobranças",
             summary: chargesSummary,
             content: <StudentChargesPanel studentId={student.id} />,
           },
         ]
-      : []),
-    ...(canSeeBilling && summary.packages.length > 0
-      ? (() => {
-          const usablePackages = summary.packages.filter(
-            (p) => p.status === "active" && !p.isExpired && p.remaining > 0,
-          );
-          const totalRemaining = usablePackages.reduce((sum, p) => sum + p.remaining, 0);
-          const packagesSummary =
-            usablePackages.length > 1
-              ? `${usablePackages.length} pacotes em uso · ${plural(totalRemaining, "aula restante", "aulas restantes")}`
-              : pkg
-                ? `${pkg.name} · ${plural(pkg.remaining, "aula restante", "aulas restantes")}`
-                : plural(summary.packages.length, "pacote", "pacotes");
-          return [
-            {
-              id: "packages" as const,
-              title: "Pacotes",
-              summary: packagesSummary,
-              content: (
-                <StudentPackagesPanel
-                  studentId={student.id}
-                  canManage={canCharge}
-                  onSell={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
-                />
-              ),
-            },
-          ];
-        })()
       : []),
     ...(isClasses
       ? [
@@ -516,7 +547,7 @@ export function StudentProfileView({ id }: { id: Id }) {
       {confirmDialog}
       {backLink}
 
-      {/* Topo: so nome e situacao; contato, plano e idade ficam no Cadastro */}
+      {/* Topo: so nome e situacao; o plano fica em "Plano e pacotes", contato e idade no Cadastro */}
       <div className="mb-6 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <InitialsAvatar name={student.name} className="size-12 text-sm" />
