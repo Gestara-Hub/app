@@ -18,9 +18,10 @@ if (existsSync(ENV_FILE)) {
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://localhost:${PORT}`;
 const PROD_SERVER = process.env.E2E_SERVER === "prod";
-// Meta vazia: o e2e conecta o WhatsApp oficial pelo telefone do espaco, sem a janela da Meta.
+// Meta vazia: o e2e conecta o WhatsApp oficial pelo telefone do espaco, sem a janela da
+// Meta, e o envio "oficial" e o simulado (nunca a API de verdade, com numeros de teste).
 const E2E_ENV =
-  "E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY= NEXT_PUBLIC_META_APP_ID= NEXT_PUBLIC_META_CONFIG_ID=";
+  "E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY= NEXT_PUBLIC_META_APP_ID= NEXT_PUBLIC_META_CONFIG_ID= WHATSAPP_API_TOKEN= WHATSAPP_PHONE_NUMBER_ID=";
 
 // Testes de ponta a ponta no navegador. Usa o Chrome instalado na maquina
 // (sem download de navegador) e reaproveita o servidor da 3100 se ja estiver no ar.

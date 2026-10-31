@@ -46,6 +46,8 @@ test("liga pelo e-mail, entra com o código, lembra o dispositivo e esquece", as
   await security(page).getByLabel("Código do e-mail").fill("246810");
   await security(page).getByRole("button", { name: "Ligar" }).click();
   await expect(page.getByText("Verificação em duas etapas ligada.")).toBeVisible();
+  // Na primeira vez a janela mostra os códigos de recuperação para guardar (24/10/2026).
+  await security(page).getByRole("button", { name: "Guardei os códigos" }).click();
   await expect(security(page).getByText("Nenhum dispositivo lembrado.")).toBeVisible();
   await page.keyboard.press("Escape");
 
