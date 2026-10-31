@@ -454,7 +454,8 @@ function CertificateTemplateForm({
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        {/* Campos numa coluna estreita; a previa fica com o resto da tela (pedido de 31/10/2026). */}
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
           <div className="space-y-4">
             <Card>
               <CardHeader>
