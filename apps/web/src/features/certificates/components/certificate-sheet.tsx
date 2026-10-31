@@ -15,13 +15,12 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
   return (
     <div
       className={cn(
-        "absolute right-[2.2cqw] bottom-[1.8cqw] flex items-center gap-[1cqw] text-right",
+        "absolute right-[2.2cqw] bottom-[1.8cqw] flex flex-col items-center gap-[0.4cqw]",
         ink === "light" ? "text-white/85" : "text-zinc-500",
       )}
       data-testid="certificate-verification"
     >
-      {/* So o codigo e o QR (o endereco esta dentro do QR). */}
-      <p className="text-[0.95cqw] font-semibold tracking-wide">{code}</p>
+      {/* So o QR e o codigo embaixo (o endereco esta dentro do QR). */}
       <QRCodeSVG
         value={url}
         level="M"
@@ -30,8 +29,9 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
         fgColor="#000000"
         role="img"
         aria-label="QR Code de verificação"
-        className="size-[6cqw] rounded-[0.3cqw] bg-white p-[0.3cqw]"
+        className="size-[4.5cqw] rounded-[0.3cqw] bg-white p-[0.3cqw]"
       />
+      <p className="text-[0.85cqw] font-semibold tracking-wide">{code}</p>
     </div>
   );
 }
@@ -105,7 +105,7 @@ function ClassicSheet({ text, organizationName, logoUrl, reserveFooter }: SheetP
       <div
         className={cn(
           "flex h-full flex-col items-center border border-[color:var(--cert-accent)]/40 px-[6cqw] py-[3.5cqw] text-center",
-          reserveFooter && "pb-[8.5cqw]",
+          reserveFooter && "pb-[7.5cqw]",
         )}
       >
         <Logo url={logoUrl} className="mb-[1cqw] h-[6cqw]" />
@@ -138,7 +138,7 @@ function ModernSheet({ text, organizationName, logoUrl, reserveFooter }: SheetPr
         )}
         <p className="text-[1.4cqw] leading-snug font-semibold tracking-[0.15em] uppercase">{organizationName}</p>
       </div>
-      <div className={cn("flex flex-1 flex-col px-[5cqw] py-[4.5cqw] text-left", reserveFooter && "pb-[8.5cqw]")}>
+      <div className={cn("flex flex-1 flex-col px-[5cqw] py-[4.5cqw] text-left", reserveFooter && "pb-[7.5cqw]")}>
         <div className="flex flex-1 flex-col justify-center gap-[2cqw]">
           <div className="space-y-[1.2cqw]">
             <h1 className="text-[4.4cqw] leading-tight font-bold tracking-tight">{text.title}</h1>
@@ -157,7 +157,7 @@ function ModernSheet({ text, organizationName, logoUrl, reserveFooter }: SheetPr
 
 function MinimalSheet({ text, organizationName, logoUrl, reserveFooter }: SheetProps) {
   return (
-    <div className={cn("flex h-full flex-col px-[7cqw] py-[5cqw] text-left", reserveFooter && "pb-[8.5cqw]")}>
+    <div className={cn("flex h-full flex-col px-[7cqw] py-[5cqw] text-left", reserveFooter && "pb-[7.5cqw]")}>
       <div className="flex items-center gap-[1.5cqw]">
         <Logo url={logoUrl} className="h-[4.5cqw]" />
         <p className="text-[1.3cqw] font-medium tracking-[0.15em] text-zinc-500 uppercase">{organizationName}</p>
@@ -198,7 +198,7 @@ function CustomSheet({
         className={cn(
           "relative flex h-full flex-col items-center px-[8cqw] py-[5cqw] text-center",
           TEXT_POSITION_CLASS[artwork.textPosition],
-          reserveFooter && "pb-[8.5cqw]",
+          reserveFooter && "pb-[7.5cqw]",
         )}
       >
         <div className="flex max-w-[84%] flex-col items-center gap-[1.6cqw]">

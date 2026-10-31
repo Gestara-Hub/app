@@ -47,8 +47,8 @@ interface SheetProps {
   reserveFooter: boolean;
 }
 
-/** Espaco do rodape de verificacao (QR de 6 cqw mais a margem). */
-const FOOTER_PAD = cq(8.5);
+/** Espaco do rodape de verificacao (QR de 4,5 cqw, o codigo embaixo e a margem). */
+const FOOTER_PAD = cq(7.5);
 
 function Signatures({
   text,
@@ -248,19 +248,10 @@ function CustomSheet({
 function Verification({ code, qr, light }: { code: string; url: string; qr: DocumentLogo; light: boolean }) {
   const color = light ? "#ffffffd9" : GRAY_500;
   return (
-    <View
-      style={{
-        position: "absolute",
-        right: cq(2.2),
-        bottom: cq(1.8),
-        flexDirection: "row",
-        alignItems: "center",
-        gap: cq(1),
-      }}
-    >
-      <Text style={{ fontSize: cq(0.95), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
+    <View style={{ position: "absolute", right: cq(2.2), bottom: cq(1.8), alignItems: "center", gap: cq(0.4) }}>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
-      <Image src={qr.src} style={{ width: cq(6), height: cq(6), backgroundColor: "#ffffff", padding: cq(0.3) }} />
+      <Image src={qr.src} style={{ width: cq(4.5), height: cq(4.5), backgroundColor: "#ffffff", padding: cq(0.3) }} />
+      <Text style={{ fontSize: cq(0.85), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
     </View>
   );
 }
