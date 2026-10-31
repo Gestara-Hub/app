@@ -139,7 +139,7 @@ describe("área de mensalidade (sem mudança)", () => {
     const steps = buildClassesOnboardingSteps(input());
     expect(steps.map((s) => s.id)).toEqual(["hours", "billing", "modalities", "plans", "team", "clients", "classes"]);
     expect(steps.find((s) => s.id === "billing")?.label).toBe("Definir regras da mensalidade");
-    expect(steps.find((s) => s.id === "billing")?.href).toBe("/settings?tab=geral#billing-rules");
+    expect(steps.find((s) => s.id === "billing")?.href).toBe("/settings?tab=cobranca#billing-rules");
     expect(steps.find((s) => s.id === "classes")?.label).toBe("Criar a primeira turma");
     expect(steps.find((s) => s.id === "plans")).toMatchObject({
       label: "Criar planos ou pacotes",

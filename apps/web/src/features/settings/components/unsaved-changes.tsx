@@ -3,21 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-/** Texto de status do rodape das abas de configuracoes (Geral / Horarios). */
-export function UnsavedChangesStatus({ dirty }: { dirty: boolean }) {
-  return (
-    <p className="text-xs text-muted-foreground" aria-live="polite">
-      {dirty ? (
-        <span className="text-amber-700 dark:text-amber-400 font-medium">
-          ● Alterações não salvas
-        </span>
-      ) : (
-        <span className="text-muted-foreground">Todas as alterações estão salvas</span>
-      )}
-    </p>
-  );
-}
-
 /** Avisa o pai quando o estado "sujo" do formulario muda. */
 export function useReportDirty(dirty: boolean, onDirtyChange?: (dirty: boolean) => void) {
   useEffect(() => {

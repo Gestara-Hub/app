@@ -1,103 +1,102 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Award, Building2, Clock, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Award, Building2, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { PageTabs } from "@/components/shared/page-tabs";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useModel } from "@/features/auth";
-import { UserPreferencesView } from "@/features/preferences";
 import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
+import { BILLING_RULES_ANCHOR, BillingRulesCard, hashTargets } from "./billing-rules-card";
 import { useBeforeUnloadGuard, useLeaveLinkGuard } from "./unsaved-changes";
 import { SubscriptionPlanCard } from "./subscription-plan-card";
 import { CertificateTemplateCard } from "./certificate-template-card";
 
-type Tab = "geral" | "horarios" | "certificado" | "plano" | "preferencias";
+type Tab = "geral" | "horarios" | "cobranca" | "certificado" | "plano";
+
+/** Abas que editam e salvam pela barra (o Plano tem acoes proprias). */
+type EditableTab = Exclude<Tab, "plano">;
 
 const TABS: {
   value: Tab;
   label: string;
   icon: typeof Building2;
-  description: string;
+  /** So nos espacos de turmas (cobranca por mensalidade e certificado de curso). */
+  classesOnly?: boolean;
 }[] = [
-  {
-    value: "geral",
-    label: "Geral",
-    icon: Building2,
-    description:
-      "Identificação do negócio, canais de contato, endereço da unidade e regras padrão de cobrança.",
-  },
-  {
-    value: "horarios",
-    label: "Horários",
-    icon: Clock,
-    description:
-      "Dias e horários em que o espaço funciona. Turmas e agenda seguem esse horário.",
-  },
-  {
-    value: "certificado",
-    label: "Certificado",
-    icon: Award,
-    description: "Modelo do certificado de conclusão dos cursos.",
-  },
-  {
-    value: "plano",
-    label: "Plano GestaraHub",
-    icon: Sparkles,
-    description:
-      "O plano do GestaraHub desta organização e o que o Pro inclui. Não confundir com os planos de mensalidade dos alunos.",
-  },
-  {
-    value: "preferencias",
-    label: "Preferências",
-    icon: SlidersHorizontal,
-    description:
-      "Aparência da interface, modos padrão de visualização de listas, paginação e feedback sonoro.",
-  },
+  { value: "geral", label: "Geral", icon: Building2 },
+  { value: "horarios", label: "Horários", icon: Clock },
+  { value: "cobranca", label: "Cobrança", icon: CalendarDays, classesOnly: true },
+  { value: "certificado", label: "Certificado", icon: Award, classesOnly: true },
+  { value: "plano", label: "Plano GestaraHub", icon: Sparkles },
 ];
 
-/**
- * Configurações em abas: uma seção por vez (Geral / Horários / Pagamento online / Certificado / Plano / Dados). Os
- * painéis ficam montados e alternamos só a visibilidade, para não descartar
- * edições em andamento ao trocar de aba.
- */
 function isTab(value: string | null): value is Tab {
   return TABS.some((t) => t.value === value);
 }
 
+/** Uma linha sob as abas (a Geral dispensa: os blocos ja dizem o que sao). */
+function tabDescription(tab: Tab, isClasses: boolean): string | null {
+  switch (tab) {
+    case "horarios":
+      return isClasses
+        ? "Dias e horários em que o espaço funciona. As turmas seguem esse horário."
+        : "Dias e horários em que o espaço funciona. A agenda segue esse horário.";
+    case "cobranca":
+      return "Como a mensalidade dos alunos vence.";
+    case "certificado":
+      return "Modelo do certificado de conclusão dos cursos.";
+    case "plano":
+      return "Sua assinatura do GestaraHub.";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Configurações em abas (revisão de 31/10/2026): Geral, Horários, Cobrança,
+ * Certificado e Plano. As preferências de cada pessoa (tema e sons) ficam só no
+ * menu da conta. Os painéis ficam montados e alternamos só a visibilidade, para
+ * não descartar edições em andamento ao trocar de aba.
+ */
 export function SettingsTabs() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Deep-link: `/settings?tab=horarios` ou `/settings?tab=geral` deriva diretamente da URL
-  // Certificado é do Modelo 3 (turmas e cursos).
   const isClasses = useModel() === "classes";
-  const visibleTabs = TABS.filter(
-    (t) => t.value !== "certificado" || isClasses,
-  );
+  const visibleTabs = TABS.filter((t) => !t.classesOnly || isClasses);
   const paramTab = searchParams.get("tab");
+  // Deep link: `/settings?tab=horarios`; aba que nao existe (ex.: a antiga
+  // "preferencias") abre a Geral.
   const tab: Tab =
     isTab(paramTab) && visibleTabs.some((t) => t.value === paramTab) ? paramTab : "geral";
 
-  // Abas com alteracoes nao salvas (Geral e Horarios avisam via onDirtyChange)
-  const [dirtyTabs, setDirtyTabs] = useState<Partial<Record<Tab, boolean>>>({});
-  const setGeralDirty = useCallback(
-    (dirty: boolean) => setDirtyTabs((prev) => (prev.geral === dirty ? prev : { ...prev, geral: dirty })),
+  // Links antigos das regras (`/settings#billing-rules`, `?tab=geral#billing-rules`)
+  // levam para a aba Cobranca, onde as regras ficam desde 31/10/2026.
+  useEffect(() => {
+    if (!isClasses || tab === "cobranca") return;
+    if (!hashTargets(window.location.hash).includes(BILLING_RULES_ANCHOR)) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "cobranca");
+    router.replace(`${pathname}?${params.toString()}#${BILLING_RULES_ANCHOR}`, { scroll: false });
+  }, [isClasses, tab, pathname, router, searchParams]);
+
+  // Abas com alteracoes nao salvas (cada formulario avisa via onDirtyChange).
+  const [dirtyTabs, setDirtyTabs] = useState<Partial<Record<EditableTab, boolean>>>({});
+  const reportDirty = useCallback(
+    (key: EditableTab) => (dirty: boolean) =>
+      setDirtyTabs((prev) => (Boolean(prev[key]) === dirty ? prev : { ...prev, [key]: dirty })),
     [],
   );
-  const setHorariosDirty = useCallback(
-    (dirty: boolean) =>
-      setDirtyTabs((prev) => (prev.horarios === dirty ? prev : { ...prev, horarios: dirty })),
-    [],
-  );
-  const setCertificadoDirty = useCallback(
-    (dirty: boolean) =>
-      setDirtyTabs((prev) => (prev.certificado === dirty ? prev : { ...prev, certificado: dirty })),
-    [],
-  );
-  const anyDirty = Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.certificado);
+  const [onDirty] = useState(() => ({
+    geral: reportDirty("geral"),
+    horarios: reportDirty("horarios"),
+    cobranca: reportDirty("cobranca"),
+    certificado: reportDirty("certificado"),
+  }));
+  const anyDirty = Object.values(dirtyTabs).some(Boolean);
   useBeforeUnloadGuard(anyDirty);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Sair pelo menu com alteracoes nao salvas pergunta antes (antes perdia tudo).
@@ -116,7 +115,7 @@ export function SettingsTabs() {
 
   const handleTabChange = async (nextTab: Tab) => {
     if (nextTab === tab) return;
-    if (dirtyTabs[tab]) {
+    if (tab !== "plano" && dirtyTabs[tab]) {
       const current = TABS.find((t) => t.value === tab)?.label ?? "";
       const ok = await confirm({
         title: "Alterações não salvas",
@@ -137,17 +136,18 @@ export function SettingsTabs() {
   };
 
   return (
-    // O editor do certificado usa duas colunas (campos e previa): aba mais larga.
-    <div className={tab === "certificado" ? "max-w-6xl" : "max-w-3xl"}>
+    // Uma largura so para todas as abas; o Certificado poe a previa ao lado dentro dela.
+    <div className="max-w-5xl">
       <PageTabs
         tabs={visibleTabs.map((t) => ({
           ...t,
-          extra: dirtyTabs[t.value] ? (
-            <>
-              <span aria-hidden className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="sr-only">(alterações não salvas)</span>
-            </>
-          ) : null,
+          extra:
+            t.value !== "plano" && dirtyTabs[t.value] ? (
+              <>
+                <span aria-hidden className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="sr-only">(alterações não salvas)</span>
+              </>
+            ) : null,
         }))}
         value={tab}
         onChange={(value) => void handleTabChange(value)}
@@ -156,31 +156,26 @@ export function SettingsTabs() {
         className="mb-6"
       />
 
-      {visibleTabs.map((t) => (
-        <div
-          key={t.value}
-          role="tabpanel"
-          id={`settings-panel-${t.value}`}
-          aria-labelledby={`settings-tab-${t.value}`}
-          hidden={t.value !== tab}
-          className="space-y-4"
-        >
-          {t.value !== "geral" ? (
-            <p className="text-sm text-muted-foreground">{t.description}</p>
-          ) : null}
-          {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={setGeralDirty} /> : null}
-          {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={setHorariosDirty} /> : null}
-          {t.value === "certificado" ? (
-            <CertificateTemplateCard onDirtyChange={setCertificadoDirty} />
-          ) : null}
-          {t.value === "plano" ? <SubscriptionPlanCard /> : null}
-          {t.value === "preferencias" ? (
-            <div className="rounded-xl border border-border/60 bg-card p-6">
-              <UserPreferencesView />
-            </div>
-          ) : null}
-        </div>
-      ))}
+      {visibleTabs.map((t) => {
+        const description = tabDescription(t.value, isClasses);
+        return (
+          <div
+            key={t.value}
+            role="tabpanel"
+            id={`settings-panel-${t.value}`}
+            aria-labelledby={`settings-tab-${t.value}`}
+            hidden={t.value !== tab}
+            className="space-y-4"
+          >
+            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+            {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={onDirty.geral} /> : null}
+            {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={onDirty.horarios} /> : null}
+            {t.value === "cobranca" ? <BillingRulesCard onDirtyChange={onDirty.cobranca} /> : null}
+            {t.value === "certificado" ? <CertificateTemplateCard onDirtyChange={onDirty.certificado} /> : null}
+            {t.value === "plano" ? <SubscriptionPlanCard /> : null}
+          </div>
+        );
+      })}
       {confirmDialog}
     </div>
   );

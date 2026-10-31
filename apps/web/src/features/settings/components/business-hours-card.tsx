@@ -29,7 +29,8 @@ import { checkSlotWithinBusinessHours } from "@gestarahub/core/scheduling";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useClassGroups } from "@/features/turmas";
 import { useUnit, useUpdateUnit } from "../hooks/use-settings";
-import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
+import { SettingsSaveBar } from "./settings-save-bar";
+import { useReportDirty } from "./unsaved-changes";
 
 const WEEKDAYS: { weekday: Weekday; label: string }[] = [
   { weekday: 0, label: "Domingo" },
@@ -155,7 +156,7 @@ function hoursSignature(days: NormalizedDay[]): string {
 
 /**
  * Modal de edicao dos turnos de um dia. Os turnos podem ser aplicados a outros
- * dias de uma vez. "Aplicar" so altera o rascunho: quem grava e "Salvar horarios".
+ * dias de uma vez. "Aplicar" so altera o rascunho: quem grava e o "Salvar" da barra.
  */
 function DayShiftsDialog({
   day,
@@ -356,14 +357,14 @@ function BusinessHoursEditor({
   const hoursUnset = !unit.businessHours.some((day) => !day.closed);
   const hoursAttention = useAttentionUntilInteraction(hoursUnset);
   // 1a configuracao: a orientacao muda conforme o progresso (ligar dias ->
-  // conferir horario e salvar) e o "Salvar horarios" pulsa quando ha o que salvar.
+  // conferir horario e salvar) e o "Salvar" da barra pulsa quando ha o que salvar.
   const anyDayOpen = days.some((d) => !d.closed);
   const saveAttention = useAttentionUntilInteraction(hoursUnset, "hours-save");
   // Salvar sem nenhum dia ligado na 1a vez gravaria tudo fechado e nao concluiria o passo.
   const [needsOpenDay, setNeedsOpenDay] = useState(false);
   const quickStartActive = (weekdays: Weekday[]) =>
     days.every((d) => d.closed !== weekdays.includes(d.weekday));
-  // Destaque cobre a lista e o rodape com "Salvar horarios".
+  // Destaque cobre a lista e a barra de salvar (ela fica dentro do cartao).
   const hoursCardRef = useRef<HTMLDivElement>(null);
   const hoursSpotlightRefs = useMemo(() => [hoursCardRef], []);
   const [editing, setEditing] = useState<{ weekday: Weekday; showErrors: boolean } | null>(
@@ -587,36 +588,29 @@ function BusinessHoursEditor({
       ) : null}
 
       {confirmDialog}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        {/* Na 1a vez, "Todas as alteracoes estao salvas" enganava: nada foi definido. */}
-        {needsOpenDay && !anyDayOpen ? (
-          <p role="alert" className="text-xs font-medium text-destructive">
-            Ligue pelo menos um dia antes de salvar.
-          </p>
-        ) : hoursUnset && !dirty ? (
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            Nenhum dia aberto ainda
-          </p>
-        ) : (
-          <UnsavedChangesStatus dirty={dirty} />
-        )}
-        <Button
-          onClick={() => {
-            // Sem dia ligado: avisa e nao salva (vale sempre, nao so na 1a vez).
-            if (!anyDayOpen) {
-              setNeedsOpenDay(true);
-              return;
-            }
-            saveAttention.stop();
-            void save();
-          }}
-          disabled={pending || groupsPending}
-          // Treme de leve e solta o anel, sem crescer: o botao fica dentro do destaque.
-          className={cn(saveAttention.attention && "motion-safe:animate-attention-soft-infinite")}
-        >
-          {pending ? "Salvando..." : "Salvar horários"}
-        </Button>
-      </div>
+      <SettingsSaveBar
+        visible={dirty}
+        {...(needsOpenDay && !anyDayOpen
+          ? { status: "Ligue pelo menos um dia antes de salvar.", tone: "error" as const }
+          : {})}
+        onDiscard={() => {
+          setDays(normalize(unit.businessHours));
+          setDayErrors({});
+          setNeedsOpenDay(false);
+        }}
+        onSave={() => {
+          // Sem dia ligado: avisa e nao salva (vale sempre, nao so na 1a vez).
+          if (!anyDayOpen) {
+            setNeedsOpenDay(true);
+            return;
+          }
+          saveAttention.stop();
+          void save();
+        }}
+        pending={pending}
+        disabled={groupsPending}
+        attention={saveAttention.attention}
+      />
     </div>
   );
 }

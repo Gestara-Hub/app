@@ -8,7 +8,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Configurações"
-        description="Preferências da organização e da unidade."
+        description="Dados e regras do seu espaço."
       />
       <SettingsTabs />
     </>

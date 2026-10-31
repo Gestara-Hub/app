@@ -92,7 +92,7 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
           id: "billing",
           label: "Definir regras da mensalidade",
           description: "Antecipado ou depois do uso, e o dia do vencimento.",
-          href: "/settings?tab=geral#billing-rules",
+          href: "/settings?tab=cobranca#billing-rules",
           cta: "Configurar",
           // Regras so valem para a mensalidade: so pacote, sem plano, dispensa.
           done: input.billingSet || (isMembershipArea && hasPackages && !hasPlans),
