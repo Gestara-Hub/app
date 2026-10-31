@@ -78,6 +78,20 @@ describe("aula avulsa e experimental", () => {
     expect(store.charges).toHaveLength(0);
   });
 
+  // Revisao de valores de 30/10/2026: saiu depois de pagar e voltou, nascia uma 2a cobranca.
+  it("avulso que pagou, saiu e voltou para a mesma aula não é cobrado de novo", async () => {
+    const g = await createClass({ instructorId: (await createInstructor("Carlos")).id, slots: [MON] });
+    const s = await createStudent("Avulso Pago");
+    const sid = sessionIdOf(g.id, "2026-09-28", "17:00");
+    const r = await turmasService.reserveSession({ classGroupId: g.id, sessionId: sid, studentId: s.id, kind: "dropin" });
+    await billingService.markPaid(r.chargeId!, "pix");
+    await turmasService.cancelReservation({ sessionId: sid, studentId: s.id });
+    const r2 = await turmasService.reserveSession({ classGroupId: g.id, sessionId: sid, studentId: s.id, kind: "dropin" });
+    expect(r2.chargeId).toBe(r.chargeId);
+    expect(store.charges.filter((c) => c.studentId === s.id && c.kind === "dropin")).toHaveLength(1);
+    expect(store.charges.find((c) => c.id === r.chargeId)?.status).toBe("paid");
+  });
+
   it("remover o avulso da aula encerra a cobrança como sistema (e readicionar na mesma aula reaproveita a cobrança)", async () => {
     const g = await createClass({ instructorId: (await createInstructor("Carlos")).id, slots: [MON] });
     const s = await createStudent("Avulso");

@@ -74,7 +74,20 @@ export const reservationsService = {
       // saido desta mesma aula sem pagar, reaproveita a cobranca encerrada pelo
       // sistema para nao duplicar linha no historico.
       const price = input.amountCents ?? g.sessionPriceCents ?? 0;
-      if (kind === "dropin" && price > 0) {
+      // Ja paga para esta aula (saiu depois de pagar e voltou): usa a paga, sem
+      // cobrar de novo (revisao de valores de 30/10/2026: nascia uma 2a cobranca).
+      const alreadyPaid =
+        kind === "dropin"
+          ? store.charges.find(
+              (c) =>
+                c.kind === "dropin" &&
+                c.sessionId === input.sessionId &&
+                c.studentId === input.studentId &&
+                c.status === "paid",
+            )
+          : undefined;
+      if (alreadyPaid) chargeId = alreadyPaid.id;
+      else if (kind === "dropin" && price > 0) {
         const existingCanceled = store.charges.find(
           (c) =>
             c.kind === "dropin" &&
