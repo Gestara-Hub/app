@@ -73,7 +73,7 @@ Pedido do usuário (30/10/2026, à noite): rodar todos os testes do `apps/web` (
 2. **1ª mensalidade ajustada só por dono e gerente:** confirmado.
 3. **Início antigo:** perguntar no cadastro. Feito em `0d9d5fc`: "Cobrar os meses desde o início?", padrão "A partir deste mês" (`clients.charges_from`, `product/15`, "Aluno antigo: meses passados").
 4. **Sem a carteira principal:** resolver agora. Feito em `b2b4c13`: a taxa do GestaraHub fica zero quando o Asaas não pode retê-la (`technical/25`, Regras).
-5. **CSP:** resolver agora. Feito em `736b4c2`: lista de origens, script inline ainda liberado (`technical/00`, "Cabeçalhos de segurança e CSP"). A área logada ainda não passou pelo e2e com o CSP.
+5. **CSP:** resolver agora. Feito em `736b4c2`: lista de origens, script inline ainda liberado (`technical/00`, "Cabeçalhos de segurança e CSP"). Smoke (42 fluxos) verde no build de produção com o CSP; falta conferir à mão com PostHog e Meta ligados.
 
 ## Segurança
 
