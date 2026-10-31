@@ -52,6 +52,8 @@ Toda aba ou tela de listagem deve conter:
   2. `"Editar"` (ícone `Pencil`).
   3. Ações de ciclo de vida separadas por `separator: true`: `"Inativar"` / `"Reativar"` (`Power`) ou `"Cancelar"` / `"Excluir"` (`Trash2`, `variant: "destructive"`).
 
+**Lista de Alunos sem cobrança (30/10/2026, a pedido):** a linha e o cartão mostram nome, situação, termo pendente, evolução e contato. Plano, bolsa, pausa e pacote ficam na ficha do aluno.
+
 ### 1.5. Altura dos Botões: uma só (17/10/2026)
 - **Botão com texto usa sempre a altura padrão do `Button` (36px).** Não passe `size="sm"`, `size="xs"` nem `size="lg"`, e não coloque altura no `className` (`h-*`, `min-h-*`, `py-*`). Vale para o app inteiro, a landing page, o banner de cookies e os diálogos.
 - **Botão só de ícone** usa `size="icon"` (os mesmos 36px), principalmente ao lado de botões com texto (setas do calendário e do mês, alternar tema, menu lateral).

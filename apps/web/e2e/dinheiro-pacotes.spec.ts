@@ -197,10 +197,10 @@ test.describe("venda", () => {
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
     await expect(dialog).toBeHidden();
-    // Quem so tem pacote nao mostra "Sem mensalidade".
+    // A lista de alunos nao mostra plano nem pacote (ficam na ficha, 30/10/2026).
     const row = page.locator("div.group").filter({ hasText: "Aluna Pacote" });
-    await expect(row.first()).toContainText("Restam 10 de 10");
-    await expect(row.first()).not.toContainText("Sem mensalidade");
+    await expect(row.first()).toBeVisible();
+    await expect(row.first()).not.toContainText("Restam 10 de 10");
     await waitForTenant(page, (t) => t.charges.filter((c: { kind: string }) => c.kind === "package").length === 3);
 
     // Cobranças > Pacotes: uma parcela por mes; pagar a primeira.

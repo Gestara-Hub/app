@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  Award,
   Ban,
   ClipboardList,
   GraduationCap,
@@ -22,7 +21,6 @@ import {
   Ticket,
   UserRound,
   Users,
-  Wallet,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -47,21 +45,17 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
-import { PausedTag } from "./paused-tag";
 import { MinorConsentBadge, isMinorConsentPending } from "@/components/shared/minor-consent-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
 import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
-import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
-import { formatCents, formatPhone } from "@gestarahub/core/format";
+import { formatPhone } from "@gestarahub/core/format";
 import type {
   Category,
   Client,
   ClientFilter,
-  Plan,
-  PlanPeriod,
   RecordStatus,
   StudentPackageView,
 } from "@gestarahub/contracts";
@@ -69,48 +63,15 @@ import { useModel } from "@/features/auth";
 import { useSegmentVocabulary } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import {
-  StudentPackageBadge,
   canSellPackageTo,
   cancelablePackage,
-  displayPackages,
   useEnrolledModalities,
-  usePlans,
   useStudentPackages,
 } from "@/features/turmas";
 import { usePaginatedClients } from "../hooks/use-clients";
 import { useUserPreferences } from "@/features/preferences";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 import { dateInSpace } from "@gestarahub/core/date";
-
-const PERIOD_SHORT: Record<PlanPeriod, string> = {
-  monthly: "mês",
-  biweekly: "quinzena",
-  weekly: "semana",
-};
-
-const PERIOD_BADGE_CLASSES: Record<PlanPeriod, string> = {
-  monthly:
-    "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-  biweekly:
-    "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
-  weekly:
-    "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-};
-
-function getEffectivePriceCents(client: Client, plan: Plan): number {
-  let price = plan.priceCents;
-  const expired =
-    client.discount?.validUntil !== undefined &&
-    client.discount.validUntil < dateInSpace();
-  if (client.discount && client.discount.value > 0 && !expired) {
-    if (client.discount.type === "percentage") {
-      price = Math.max(0, price - Math.round((price * client.discount.value) / 100));
-    } else {
-      price = Math.max(0, price - Math.round(client.discount.value));
-    }
-  }
-  return price;
-}
 
 /**
  * Palavras das modalidades do aluno (menu "Graduação"/"Níveis"): as delas
@@ -204,124 +165,6 @@ function ClientProgressionBadges({
   );
 }
 
-/** Bolsa vigente hoje (sem validade ou ainda dentro dela). */
-function activeScholarship(client: Client) {
-  const d = client.discount;
-  if (!d?.scholarship) return null;
-  if (d.validUntil && d.validUntil < dateInSpace()) return null;
-  return d;
-}
-
-const SCHOLARSHIP_BADGE_CLASS =
-  "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25";
-
-function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
-  const scholarship = activeScholarship(client);
-  const isPaused = client.membershipStatus === "paused";
-
-  // Bolsista: selo proprio, separado do plano (integral pode nem ter plano).
-  if (scholarship) {
-    const isFull = scholarship.type === "percentage" && scholarship.value >= 100;
-    const period = plan?.period ?? "monthly";
-    const effectiveCents = plan ? getEffectivePriceCents(client, plan) : 0;
-    const percent =
-      scholarship.type === "percentage"
-        ? scholarship.value
-        : plan && plan.priceCents > 0
-          ? Math.round(((plan.priceCents - effectiveCents) / plan.priceCents) * 100)
-          : 0;
-    return (
-      <span
-        title={[plan ? `Plano: ${plan.name}` : null, scholarship.reason ? `Motivo: ${scholarship.reason}` : null]
-          .filter(Boolean)
-          .join(" · ") || undefined}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-          SCHOLARSHIP_BADGE_CLASS,
-        )}
-      >
-        <Award className="size-3 shrink-0 opacity-75" />
-        {isFull || !plan ? (
-          <span>Bolsista integral</span>
-        ) : (
-          <>
-            <span>Bolsa {percent}%</span>
-            <span className="opacity-50">·</span>
-            <span className="font-semibold tabular-nums">
-              {formatCents(effectiveCents)}/{PERIOD_SHORT[period]}
-            </span>
-          </>
-        )}
-        {isPaused ? <PausedTag /> : null}
-      </span>
-    );
-  }
-
-  if (!client.planId || !plan) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-        Sem mensalidade
-      </span>
-    );
-  }
-
-  const period = plan.period ?? "monthly";
-  const cleanName = plan.name
-    .replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "")
-    .trim();
-  const effectiveCents = getEffectivePriceCents(client, plan);
-  const hasDiscount = effectiveCents < plan.priceCents;
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        isPaused
-          ? "bg-muted text-muted-foreground border-border"
-          : PERIOD_BADGE_CLASSES[period],
-      )}
-    >
-      <Wallet className="size-3 shrink-0 opacity-75" />
-      <span className="min-w-0 break-words">{cleanName}</span>
-      <span className="opacity-50">·</span>
-      <span className="font-semibold tabular-nums">
-        {formatCents(effectiveCents)}/{PERIOD_SHORT[period]}
-      </span>
-      {hasDiscount ? (
-        <span className="rounded bg-background/60 px-1 py-0.2 text-[10px] font-bold">
-          {client.discount?.type === "percentage"
-            ? `-${client.discount.value}%`
-            : "desc."}
-        </span>
-      ) : null}
-      {isPaused ? <PausedTag /> : null}
-    </span>
-  );
-}
-
-/**
- * Cobranca do aluno na lista: plano/bolsa e o pacote de aulas. Quem so tem
- * pacote nao mostra "Sem mensalidade".
- */
-function ClientBillingBadges({
-  client,
-  plan,
-  packages,
-}: {
-  client: Client;
-  plan?: Plan;
-  packages: StudentPackageView[];
-}) {
-  const shownPackages = displayPackages(packages);
-  const hasMembership = Boolean(activeScholarship(client) || (client.planId && plan));
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      {hasMembership || shownPackages.length === 0 ? <ClientPlanBadge client={client} plan={plan} /> : null}
-      {shownPackages.length > 0 ? <StudentPackageBadge packages={shownPackages} /> : null}
-    </span>
-  );
-}
-
 const NO_PACKAGES: StudentPackageView[] = [];
 
 function minorConsentAction(client: Client): ListItemAction | null {
@@ -373,7 +216,6 @@ interface ClientsListProps {
 
 function ClientRow({
   client,
-  plan,
   categoryById,
   canManage,
   isClasses,
@@ -390,7 +232,6 @@ function ClientRow({
   onReactivate,
 }: {
   client: Client;
-  plan?: Plan;
   categoryById: Map<string, Category>;
   canManage: boolean;
   isClasses: boolean;
@@ -568,19 +409,9 @@ function ClientRow({
               ) : null}
             </div>
 
-            {isClasses ? (
-              <div className="mt-2 sm:hidden">
-                <ClientBillingBadges client={client} plan={plan} packages={packages} />
-              </div>
-            ) : null}
           </div>
         </div>
 
-        {isClasses ? (
-          <div className="hidden sm:flex items-center shrink-0">
-            <ClientBillingBadges client={client} plan={plan} packages={packages} />
-          </div>
-        ) : null}
       </div>
     </ListRow>
   );
@@ -591,7 +422,6 @@ function ClientRow({
 
 function ClientCard({
   client,
-  plan,
   categoryById,
   canManage,
   isClasses,
@@ -608,7 +438,6 @@ function ClientCard({
   onReactivate,
 }: {
   client: Client;
-  plan?: Plan;
   categoryById: Map<string, Category>;
   canManage: boolean;
   isClasses: boolean;
@@ -788,11 +617,6 @@ function ClientCard({
           ) : null}
         </div>
 
-        {isClasses ? (
-          <div>
-            <ClientBillingBadges client={client} plan={plan} packages={packages} />
-          </div>
-        ) : null}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground">
@@ -927,7 +751,6 @@ export function ClientsList({
   };
 
   const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
-  const { data: plans } = usePlans();
   const { data: categories } = useCategories();
   const { data: studentPackages } = useStudentPackages(undefined, isClasses);
   const clients = paginatedData?.items ?? [];
@@ -942,10 +765,6 @@ export function ClientsList({
     return map;
   }, [studentPackages]);
 
-  const planById = useMemo(
-    () => new Map((plans ?? []).map((p) => [p.id, p])),
-    [plans],
-  );
   const categoryById = useMemo(
     () => new Map((categories ?? []).map((c) => [c.id, c])),
     [categories],
@@ -1024,7 +843,6 @@ export function ClientsList({
       <ClientRow
         key={client.id}
         client={client}
-        plan={client.planId ? planById.get(client.planId) : undefined}
         categoryById={categoryById}
         canManage={canManage}
         isClasses={isClasses}
@@ -1104,7 +922,6 @@ export function ClientsList({
             <ClientCard
               key={client.id}
               client={client}
-              plan={client.planId ? planById.get(client.planId) : undefined}
               categoryById={categoryById}
               canManage={canManage}
               isClasses={isClasses}
