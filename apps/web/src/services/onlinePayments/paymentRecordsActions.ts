@@ -231,6 +231,8 @@ export async function cancelGatewayPaymentsAction(paymentIds: Id[]): Promise<voi
   if (paymentIds.length === 0) return;
   const { requireTenant } = await import("../server/tenant");
   const ctx = await requireTenant();
+  // Cancela codigos no parceiro: so quem cobra (revisao geral de 31/10/2026, achado S7).
+  ctx.require("billing:manage");
   const { data: rows } = await ctx.client
     .from("online_payments")
     .select("id, gateway_provider, gateway_payment_id")

@@ -92,8 +92,11 @@ export async function listSubaccountReceiptsAction(
   query: SubaccountReceiptsQuery,
 ): Promise<SubaccountReceiptsPage> {
   const client = await getClientForTenant();
+  // O espaco vem da sessao, nao do pedido (revisao geral de 31/10/2026, achado S9).
+  const { requireTenant } = await import("../server/tenant");
+  const organizationId = (await requireTenant()).organizationId;
   // Vencidas pela validade: expira aqui e exclui no Asaas antes de listar.
-  await expireDueOnlinePayments(query.organizationId).catch((err) =>
+  await expireDueOnlinePayments(organizationId).catch((err) =>
     logError("[listSubaccountReceiptsAction] Erro ao expirar cobranças vencidas:", err),
   );
   const statuses = STATUS_FILTER_VALUES[query.status];
@@ -121,13 +124,13 @@ export async function listSubaccountReceiptsAction(
       `,
       { count: "exact" },
     )
-    .eq("organization_id", query.organizationId);
+    .eq("organization_id", organizationId);
   // Totais do filtro inteiro: todas as paginas (a consulta para em 1.000 linhas; doc 19, fase 0).
   const totalsQuery = () => {
     let totals = client
       .from("online_payments")
       .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, funds_released")
-      .eq("organization_id", query.organizationId);
+      .eq("organization_id", organizationId);
     if (period) totals = totals.or(period);
     if (statuses) totals = totals.in("status", statuses);
     if (query.method !== "all") totals = totals.eq("method", query.method);
