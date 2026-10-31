@@ -10,13 +10,13 @@ import {
   calculateOnlineChargeAmounts,
   defaultPassFeeFor,
   effectiveGatewayFees,
-  platformSplitCents,
   type PlatformTier,
 } from "@gestarahub/core/payment-fees";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
 import { getPaymentGateway } from "@/services/payments/registry";
+import { effectivePlatformSplitCents } from "@/services/payments/platformSplit";
 import { cancelGatewayPayment } from "@/services/onlinePayments/gatewayCleanup";
 import { realSubaccountKey } from "@/services/onlinePayments/gatewaySetup";
 import { newPublicCode } from "@/services/onlinePayments/onlinePaymentRules";
@@ -205,7 +205,7 @@ export async function createPublicChargePaymentAction(input: {
 
   // Valores e tarifas (mesma conta do "Cobrar online").
   const tier = ((org?.subscription as Row | null)?.tier as PlatformTier | undefined) ?? "free";
-  const splitAmountCents = platformSplitCents(tier);
+  const splitAmountCents = effectivePlatformSplitCents(tier);
   const passFee = defaultPassFeeFor(onlineSettings, method);
   const { chargedAmountCents, gatewayFeeCents, netAmountCents } = calculateOnlineChargeAmounts({
     amountCents: Number(charge.amount_cents) || 0,

@@ -199,7 +199,8 @@ export function OnlineChargeDialog({
     chosenMethod && methodOptions.some((opt) => opt.value === chosenMethod)
       ? chosenMethod
       : (methodOptions[0]?.value ?? "pix");
-  const splitAmountCents = platformSplitCents(org?.subscription?.tier);
+  // A taxa que o parceiro vai reter vem do servidor (zero sem a carteira principal).
+  const splitAmountCents = checkout.data?.platformSplitCents ?? platformSplitCents(org?.subscription?.tier);
   const activePassFee = passFee !== null ? passFee : defaultPassFeeFor(onlineSettings, method);
 
   // Tarifa do Asaas + taxa do GestaraHub (doc 19 §4). No link o aluno escolhe

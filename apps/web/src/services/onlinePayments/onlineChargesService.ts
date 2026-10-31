@@ -5,7 +5,6 @@ import {
   calculateOnlineChargeAmounts,
   defaultPassFeeFor,
   effectiveGatewayFees,
-  platformSplitCents,
 } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "@gestarahub/core/payer";
@@ -13,6 +12,7 @@ import { apiError, newId, notFoundError, nowIso, readOp, writeOp, persistLocal }
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { paymentGateway } from "../payments/paymentGateway";
+import { effectivePlatformSplitCents } from "../payments/platformSplit";
 import { assertFeature } from "../subscription/subscriptionService";
 import { realAccountInBrowser } from "../world/delegate";
 import { isSupabaseOrganization } from "@/lib/session";
@@ -85,6 +85,7 @@ export const onlineChargesService = {
         amountCents: c.amountCents,
         dueDate: c.dueDate,
         payments,
+        platformSplitCents: effectivePlatformSplitCents(store.organization.subscription?.tier),
         payerIssue: payerRequired() ? payerIssueOf(student ? resolveOnlinePayer(student, todayISO()) : null) : undefined,
       });
     });
@@ -120,7 +121,7 @@ export const onlineChargesService = {
     const passFee = passFeeOverride !== undefined ? passFeeOverride : defaultPassFeeFor(settings, method);
 
     // Taxa do GestaraHub por plano e tarifa do Asaas por meio (doc 19 §4, decisao A).
-    const splitAmountCents = platformSplitCents(store.organization.subscription?.tier);
+    const splitAmountCents = effectivePlatformSplitCents(store.organization.subscription?.tier);
     const { chargedAmountCents, netAmountCents, gatewayFeeCents } = calculateOnlineChargeAmounts({
       amountCents: charge.amountCents,
       method,

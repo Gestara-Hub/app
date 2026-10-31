@@ -152,7 +152,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     // 4. Split de pagamento do marketplace GestaraHub se houver Master Wallet configurada
     const splitAmountCents = input.splitAmountCents ?? 199; // R$ 1,99 por padrão
     const splitSettings =
-      config.masterWalletId && input.subaccountApiKey
+      config.masterWalletId && input.subaccountApiKey && splitAmountCents > 0
         ? [
             {
               walletId: config.masterWalletId,
@@ -229,7 +229,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     // Split de pagamento do marketplace GestaraHub se houver Master Wallet configurada
     const splitAmountCents = input.splitAmountCents ?? 199; // R$ 1,99 por padrão
     const splitSettings =
-      config.masterWalletId && input.subaccountApiKey
+      config.masterWalletId && input.subaccountApiKey && splitAmountCents > 0
         ? [
             {
               walletId: config.masterWalletId,

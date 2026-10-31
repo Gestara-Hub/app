@@ -8,11 +8,11 @@ import {
   calculateOnlineChargeAmounts,
   defaultPassFeeFor,
   effectiveGatewayFees,
-  platformSplitCents,
   type PlatformTier,
 } from "@gestarahub/core/payment-fees";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logWarn } from "@/lib/log";
+import { effectivePlatformSplitCents } from "@/services/payments/platformSplit";
 
 /**
  * Pagina publica da cobranca online (/p/<codigo>, migracao 35). Sem login: le
@@ -360,7 +360,7 @@ export async function loadChargeInvoice(
   // Available methods & amounts calculation
   const acceptedMethods = availableOnlineMethods(onlineSettings).filter((m) => m !== "choice");
   const tier = ((org?.subscription as Record<string, unknown> | null)?.tier as PlatformTier | undefined) ?? "free";
-  const splitAmountCents = platformSplitCents(tier);
+  const splitAmountCents = effectivePlatformSplitCents(tier);
   const fees = effectiveGatewayFees(onlineSettings?.gatewayFees, todayISO());
 
   const amountsByMethod: Partial<Record<OnlinePaymentMethod, number>> = {};

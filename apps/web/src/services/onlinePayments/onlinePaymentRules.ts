@@ -57,6 +57,8 @@ export interface OnlineChargeCheckout {
   dueDate: string;
   /** Mais recente primeiro. */
   payments: OnlinePayment[];
+  /** Taxa do GestaraHub que o parceiro vai reter (zero sem a carteira principal). */
+  platformSplitCents: number;
   /** Falta o CPF de quem paga: a janela avisa e leva ao cadastro (achado 61). */
   payerIssue?: PayerIssue;
   /** Aluno menor com responsavel: a mensagem da cobranca vai para ele (nome e telefone). */

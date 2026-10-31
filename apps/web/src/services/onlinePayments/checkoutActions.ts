@@ -1,6 +1,5 @@
 "use server";
 
-import { platformSplitCents } from "@gestarahub/core/payment-fees";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PixNotReadyError,
@@ -10,6 +9,7 @@ import {
   type PixPayment,
 } from "../payments/types";
 import { getPaymentGateway } from "../payments/registry";
+import { effectivePlatformSplitCents } from "../payments/platformSplit";
 import { requireTenant } from "../server/tenant";
 import { logError, logWarn } from "@/lib/log";
 
@@ -59,7 +59,7 @@ async function checkedInput<T extends CreatePixInput | CreateLinkInput>(input: T
     input: {
       ...input,
       subaccountApiKey,
-      splitAmountCents: platformSplitCents(tier),
+      splitAmountCents: effectivePlatformSplitCents(tier),
       chargeDueDate: input.chargeDueDate || (charge.due_date as string),
       competence: input.competence || (charge.competence as string | undefined),
       chargeKind: input.chargeKind || (charge.kind as string),

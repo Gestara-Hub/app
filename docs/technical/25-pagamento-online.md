@@ -80,6 +80,7 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
   - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
   - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
   - Outro erro na busca do QR também cancela a cobrança no parceiro.
+- **Taxa do GestaraHub só quando o parceiro a retém** (31/10/2026, decisão 4 do diário da noite, confirmada pelo usuário). Com o Asaas e sem `ASAAS_MASTER_WALLET_ID`, não há split: a taxa é zero, não entra no valor repassado ao aluno nem sai do líquido do espaço. Um ponto só decide isso no servidor, `effectivePlatformSplitCents` (`services/payments/platformSplit.ts`), usado por "Cobrar online", pelo checkout, pela fatura gerada e pela página pública. Sem o Asaas (demonstração e e2e), o provedor de demonstração segue simulando a taxa.
 
 ## 7. Fatura Pública e Autoatendimento do Aluno (/p/c/:id)
 
