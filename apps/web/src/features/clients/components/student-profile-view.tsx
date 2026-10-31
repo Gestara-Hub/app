@@ -178,7 +178,8 @@ function ProfileSection({
         />
       </button>
       {open ? (
-        <div id={`student-panel-${id}`} className="min-w-0 px-4 pb-4">
+        // Respiro em cima: o fundo do hover do titulo nao encosta no conteudo.
+        <div id={`student-panel-${id}`} className="min-w-0 p-4">
           {children}
         </div>
       ) : null}
