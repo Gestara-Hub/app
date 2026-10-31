@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { History, MessageCircle, MessageSquareText, Plus, Smartphone } from "lucide-react";
 import type { CommunicationMetrics, WhatsAppConnectionView } from "@gestarahub/contracts";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
@@ -174,15 +174,17 @@ const isTab = (value: string | null): value is Tab => TABS.some((t) => t.value =
 
 export function CommunicationView() {
   // A aba vem do endereco (`?tab=connection`, o link do aviso da franquia no sino).
-  const router = useRouter();
+  // Trocar de aba usa o `history.replaceState` do navegador, que o Next sincroniza
+  // com o `useSearchParams` sem ir ao servidor: troca na hora, e dois toques
+  // seguidos nao disputam navegacao (com `router.replace`, a tela ficava na aba antiga).
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const paramTab = searchParams.get("tab");
   const tab: Tab = isTab(paramTab) ? paramTab : "messages";
   const setTab = (next: Tab) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(window.location.search);
     params.set("tab", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
   };
   const [sendOpen, setSendOpen] = useState(false);
   const { data: connection } = useWhatsAppConnection();
