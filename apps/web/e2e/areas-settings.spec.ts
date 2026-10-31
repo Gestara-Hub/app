@@ -554,6 +554,15 @@ test.describe("Configurações: Certificado", () => {
     const qr = panel.getByTestId("certificate-verification");
     const sheetBox = (await panel.locator("article.certificate-sheet").boundingBox())!;
     const qrBox = (await qr.boundingBox())!;
+    // Clicar num bloco (com o mouse tremendo um pouco) nao e arrastar: nada muda de lugar.
+    const signatures = panel.getByTestId("certificate-block-signatures");
+    const signaturesBox = (await signatures.boundingBox())!;
+    await page.mouse.move(signaturesBox.x + signaturesBox.width / 2, signaturesBox.y + signaturesBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(signaturesBox.x + signaturesBox.width / 2 + 2, signaturesBox.y + signaturesBox.height / 2 + 1);
+    await page.mouse.up();
+    await expect(panel.getByRole("button", { name: "Voltar ao lugar" })).toHaveCount(0);
+    expect((await signatures.boundingBox())!.y).toBeCloseTo(signaturesBox.y, 0);
     await page.mouse.move(qrBox.x + qrBox.width / 2, qrBox.y + qrBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(sheetBox.x + qrBox.width / 2 + 20, sheetBox.y + qrBox.height / 2 + 20, { steps: 8 });
@@ -579,6 +588,14 @@ test.describe("Configurações: Certificado", () => {
     await page.getByRole("option", { name: "Pequeno" }).click();
     // O Select (Radix) deixa o body sem eventos de ponteiro enquanto fecha: espera liberar antes de arrastar.
     await expect(page.locator("body")).not.toHaveCSS("pointer-events", "none");
+    // Com o texto embaixo, a logo no fluxo fica sob as assinaturas fixadas (bloco solto cobre o do fluxo):
+    // tira as assinaturas do caminho antes de pegar a logo.
+    const pinnedSignatures = (await signatures.boundingBox())!;
+    await page.mouse.move(pinnedSignatures.x + pinnedSignatures.width / 2, pinnedSignatures.y + pinnedSignatures.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(pinnedSignatures.x + pinnedSignatures.width / 2, sheetBox.y + 40, { steps: 8 });
+    await page.mouse.up();
+    expect((await signatures.boundingBox())!.y - sheetBox.y).toBeLessThan(60);
     const logoBlock = panel.getByTestId("certificate-block-logo");
     const logoBox = (await logoBlock.boundingBox())!;
     await page.mouse.move(logoBox.x + logoBox.width / 2, logoBox.y + logoBox.height / 2);

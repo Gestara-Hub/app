@@ -30,9 +30,13 @@ function startDrag(event: ReactPointerEvent<HTMLElement>, block: CertificateBloc
   const box = el.getBoundingClientRect();
   const grabX = event.clientX - box.left;
   const grabY = event.clientY - box.top;
+  const startX = event.clientX;
+  const startY = event.clientY;
   let started = false;
   const move = (e: PointerEvent) => {
     if (!started) {
+      // Um clique com o mouse tremendo nao e arrasto: so comeca depois de uns pixels.
+      if (Math.abs(e.clientX - startX) < 4 && Math.abs(e.clientY - startY) < 4) return;
       started = true;
       for (const other of sheet.querySelectorAll<HTMLElement>("[data-block]")) {
         const name = other.dataset.block as CertificateBlock | undefined;
@@ -327,7 +331,8 @@ function CustomSheet({
       </Block>
     ) : null;
   const signatures = show("signatures") ? (
-    <Block block="signatures" position={artwork.signatures} onMove={onMove} flowClassName="w-full pt-[1.5cqw]" absoluteClassName="w-[70.56%]">
+    // O respiro fica como margem (fora da caixa): solto, o bloco mantem o conteudo no mesmo lugar.
+    <Block block="signatures" position={artwork.signatures} onMove={onMove} flowClassName="mt-[1.5cqw] w-full" absoluteClassName="w-[70.56%]">
       <Signatures text={text} ink={artwork.ink} />
     </Block>
   ) : null;
