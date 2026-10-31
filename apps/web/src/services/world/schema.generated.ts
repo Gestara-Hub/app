@@ -254,6 +254,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "jsonb",
         "nullable": true,
         "hasDefault": false
+      },
+      "certificate_template": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

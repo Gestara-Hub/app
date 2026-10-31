@@ -280,6 +280,28 @@ describe("modelo de certificado", () => {
     expect("artwork" in modern).toBe(false);
   });
 
+  it("modelo por modalidade: vale nos cursos dela; sem o proprio, o do espaco", async () => {
+    setTier("pro");
+    const { g, enrollment } = await completedEnrollment();
+    const modalityId = String(g.modalityId);
+    await certificatesService.saveTemplate(customTemplate({ title: "Do espaço" }));
+    expect((await turmasService.getCourseCertificate(enrollment.id)).template.title).toBe("Do espaço");
+    expect(await certificatesService.getTemplate(modalityId)).toMatchObject({ title: "Do espaço", own: false });
+    expect(await certificatesService.listModalitiesWithOwnTemplate()).toEqual([]);
+
+    const own = await certificatesService.saveTemplate(customTemplate({ title: "Da modalidade" }), modalityId);
+    expect(own.title).toBe("Da modalidade");
+    expect(store.categories.find((c) => c.id === modalityId)?.certificateTemplate?.title).toBe("Da modalidade");
+    expect(store.certificateTemplate?.title).toBe("Do espaço");
+    expect(await certificatesService.listModalitiesWithOwnTemplate()).toEqual([modalityId]);
+    expect((await turmasService.getCourseCertificate(enrollment.id)).template.title).toBe("Da modalidade");
+    expect(store.auditLog.at(-1)?.summary).toContain("atualizou o modelo de certificado de ");
+
+    expect((await certificatesService.removeModalityTemplate(modalityId)).title).toBe("Do espaço");
+    expect((await turmasService.getCourseCertificate(enrollment.id)).template.title).toBe("Do espaço");
+    await expect(certificatesService.saveTemplate(customTemplate(), "m-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("o certificado do aluno vem com o modelo do espaco", async () => {
     setTier("pro");
     const { g, student, enrollment } = await completedEnrollment();

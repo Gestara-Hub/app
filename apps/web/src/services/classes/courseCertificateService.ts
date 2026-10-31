@@ -45,7 +45,8 @@ export const courseCertificateService = {
         city: typeof address === "object" ? address?.city : undefined,
         issuedOn: todayISO(),
       });
-      return clone({ certificate, template: currentCertificateTemplate() });
+      // O modelo da modalidade do curso, se ela tem o proprio; senao o do espaco.
+      return clone({ certificate, template: currentCertificateTemplate(g.modalityId) });
     });
   },
 };

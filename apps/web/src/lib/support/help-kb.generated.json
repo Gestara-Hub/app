@@ -383,6 +383,29 @@
     }
   },
   {
+    "id": "certificados#um-modelo-por-modalidade",
+    "article": "Certificados de conclusão",
+    "title": "Um modelo por modalidade",
+    "route": "/settings?tab=certificado",
+    "text": "Por padrão, todos os cursos usam o modelo do espaço. Escolhendo uma modalidade em \"Vale para\" e salvando, os cursos dela passam a sair com esse modelo; as outras continuam com o do espaço. Para desfazer, abra a modalidade e clique em \"Usar o modelo do espaço\".",
+    "summary": "Cursos de uma modalidade podem ter o próprio certificado.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Vale para",
+          "text": "Escolha \"Todo o espaço\" ou uma modalidade."
+        },
+        {
+          "kind": "campo",
+          "label": "Título",
+          "text": "Com a modalidade escolhida, mude o que quiser. Depois, salve na barra que aparece embaixo."
+        }
+      ]
+    }
+  },
+  {
     "id": "certificados#usar-a-minha-propria-arte",
     "article": "Certificados de conclusão",
     "title": "Usar a minha própria arte",

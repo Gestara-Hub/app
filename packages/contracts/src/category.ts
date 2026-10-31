@@ -1,6 +1,7 @@
 import type { ModalityAssessmentSettings } from "./assessment";
 import type { ModalityMeasurementSettings } from "./measurement";
 import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
+import type { CertificateTemplate } from "./certificate";
 
 export type ProgressionBeltColor =
   | "white"
@@ -82,6 +83,8 @@ export interface Category {
   assessments?: ModalityAssessmentSettings;
   /** Testes e medidas (doc 21 §2.4). Ausente = desligado. */
   measurements?: ModalityMeasurementSettings;
+  /** Modelo de certificado so desta modalidade (doc 21 §1). Ausente = o do espaco. */
+  certificateTemplate?: CertificateTemplate;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;

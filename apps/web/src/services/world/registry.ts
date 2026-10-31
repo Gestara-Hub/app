@@ -175,7 +175,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   certificates: {
     load: async () => (await import("../settings/certificatesService")).certificatesServiceImpl as unknown as ServiceObject,
-    permissions: all(["saveTemplate", "resetTemplate"], MANAGE_CLASSES),
+    permissions: all(["saveTemplate", "resetTemplate", "removeModalityTemplate"], MANAGE_CLASSES),
     browserOnly: ["uploadLogo", "uploadArtwork"],
   },
 };

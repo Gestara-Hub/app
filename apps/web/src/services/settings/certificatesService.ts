@@ -2,6 +2,7 @@ import type {
   CertificateArtwork,
   CertificateTemplate,
   FileAttachment,
+  Id,
   SaveCertificateTemplate,
 } from "@gestarahub/contracts";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES } from "@/lib/files";
 import { delegateAll } from "../world/delegate";
-import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
+import { notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { attachmentsService } from "../attachments/attachmentsService";
 import { auditLogService } from "../audit/auditLogService";
@@ -25,11 +26,28 @@ import { teamWords } from "../world/nouns";
  * armazenamento de arquivos (IndexedDB no mock, bucket privado no Supabase) e
  * o modelo guarda so o id. Na conta real o modelo vive em
  * `organizations.certificate_template` (doc 15, fatia 1); o store e so cache.
+ * Uma modalidade pode ter o proprio modelo (`categories.certificate_template`,
+ * 31/10/2026): vale nos cursos dela; sem ele, o do espaco.
  */
 
-/** Modelo em vigor (salvo ou padrao), para quem monta o certificado. */
-export function currentCertificateTemplate(): CertificateTemplate {
-  return structuredClone(store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title));
+/** Modelo do espaco (salvo ou padrao). */
+function spaceTemplate(): CertificateTemplate {
+  return store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title);
+}
+
+function modalityOf(modalityId: Id) {
+  const category = store.categories.find((c) => c.id === modalityId);
+  if (!category) throw notFoundError("Modalidade não encontrada.");
+  return category;
+}
+
+/**
+ * Modelo em vigor para quem monta o certificado: o da modalidade, se ela tem o
+ * proprio; senao o do espaco.
+ */
+export function currentCertificateTemplate(modalityId?: Id): CertificateTemplate {
+  const own = modalityId ? store.categories.find((c) => c.id === modalityId)?.certificateTemplate : undefined;
+  return structuredClone(own ?? spaceTemplate());
 }
 
 /** Ajustes da arte, so no layout "Minha arte" (nos outros a arte e esquecida). */
@@ -61,19 +79,41 @@ function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
 }
 
 export const certificatesServiceImpl = {
-  getTemplate(): Promise<CertificateTemplate> {
+  /**
+   * O modelo que a tela edita: o do espaco, ou o de uma modalidade. Modalidade
+   * sem modelo proprio devolve o do espaco (`own: false`) como ponto de partida.
+   */
+  getTemplate(modalityId?: Id): Promise<CertificateTemplate & { own?: boolean }> {
     return readOp(async () => {
-      return currentCertificateTemplate();
+      if (!modalityId) return currentCertificateTemplate();
+      const category = modalityOf(modalityId);
+      return { ...structuredClone(category.certificateTemplate ?? spaceTemplate()), own: Boolean(category.certificateTemplate) };
     });
   },
 
-  saveTemplate(payload: SaveCertificateTemplate): Promise<CertificateTemplate> {
+  /** Modalidades com modelo proprio (a tela marca no seletor). */
+  listModalitiesWithOwnTemplate(): Promise<Id[]> {
+    return readOp(async () => store.categories.filter((c) => c.certificateTemplate).map((c) => c.id));
+  },
+
+  saveTemplate(payload: SaveCertificateTemplate, modalityId?: Id): Promise<CertificateTemplate> {
     return writeOp(async () => {
       assertFeature("certificates");
       const next = normalize(payload);
       const issues = validateCertificateTemplate(next);
       if (issues.length > 0) throw validationError(issues);
       const template: CertificateTemplate = { ...next, updatedAt: nowIso() };
+      if (modalityId) {
+        const category = modalityOf(modalityId);
+        category.certificateTemplate = template;
+        category.updatedAt = template.updatedAt ?? nowIso();
+        auditLogService.record({
+          action: "updated",
+          target: { type: "settings", label: `Modelo de certificado de ${category.name}` },
+          predicate: `atualizou o modelo de certificado de ${category.name}`,
+        });
+        return currentCertificateTemplate(modalityId);
+      }
       store.certificateTemplate = template;
       auditLogService.record({
         action: "updated",
@@ -81,6 +121,24 @@ export const certificatesServiceImpl = {
         predicate: "atualizou o modelo de certificado",
       });
       return currentCertificateTemplate();
+    });
+  },
+
+  /** A modalidade volta a usar o modelo do espaco. */
+  removeModalityTemplate(modalityId: Id): Promise<CertificateTemplate> {
+    return writeOp(async () => {
+      assertFeature("certificates");
+      const category = modalityOf(modalityId);
+      if (category.certificateTemplate) {
+        category.certificateTemplate = undefined;
+        category.updatedAt = nowIso();
+        auditLogService.record({
+          action: "updated",
+          target: { type: "settings", label: `Modelo de certificado de ${category.name}` },
+          predicate: `voltou ${category.name} ao modelo de certificado do espaço`,
+        });
+      }
+      return currentCertificateTemplate(modalityId);
     });
   },
 

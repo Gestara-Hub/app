@@ -7,18 +7,28 @@ import { queryKeys } from "@/lib/queryKeys";
 import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { certificatesService } from "@/services/settings/certificatesService";
 
-export function useCertificateTemplate() {
+/** Modelo do espaco, ou o de uma modalidade (o do espaco quando ela nao tem o proprio). */
+export function useCertificateTemplate(modalityId?: Id) {
   return useQuery({
-    queryKey: queryKeys.certificates.template,
-    queryFn: () => certificatesService.getTemplate(),
+    queryKey: queryKeys.certificates.template(modalityId),
+    queryFn: () => certificatesService.getTemplate(modalityId),
   });
 }
 
-/** Salvar ou restaurar muda os certificados abertos (mesmo modelo para todos). */
+/** Ids das modalidades com modelo proprio (seletor "Vale para"). */
+export function useModalitiesWithOwnTemplate() {
+  return useQuery({
+    queryKey: queryKeys.certificates.ownTemplates,
+    queryFn: () => certificatesService.listModalitiesWithOwnTemplate(),
+  });
+}
+
+/** Salvar ou restaurar muda os certificados abertos e as modalidades com modelo proprio. */
 function useInvalidateCertificates() {
   const qc = useQueryClient();
-  return (saved: CertificateTemplate) => {
-    qc.setQueryData(queryKeys.certificates.template, saved);
+  return (saved: CertificateTemplate, modalityId?: Id) => {
+    qc.setQueryData(queryKeys.certificates.template(modalityId), saved);
+    qc.invalidateQueries({ queryKey: queryKeys.certificates.ownTemplates });
     qc.invalidateQueries({ queryKey: queryKeys.classes.certificates });
   };
 }
@@ -32,24 +42,38 @@ export interface SaveCertificateTemplateInput {
   logoFile?: File;
   /** Arte de fundo nova ("Minha arte"): sobe antes e entra em `artwork.fileId`. */
   artworkFile?: File;
+  /** Modelo so desta modalidade; sem ele, o do espaco. */
+  modalityId?: Id;
 }
 
 export function useSaveCertificateTemplate() {
   const invalidate = useInvalidateCertificates();
   return useMutation({
-    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile }: SaveCertificateTemplateInput) => {
+    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile, modalityId }: SaveCertificateTemplateInput) => {
       const logoFileId = logoFile ? (await certificatesService.uploadLogo(logoFile)).id : keepLogoFileId;
       const artwork =
         template.layout === "custom" && template.artwork
           ? { ...template.artwork, fileId: artworkFile ? (await certificatesService.uploadArtwork(artworkFile)).id : template.artwork.fileId }
           : undefined;
-      return certificatesService.saveTemplate({
-        ...template,
-        ...(logoFileId ? { logoFileId } : {}),
-        ...(artwork ? { artwork } : {}),
-      });
+      return certificatesService.saveTemplate(
+        {
+          ...template,
+          ...(logoFileId ? { logoFileId } : {}),
+          ...(artwork ? { artwork } : {}),
+        },
+        modalityId,
+      );
     },
-    onSuccess: invalidate,
+    onSuccess: (saved, { modalityId }) => invalidate(saved, modalityId),
+  });
+}
+
+/** A modalidade volta ao modelo do espaco. */
+export function useRemoveModalityTemplate() {
+  const invalidate = useInvalidateCertificates();
+  return useMutation({
+    mutationFn: (modalityId: Id) => certificatesService.removeModalityTemplate(modalityId),
+    onSuccess: (saved, modalityId) => invalidate(saved, modalityId),
   });
 }
 

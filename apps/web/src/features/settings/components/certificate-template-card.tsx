@@ -5,7 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
 import { Award, Check, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import type { CertificatePart, CertificateTemplate } from "@gestarahub/contracts";
+import { useCallback, useState } from "react";
+import type { CertificatePart, CertificateTemplate, Id } from "@gestarahub/contracts";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import {
   CERTIFICATE_ACCENT_COLORS,
   CERTIFICATE_INKS,
@@ -39,6 +41,7 @@ import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES, filesSchema, fileIss
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
+import { useCategories } from "@/features/categories";
 import {
   ACCENT_COLORS,
   CertificateSheet,
@@ -50,6 +53,8 @@ import {
   sampleCertificate,
   useCertificateTemplate,
   useLocalFileUrl,
+  useModalitiesWithOwnTemplate,
+  useRemoveModalityTemplate,
   useSaveCertificateTemplate,
   useStoredFileUrl,
 } from "@/features/certificates";
@@ -145,9 +150,12 @@ function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden">, file
   return { fileId, textPosition: values.textPosition, ink: values.ink, hidden: values.hidden };
 }
 
+const SPACE = "space";
+
 /**
  * Configuracoes -> "Certificado" (Plano Profissional): o modelo do certificado de
- * conclusao do espaco, com previa ao vivo. Sem o recurso mostra o upsell.
+ * conclusao do espaco, ou o de uma modalidade ("Vale para", 31/10/2026), com
+ * previa ao vivo. Sem o recurso mostra o upsell.
  */
 export function CertificateTemplateCard({
   onDirtyChange,
@@ -156,7 +164,92 @@ export function CertificateTemplateCard({
 }) {
   const hasFeature = useHasFeature();
   const can = useCan();
-  const query = useCertificateTemplate();
+  const [modalityId, setModalityId] = useState<Id | undefined>(undefined);
+  const query = useCertificateTemplate(modalityId);
+  const modalities = useCategories({ status: "active" });
+  const own = useModalitiesWithOwnTemplate();
+  const removeOwn = useRemoveModalityTemplate();
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
+  // Trocar de modalidade com alteracao nao salva pergunta antes (o formulario recomeca).
+  // Memorizado: o formulario reage a troca do callback (uma funcao nova a cada
+  // desenho virava um laco de renderizacao).
+  const [dirty, setDirty] = useState(false);
+  const reportDirty = useCallback(
+    (next: boolean) => {
+      setDirty(next);
+      onDirtyChange?.(next);
+    },
+    [onDirtyChange],
+  );
+
+  async function changeScope(value: string) {
+    const next = value === SPACE ? undefined : value;
+    if (next === modalityId) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: "Alterações não salvas",
+        description: "Trocar de modelo descarta o que você mudou aqui.",
+        confirmLabel: "Trocar mesmo assim",
+        cancelLabel: "Continuar editando",
+        highlightAction: "cancel",
+      });
+      if (!ok) return;
+    }
+    setModalityId(next);
+  }
+
+  async function backToSpaceTemplate() {
+    if (!modalityId) return;
+    const name = modalities.data?.find((c) => c.id === modalityId)?.name ?? "a modalidade";
+    const ok = await confirm({
+      title: "Usar o modelo do espaço?",
+      description: `${name} deixa de ter modelo próprio; os cursos dela saem com o modelo do espaço.`,
+      confirmLabel: "Usar o do espaço",
+      cancelLabel: "Cancelar",
+    });
+    if (!ok) return;
+    removeOwn.mutate(modalityId, {
+      onSuccess: () => toast.success(`${name} voltou ao modelo do espaço.`),
+      onError: (error) => toast.error(getErrorMessage(error, "Não foi possível voltar ao modelo do espaço.")),
+    });
+  }
+
+  const ownIds = new Set(own.data ?? []);
+  const scopePicker = (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="min-w-56 space-y-1.5">
+        <Label htmlFor="certificate-scope">Vale para</Label>
+        <Select value={modalityId ?? SPACE} onValueChange={(value) => void changeScope(value)}>
+          <SelectTrigger id="certificate-scope" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SPACE}>Todo o espaço</SelectItem>
+            {(modalities.data ?? []).map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {ownIds.has(c.id) ? `${c.name} · modelo próprio` : c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {modalityId ? (
+        ownIds.has(modalityId) ? (
+          <button
+            type="button"
+            disabled={removeOwn.isPending}
+            onClick={() => void backToSpaceTemplate()}
+            className="inline-flex cursor-pointer items-center gap-1 pb-2.5 text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RotateCcw className="size-3" aria-hidden />
+            Usar o modelo do espaço
+          </button>
+        ) : (
+          <p className="pb-2.5 text-xs text-muted-foreground">Usa o modelo do espaço. Mude algo e salve para ter o próprio.</p>
+        )
+      ) : null}
+    </div>
+  );
 
   if (!hasFeature("certificates")) {
     // Bloqueado: na largura das outras abas (a aba aberta usa a largura da previa).
@@ -196,11 +289,16 @@ export function CertificateTemplateCard({
   }
 
   return (
-    <CertificateTemplateForm
-      key={query.data.updatedAt ?? "default"}
-      template={query.data}
-      onDirtyChange={onDirtyChange}
-    />
+    <div className="space-y-4">
+      {scopePicker}
+      {confirmDialog}
+      <CertificateTemplateForm
+        key={`${modalityId ?? SPACE}:${query.data.updatedAt ?? "default"}:${ownIds.has(modalityId ?? "") ? "own" : "space"}`}
+        template={query.data}
+        modalityId={modalityId}
+        onDirtyChange={reportDirty}
+      />
+    </div>
   );
 }
 
@@ -245,9 +343,12 @@ function AccentColorPicker({
 
 function CertificateTemplateForm({
   template,
+  modalityId,
   onDirtyChange,
 }: {
   template: CertificateTemplate;
+  /** Modelo so desta modalidade; sem ele, o do espaco. */
+  modalityId?: Id;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const save = useSaveCertificateTemplate();
@@ -326,6 +427,7 @@ function CertificateTemplateForm({
         keepLogoFileId: v.keepLogo ? template.logoFileId : undefined,
         logoFile: v.logo[0],
         artworkFile: v.layout === "custom" ? v.artwork[0] : undefined,
+        modalityId,
       });
       toast.success("Modelo de certificado salvo.");
       form.reset(toValues(saved));

@@ -21,7 +21,7 @@
 - A tela do certificado (`/classes/[id]/certificate/[enrollmentId]`) recebe os dados do aluno e o modelo do espaço juntos e imprime em A4 deitado, sem o menu do app.
 
 **Falta (próximas versões):**
-- modelo por modalidade ou por curso (hoje é um por espaço);
+- ~~modelo por modalidade ou por curso~~ (entregue em 31/10/2026: modelo por modalidade, abaixo);
 - emitir em lote para todos os concluídos de uma turma;
 - código de verificação no certificado (página pública que confirma que ele é verdadeiro);
 - assinatura em imagem;
@@ -40,7 +40,11 @@
 - **Etapa 1, "Minha arte" (entregue em 31/10/2026):** 4º layout (`layout: "custom"`, `artwork` no modelo: `fileId`, `textPosition`, `ink`, `hidden`). Imagem PNG ou JPG, A4 deitado, até 2 MB (PDF não: o gerador de PDF não desenha PDF como imagem). Com a arte, o resto do editor continua igual (texto, variáveis, assinaturas, logo). Três ajustes, sem arrastar nada: **posição do texto** (em cima, no centro, embaixo), **cor do texto** (escura ou clara, para arte escura) e **partes que aparecem** (logo, nome do espaço, título, texto, data, assinaturas): quem tem arte com o título já impresso desliga o título. A cor de destaque não vale nesse layout. Prévia ao vivo, como nos outros. A tela (`CertificateSheet`) e o PDF (`certificate-pdf.tsx`) desenham a arte com `object-fit: cover`; o PDF lê a imagem pelo `loadSpaceImage` (só PNG e JPG da pasta do espaço). A arte sobe pelo caminho dos anexos (`uploadArtwork`, `CERTIFICATE_ARTWORK_RULES`). Em outro layout a arte é esquecida ao salvar.
 - **Etapa 2, campos no lugar (só se um cliente pedir com caso concreto):** na prévia, cada bloco vira uma caixa que a pessoa arrasta e redimensiona, só no computador; fonte entre 3 ou 4 opções, tamanho e alinhamento por bloco.
 - **Fora:** importar `.docx` ou `.pptx` para editar por dentro; editor de HTML ou de código.
-- **Ordem do que falta** (da lista acima): modelo por curso ou modalidade, código de verificação com página pública, emitir em lote. Etapa 2 depois disso.
+- **Ordem do que falta** (da lista acima): código de verificação com página pública, emitir em lote. Etapa 2 depois disso.
+
+### 1.2 Modelo por modalidade (entregue em 31/10/2026)
+
+Em Configurações → Certificado, o seletor **"Vale para"** troca entre o modelo do espaço e o de uma modalidade. Modalidade sem modelo próprio abre com o do espaço como ponto de partida; salvar grava o dela (`categories.certificate_template`, migração 79) e os cursos dela passam a sair com ele; as outras seguem com o do espaço. "Usar o modelo do espaço" apaga o da modalidade, com confirmação. Por modalidade, não por curso: a modalidade é estável e o curso pertence a uma; se um espaço pedir por curso, entra como exceção dentro da modalidade. A emissão (`getCourseCertificate`) escolhe o modelo pela modalidade da turma; o PDF segue o mesmo caminho.
 
 ## 2. Notas dos alunos (avaliações)
 

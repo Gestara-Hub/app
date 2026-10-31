@@ -453,6 +453,49 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByRole("button", { name: "Adicionar assinatura" })).toBeVisible();
   });
 
+  test("Pro: modelo por modalidade, com volta ao modelo do espaço", async ({ page }) => {
+    const panel = await openEditor(page);
+    const scope = panel.locator("#certificate-scope");
+    await expect(scope).toContainText("Todo o espaço");
+    await scope.click();
+    await page.getByRole("option", { name: "Jiu-Jitsu", exact: true }).click();
+    await expect(panel.getByText("Usa o modelo do espaço. Mude algo e salve para ter o próprio.")).toBeVisible();
+
+    await panel.getByLabel("Título").fill("Certificado de Jiu-Jitsu");
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
+    await waitForStore(page, (t) => t.categories.find((c: { id: string }) => c.id === "m-jj")?.certificateTemplate?.title === "Certificado de Jiu-Jitsu");
+    // O do espaco nao mudou.
+    expect((await readTenant(page)).certificateTemplate).toBeUndefined();
+    await expect(scope).toContainText("Jiu-Jitsu · modelo próprio");
+    const back = panel.getByRole("button", { name: "Usar o modelo do espaço" });
+    await expect(back).toBeVisible();
+
+    // Trocar com alteracao nao salva pergunta antes.
+    await panel.getByLabel("Título").fill("Rascunho");
+    await scope.click();
+    await page.getByRole("option", { name: "Todo o espaço" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
+    await confirm.getByRole("button", { name: "Continuar editando" }).click();
+    await expect(panel.getByLabel("Título")).toHaveValue("Rascunho");
+    await scope.click();
+    await page.getByRole("option", { name: "Todo o espaço" }).click();
+    await confirm.getByRole("button", { name: "Trocar mesmo assim" }).click();
+    await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
+
+    // Volta a modalidade ao modelo do espaco, com confirmacao.
+    await scope.click();
+    await page.getByRole("option", { name: /^Jiu-Jitsu · modelo próprio/ }).click();
+    await expect(panel.getByLabel("Título")).toHaveValue("Certificado de Jiu-Jitsu");
+    await back.click();
+    await page.getByRole("alertdialog", { name: "Usar o modelo do espaço?" }).getByRole("button", { name: "Usar o do espaço" }).click();
+    await expect(page.getByText("Jiu-Jitsu voltou ao modelo do espaço.")).toBeVisible();
+    await waitForStore(page, (t) => !t.categories.find((c: { id: string }) => c.id === "m-jj")?.certificateTemplate);
+    await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
+    await expect(scope).toContainText("Jiu-Jitsu");
+    await expect(scope).not.toContainText("modelo próprio");
+  });
+
   test("Pro: Minha arte com posição, cor do texto e partes escondidas, salva e emitida", async ({ page }, testInfo) => {
     const files = await logoFiles(testInfo);
     const panel = await openEditor(page);

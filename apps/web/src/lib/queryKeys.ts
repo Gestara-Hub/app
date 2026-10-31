@@ -166,7 +166,9 @@ export const queryKeys = {
   },
   // Modelo de certificado do espaco (Plano Profissional).
   certificates: {
-    template: ["certificates", "template"] as const,
+    /** Modelo do espaco (sem modalidade) ou de uma modalidade. */
+    template: (modalityId?: Id) => ["certificates", "template", modalityId ?? "space"] as const,
+    ownTemplates: ["certificates", "own-templates"] as const,
   },
   unit: {
     detail: ["unit"] as const,

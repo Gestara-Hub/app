@@ -15,6 +15,13 @@ Guia: /settings?tab=certificado
 + texto "Assinaturas": Aqui você escolhe quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo.
 Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase.
 
+## Um modelo por modalidade
+Resumo: Cursos de uma modalidade podem ter o próprio certificado.
+Guia: /settings?tab=certificado
++ campo "Vale para": Escolha "Todo o espaço" ou uma modalidade.
++ campo "Título": Com a modalidade escolhida, mude o que quiser. Depois, salve na barra que aparece embaixo.
+Por padrão, todos os cursos usam o modelo do espaço. Escolhendo uma modalidade em "Vale para" e salvando, os cursos dela passam a sair com esse modelo; as outras continuam com o do espaço. Para desfazer, abra a modalidade e clique em "Usar o modelo do espaço".
+
 ## Usar a minha própria arte
 Resumo: Use a imagem que você já tem como fundo do certificado.
 Guia: /settings?tab=certificado
