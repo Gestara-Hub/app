@@ -197,10 +197,16 @@ export async function sliceFor(name: string): Promise<MethodSlice | undefined> {
 }
 
 export async function resolveServiceMethod(name: string): Promise<ResolvedMethod | undefined> {
-  const [namespace, method] = name.split(".");
+  // So "namespace.metodo" proprios do registro e do servico: nada de
+  // `__proto__`, `constructor` ou caminho mais longo.
+  const parts = typeof name === "string" ? name.split(".") : [];
+  if (parts.length !== 2) return undefined;
+  const [namespace, method] = parts;
+  if (!Object.hasOwn(SERVICE_NAMESPACES, namespace)) return undefined;
   const entry = SERVICE_NAMESPACES[namespace];
-  if (!entry || !method || entry.browserOnly?.includes(method)) return undefined;
+  if (!method || entry.browserOnly?.includes(method)) return undefined;
   const service = await entry.load();
+  if (!Object.hasOwn(service, method)) return undefined;
   const fn = service[method];
   if (typeof fn !== "function") return undefined;
   return {

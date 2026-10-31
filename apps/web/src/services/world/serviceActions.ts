@@ -17,9 +17,10 @@ const ATTEMPTS = 3;
  */
 export async function serviceAction(method: string, args: unknown[]): Promise<ActionResult<unknown>> {
   return runAction(async () => {
+    // Sessao primeiro: sem login, nem resolve o metodo (revisao geral de 31/10/2026, achado S10).
+    const ctx = await requireTenant();
     const resolved = await resolveServiceMethod(method);
     if (!resolved) throw forbiddenError();
-    const ctx = await requireTenant();
     if (resolved.permissions.length > 0) ctx.require(...resolved.permissions);
     const callArgs = Array.isArray(args) ? (decodeArgs(args) as unknown[]) : [];
     // Conflito de versao: roda de novo sobre o banco atual, para a regra
