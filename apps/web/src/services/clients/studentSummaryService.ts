@@ -2,8 +2,8 @@ import type { Id, StudentSummary } from "@gestarahub/contracts";
 import { daysUntilBirthday } from "@/lib/birthdays";
 import { ageAt } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
-import { apiError, notFoundError, readOp } from "@/services/world/ops";
-import { actorTeacherId, teacherTeachesStudent } from "../classes/teacherScope";
+import { notFoundError, readOp } from "@/services/world/ops";
+import { actorTeacherId, assertTeacherSeesStudent } from "../classes/teacherScope";
 import { ensureMembershipCharges } from "../billing";
 import { applyRecurringAutoPayments } from "../onlinePayments";
 import { delegateAll } from "../world/delegate";
@@ -33,9 +33,7 @@ export const studentSummaryServiceImpl = {
       if (!client) throw notFoundError("Aluno não encontrado.");
       // Professor: so aluno de turma dele, e sem dinheiro (a leitura abaixo ja nasce limpa).
       const teacherId = actorTeacherId();
-      if (teacherId !== undefined && !teacherTeachesStudent(studentId, teacherId)) {
-        throw apiError("FORBIDDEN", "Você só vê a ficha dos alunos das suas turmas.", { httpStatus: 403 });
-      }
+      assertTeacherSeesStudent(studentId, "Você só vê a ficha dos alunos das suas turmas.");
       // Mesma leitura de Cobranças: mensalidades do mes nascem e o Pix Automatico paga.
       if (teacherId === undefined) {
         await ensureMembershipCharges();

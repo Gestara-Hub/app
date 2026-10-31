@@ -14,7 +14,7 @@ import { apiError, newId, notFoundError, nowIso, readOp, validationError, writeO
 import { store } from "@/services/world/store";
 import { getCurrentActor } from "@/services/world/actor";
 import { auditLogService } from "../audit/auditLogService";
-import { actorTeacherId, assertCanManageProgression, teacherTeachesStudent } from "../classes/teacherScope";
+import { assertCanManageProgression, assertTeacherSeesStudent } from "../classes/teacherScope";
 
 /**
  * Testes e medidas dos alunos (doc 21 §2.4, fase B de 31/10/2026). A
@@ -61,13 +61,6 @@ function requireMeasures(modalityId: Id): ModalityMeasure[] {
     throw apiError("VALIDATION", "Esta modalidade não tem testes e medidas.", { httpStatus: 422 });
   }
   return measures;
-}
-
-function assertCanView(studentId: Id): void {
-  const teacherId = actorTeacherId();
-  if (teacherId !== undefined && !teacherTeachesStudent(studentId, teacherId)) {
-    throw apiError("FORBIDDEN", "Você só vê os alunos das suas turmas.", { httpStatus: 403 });
-  }
 }
 
 /** Data (ate hoje), valores (so medidas da modalidade, pelo menos um) e observacao. */
@@ -125,7 +118,7 @@ export const measurementsService = {
   getStudentMeasurements(studentId: Id): Promise<StudentMeasurementsView> {
     return readOp(async () => {
       const student = studentOf(studentId);
-      assertCanView(studentId);
+      assertTeacherSeesStudent(studentId);
       const history = measurementsStore().filter((m) => m.studentId === studentId);
       const activeModalities = new Set(
         store.enrollments

@@ -25,6 +25,7 @@ import {
 } from "@gestarahub/core/grades";
 import { attendancePercent } from "@gestarahub/core/certificate";
 import { SEP } from "../classes/classShared";
+import { teacherSeesClass } from "../classes/teacherScope";
 import { getCurrentActor } from "@/services/world/actor";
 import { apiError, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -103,9 +104,7 @@ export function assertCanManage(group: ClassGroup): void {
   if (!can(actor.profile, "grades:manage")) {
     throw apiError("FORBIDDEN", "Você não tem permissão para lançar notas.", { httpStatus: 403 });
   }
-  if (actor.profile !== "professional") return;
-  const user = store.users.find((u) => u.id === actor.userId);
-  if (!user?.professionalId || user.professionalId !== group.instructorId) {
+  if (!teacherSeesClass(group)) {
     throw apiError("FORBIDDEN", "Você só lança notas nas suas turmas.", { httpStatus: 403 });
   }
 }

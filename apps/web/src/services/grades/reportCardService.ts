@@ -3,6 +3,7 @@ import { averagesByLevel, isGradeBelowPassing, resultOf } from "@gestarahub/core
 import { notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { assertTeacherSeesStudent } from "../classes/teacherScope";
 import {
   clone,
   assessmentsStore,
@@ -27,6 +28,8 @@ export const reportCardService = {
     return readOp(async () => {
       const student = store.clients.find((c) => c.id === studentId);
       if (!student) throw notFoundError("Aluno não encontrado.");
+      // Professor: so as notas dos alunos das turmas dele (revisao geral de 31/10/2026).
+      assertTeacherSeesStudent(studentId, "Você só vê as notas dos alunos das suas turmas.");
       const activeClassIds = new Set(
         store.enrollments.filter((e) => e.studentId === studentId && e.status === "active").map((e) => e.classGroupId),
       );

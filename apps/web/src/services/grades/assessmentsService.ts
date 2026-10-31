@@ -13,6 +13,7 @@ import { DEFAULT_ASSESSMENT_WEIGHT, averageOfAverages, normalizeGrade } from "@g
 import { newId, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
+import { assertTeacherSeesClass } from "../classes/teacherScope";
 import {
   clone,
   assessmentsStore,
@@ -41,6 +42,8 @@ export const assessmentsService = {
   listClassAssessments(classGroupId: Id): Promise<ClassAssessmentsView> {
     return readOp(async () => {
       const group = findClass(classGroupId);
+      // Professor: so as avaliacoes das turmas dele (revisao geral de 31/10/2026).
+      assertTeacherSeesClass(group, "Você só vê as avaliações das suas turmas.");
       const settings = enabledSettings(group.modalityId);
       const list = sortAssessments(assessmentsStore().filter((a) => a.classGroupId === classGroupId));
       const classAverage = settings
@@ -63,6 +66,7 @@ export const assessmentsService = {
     return readOp(async () => {
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
+      assertTeacherSeesClass(group, "Você só vê as avaliações das suas turmas.");
       const settings = requireSettings(group);
       // Recuperacao: a nota da avaliacao recuperada fica de referencia em cada linha.
       const original = a.recoveryOf ? assessmentsStore().find((o) => o.id === a.recoveryOf) : undefined;

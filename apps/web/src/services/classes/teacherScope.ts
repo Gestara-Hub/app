@@ -77,6 +77,20 @@ function forbidden(message: string) {
   return apiError("FORBIDDEN", message, { httpStatus: 403 });
 }
 
+/**
+ * Leitura de um aluno (ficha, notas, testes e medidas): o professor so le os
+ * alunos das turmas em que e o titular. Os outros perfis leem todos.
+ */
+export function assertTeacherSeesStudent(studentId: Id, message = "Você só vê os alunos das suas turmas."): void {
+  const teacherId = actorTeacherId();
+  if (teacherId !== undefined && !teacherTeachesStudent(studentId, teacherId)) throw forbidden(message);
+}
+
+/** Leitura de uma turma (avaliacoes, lancamento de notas): o professor so a dele. */
+export function assertTeacherSeesClass(g: Pick<ClassGroup, "instructorId">, message = "Você só vê as suas turmas."): void {
+  if (!teacherSeesClass(g)) throw forbidden(message);
+}
+
 /** Chamada e registro da aula: so o titular ou o substituto dela. */
 export function assertTeacherSession(g: Pick<ClassGroup, "instructorId">, sessionId: Id): void {
   if (!teacherSeesSession(g, sessionId)) throw forbidden("Você só faz a chamada nas suas aulas.");
