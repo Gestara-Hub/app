@@ -13,23 +13,39 @@ import { certificateLookupAddress, certificateVerifyUrl } from "../certificate-v
 type SheetPosition = { x: number; y: number };
 type BlockMove = (block: CertificateBlock, position: SheetPosition) => void;
 
-/** Arrastar um bloco dentro da folha (editor, "Minha arte"): devolve a posicao em % da folha. */
-function startDrag(event: ReactPointerEvent<HTMLElement>, onMove: (position: SheetPosition) => void) {
+const pct = (part: number, whole: number) => Math.round((part / whole) * 10000) / 100;
+
+/**
+ * Arrastar um bloco dentro da folha (editor, "Minha arte"): devolve a posicao em
+ * % da folha. No primeiro movimento, os outros blocos que ainda estavam no fluxo
+ * ganham a posicao em que estao: assim nada pula quando um bloco sai do fluxo.
+ */
+function startDrag(event: ReactPointerEvent<HTMLElement>, block: CertificateBlock, onMove: BlockMove) {
   const el = event.currentTarget;
   const sheet = el.closest("article");
   if (!sheet) return;
   event.preventDefault();
   el.setPointerCapture(event.pointerId);
   const bounds = sheet.getBoundingClientRect();
-  const block = el.getBoundingClientRect();
-  const grabX = event.clientX - block.left;
-  const grabY = event.clientY - block.top;
+  const box = el.getBoundingClientRect();
+  const grabX = event.clientX - box.left;
+  const grabY = event.clientY - box.top;
+  let started = false;
   const move = (e: PointerEvent) => {
-    const maxX = bounds.width - block.width;
-    const maxY = bounds.height - block.height;
+    if (!started) {
+      started = true;
+      for (const other of sheet.querySelectorAll<HTMLElement>("[data-block]")) {
+        const name = other.dataset.block as CertificateBlock | undefined;
+        if (!name || name === block || other.style.left) continue;
+        const r = other.getBoundingClientRect();
+        onMove(name, { x: pct(r.left - bounds.left, bounds.width), y: pct(r.top - bounds.top, bounds.height) });
+      }
+    }
+    const maxX = bounds.width - box.width;
+    const maxY = bounds.height - box.height;
     const left = Math.min(Math.max(e.clientX - grabX - bounds.left, 0), maxX);
     const top = Math.min(Math.max(e.clientY - grabY - bounds.top, 0), maxY);
-    onMove({ x: Math.round((left / bounds.width) * 10000) / 100, y: Math.round((top / bounds.height) * 10000) / 100 });
+    onMove(block, { x: pct(left, bounds.width), y: pct(top, bounds.height) });
   };
   const up = () => {
     window.removeEventListener("pointermove", move);
@@ -64,8 +80,9 @@ function Block({
 }) {
   return (
     <div
-      onPointerDown={onMove ? (event) => startDrag(event, (pos) => onMove(block, pos)) : undefined}
+      onPointerDown={onMove ? (event) => startDrag(event, block, onMove) : undefined}
       style={position ? { left: `${position.x}%`, top: `${position.y}%` } : undefined}
+      data-block={block}
       className={cn(
         className,
         position ? cn("absolute", absoluteClassName) : flowClassName,
@@ -295,7 +312,7 @@ function CustomSheet({
         onMove={onMove}
         className="flex flex-col items-center gap-[1.6cqw] text-center"
         flowClassName="w-full"
-        absoluteClassName="w-[84%]"
+        absoluteClassName="w-[70.56%]"
       >
         {show("organizationName") ? (
           <p className={cn("text-[1.3cqw] font-semibold tracking-[0.2em] uppercase", light ? "text-white/80" : "text-zinc-500")}>
@@ -310,7 +327,7 @@ function CustomSheet({
       </Block>
     ) : null;
   const signatures = show("signatures") ? (
-    <Block block="signatures" position={artwork.signatures} onMove={onMove} flowClassName="w-full pt-[1.5cqw]" absoluteClassName="w-[70%]">
+    <Block block="signatures" position={artwork.signatures} onMove={onMove} flowClassName="w-full pt-[1.5cqw]" absoluteClassName="w-[70.56%]">
       <Signatures text={text} ink={artwork.ink} />
     </Block>
   ) : null;

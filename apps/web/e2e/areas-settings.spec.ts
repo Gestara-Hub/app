@@ -561,8 +561,9 @@ test.describe("Configurações: Certificado", () => {
     const movedBox = (await qr.boundingBox())!;
     expect(movedBox.x - sheetBox.x).toBeLessThan(60);
     expect(movedBox.y - sheetBox.y).toBeLessThan(60);
-    const back = panel.getByRole("button", { name: "Voltar ao lugar" });
-    await expect(back).toBeVisible();
+    // O primeiro arrasto fixa os outros blocos onde estao (nada pula): texto e assinaturas (sem logo ainda).
+    await expect(panel.getByRole("button", { name: "Voltar ao lugar" })).toHaveCount(3);
+    const back = panel.locator("li", { hasText: "QR Code e código" }).getByRole("button", { name: "Voltar ao lugar" });
     await back.click();
     expect(((await qr.boundingBox())!.x)).toBeGreaterThan(sheetBox.x + sheetBox.width / 2);
     await page.mouse.move(qrBox.x + qrBox.width / 2, qrBox.y + qrBox.height / 2);
@@ -587,7 +588,7 @@ test.describe("Configurações: Certificado", () => {
     const movedLogo = (await logoBlock.boundingBox())!;
     expect(movedLogo.x - sheetBox.x).toBeLessThan(60);
     expect(sheetBox.y + sheetBox.height - (movedLogo.y + movedLogo.height)).toBeLessThan(60);
-    await expect(panel.getByRole("button", { name: "Voltar ao lugar" })).toHaveCount(2);
+    await expect(panel.getByRole("button", { name: "Voltar ao lugar" })).toHaveCount(4);
 
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();

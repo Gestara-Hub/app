@@ -191,7 +191,10 @@ function MinimalSheet({ text, organizationName, logo, accent, reserveFooter }: S
   );
 }
 
-/** Posicao de um bloco solto, em pontos, a partir do % da folha. */
+/**
+ * Posicao de um bloco solto, em pontos, a partir do % da folha. Largura do bloco
+ * solto = a do fluxo (84% da area util com 8 cqw de margem = 70,56% da folha).
+ */
 function placeOf(position: { x: number; y: number }) {
   return { position: "absolute" as const, left: (position.x / 100) * PAGE_W, top: (position.y / 100) * PAGE_H };
 }
@@ -219,7 +222,7 @@ function CustomSheet({
     ) : null;
   const textBlock =
     show("organizationName") || show("title") || show("body") || show("date") ? (
-      <View style={{ alignItems: "center", gap: cq(1.6), color: ink, ...(settings.text ? { ...placeOf(settings.text), width: "84%" } : { width: "100%" }) }}>
+      <View style={{ alignItems: "center", gap: cq(1.6), color: ink, ...(settings.text ? { ...placeOf(settings.text), width: "70.56%" } : { width: "100%" }) }}>
         {show("organizationName") ? (
           <Text style={{ fontSize: cq(1.3), fontFamily: "Helvetica-Bold", letterSpacing: cq(1.3) * 0.2, color: light ? "#ffffffcc" : GRAY_500 }}>
             {organizationName.toUpperCase()}
@@ -233,7 +236,7 @@ function CustomSheet({
       </View>
     ) : null;
   const signaturesBlock = show("signatures") ? (
-    <View style={settings.signatures ? { ...placeOf(settings.signatures), width: "70%" } : { width: "100%", paddingTop: cq(1.5) }}>
+    <View style={settings.signatures ? { ...placeOf(settings.signatures), width: "70.56%" } : { width: "100%", paddingTop: cq(1.5) }}>
       <Signatures text={text} align="center" ink={settings.ink} />
     </View>
   ) : null;
