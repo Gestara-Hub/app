@@ -1,3 +1,4 @@
+import { addDays, format, parseISO } from "date-fns";
 import type { Client, Id, UpdateClient } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
@@ -77,7 +78,22 @@ export const clientLifecycleService = {
         (payload.planStartDate === undefined || payload.planStartDate === current.planStartDate) &&
         (updated.planStartDate ?? "") < today
       ) {
-        updated.planStartDate = today;
+        // Volta dentro de um periodo ja cobrado (pago ou em aberto): recomeca no dia
+        // seguinte ao fim dele. Antes recomecava hoje e a regra da sobreposicao pulava
+        // o ciclo inteiro (mes cheio, semanal), deixando dias sem cobranca
+        // (revisao geral de 31/10/2026, achado V2).
+        const coveredUntil = store.charges
+          .filter(
+            (c) =>
+              c.studentId === updated.id &&
+              c.kind === "membership" &&
+              c.status !== "canceled" &&
+              c.periodEnd !== undefined &&
+              c.periodEnd >= today,
+          )
+          .reduce((max, c) => ((c.periodEnd as string) > max ? (c.periodEnd as string) : max), "");
+        const dayAfter = coveredUntil ? format(addDays(parseISO(coveredUntil), 1), "yyyy-MM-dd") : today;
+        updated.planStartDate = dayAfter > today ? dayAfter : today;
       }
       alignFullCycleDueDay(updated);
       store.clients[idx] = updated;
