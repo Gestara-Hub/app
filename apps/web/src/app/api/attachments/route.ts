@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, decodeSession } from "@/lib/session";
+import { SESSION_COOKIE } from "@/lib/session";
+import { decodeSession } from "@/lib/session-cookie";
 import { saveAttachmentInStorage } from "@/services/attachments/attachmentsBackend";
 import type { FileAttachment } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";

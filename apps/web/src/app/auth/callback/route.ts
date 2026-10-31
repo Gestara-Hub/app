@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession, safeRedirectPath } from "@/lib/session";
+import { SESSION_COOKIE, safeRedirectPath } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import { loadSessionPayload, resolveGoogleAccount } from "@/services/server/accountSetup";
 import { needsSecondFactor } from "@/app/(auth)/sign-in-session";
 import { logError } from "@/lib/log";
@@ -48,12 +49,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { user, organization } = await loadSessionPayload(admin, result.dbUser);
-  (await cookies()).set(SESSION_COOKIE, encodeSession(user), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+  (await cookies()).set(SESSION_COOKIE, encodeSession(user), sessionCookieOptions());
 
   const needsSetup = user.profile === "owner" && !organization.settings?.onboardingCompleted;
   const from = safeRedirectPath(url.searchParams.get("from"));

@@ -4,7 +4,8 @@ import type { Category, Organization, Unit, UserView } from "@gestarahub/contrac
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { currentSessionId, markSessionVerified, secondFactorState } from "@/lib/security/second-factor";
 import { TRUSTED_DEVICE_COOKIE, TRUSTED_DEVICE_TTL_MS } from "@/lib/security/two-factor-rules";
-import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession, safeRedirectPath } from "@/lib/session";
+import { SESSION_COOKIE, safeRedirectPath } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadSessionPayload } from "@/services/server/accountSetup";
 import { rememberDevice, consumeTrustedDevice } from "@/services/server/twoFactor";
@@ -97,12 +98,7 @@ export async function finishSignIn(
   }
 
   const { user, organization, unit, categories } = await loadSessionPayload(admin, dbUser);
-  (await cookies()).set(SESSION_COOKIE, encodeSession(user), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+  (await cookies()).set(SESSION_COOKIE, encodeSession(user), sessionCookieOptions());
 
   const needsSetup = user.profile === "owner" && !organization.settings?.onboardingCompleted;
   const safeFrom = safeRedirectPath(from);

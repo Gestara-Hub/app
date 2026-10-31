@@ -1,7 +1,8 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { DEFAULT_SPACE_TIME_ZONE, resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
-import { SESSION_COOKIE, decodeSession, isSupabaseOrganization } from "@/lib/session";
+import { SESSION_COOKIE, isSupabaseOrganization } from "@/lib/session";
+import { decodeSession } from "@/lib/session-cookie";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { store } from "@/mocks/store";
 import type { SubscriptionTier, UserView } from "@gestarahub/contracts";
@@ -31,7 +32,10 @@ export async function getCurrentUser(): Promise<UserView | null> {
     return claims;
   }
 
-  // Legado: `raw` e um `userId` puro (nao base64 de claims).
+  // Legado: `raw` e um `userId` puro (nao base64 de claims), so para o seed da
+  // demonstracao em desenvolvimento. Em producao nao vale: o cookie sem
+  // assinatura seria uma sessao forjada.
+  if (process.env.NODE_ENV === "production") return null;
   const user = store.users.find((u) => u.id === raw);
   if (!user) return null;
 

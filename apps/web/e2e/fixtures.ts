@@ -10,6 +10,7 @@ import {
   signInBrowser,
   type E2ETenant,
 } from "./db";
+import { sessionCookieValue } from "./session-cookie";
 
 /** Origem do app nos testes (ver E2E_PORT no playwright.config). */
 export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3100}`;
@@ -173,7 +174,7 @@ export async function setSessionCookie(
   await page.context().addCookies([
     {
       name: "gestarahub_session",
-      value: Buffer.from(JSON.stringify(claims), "utf8").toString("base64"),
+      value: sessionCookieValue(claims),
       url: BASE_URL,
       httpOnly: true,
       sameSite: "Lax",

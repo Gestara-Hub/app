@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { BASE_URL, academyJson, expect, hasAcademy, loginAsAcademyUser, readAcademy } from "./fixtures";
+import { sessionCookieValue } from "./session-cookie";
 
 /**
  * Construtores e atalhos dos testes da ficha do aluno, das notas, da evolucao
@@ -165,7 +166,7 @@ export async function loginAsUser(
   await page.context().addCookies([
     {
       name: "gestarahub_session",
-      value: Buffer.from(JSON.stringify(claims), "utf8").toString("base64"),
+      value: sessionCookieValue(claims),
       url: BASE_URL,
       httpOnly: true,
       sameSite: "Lax",

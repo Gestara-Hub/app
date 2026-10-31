@@ -3,12 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Id, SubscriptionTier, UserView } from "@gestarahub/contracts";
-import {
-  SESSION_COOKIE,
-  SESSION_MAX_AGE,
-  encodeSession,
-  safeRedirectPath,
-} from "@/lib/session";
+import { SESSION_COOKIE, SESSION_MAX_AGE, safeRedirectPath } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import {
   SUBSCRIPTION_COOKIE,
   encodeTierCookie,
@@ -30,12 +26,7 @@ import { logError } from "@/lib/log";
  */
 async function setSession(user: UserView): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, encodeSession(user), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+  cookieStore.set(SESSION_COOKIE, encodeSession(user), sessionCookieOptions());
 }
 
 /**

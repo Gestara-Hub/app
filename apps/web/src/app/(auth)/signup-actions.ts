@@ -1,5 +1,6 @@
 "use server";
 
+import { requireTenant } from "@/services/server/tenant";
 import { isPlatformAdminUser } from "@/lib/security/platform-admin";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
@@ -16,12 +17,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendSignupLinkEmail } from "@/lib/email/mailersend";
 import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/security/rate-limit";
-import {
-  SESSION_COOKIE,
-  SESSION_MAX_AGE,
-  encodeSession,
-  safeRedirectPath,
-} from "@/lib/session";
+import { SESSION_COOKIE, safeRedirectPath } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createOwnerAccount } from "@/services/server/accountSetup";
 import { finishSignIn, needsSecondFactor } from "./sign-in-session";
@@ -91,12 +88,7 @@ async function findAuthUserByEmail(
 
 async function setSessionCookie(user: UserView): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, encodeSession(user), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+  cookieStore.set(SESSION_COOKIE, encodeSession(user), sessionCookieOptions());
 }
 
 export type RequestSignupLinkResult =
@@ -699,10 +691,20 @@ export async function persistSetupToBackendAction(input: {
   if (!currentUser || !UUID_RE.test(currentUser.organizationId)) {
     return;
   }
+  // O espaco e o perfil vem da sessao do Supabase, nao do cookie; so o dono faz
+  // a configuracao inicial (antes, qualquer membro, ate professor, trocava nome,
+  // modelo e regras do espaco; auditoria de 30/10/2026).
+  let ctx: Awaited<ReturnType<typeof requireTenant>>;
+  try {
+    ctx = await requireTenant();
+  } catch {
+    return;
+  }
+  if (ctx.profile !== "owner") return;
 
   try {
     const admin = createSupabaseAdminClient();
-    const orgId = currentUser.organizationId;
+    const orgId = ctx.organizationId;
 
     await admin
       .from("organizations")

@@ -4,7 +4,8 @@ import { headers, cookies } from "next/headers";
 import { after } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/features/auth/get-current-user";
-import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
+import { SESSION_COOKIE } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import {
   CURRENT_PLATFORM_TERMS_VERSION,
   type ConsentType,
@@ -35,9 +36,12 @@ export async function recordLegalConsentAction(
   const ipAddress = rawIp.split(",")[0].trim();
   const userAgent = headerList.get("user-agent") || "unknown";
 
+  // Quem aceita e sempre o usuario da sessao (cookie assinado pelo servidor).
+  // Antes o navegador mandava `userId` e `organizationId` de qualquer pessoa e
+  // forjava a prova do aceite (auditoria de 30/10/2026).
   const currentUser = await getCurrentUser();
-  const userId = input.userId || currentUser?.id;
-  const organizationId = input.organizationId || currentUser?.organizationId;
+  const userId = currentUser?.id;
+  const organizationId = currentUser?.organizationId;
 
   if (!userId || !organizationId) {
     return {
@@ -113,12 +117,7 @@ export async function recordLegalConsentAction(
           termsVersion: input.termsVersion,
         };
         const cookieStore = await cookies();
-        cookieStore.set(SESSION_COOKIE, encodeSession(updatedUser), {
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: SESSION_MAX_AGE,
-        });
+        cookieStore.set(SESSION_COOKIE, encodeSession(updatedUser), sessionCookieOptions());
       } catch (cookieErr) {
         logWarn(
           "[recordLegalConsentAction] Aviso ao atualizar cookie de sessão:",
@@ -148,11 +147,10 @@ export async function checkUserLegalConsentAction(
   consentType: ConsentType = "platform_terms",
   requiredVersion = CURRENT_PLATFORM_TERMS_VERSION,
 ): Promise<{ accepted: boolean; acceptedAt?: string }> {
-  let targetUserId = userId;
+  // So o aceite do proprio usuario da sessao (antes, o de qualquer id).
   const currentUser = await getCurrentUser();
-  if (!targetUserId) {
-    targetUserId = currentUser?.id;
-  }
+  const targetUserId = currentUser?.id;
+  if (userId && userId !== targetUserId) return { accepted: false };
 
   if (!targetUserId) {
     return { accepted: false };

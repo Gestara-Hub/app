@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
+import { SESSION_COOKIE } from "@/lib/session";
+import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import type { UserProfile, UserView } from "@gestarahub/contracts";
 import { PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import { hashToken } from "./userActionsShared";
@@ -185,13 +186,7 @@ export async function acceptInvitationAction(input: {
     };
 
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, encodeSession(sessionUser), {
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-      httpOnly: false,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+    cookieStore.set(SESSION_COOKIE, encodeSession(sessionUser), sessionCookieOptions());
 
     return { ok: true };
   } catch (err) {

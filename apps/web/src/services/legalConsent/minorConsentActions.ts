@@ -1,5 +1,6 @@
 "use server";
 
+import { requireTenant } from "@/services/server/tenant";
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/features/auth/get-current-user";
@@ -104,29 +105,39 @@ export async function confirmPaperMinorConsentAction(
   studentId: string,
   guardianName?: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
+  // Quem registra vem da sessao do Supabase, com permissao de alunos, e so no
+  // aluno do proprio espaco (antes: qualquer aluno de qualquer espaco, so com o
+  // cookie do app; auditoria de 30/10/2026).
+  let ctx: Awaited<ReturnType<typeof requireTenant>>;
+  try {
+    ctx = await requireTenant();
+    ctx.require("clients:manage");
+  } catch {
     return { success: false, error: "Não autorizado." };
   }
+  const currentUser = await getCurrentUser();
 
   const adminClient = createSupabaseAdminClient();
   const acceptedAt = new Date().toISOString();
 
-  await adminClient
+  const { data: updated, error } = await adminClient
     .from("clients")
     .update({
       minor_consent_status: "confirmed_paper",
       minor_consent_at: acceptedAt,
       minor_consent_by: guardianName || "Responsável (termo em papel)",
       minor_consent_evidence: {
-        recordedByUserId: currentUser.id,
-        recordedByUserName: currentUser.name,
+        recordedByUserId: ctx.userId,
+        recordedByUserName: currentUser?.name ?? "",
         method: "paper",
         acceptedAt,
       },
     })
-    .eq("id", studentId);
+    .eq("id", studentId)
+    .eq("organization_id", ctx.organizationId)
+    .select("id");
 
+  if (error || !updated || updated.length === 0) return { success: false, error: "Aluno não encontrado." };
   return { success: true };
 }
 

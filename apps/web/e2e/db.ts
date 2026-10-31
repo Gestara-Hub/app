@@ -10,6 +10,7 @@ import { store } from "../src/services/world/store";
 import { fromRow, WORLD_COLLECTIONS } from "../src/services/world/tables";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "../src/services/defaults";
 import { hashEmailCode } from "../src/lib/security/two-factor-rules";
+import { sessionCookieValue } from "./session-cookie";
 
 /**
  * Espacos de teste no Supabase local para o e2e (doc 15, fatia 5). Cada teste
@@ -223,7 +224,7 @@ export async function signInBrowser(page: Page, tenant: E2ETenant, user: E2EUser
     ...captured.map((c) => ({ name: c.name, value: c.value, url: baseUrl, sameSite: "Lax" as const })),
     {
       name: "gestarahub_session",
-      value: Buffer.from(JSON.stringify(claims), "utf8").toString("base64"),
+      value: sessionCookieValue(claims),
       url: baseUrl,
       httpOnly: true,
       sameSite: "Lax",
