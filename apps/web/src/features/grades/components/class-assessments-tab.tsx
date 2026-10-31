@@ -177,10 +177,15 @@ export function ClassAssessmentsTab({
                 },
               ]
             : [];
+          // Soma dos pontos ligada depois da avaliacao criada: sem pontos, ela vale o total
+          // da escala sozinha. A linha avisa para editar e dizer quanto vale.
+          const missingPoints = Boolean(settings && usesPointsSum(settings) && !a.recoveryOf && a.points === undefined);
           const amount = a.recoveryOf
             ? `Recuperação de ${a.recoveryOfName ?? "outra avaliação"}`
             : settings && usesPointsSum(settings)
-              ? pointsLabel(a.points ?? scaleMax(settings.scale) ?? 0)
+              ? missingPoints
+                ? null
+                : pointsLabel(a.points ?? scaleMax(settings.scale) ?? 0)
               : weightLabel(a.weight);
           const meta = [format(parseISO(a.date), "dd/MM/yyyy"), amount, a.levelName].filter(Boolean).join(" · ");
           const row = (
@@ -197,7 +202,12 @@ export function ClassAssessmentsTab({
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">{a.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {meta}
+                    {missingPoints ? (
+                      <span className="font-medium text-amber-700 dark:text-amber-400"> · Defina quanto vale</span>
+                    ) : null}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="text-xs tabular-nums text-muted-foreground">
