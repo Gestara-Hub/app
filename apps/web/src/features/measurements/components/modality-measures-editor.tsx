@@ -6,7 +6,6 @@ import { MAX_MEASURES } from "@gestarahub/core/measurements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MeasureSuggestion } from "@/lib/business-segment-presets";
-import { cn } from "@/lib/utils";
 
 /** Linha do editor: `key` so para a lista; `id` vazio = medida nova (o servidor da o id). */
 export interface MeasureDraft {
@@ -59,7 +58,10 @@ export function ModalityMeasuresEditor({
           {value.map((m, index) => {
             const label = m.name.trim() || `Medida ${index + 1}`;
             return (
-              <li key={m.key} className="flex flex-wrap items-center gap-2">
+              <li
+                key={m.key}
+                className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-2 rounded-md border border-border/60 p-2 sm:grid-cols-[minmax(0,1fr)_5rem_10rem_auto] sm:border-0 sm:p-0"
+              >
                 <Input
                   value={m.name}
                   onChange={(e) => update(m.key, { name: e.target.value })}
@@ -67,7 +69,7 @@ export function ModalityMeasuresEditor({
                   aria-label={`Nome da medida ${index + 1}`}
                   maxLength={40}
                   disabled={disabled}
-                  className={cn(INPUT, "min-w-40 flex-1")}
+                  className={INPUT}
                 />
                 <Input
                   value={m.unit}
@@ -76,13 +78,14 @@ export function ModalityMeasuresEditor({
                   aria-label={`Unidade de ${label}`}
                   maxLength={10}
                   disabled={disabled}
-                  className={cn(INPUT, "w-24")}
+                  className={INPUT}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   disabled={disabled}
                   aria-label={`${label}: ${m.better === "higher" ? "melhor subir" : "melhor descer"}. Trocar`}
+                  className="justify-start"
                   onClick={() => update(m.key, { better: m.better === "higher" ? "lower" : "higher" })}
                 >
                   {m.better === "higher" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
@@ -94,6 +97,7 @@ export function ModalityMeasuresEditor({
                   size="icon-sm"
                   disabled={disabled}
                   aria-label={`Remover ${label}`}
+                  className="justify-self-end sm:justify-self-auto"
                   onClick={() => onChange(value.filter((x) => x.key !== m.key))}
                 >
                   <X className="size-4" />
