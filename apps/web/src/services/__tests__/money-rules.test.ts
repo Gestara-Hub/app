@@ -223,6 +223,33 @@ describe("pausa e volta do aluno", () => {
   });
 });
 
+describe("volta do aluno no Mês cheio (revisão de valores, 30/10/2026)", () => {
+  it("reativar recomeça o ciclo na data da volta, sem uma segunda mensalidade cheia duas semanas depois", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-05", strategy: "full_cycle" });
+    await clientsService.remove(s.id);
+
+    at("2026-11-20");
+    const back = await clientsService.update(s.id, { status: "active" });
+    expect(back.planStartDate).toBe("2026-11-20");
+    expect(back.dueDay).toBe(20);
+    at("2026-12-25");
+    await billingService.listCharges({ studentId: s.id });
+    const after = memberships(s.id).filter((c) => c.periodStart! >= "2026-11-20");
+    expect(after.map((c) => [c.periodStart, c.periodEnd])).toEqual([
+      ["2026-11-20", "2026-12-19"],
+      ["2026-12-20", "2027-01-19"],
+    ]);
+  });
+
+  it("dia de cobrança diferente do início no Mês cheio vira o dia do início (sem dias sem cobrança)", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-05", strategy: "full_cycle" });
+    const edited = await clientsService.update(s.id, { dueDay: 20 });
+    expect(edited.dueDay).toBe(5);
+  });
+});
+
 describe("pagamento atrasado no repasse do professor", () => {
   it("paga depois do fechamento entra uma vez, no próximo mês aberto", async () => {
     const teacher = await createInstructor("Carlos");

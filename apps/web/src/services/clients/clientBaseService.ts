@@ -12,7 +12,7 @@ import {
 } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { clientNoun } from "../world/nouns";
-import { ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
+import { alignFullCycleDueDay, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone } from "./clientStore";
 import { validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
@@ -113,6 +113,7 @@ export const clientBaseService = {
         createdAt: ts,
         updatedAt: ts,
       };
+      alignFullCycleDueDay(client);
       store.clients.push(client);
 
       // 1a mensalidade (calculada no cadastro pelo motor de cobranca e ajustavel).

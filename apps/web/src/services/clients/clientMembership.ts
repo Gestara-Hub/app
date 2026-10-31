@@ -110,3 +110,15 @@ export function endStudentEnrollments(studentId: Id): number {
   }
   return ended;
 }
+
+/**
+ * "Mes cheio" (doc 15: ciclo a partir da entrada): o dia de cobranca e o dia do
+ * inicio. Revisao de valores de 30/10/2026: a volta do aluno movia o inicio para
+ * a data da volta e mantinha o dia antigo, e o motor ancorava os ciclos nele
+ * (duas mensalidades cheias com duas semanas de diferenca); um dia editado a mao
+ * deixava dias sem cobranca entre o 1o e o 2o ciclo.
+ */
+export function alignFullCycleDueDay(client: Client): void {
+  if (client.billingStrategy !== "full_cycle" || !client.planStartDate) return;
+  client.dueDay = Number(client.planStartDate.slice(8, 10));
+}

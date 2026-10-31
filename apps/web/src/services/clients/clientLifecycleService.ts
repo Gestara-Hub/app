@@ -12,7 +12,12 @@ import {
   studentMembershipTerms,
 } from "../billing";
 import { clientNoun } from "../world/nouns";
-import { endStudentEnrollments, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
+import {
+  alignFullCycleDueDay,
+  endStudentEnrollments,
+  ensurePlanlessScholarCharges,
+  initialMembershipCharge,
+} from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { consentFieldsFor } from "./clientConsentRules";
@@ -71,6 +76,7 @@ export const clientLifecycleService = {
       ) {
         updated.planStartDate = today;
       }
+      alignFullCycleDueDay(updated);
       store.clients[idx] = updated;
 
       // Pausa ou cancelamento da assinatura: periodos que ainda nao comecaram
