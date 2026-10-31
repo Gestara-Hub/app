@@ -53,4 +53,5 @@ next-env.d.ts
 # servidor local de conferencia dos documentos
 /.next-docs/
 
-certificates
+# certificados do https local (pnpm dev:https); ancorado para nao esconder src/**/certificates
+/certificates/
