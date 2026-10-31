@@ -316,10 +316,26 @@ export function CertificateTemplateCard({
   }
 
   if (query.isPending) {
+    // Mesma forma da tela carregada: "Vale para", coluna estreita de cartoes e a previa grande.
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Skeleton className="h-96 w-full" />
-        <Skeleton className="aspect-[297/210] w-full" />
+      <div className="space-y-4" aria-busy>
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium leading-none">Vale para</p>
+          <Skeleton className="h-9 w-56 rounded-md" />
+        </div>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <Skeleton className="h-[26rem] w-full rounded-xl" />
+            <Skeleton className="h-56 w-full rounded-xl" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">Prévia</p>
+              <Skeleton className="h-9 w-32 rounded-md" />
+            </div>
+            <Skeleton className="aspect-[297/210] w-full rounded-md" />
+          </div>
+        </div>
       </div>
     );
   }
