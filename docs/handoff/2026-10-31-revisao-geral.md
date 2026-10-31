@@ -41,6 +41,7 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 | Teste de tela (celular e computador) | 20 telas, nenhuma com rolagem lateral | 3 ajustes, na seção Melhorias de usabilidade |
 | e2e completo, rodada 2 (build de produção, depois das correções) | 429 passaram, 2 pulados de propósito, nenhuma falha | Celular e computador, 25,6 min |
 | Depois das decisões (S14, S15) | typecheck e lint sem erro; Vitest 1356 de 1356; banco 206 de 206 | 10 testes de banco novos; e2e não rodou de novo |
+| Smoke depois das decisões (build de produção) | 42 de 42; nenhum erro no servidor | 7 avisos de recorte: 5 corrigidos (`1c7d746`, Vitest 1358 de 1358); os 2 da lista de alunos do professor já existiam (pendências) |
 
 ## Correções de segurança
 
@@ -87,6 +88,7 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 - `32e29de` Notas e medidas aceitavam data que não existe (2026-02-31): um validador só, `isIsoDate`.
 - `fe392dd` Duas chamadas simultâneas no primeiro uso de um serviço quebravam (import ainda carregando).
 - `68941ea` Corrida do teste e2e do certificado.
+- `1c7d746` Efeito da S4, achado no smoke: o recorte da lista de espera e dos lembretes não carregava as substituições, e o servidor relia o espaço inteiro para o professor substituto.
 
 ## Melhorias de usabilidade (teste de tela)
 
