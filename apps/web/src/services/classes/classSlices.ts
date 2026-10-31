@@ -43,11 +43,13 @@ async function session(sessionId: Id, load: SliceLoader, extraStudents: Id[] = [
     ...extraStudents,
   ] as string[];
   // Todos os pacotes dos alunos (desmarcar devolve a aula a um pacote que ja tinha acabado).
-  await Promise.all([
+  const [, charges] = await Promise.all([
     load.where("clients", "id", students),
     load.where("charges", "studentId", students),
     load.where("studentPackages", "studentId", students),
   ]);
+  // Pix e links das cobrancas: sair da aula avulsa cancela o codigo enviado.
+  await load.where("onlinePayments", "chargeId", charges.map((c) => c.id as string));
   load.none("auditLog");
 }
 

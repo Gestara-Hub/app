@@ -9,6 +9,36 @@ import { recordSystemAudit } from "../server/systemAudit";
  * (doc technical/23): "Parceiro de pagamentos confirmou o Pix de Ana Souza
  * (R$ 150,00, mensalidade de nov)". Uma vez por pagamento. Modulo so do servidor.
  */
+/**
+ * Pagamento online de uma cobranca que nao estava mais em aberto (paga por outro
+ * meio, cancelada ou isenta): a cobranca fica como estava e o valor recebido vira
+ * aviso na Auditoria do espaco, para o dono devolver ou combinar o uso.
+ */
+export async function auditOnlinePaymentConflict(
+  admin: SupabaseClient,
+  payment: OnlinePayment,
+  conflict: "already_paid" | "closed",
+): Promise<void> {
+  if (!payment.organizationId) return;
+  const { data: charge } = await admin
+    .from("charges")
+    .select("kind, description, competence, student_id, status")
+    .eq("id", payment.chargeId)
+    .maybeSingle();
+  const { data: student } = charge?.student_id
+    ? await admin.from("clients").select("name").eq("id", charge.student_id).maybeSingle()
+    : { data: null };
+  const name = String(student?.name ?? "aluno");
+  const what = charge ? chargeLabelOf(charge.kind as ChargeKind, (charge.description as string | null) ?? null) : "Cobrança";
+  const state = conflict === "already_paid" ? "já estava paga" : charge?.status === "waived" ? "estava isenta" : "estava cancelada";
+  await recordSystemAudit(admin, "webhook.asaas", {
+    organizationId: payment.organizationId,
+    action: "updated",
+    target: { type: "charge", id: payment.chargeId, label: `${what} de ${name}` },
+    predicate: `recebeu ${formatCents(payment.amountCents)} online de ${name}, mas a cobrança ${state}: devolva ao aluno ou combine o uso do valor`,
+  });
+}
+
 export async function auditOnlinePaymentPaid(admin: SupabaseClient, payment: OnlinePayment): Promise<void> {
   if (!payment.organizationId) return;
   const { data: charge } = await admin

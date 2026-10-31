@@ -23,7 +23,17 @@ export async function markOnlinePaymentPaidInDb(
     /** Comprovante do parceiro (pagina publica /p/<codigo>). */
     receiptUrl?: string;
   },
-): Promise<{ payment: OnlinePayment; chargeId: string; newlyPaid: boolean } | null> {
+): Promise<{
+  payment: OnlinePayment;
+  chargeId: string;
+  newlyPaid: boolean;
+  /**
+   * Pago, mas a cobranca nao estava mais em aberto: "already_paid" (paga por
+   * outro meio ou outro codigo) ou "closed" (cancelada ou isenta). A cobranca
+   * fica como estava; o valor recebido vira aviso para o dono.
+   */
+  conflict?: "already_paid" | "closed";
+} | null> {
   const adminClient = createSupabaseAdminClient();
 
   // Ja estava pago? (cartao: CONFIRMED e depois RECEIVED; aviso repetido)
@@ -98,8 +108,13 @@ export async function markOnlinePaymentPaidInDb(
 
   const payment = mapRowToOnlinePayment(updatedPayment);
 
-  // 2. Atualiza a charge correspondente
-  const { error: chargeError } = await adminClient
+  const newlyPaid = previous?.status !== "paid";
+  if (!newlyPaid) return { payment, chargeId: payment.chargeId, newlyPaid };
+
+  // 2. Baixa na cobranca, so se ela ainda esta em aberto (gravacao condicional,
+  // sem corrida). Cancelada (troca de plano, inativacao, saida da aula) nao volta
+  // a valer ao lado da substituta, e a paga em dinheiro nao vira Pix.
+  const { data: settled, error: chargeError } = await adminClient
     .from("charges")
     .update({
       status: "paid",
@@ -108,16 +123,23 @@ export async function markOnlinePaymentPaidInDb(
       paid_via: "online",
       paid_at: paidAtISO,
     })
-    .eq("id", payment.chargeId);
+    .eq("id", payment.chargeId)
+    .in("status", ["pending", "overdue"])
+    .select("id");
 
   if (chargeError) {
     logError(
       "[onlinePaymentsBackend] Erro ao atualizar charge após pagamento online:",
       chargeError,
     );
+    return { payment, chargeId: payment.chargeId, newlyPaid };
+  }
+  if (!settled || settled.length === 0) {
+    const { data: current } = await adminClient.from("charges").select("status").eq("id", payment.chargeId).maybeSingle();
+    return { payment, chargeId: payment.chargeId, newlyPaid, conflict: current?.status === "paid" ? "already_paid" : "closed" };
   }
 
-  return { payment, chargeId: payment.chargeId, newlyPaid: previous?.status !== "paid" };
+  return { payment, chargeId: payment.chargeId, newlyPaid };
 }
 
 

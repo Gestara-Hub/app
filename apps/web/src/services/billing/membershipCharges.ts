@@ -21,6 +21,7 @@ import { addMonths, format, parseISO } from "date-fns";
 import { store } from "@/services/world/store";
 import { newId, nowIso, persistLocal } from "@/services/world/ops";
 import { planOf, todayISO } from "./billingHelpers";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 
 type ChargePeriod = CoreChargePeriod;
 
@@ -148,6 +149,9 @@ export function cancelOpenMembershipCharges(
     c.replaced = opts.replaced || undefined;
     c.notes = note;
     c.updatedAt = nowIso();
+    // O Pix ou link ja enviado deixa de valer (no banco e no Asaas): senao o aluno
+    // paga a cobranca cancelada e a substituta fica em aberto (cobranca em dobro).
+    cancelOnlinePaymentsForCharge(c.id, note);
     count += 1;
   }
   return count;
@@ -165,6 +169,7 @@ export function cancelCurrentMembershipCharges(studentId: Id, today: string, not
     c.canceledBy = "system";
     c.notes = note;
     c.updatedAt = nowIso();
+    cancelOnlinePaymentsForCharge(c.id, note);
     count += 1;
   }
   return count;

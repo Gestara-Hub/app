@@ -4,6 +4,7 @@ import { apiError, newId, notFoundError, nowIso, writeOp, validationError } from
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { acceptsPackages, hasUsablePackage } from "../billing";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { syncAttendanceUsage } from "./attendancePackageUsage";
 import {
   clone,
@@ -176,6 +177,7 @@ export const reservationsService = {
         charge.canceledBy = "system";
         charge.notes = "Saiu da aula";
         charge.updatedAt = nowIso();
+        cancelOnlinePaymentsForCharge(charge.id, "Saiu da aula");
       }
       auditLogService.record({
         action: "cancelled",

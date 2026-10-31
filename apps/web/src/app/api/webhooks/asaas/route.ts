@@ -17,7 +17,7 @@ import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError, logWarn, reportError } from "@/lib/log";
 import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgroundRuns";
-import { auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
+import { auditOnlinePaymentConflict, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
 
 export async function POST(req: Request) {
   // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
@@ -113,6 +113,15 @@ async function handleEvent(
           realFeeCents: paid.gatewayFeeCents,
         }).catch((err) => logError("[Asaas Webhook] Erro ao conferir as tarifas:", err)),
       );
+    }
+    // Pago depois de a cobranca sair do aberto (codigo antigo, pagamento em dobro):
+    // a cobranca fica como estava; aviso ao dono e no registro de erros.
+    if (result.conflict) {
+      logWarn(
+        `[Asaas Webhook] Pagamento ${payment.id} recebido de cobrança que não estava em aberto (${result.conflict}): a cobrança ficou como estava; o dono foi avisado na Auditoria.`,
+      );
+      await auditOnlinePaymentConflict(admin, paid, result.conflict);
+      return { status: "processed", organizationId: paid.organizationId, outcome: `pagamento de aluno: cobrança não estava em aberto (${result.conflict})` };
     }
     // Na Auditoria uma vez por pagamento (o cartao avisa "confirmado" e depois "recebido").
     if (result.newlyPaid) await auditOnlinePaymentPaid(admin, paid);

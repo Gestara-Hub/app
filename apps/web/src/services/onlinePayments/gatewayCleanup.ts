@@ -1,9 +1,10 @@
 import { deletePayment, getPayment } from "@/lib/asaas";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { settleAsaasPayment } from "./asaasSettlement";
+import { auditOnlinePaymentConflict } from "./onlinePaymentAudit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { realSubaccountKey } from "./gatewaySetup";
-import { logError } from "@/lib/log";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Subconta do espaco no Asaas: tarifas e webhook (doc 19, secao 4, decisao de
@@ -199,7 +200,12 @@ const GATEWAY_CONCURRENCY = 5;
 async function settlePaidAtGateway(gatewayPaymentId: string, apiKey: string): Promise<void> {
   try {
     const payment = await getPayment(gatewayPaymentId, apiKey);
-    await settleAsaasPayment(payment, payment.status === "RECEIVED" || payment.status === "RECEIVED_IN_CASH");
+    const result = await settleAsaasPayment(payment, payment.status === "RECEIVED" || payment.status === "RECEIVED_IN_CASH");
+    // Pago de cobranca que nao estava mais em aberto: o mesmo aviso do webhook.
+    if (result?.conflict) {
+      logWarn(`[gatewayAccount] Pagamento ${gatewayPaymentId} recebido de cobrança que não estava em aberto (${result.conflict}).`);
+      await auditOnlinePaymentConflict(createSupabaseAdminClient(), result.payment, result.conflict);
+    }
   } catch (error) {
     logError("[gatewayAccount] Não foi possível dar baixa no pagamento já pago no Asaas:", error);
   }

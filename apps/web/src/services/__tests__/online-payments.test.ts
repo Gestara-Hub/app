@@ -2,6 +2,8 @@ import type { Charge, Client } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
 import { billingService } from "@/services/billing";
+import { cancelOpenMembershipCharges } from "@/services/billing/membershipCharges";
+import { clientsService } from "@/services/clients";
 import { financeService } from "@/services/finance";
 import { applyRecurringAutoPayments, onlinePaymentsService } from "@/services/onlinePayments";
 import { subscriptionService } from "@/services/subscription/subscriptionService";
@@ -264,6 +266,25 @@ describe("cobrança online: pagamento", () => {
     const { charge } = await studentWithCharge();
     const link = await onlinePaymentsService.createForCharge(charge.id, "link");
     await billingService.cancelCharge(charge.id);
+    expect(paymentById(link.id).status).toBe("canceled");
+  });
+
+  // 30/10/2026: o sistema cancelava a mensalidade (troca de plano, desconto,
+  // inativacao) e o Pix ja enviado seguia pagavel; pago, ressuscitava a cancelada.
+  it("cancelamento pelo sistema (troca de plano, desconto) cancela o código em aberto", async () => {
+    const { student, charge } = await studentWithCharge();
+    const pix = await onlinePaymentsService.createForCharge(charge.id, "pix");
+    cancelOpenMembershipCharges(student.id, "2026-08-01", "Substituída na troca de plano", { inclusive: true, replaced: true });
+    expect(chargeById(charge.id)).toMatchObject({ status: "canceled", canceledBy: "system" });
+    expect(paymentById(pix.id)).toMatchObject({ status: "canceled", canceledReason: "Substituída na troca de plano" });
+    await expect(onlinePaymentsService.simulatePaid(pix.id)).rejects.toMatchObject({ httpStatus: 409 });
+  });
+
+  it("inativar cancelando o que está em aberto cancela também o código", async () => {
+    const { student, charge } = await studentWithCharge();
+    const link = await onlinePaymentsService.createForCharge(charge.id, "link");
+    await clientsService.remove(student.id, { cancelOpenCharges: true });
+    expect(chargeById(charge.id).status).toBe("canceled");
     expect(paymentById(link.id).status).toBe("canceled");
   });
 });

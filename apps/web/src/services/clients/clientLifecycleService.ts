@@ -14,6 +14,7 @@ import {
 import { clientNoun } from "../world/nouns";
 import { endStudentEnrollments, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { validateClient } from "./clientValidation";
 
 /** Edicao (com efeitos na cobranca) e inativacao do aluno. */
@@ -185,6 +186,7 @@ export const clientLifecycleService = {
           c.canceledBy = "user";
           c.cancelReason = "Aluno inativado";
           c.updatedAt = ts;
+          cancelOnlinePaymentsForCharge(c.id, "Aluno inativado");
           waivedDebt += 1;
         }
       }
