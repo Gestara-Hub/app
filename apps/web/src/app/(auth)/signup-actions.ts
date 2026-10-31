@@ -622,6 +622,16 @@ export async function signInWithPasswordAction(input: {
       message: "Muitas tentativas de login incorretas. Aguarde 1 minuto antes de tentar novamente.",
     };
   }
+  // Limite tambem por conta, de qualquer endereco: trocar de IP (ou forjar o
+  // x-forwarded-for fora da Vercel) nao libera tentativas sem fim na mesma
+  // senha (revisao geral de 31/10/2026, achado S11).
+  const accountAllowed = await checkRateLimit({ key: `login-account:${normalizedEmail}`, maxRequests: 20, windowSeconds: 900 });
+  if (!accountAllowed) {
+    return {
+      ok: false,
+      message: "Muitas tentativas nesta conta. Aguarde 15 minutos ou redefina a senha.",
+    };
+  }
 
   try {
     const supabase = await createSupabaseServerClient();
