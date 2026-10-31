@@ -1,8 +1,11 @@
 /**
  * Content-Security-Policy (decisao 5 da noite de 31/10/2026, confirmada pelo
- * usuario). Lista do que o navegador pode carregar: scripts, conexoes, imagens
- * e quadros so das origens daqui. Um script injetado nao busca codigo de fora
- * nem manda dados para outro endereco, e o app nao abre dentro de outro site.
+ * usuario). Lista do que o navegador pode carregar: scripts, conexoes e quadros
+ * so das origens daqui. Um script injetado nao baixa codigo de outro endereco,
+ * nao abre o app dentro de outro site nem envia formulario para fora.
+ * Limite honesto (revisao geral de 31/10/2026, achado S12): com script inline
+ * liberado e imagem de qualquer `https:`, um script injetado ainda consegue
+ * mandar dado para fora por uma imagem; fechar isso pede nonce por pagina.
  *
  * Script inline continua liberado ('unsafe-inline'): o Next grava os dados de
  * cada pagina em <script> inline, e as paginas de marketing sao estaticas. Um

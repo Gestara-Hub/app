@@ -48,11 +48,42 @@ export async function getMyPreferencesAction(): Promise<UserPreferences | null> 
   }
 }
 
+/**
+ * Campos conhecidos das preferencias. O resto do pedido e descartado, e um
+ * pedido grande demais e recusado (revisao geral de 31/10/2026, achado S13: a
+ * rota guardava qualquer chave, de qualquer tamanho).
+ */
+const PREFERENCE_KEYS: ReadonlySet<string> = new Set<keyof UserPreferences>([
+  "theme",
+  "accentColor",
+  "sidebarCollapsed",
+  "density",
+  "viewModes",
+  "pageSizes",
+  "defaultPageSize",
+  "audioFeedbackEnabled",
+  "onboarding",
+  "dismissedAlertKeys",
+  "reminderSnoozes",
+  "securityPrompt",
+  "accountMenuTip",
+  "lastUnitId",
+  "defaultCalendarView",
+  "themeStyling",
+]);
+const MAX_PREFERENCES_BYTES = 64 * 1024;
+
 /** Sem sessao do banco: `null` (as preferencias ficam so no navegador). */
 export async function saveMyPreferencesAction(preferences: Partial<UserPreferences>): Promise<UserPreferences | null> {
   const userId = await sessionUserId();
   if (!userId) return null;
-  const updated = mergeUserPreferences(await readPreferences(userId), preferences);
+  if (JSON.stringify(preferences ?? {}).length > MAX_PREFERENCES_BYTES) {
+    throw new Error("Preferências grandes demais.");
+  }
+  const known = Object.fromEntries(
+    Object.entries(preferences ?? {}).filter(([key]) => PREFERENCE_KEYS.has(key)),
+  ) as Partial<UserPreferences>;
+  const updated = mergeUserPreferences(await readPreferences(userId), known);
   const { error } = await createSupabaseAdminClient()
     .from("user_preferences")
     .upsert({ user_id: userId, preferences: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
