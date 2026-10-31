@@ -281,3 +281,13 @@ describe("soma dos pontos, recuperação e frequência mínima (fase A, 31/10/20
     assert.equal(validateMinAttendance("101").ok, false);
   });
 });
+
+describe("arredondamento sem erro de ponto flutuante (achado V4, 31/10/2026)", () => {
+  it("5,95 vira 6,0 e não reprova com mínima 6", () => {
+    const avg = averageGrades(ten, [g(2.2), g(9.7)]);
+    assert.equal(avg?.value, 6);
+    assert.equal(avg?.belowPassing, false);
+    assert.equal(roundHalfUp(5.95, 1), 6);
+    assert.equal(roundHalfUp(4.5), 5);
+  });
+});

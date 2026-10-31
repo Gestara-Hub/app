@@ -98,15 +98,18 @@ function firstOfMonth(date: Date): Date {
 /** Aplica o desconto do aluno (fixo em centavos ou percentual), nunca abaixo de zero. */
 export function applyDiscount(priceCents: number, discount?: StudentDiscount): number {
   if (!discount || discount.value <= 0) return priceCents;
+  // Percentual em centesimos inteiros (33,3% -> 3330): sem erro de ponto
+  // flutuante no meio centavo (revisao geral de 31/10/2026, achado V9).
   const off =
     discount.type === "percentage"
-      ? Math.round((priceCents * Math.min(discount.value, 100)) / 100)
+      ? Math.round((priceCents * Math.round(Math.min(discount.value, 100) * 100)) / 10000)
       : Math.round(discount.value);
   return Math.max(0, priceCents - off);
 }
 
+/** Proporcional em conta inteira: meio centavo sobe (achado V9 de 31/10/2026). */
 function prorate(priceCents: number, usedDays: number, periodDays: number): number {
-  return Math.round((priceCents / periodDays) * usedDays);
+  return Math.round((priceCents * usedDays) / periodDays);
 }
 
 export interface MembershipTermsInput {

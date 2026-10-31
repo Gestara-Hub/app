@@ -597,7 +597,8 @@ export function percentPayoutLines(
       (p.quantity !== undefined ? ` (${countLabel(p.quantity, "aula", "aulas")})` : ""),
     ...(p.quantity !== undefined ? { quantity: p.quantity } : {}),
     baseCents: p.baseCents,
-    amountCents: Math.floor((p.baseCents * percent) / 100),
+    // Percentual em centesimos inteiros: 4,1% de R$ 150 da 615, nao 614 (achado V8 de 31/10/2026).
+    amountCents: Math.floor((p.baseCents * Math.round(percent * 100)) / 10000),
   }));
 }
 

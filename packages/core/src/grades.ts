@@ -79,10 +79,14 @@ export function assessmentsEnabled(
   return Boolean(settings?.enabled);
 }
 
-/** Arredonda metade para cima em `decimals` casas, sem erro de ponto flutuante. */
+/**
+ * Arredonda metade para cima em `decimals` casas, sem erro de ponto flutuante.
+ * Revisao geral de 31/10/2026 (achado V4): somar `Number.EPSILON` nao bastava
+ * (5,95 virava 5,9 e reprovava); agora o produto e limpo em 12 digitos antes.
+ */
 export function roundHalfUp(value: number, decimals = 0): number {
   const factor = 10 ** decimals;
-  return Math.round((value + Number.EPSILON) * factor) / factor;
+  return Math.round(Number((value * factor).toPrecision(12))) / factor;
 }
 
 export type GradeCheck = { ok: true; value: GradeValue } | { ok: false; message: string };

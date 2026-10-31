@@ -288,3 +288,13 @@ describe("valor da aula do pacote", () => {
     assert.equal(lessonOriginAt(p2, 2), "p2");
   });
 });
+
+describe("percentual decimal sem perder centavo (achado V8, 31/10/2026)", () => {
+  it("4,1% de R$ 150,00 dá R$ 6,15", () => {
+    const f = facts({
+      activeEnrollments: [{ studentId: "a1", classGroupId: "mens" }],
+      paidMemberships: [{ chargeId: "m1", studentId: "a1", amountCents: 15000 }],
+    });
+    assert.equal(computeTeacherPayout(rule([percent(4.1)]), f, COMP)[0].amountCents, 615);
+  });
+});

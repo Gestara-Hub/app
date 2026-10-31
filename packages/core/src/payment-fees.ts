@@ -223,12 +223,20 @@ export function gatewayFeeCents(fee: GatewayFee, chargedCents: number): number {
  * nao deixar o liquido abaixo do valor.
  */
 function grossUp(fee: GatewayFee, amountCents: number, splitCents: number): number {
-  // Comeca um pouco abaixo da formula e sobe ate o menor valor que cobre tudo:
-  // com a parte percentual truncada, o liquido fecha no valor da cobranca.
+  // Busca binaria do menor valor que cobre tudo. Antes comecava na formula sem
+  // teto e so subia: com tarifa percentual com teto (ex.: 0,99% ate R$ 3), o
+  // aluno pagava a mais (revisao geral de 31/10/2026, achado V7).
   const netOf = (charged: number) => charged - gatewayFeeCents(fee, charged) - splitCents;
-  let charged = Math.max(amountCents, Math.floor((amountCents + splitCents + fee.fixedCents) / (1 - fee.percent)) - 2);
-  while (netOf(charged) < amountCents) charged += 1;
-  return charged;
+  let lo = amountCents;
+  let hi = Math.max(lo, Math.ceil((amountCents + splitCents + fee.fixedCents) / (1 - fee.percent)) + 2);
+  while (netOf(hi) < amountCents) hi += Math.max(1, hi - lo);
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (netOf(mid) >= amountCents) hi = mid;
+    else lo = mid + 1;
+  }
+  while (netOf(lo) < amountCents) lo += 1;
+  return lo;
 }
 
 export interface OnlineChargeAmounts {

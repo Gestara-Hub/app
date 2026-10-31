@@ -194,3 +194,14 @@ describe("aluno antigo sem os meses passados (chargesFrom, 31/10/2026)", () => {
     assert.deepEqual(dueIn(fromOct, "2026-10"), dueIn(all, "2026-10"));
   });
 });
+
+describe("meio centavo sobe (achado V9, 31/10/2026)", () => {
+  it("proporcional de 7 em 28 dias de R$ 19,10 dá R$ 4,78", () => {
+    const first = firstCharge({ ...monthly({}), priceCents: 1910, startDate: "2027-02-22", strategy: "prorated" });
+    assert.equal(first.proratedDays, 7);
+    assert.equal(first.amountCents, 478);
+  });
+  it("desconto de 33,3% em R$ 15,00 tira R$ 5,00", () => {
+    assert.equal(applyDiscount(1500, { type: "percentage", value: 33.3 }), 1000);
+  });
+});

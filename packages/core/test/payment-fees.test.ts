@@ -304,3 +304,14 @@ describe("saque via Pix (achado 4)", () => {
     assert.equal(pixWithdrawalRuleText({ freePerMonth: 10, feeCents: 550 }), "10 grátis por mês; depois, R$ 5,50 cada");
   });
 });
+
+describe("repasse com tarifa percentual com teto (revisão geral de 31/10/2026, achado V7)", () => {
+  const CAPPED: GatewayFeeTable = { ...PROMO, pix: { percent: 0.0099, fixedCents: 0, minCents: 50, maxCents: 300 } };
+  it("o aluno paga o menor valor que cobre a tarifa no teto e a taxa", () => {
+    const r = calculateOnlineChargeAmounts({ amountCents: 100000, method: "pix", splitAmountCents: 199, passFee: true, fees: CAPPED });
+    assert.equal(r.chargedAmountCents, 100499);
+    assert.equal(r.netAmountCents, 100000);
+    const less = calculateOnlineChargeAmounts({ amountCents: 99999, method: "pix", splitAmountCents: 199, passFee: true, fees: CAPPED });
+    assert.equal(less.chargedAmountCents, 100498);
+  });
+});
