@@ -1057,6 +1057,81 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       }
     }
   },
+  "issued_certificates": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "enrollment_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "class_group_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "student_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "code": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "snapshot": {
+        "type": "jsonb",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "issued_by": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "issued_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "canceled_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "cancel_reason": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "created_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "updated_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
   "lesson_packages": {
     "primaryKey": "id",
     "columns": {

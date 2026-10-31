@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Award, ChevronLeft, FileText, Printer } from "lucide-react";
+import { Award, Ban, ChevronLeft, FileText, Printer } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { formatDateTime } from "@gestarahub/core/format";
 import { isApiError, type CourseCertificateDocument } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
@@ -10,7 +13,7 @@ import { FeatureLocked } from "@/components/shared/feature-locked";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { CertificateSheet, useStoredFileUrl } from "@/features/certificates";
-import { useCourseCertificate } from "../hooks/use-turmas";
+import { useCancelCertificate, useCourseCertificate } from "../hooks/use-turmas";
 
 /** Texto da tela de upsell (uma linha, como os outros recursos do Pro). */
 export const CERTIFICATE_LOCKED_HINT = "Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.";
@@ -77,6 +80,24 @@ export function CourseCertificateView({
   // Conta real: o PDF sai do servidor; na demonstracao, pela impressao do navegador.
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const { data: sheet, isPending, error } = useCourseCertificate(enrollmentId);
+  const cancel = useCancelCertificate();
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
+  const canceled = sheet?.issued.status === "canceled";
+
+  async function cancelCertificate() {
+    const ok = await confirm({
+      title: "Cancelar o certificado?",
+      description: `A página de verificação passa a dizer que o certificado ${sheet?.issued.code} não vale. Não dá para desfazer.`,
+      confirmLabel: "Cancelar certificado",
+      cancelLabel: "Voltar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    cancel.mutate(enrollmentId, {
+      onSuccess: () => toast.success("Certificado cancelado."),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível cancelar o certificado.")),
+    });
+  }
 
   if (isApiError(error) && error.code === "FEATURE_NOT_IN_PLAN") {
     return <CourseCertificateLocked classGroupId={classGroupId} canManagePlan={can("subscription:manage")} />;
@@ -86,22 +107,40 @@ export function CourseCertificateView({
     <div className="space-y-4">
       {/* Folha deitada (A4); a margem da impressao fica fora da folha. */}
       <style>{"@media print { @page { size: A4 landscape; margin: 10mm; } }"}</style>
+      {confirmDialog}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <BackLink classGroupId={classGroupId} />
-        {sheet && serverDocuments ? (
-          <Button asChild className="gap-1.5">
-            <a href={`/api/documents/certificates/${enrollmentId}`} target="_blank" rel="noopener">
-              <FileText className="size-4" />
-              Baixar PDF
-            </a>
-          </Button>
-        ) : sheet ? (
-          <Button type="button" className="gap-1.5" onClick={() => window.print()}>
-            <Printer className="size-4" />
-            Imprimir ou salvar em PDF
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {sheet && !canceled && can("classes:manage") ? (
+            <Button type="button" variant="outline" className="gap-1.5" disabled={cancel.isPending} onClick={() => void cancelCertificate()}>
+              <Ban className="size-4" />
+              Cancelar certificado
+            </Button>
+          ) : null}
+          {sheet && !canceled && serverDocuments ? (
+            <Button asChild className="gap-1.5">
+              <a href={`/api/documents/certificates/${enrollmentId}`} target="_blank" rel="noopener">
+                <FileText className="size-4" />
+                Baixar PDF
+              </a>
+            </Button>
+          ) : sheet && !canceled ? (
+            <Button type="button" className="gap-1.5" onClick={() => window.print()}>
+              <Printer className="size-4" />
+              Imprimir ou salvar em PDF
+            </Button>
+          ) : null}
+        </div>
       </div>
+      {sheet && canceled ? (
+        <p role="status" className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-700 dark:text-red-400 print:hidden">
+          Certificado cancelado{sheet.issued.canceledAt ? ` em ${formatDateTime(sheet.issued.canceledAt)}` : ""}. A página de verificação diz que ele não vale.
+        </p>
+      ) : sheet ? (
+        <p className="text-xs text-muted-foreground print:hidden">
+          Código de verificação {sheet.issued.code}, emitido em {formatDateTime(sheet.issued.issuedAt)}. Quem recebe confere pelo QR ou pelo endereço do rodapé.
+        </p>
+      ) : null}
       {isPending ? (
         <Skeleton className="mx-auto aspect-[297/210] w-full max-w-4xl rounded-md" />
       ) : sheet ? (

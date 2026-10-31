@@ -189,6 +189,8 @@ export interface CourseCertificate {
   city?: string;
   /** Dia da emissao. */
   issuedOn: DateISO;
+  /** Codigo de verificacao do certificado emitido (doc 21 §1.3); a previa do editor nao tem. */
+  verificationCode?: string;
 }
 
 /** Sessao — ocorrencia datada de uma turma (uma aula). */

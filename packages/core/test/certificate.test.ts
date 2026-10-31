@@ -13,6 +13,9 @@ import {
   renderCertificate,
   unknownCertificateVariables,
   validateCertificateTemplate,
+  newCertificateCode,
+  normalizeCertificateCode,
+  CERTIFICATE_CODE_RE,
   type CourseCertificateInput,
 } from "../src/certificate.ts";
 
@@ -260,5 +263,22 @@ describe("certificado: nome do curso que já diz \"curso\" (achado 48)", () => {
   it("nome sem a palavra continua com \"o curso\"", () => {
     const text = defaultCertificateText(buildCourseCertificate(input({ courseName: "Confeitaria" })));
     assert.match(text.body, /concluiu o curso Confeitaria, de /);
+  });
+});
+
+describe("certificado: código de verificação", () => {
+  it("gera GH-XXXX-XXXX sem 0, O, 1 e I, sempre diferente", () => {
+    const codes = new Set(Array.from({ length: 200 }, () => newCertificateCode()));
+    assert.equal(codes.size, 200);
+    for (const code of codes) assert.match(code, CERTIFICATE_CODE_RE);
+  });
+
+  it("aceita o código como a pessoa digita e recusa o que não é código", () => {
+    assert.equal(normalizeCertificateCode(" gh-7k3m-2a9f "), "GH-7K3M-2A9F");
+    assert.equal(normalizeCertificateCode("7K3M2A9F"), "GH-7K3M-2A9F");
+    assert.equal(normalizeCertificateCode("GH 7K3M 2A9F"), "GH-7K3M-2A9F");
+    assert.equal(normalizeCertificateCode("GH-7K3M-2A90"), null);
+    assert.equal(normalizeCertificateCode("GH-7K3M"), null);
+    assert.equal(normalizeCertificateCode("' OR 1=1"), null);
   });
 });

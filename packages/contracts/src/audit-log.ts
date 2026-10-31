@@ -44,6 +44,7 @@ export type AuditEntityType =
   | "enrollment"
   | "assessment"
   | "measurement"
+  | "certificate" // certificado emitido (doc 21 §1.3)
   // Financeiro (plano pago) e assinatura do GestaraHub.
   | "financial_entry"
   | "financial_category"

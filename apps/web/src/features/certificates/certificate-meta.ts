@@ -84,6 +84,8 @@ export function sampleCertificate({
     workloadMinutes: 16 * 60,
     attendancePercent: 92,
     instructorName: "Carla Mendes",
+    // A previa mostra o rodape de verificacao com um codigo de exemplo.
+    verificationCode: "GH-7K3M-2A9F",
     ...(city?.trim() ? { city: city.trim() } : {}),
     issuedOn: today,
   };

@@ -103,6 +103,17 @@ export function useCourseCertificate(enrollmentId: Id) {
   });
 }
 
+/** Cancela o certificado emitido (doc 21 §1.3); a tela do certificado recarrega. */
+export function useCancelCertificate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enrollmentId: Id) => turmasService.cancelCertificate(enrollmentId),
+    onSuccess: (_issued, enrollmentId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.certificate(enrollmentId) });
+    },
+  });
+}
+
 export function useEnroll() {
   const qc = useQueryClient();
   return useMutation({

@@ -169,7 +169,15 @@ export const classSlices: Record<string, MethodSlice> = {
   reactivate: async ([id], load) => classWithStudents(id as Id, load),
   setEnrollmentPayment: classOfRow("enrollments"),
   // Frequencia do aluno no curso: a turma da matricula e os seus alunos.
-  getCourseCertificate: classOfRow("enrollments"),
+  // Emitir grava o certificado (doc 21 §1.3): o recorte traz o ja emitido da matricula.
+  getCourseCertificate: async ([id], load) => {
+    await classOfRow("enrollments")([id], load);
+    await load.where("issuedCertificates", "enrollmentId", [id as Id]);
+  },
+  cancelCertificate: async ([id], load) => {
+    await catalog(load);
+    await load.where("issuedCertificates", "enrollmentId", [id as Id]);
+  },
   promoteFromWaitlist: classOfRow("waitlist"),
   removeFromWaitlist: classOfRow("waitlist"),
 };

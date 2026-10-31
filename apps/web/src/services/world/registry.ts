@@ -49,6 +49,8 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../classes/classSlices")).classSlices,
     permissions: {
       ...all(["create", "update", "deactivate", "reactivate", "substituteInstructor", "restorePrimaryInstructor"], MANAGE_CLASSES),
+      // Cancelar um certificado emitido (doc 21 §1.3): quem gere as turmas.
+      ...all(["cancelCertificate"], MANAGE_CLASSES),
       ...all(
         [
           "enroll",

@@ -1,8 +1,42 @@
 import type { CSSProperties } from "react";
 import type { CertificateArtwork, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
 import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/certificate";
+import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { ACCENT_COLORS } from "../certificate-meta";
+import { certificateVerifyUrl } from "../certificate-verify";
+
+/**
+ * Rodape de verificacao (doc 21 §1.3): codigo e QR no canto, por cima de
+ * qualquer layout. A previa do editor nao tem codigo e fica sem ele.
+ */
+function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
+  const url = certificateVerifyUrl(code);
+  return (
+    <div
+      className={cn(
+        "absolute right-[2.2cqw] bottom-[1.8cqw] flex items-center gap-[1cqw] text-right",
+        ink === "light" ? "text-white/85" : "text-zinc-500",
+      )}
+      data-testid="certificate-verification"
+    >
+      <div className="text-[0.95cqw] leading-snug">
+        <p className="font-semibold tracking-wide">{code}</p>
+        <p>Confira em {url.replace(/^https?:\/\//, "")}</p>
+      </div>
+      <QRCodeSVG
+        value={url}
+        level="M"
+        marginSize={0}
+        bgColor="#ffffff"
+        fgColor="#000000"
+        role="img"
+        aria-label="QR Code de verificação"
+        className="size-[6cqw] rounded-[0.3cqw] bg-white p-[0.3cqw]"
+      />
+    </div>
+  );
+}
 
 /**
  * Folha do certificado (A4 deitado). As medidas usam a largura da folha
@@ -199,7 +233,7 @@ export function CertificateSheet({
     // A4 deitado; na impressao (folha de 277 x 190 mm uteis) a altura fica fixa para caber em 1 pagina.
     <div className={cn("@container w-full print:w-[277mm]", className)}>
       <article
-        className="certificate-sheet aspect-[297/210] w-full overflow-hidden rounded-md bg-white text-zinc-900 shadow-sm ring-1 ring-black/10 [-webkit-print-color-adjust:exact] [print-color-adjust:exact] print:aspect-auto print:h-[190mm] print:rounded-none print:shadow-none print:ring-0"
+        className="certificate-sheet relative aspect-[297/210] w-full overflow-hidden rounded-md bg-white text-zinc-900 shadow-sm ring-1 ring-black/10 [-webkit-print-color-adjust:exact] [print-color-adjust:exact] print:aspect-auto print:h-[190mm] print:rounded-none print:shadow-none print:ring-0"
         style={{ "--cert-accent": accent } as CSSProperties}
       >
         {template.layout === "custom" && template.artwork ? (
@@ -211,6 +245,12 @@ export function CertificateSheet({
         ) : (
           <ClassicSheet {...props} />
         )}
+        {certificate.verificationCode ? (
+          <Verification
+            code={certificate.verificationCode}
+            ink={template.layout === "custom" && template.artwork?.ink === "light" ? "light" : "dark"}
+          />
+        ) : null}
       </article>
     </div>
   );

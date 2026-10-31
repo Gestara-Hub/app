@@ -60,8 +60,15 @@ export interface CertificateTemplate {
 /** Salvar troca o modelo inteiro (sem `logoFileId` = sem logo; sem `artwork` = sem arte). */
 export type SaveCertificateTemplate = Omit<CertificateTemplate, "updatedAt">;
 
-/** O que a tela do certificado recebe: os dados do aluno e o modelo do espaco. */
+/** O que a tela do certificado recebe: os dados do aluno, o modelo e a emissao. */
 export interface CourseCertificateDocument {
   certificate: CourseCertificate;
+  /** Registro da emissao (doc 21 §1.3). */
+  issued: {
+    code: string;
+    status: "valid" | "canceled";
+    issuedAt: DateTimeISO;
+    canceledAt?: DateTimeISO;
+  };
   template: CertificateTemplate;
 }

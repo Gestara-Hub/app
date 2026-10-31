@@ -359,6 +359,29 @@ export function renderCertificate(
   };
 }
 
+/**
+ * Codigo de verificacao do certificado emitido (doc 21 §1.3): "GH-7K3M-2A9F".
+ * Sem 0, O, 1 e I, para ler em voz alta sem confundir; 8 caracteres de 32 dao
+ * mais de um trilhao de combinacoes.
+ */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export const CERTIFICATE_CODE_RE = /^GH-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+
+export function newCertificateCode(): string {
+  const bytes = new Uint8Array(8);
+  globalThis.crypto.getRandomValues(bytes);
+  const chars = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]);
+  return `GH-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+/** O codigo como a pessoa digita (minusculas, sem tracos ou espacos) vira o guardado. */
+export function normalizeCertificateCode(input: string): string | null {
+  const raw = input.trim().toUpperCase().replace(/[\s-]/g, "").replace(/^GH/, "");
+  if (raw.length !== 8) return null;
+  const code = `GH-${raw.slice(0, 4)}-${raw.slice(4)}`;
+  return CERTIFICATE_CODE_RE.test(code) ? code : null;
+}
+
 /** Texto do modelo padrao. */
 export function defaultCertificateText(cert: CourseCertificate): CertificateText {
   const { title, body, placeAndDate } = renderCertificate(cert, defaultCertificateTemplate());

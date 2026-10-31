@@ -37,5 +37,15 @@ Guia: /settings?tab=certificado
 + botão "Voltar ao texto padrão": Clique aqui para voltar o título e o texto originais. O sistema pede confirmação. Depois, salve na barra que aparece embaixo.
 O botão só aparece quando o texto está diferente do padrão. Layout, cor, assinaturas e logo não mudam.
 
+## Código de verificação
+Resumo: Quem recebe o certificado confere se ele é verdadeiro.
+Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) abre o endereço do rodapé ou lê o QR e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.
+
+## Cancelar um certificado
+Resumo: Emitiu errado? Cancele e a página de verificação passa a dizer que não vale.
+Guia: /classes
++ texto "Turmas": Abra a turma do curso, depois o certificado do aluno pelo menu ⋮.
+Na tela do certificado, "Cancelar certificado" pede confirmação e não dá para desfazer. O PDF e a impressão somem, e a página do código passa a dizer que o certificado foi cancelado. Para emitir de novo, fale com o suporte.
+
 ## Frequência
 O texto padrão diz quantas aulas o curso teve e a frequência real do aluno. "Concluído" vale pelo calendário do curso.

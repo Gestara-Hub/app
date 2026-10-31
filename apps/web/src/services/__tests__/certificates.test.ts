@@ -1,5 +1,5 @@
 import type { AttendanceStatus, ClassGroupView, SaveCertificateTemplate } from "@gestarahub/contracts";
-import { defaultCertificateTemplate, renderCertificate } from "@gestarahub/core/certificate";
+import { CERTIFICATE_CODE_RE, defaultCertificateTemplate, renderCertificate } from "@gestarahub/core/certificate";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getFileBlob } from "@/mocks/file-blobs";
 import { store } from "@/mocks/store";
@@ -300,6 +300,31 @@ describe("modelo de certificado", () => {
     expect((await certificatesService.removeModalityTemplate(modalityId)).title).toBe("Do espaço");
     expect((await turmasService.getCourseCertificate(enrollment.id)).template.title).toBe("Do espaço");
     await expect(certificatesService.saveTemplate(customTemplate(), "m-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("abrir emite uma vez: código fixo, dados congelados, e cancelar marca o registro", async () => {
+    setTier("pro");
+    const { g, student, enrollment } = await completedEnrollment();
+    mark(g.id, student.id, "2026-09-14", "present");
+    const first = await turmasService.getCourseCertificate(enrollment.id);
+    expect(first.issued.status).toBe("valid");
+    expect(first.issued.code).toMatch(CERTIFICATE_CODE_RE);
+    expect(first.certificate.verificationCode).toBe(first.issued.code);
+    expect(store.issuedCertificates).toHaveLength(1);
+    expect(store.auditLog.at(-1)?.summary).toContain(`emitiu o certificado de ${student.name}`);
+
+    // De novo: o mesmo codigo, sem novo registro, e os dados do momento da emissao.
+    mark(g.id, student.id, "2026-09-21", "absent");
+    const again = await turmasService.getCourseCertificate(enrollment.id);
+    expect(again.issued.code).toBe(first.issued.code);
+    expect(again.certificate.attendancePercent).toBe(first.certificate.attendancePercent);
+    expect(store.issuedCertificates).toHaveLength(1);
+
+    const canceled = await turmasService.cancelCertificate(enrollment.id, "Nome errado");
+    expect(canceled).toMatchObject({ code: first.issued.code, status: "canceled" });
+    expect(store.issuedCertificates?.[0]).toMatchObject({ status: "canceled", cancelReason: "Nome errado" });
+    expect((await turmasService.getCourseCertificate(enrollment.id)).issued.status).toBe("canceled");
+    await expect(turmasService.cancelCertificate("enr-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("o certificado do aluno vem com o modelo do espaco", async () => {

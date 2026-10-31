@@ -23,12 +23,12 @@
 **Falta (próximas versões):**
 - ~~modelo por modalidade ou por curso~~ (entregue em 31/10/2026: modelo por modalidade, abaixo);
 - emitir em lote para todos os concluídos de uma turma;
-- código de verificação no certificado (página pública que confirma que ele é verdadeiro);
+- ~~código de verificação no certificado~~ (entregue em 31/10/2026, §1.3);
 - assinatura em imagem;
 - o aluno baixar o próprio certificado pelo app;
 - layout infantil e `{nota}` (depende das notas, seção 2).
 
-**Pontos a decidir:** critério mínimo para emitir (frequência mínima, nota mínima); guardar o certificado emitido (histórico) ou gerar sempre na hora (hoje: na hora, com o modelo em vigor).
+**Pontos a decidir:** critério mínimo para emitir (frequência mínima, nota mínima). ~~Guardar o certificado emitido~~: desde 31/10/2026 a emissão fica registrada (§1.3); o desenho segue o modelo em vigor, os dados são os da emissão.
 
 **Cuidado no desenho atual:** os dados do certificado ficam separados do layout, para o gerador entrar sem reescrever a emissão.
 
@@ -40,7 +40,15 @@
 - **Etapa 1, "Minha arte" (entregue em 31/10/2026):** 4º layout (`layout: "custom"`, `artwork` no modelo: `fileId`, `textPosition`, `ink`, `hidden`). Imagem PNG ou JPG, A4 deitado, até 2 MB (PDF não: o gerador de PDF não desenha PDF como imagem). Com a arte, o resto do editor continua igual (texto, variáveis, assinaturas, logo). Três ajustes, sem arrastar nada: **posição do texto** (em cima, no centro, embaixo), **cor do texto** (escura ou clara, para arte escura) e **partes que aparecem** (logo, nome do espaço, título, texto, data, assinaturas): quem tem arte com o título já impresso desliga o título. A cor de destaque não vale nesse layout. Prévia ao vivo, como nos outros. A tela (`CertificateSheet`) e o PDF (`certificate-pdf.tsx`) desenham a arte com `object-fit: cover`; o PDF lê a imagem pelo `loadSpaceImage` (só PNG e JPG da pasta do espaço). A arte sobe pelo caminho dos anexos (`uploadArtwork`, `CERTIFICATE_ARTWORK_RULES`). Em outro layout a arte é esquecida ao salvar.
 - **Etapa 2, campos no lugar (só se um cliente pedir com caso concreto):** na prévia, cada bloco vira uma caixa que a pessoa arrasta e redimensiona, só no computador; fonte entre 3 ou 4 opções, tamanho e alinhamento por bloco.
 - **Fora:** importar `.docx` ou `.pptx` para editar por dentro; editor de HTML ou de código.
-- **Ordem do que falta** (da lista acima): código de verificação com página pública, emitir em lote. Etapa 2 depois disso.
+- **Ordem do que falta** (da lista acima): emitir em lote. Etapa 2 depois disso.
+
+### 1.3 Código de verificação (entregue em 31/10/2026)
+
+- **Emissão registrada:** abrir o certificado pela primeira vez grava `issued_certificates` (migração 80): código, matrícula, aluno, curso e os dados daquele momento (`snapshot`); nas próximas aberturas o código é o mesmo e os dados não mudam, mesmo que a turma mude. Por isso `getCourseCertificate` virou gravação. Entra na auditoria ("emitiu o certificado de ...").
+- **Código:** `GH-XXXX-XXXX`, 8 caracteres de um alfabeto sem 0, O, 1 e I (`newCertificateCode`, core). Sai no rodapé do certificado (tela e PDF) com "Confira em <endereço>" e um QR Code; a prévia do editor mostra um código de exemplo.
+- **Página pública** `/p/certificado/<código>`: confirma que existe e vale, com nome do aluno mascarado ("Ana S."), curso, período, carga horária, frequência e emissão; cancelado diz que não vale; código desconhecido, "não encontrado". Só leitura, nada é gravado (doc product/24 §6). Fora dos buscadores.
+- **Cancelar:** na tela do certificado, quem gere turmas cancela com confirmação (sem desfazer); o PDF e a impressão somem e a página passa a dizer "cancelado". Reemitir fica para o suporte (apagar o registro) até alguém pedir na tela.
+- **Fora, por ora:** assinatura digital ICP-Brasil (caro e pouco pedido; a página resolve a confiança do dia a dia).
 
 ### 1.2 Modelo por modalidade (entregue em 31/10/2026)
 

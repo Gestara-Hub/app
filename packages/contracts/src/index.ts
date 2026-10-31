@@ -16,6 +16,7 @@ export * from "./class";
 export * from "./assessment";
 export * from "./measurement";
 export * from "./certificate";
+export * from "./issued-certificate";
 export * from "./billing";
 export * from "./package";
 export * from "./subscription";

@@ -457,6 +457,32 @@
     }
   },
   {
+    "id": "certificados#codigo-de-verificacao",
+    "article": "Certificados de conclusão",
+    "title": "Código de verificação",
+    "route": "/settings?tab=certificado",
+    "text": "Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) abre o endereço do rodapé ou lê o QR e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.",
+    "summary": "Quem recebe o certificado confere se ele é verdadeiro."
+  },
+  {
+    "id": "certificados#cancelar-um-certificado",
+    "article": "Certificados de conclusão",
+    "title": "Cancelar um certificado",
+    "route": "/settings?tab=certificado",
+    "text": "Na tela do certificado, \"Cancelar certificado\" pede confirmação e não dá para desfazer. O PDF e a impressão somem, e a página do código passa a dizer que o certificado foi cancelado. Para emitir de novo, fale com o suporte.",
+    "summary": "Emitiu errado? Cancele e a página de verificação passa a dizer que não vale.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Abra a turma do curso, depois o certificado do aluno pelo menu ⋮."
+        }
+      ]
+    }
+  },
+  {
     "id": "certificados#frequencia",
     "article": "Certificados de conclusão",
     "title": "Frequência",

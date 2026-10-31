@@ -1,10 +1,12 @@
 import { renderToBuffer } from "@react-pdf/renderer";
+import QRCode from "qrcode";
 import type { Id } from "@gestarahub/contracts";
 import { CERTIFICATE_ACCENT_HEX, renderCertificate } from "@gestarahub/core/certificate";
 import { CertificatePdf } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
+import { certificateVerifyUrl } from "@/features/certificates/certificate-verify";
 import { loadSpaceImage, loadSpaceLogo } from "./documents";
 import type { TenantContext } from "./tenant";
 
@@ -28,6 +30,11 @@ export async function renderCertificatePdf(
     template.layout === "custom" && template.artwork
       ? await loadSpaceImage(ctx.organizationId, template.artwork.fileId)
       : null;
+  // Codigo e QR de verificacao (doc 21 §1.3), desenhados no servidor.
+  const code = certificate.verificationCode;
+  const verification = code
+    ? { code, url: certificateVerifyUrl(code), qr: { src: await QRCode.toDataURL(certificateVerifyUrl(code), { margin: 0, width: 240 }) } }
+    : undefined;
   const pdf = await renderToBuffer(
     <CertificatePdf
       text={text}
@@ -37,6 +44,7 @@ export async function renderCertificatePdf(
       logo={logo}
       artwork={artwork}
       artworkSettings={template.artwork}
+      verification={verification}
     />,
   );
   const slug = certificate.studentName
