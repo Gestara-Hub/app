@@ -126,6 +126,10 @@ test.describe("landing page", () => {
     await expect(signup.getByText("Informe seu nome.")).toBeVisible();
     await expect(signup.getByText("Informe seu e-mail.")).toBeVisible();
     await expect(signup.locator("#signup-name")).toHaveAttribute("aria-invalid", "true");
+    // O React Hook Form foca o 1o campo com erro de novo num setTimeout: esvazia a
+    // fila de timers antes de digitar, senao o texto do e-mail cai no Nome.
+    await expect(signup.locator("#signup-name")).toBeFocused();
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
     await signup.locator("#signup-email").fill("ana@");
     await expect(signup.getByText("Informe um e-mail válido.")).toBeVisible();
     await expect(signup.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/login");
