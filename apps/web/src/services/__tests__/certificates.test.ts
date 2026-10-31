@@ -280,7 +280,15 @@ describe("modelo de certificado", () => {
     expect(moved.artwork?.verification).toEqual({ x: 10.12, y: 70.46 });
     await expect(
       certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork: { ...artwork, verification: { x: 120, y: 0 } } })),
-    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "artwork.verification", message: "Posição do QR fora da folha." }] });
+    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "artwork.verification", message: "Posição fora da folha." }] });
+    // Os outros blocos e os tamanhos seguem o mesmo caminho.
+    const blocks = await certificatesService.saveTemplate(
+      customTemplate({ layout: "custom", artwork: { ...artwork, logo: { x: 5, y: 5 }, signatures: { x: 50, y: 80 }, logoSize: "large", qrSize: "small" } }),
+    );
+    expect(blocks.artwork).toMatchObject({ logo: { x: 5, y: 5 }, signatures: { x: 50, y: 80 }, logoSize: "large", qrSize: "small" });
+    await expect(
+      certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork: { ...artwork, logoSize: "huge" as never } })),
+    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "artwork.logoSize" }] });
     // Em outro layout a arte e esquecida.
     const modern = await certificatesService.saveTemplate(customTemplate({ layout: "modern", artwork }));
     expect("artwork" in modern).toBe(false);

@@ -1,5 +1,5 @@
-import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import type { CertificateArtwork, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CertificateArtwork, CertificateBlock, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
 import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/certificate";
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,75 @@ import { certificateLookupAddress, certificateVerifyUrl } from "../certificate-v
  * qualquer layout. A previa do editor nao tem codigo e fica sem ele.
  */
 type SheetPosition = { x: number; y: number };
+type BlockMove = (block: CertificateBlock, position: SheetPosition) => void;
+
+/** Arrastar um bloco dentro da folha (editor, "Minha arte"): devolve a posicao em % da folha. */
+function startDrag(event: ReactPointerEvent<HTMLElement>, onMove: (position: SheetPosition) => void) {
+  const el = event.currentTarget;
+  const sheet = el.closest("article");
+  if (!sheet) return;
+  event.preventDefault();
+  el.setPointerCapture(event.pointerId);
+  const bounds = sheet.getBoundingClientRect();
+  const block = el.getBoundingClientRect();
+  const grabX = event.clientX - block.left;
+  const grabY = event.clientY - block.top;
+  const move = (e: PointerEvent) => {
+    const maxX = bounds.width - block.width;
+    const maxY = bounds.height - block.height;
+    const left = Math.min(Math.max(e.clientX - grabX - bounds.left, 0), maxX);
+    const top = Math.min(Math.max(e.clientY - grabY - bounds.top, 0), maxY);
+    onMove({ x: Math.round((left / bounds.width) * 10000) / 100, y: Math.round((top / bounds.height) * 10000) / 100 });
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
+/**
+ * Bloco da arte propria: no fluxo, ou solto onde a pessoa arrastou (`position`,
+ * em % da folha). Com `onMove`, arrasta-se na previa.
+ */
+function Block({
+  block,
+  position,
+  onMove,
+  className,
+  flowClassName,
+  absoluteClassName,
+  children,
+}: {
+  block: CertificateBlock;
+  position?: SheetPosition;
+  onMove?: BlockMove;
+  className?: string;
+  /** Classes so no fluxo (ex.: largura do texto). */
+  flowClassName?: string;
+  /** Classes so quando solto (ex.: largura fixa). */
+  absoluteClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      onPointerDown={onMove ? (event) => startDrag(event, (pos) => onMove(block, pos)) : undefined}
+      style={position ? { left: `${position.x}%`, top: `${position.y}%` } : undefined}
+      className={cn(
+        className,
+        position ? cn("absolute", absoluteClassName) : flowClassName,
+        onMove && "cursor-grab touch-none select-none rounded-[0.5cqw] outline-dashed outline-1 outline-offset-[0.4cqw] outline-current/60 active:cursor-grabbing",
+      )}
+      title={onMove ? "Arraste para mudar de lugar" : undefined}
+      data-testid={`certificate-block-${block}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+const QR_SIZE_CLASS = { small: "size-[3.2cqw]", normal: "size-[4.5cqw]" } as const;
 
 /**
  * Rodape de verificacao: QR, codigo e endereco curto. No canto inferior direito,
@@ -20,70 +89,40 @@ function Verification({
   code,
   ink,
   position,
+  size = "normal",
   onMove,
 }: {
   code: string;
   ink: "dark" | "light";
   position?: SheetPosition;
-  /** Com ele, o bloco se arrasta dentro da folha (editor, "Minha arte"). */
-  onMove?: (position: SheetPosition) => void;
+  size?: "small" | "normal";
+  onMove?: BlockMove;
 }) {
   const url = certificateVerifyUrl(code);
-  const ref = useRef<HTMLDivElement>(null);
-
-  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!onMove || !ref.current) return;
-    const sheet = ref.current.closest("article");
-    if (!sheet) return;
-    event.preventDefault();
-    ref.current.setPointerCapture(event.pointerId);
-    const bounds = sheet.getBoundingClientRect();
-    const block = ref.current.getBoundingClientRect();
-    const grabX = event.clientX - block.left;
-    const grabY = event.clientY - block.top;
-    const move = (e: PointerEvent) => {
-      const maxX = bounds.width - block.width;
-      const maxY = bounds.height - block.height;
-      const left = Math.min(Math.max(e.clientX - grabX - bounds.left, 0), maxX);
-      const top = Math.min(Math.max(e.clientY - grabY - bounds.top, 0), maxY);
-      onMove({ x: Math.round((left / bounds.width) * 10000) / 100, y: Math.round((top / bounds.height) * 10000) / 100 });
-    };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  }
-
   return (
-    <div
-      ref={ref}
-      onPointerDown={onMove ? onPointerDown : undefined}
-      style={position ? { left: `${position.x}%`, top: `${position.y}%` } : undefined}
-      className={cn(
-        "absolute flex flex-col items-center gap-[0.4cqw]",
-        position ? "" : "right-[2.2cqw] bottom-[1.8cqw]",
-        ink === "light" ? "text-white/85" : "text-zinc-500",
-        onMove && "cursor-grab touch-none select-none rounded-[0.5cqw] outline-dashed outline-1 outline-offset-[0.4cqw] outline-current/60 active:cursor-grabbing",
-      )}
-      title={onMove ? "Arraste para mudar de lugar" : undefined}
-      data-testid="certificate-verification"
+    <Block
+      block="verification"
+      position={position}
+      onMove={onMove}
+      className={cn("flex flex-col items-center gap-[0.4cqw]", ink === "light" ? "text-white/85" : "text-zinc-500")}
+      flowClassName="absolute right-[2.2cqw] bottom-[1.8cqw]"
     >
-      {/* QR, o codigo embaixo e o endereco curto para quem digita (o QR ja leva direto). */}
-      <QRCodeSVG
-        value={url}
-        level="M"
-        marginSize={0}
-        bgColor="#ffffff"
-        fgColor="#000000"
-        role="img"
-        aria-label="QR Code de verificação"
-        className="size-[4.5cqw] rounded-[0.3cqw] bg-white p-[0.3cqw]"
-      />
-      <p className="text-[0.85cqw] font-semibold tracking-wide">{code}</p>
-      <p className="text-[0.65cqw]">{certificateLookupAddress()}</p>
-    </div>
+      <div data-testid="certificate-verification" className="flex flex-col items-center gap-[0.4cqw]">
+        {/* QR, o codigo embaixo e o endereco curto para quem digita (o QR ja leva direto). */}
+        <QRCodeSVG
+          value={url}
+          level="M"
+          marginSize={0}
+          bgColor="#ffffff"
+          fgColor="#000000"
+          role="img"
+          aria-label="QR Code de verificação"
+          className={cn("rounded-[0.3cqw] bg-white p-[0.3cqw]", QR_SIZE_CLASS[size])}
+        />
+        <p className={cn("font-semibold tracking-wide", size === "small" ? "text-[0.75cqw]" : "text-[0.85cqw]")}>{code}</p>
+        <p className="text-[0.65cqw]">{certificateLookupAddress()}</p>
+      </div>
+    </Block>
   );
 }
 
@@ -107,8 +146,9 @@ const TEXT_POSITION_CLASS = { top: "justify-start", center: "justify-center", bo
 
 function Logo({ url, className }: { url: string | null; className?: string }) {
   if (!url) return null;
+  // Sem o arrasto nativo da imagem: ele engolia o arrasto do bloco da logo na previa.
   // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
-  return <img src={url} alt="" className={cn("w-auto object-contain", className)} />;
+  return <img src={url} alt="" draggable={false} className={cn("w-auto object-contain", className)} />;
 }
 
 function Signatures({
@@ -229,6 +269,8 @@ function MinimalSheet({ text, organizationName, logoUrl, reserveFooter }: SheetP
  * por cima, na posicao e na cor escolhidas; as partes que a arte ja traz
  * impressas ficam de fora. Sem a imagem (ainda carregando), fundo branco.
  */
+const LOGO_SIZE_CLASS = { small: "h-[3.5cqw]", medium: "h-[5cqw]", large: "h-[8cqw]" } as const;
+
 function CustomSheet({
   text,
   organizationName,
@@ -236,14 +278,47 @@ function CustomSheet({
   artworkUrl,
   artwork,
   reserveFooter,
-}: SheetProps & { artworkUrl: string | null; artwork: Omit<CertificateArtwork, "fileId"> }) {
+  onMove,
+}: SheetProps & { artworkUrl: string | null; artwork: Omit<CertificateArtwork, "fileId">; onMove?: BlockMove }) {
   const show = (part: CertificatePart) => !artwork.hidden.includes(part);
   const light = artwork.ink === "light";
+  const logo = show("logo") && logoUrl ? (
+    <Block block="logo" position={artwork.logo} onMove={onMove} className="flex justify-center">
+      <Logo url={logoUrl} className={LOGO_SIZE_CLASS[artwork.logoSize ?? "medium"]} />
+    </Block>
+  ) : null;
+  const textBlock =
+    show("organizationName") || show("title") || show("body") || show("date") ? (
+      <Block
+        block="text"
+        position={artwork.text}
+        onMove={onMove}
+        className="flex flex-col items-center gap-[1.6cqw] text-center"
+        flowClassName="w-full"
+        absoluteClassName="w-[84%]"
+      >
+        {show("organizationName") ? (
+          <p className={cn("text-[1.3cqw] font-semibold tracking-[0.2em] uppercase", light ? "text-white/80" : "text-zinc-500")}>
+            {organizationName}
+          </p>
+        ) : null}
+        {show("title") ? <h1 className="font-serif text-[4.2cqw] leading-tight font-semibold">{text.title}</h1> : null}
+        {show("body") ? <p className="text-[1.9cqw] leading-relaxed whitespace-pre-line">{text.body}</p> : null}
+        {show("date") ? (
+          <p className={cn("text-[1.35cqw]", light ? "text-white/80" : "text-zinc-600")}>{text.placeAndDate}</p>
+        ) : null}
+      </Block>
+    ) : null;
+  const signatures = show("signatures") ? (
+    <Block block="signatures" position={artwork.signatures} onMove={onMove} flowClassName="w-full pt-[1.5cqw]" absoluteClassName="w-[70%]">
+      <Signatures text={text} ink={artwork.ink} />
+    </Block>
+  ) : null;
   return (
     <div className={cn("relative flex h-full flex-col", light ? "text-white" : "text-zinc-900")}>
       {artworkUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
-        <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={artworkUrl} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
       ) : null}
       <div
         className={cn(
@@ -252,27 +327,16 @@ function CustomSheet({
           reserveFooter && "pb-[7.5cqw]",
         )}
       >
-        <div className="flex max-w-[84%] flex-col items-center gap-[1.6cqw]">
-          {show("logo") ? <Logo url={logoUrl} className="h-[5cqw]" /> : null}
-          {show("organizationName") ? (
-            <p className={cn("text-[1.3cqw] font-semibold tracking-[0.2em] uppercase", light ? "text-white/80" : "text-zinc-500")}>
-              {organizationName}
-            </p>
-          ) : null}
-          {show("title") ? (
-            <h1 className="font-serif text-[4.2cqw] leading-tight font-semibold">{text.title}</h1>
-          ) : null}
-          {show("body") ? <p className="text-[1.9cqw] leading-relaxed whitespace-pre-line">{text.body}</p> : null}
-          {show("date") ? (
-            <p className={cn("text-[1.35cqw]", light ? "text-white/80" : "text-zinc-600")}>{text.placeAndDate}</p>
-          ) : null}
-          {show("signatures") ? (
-            <div className="w-full pt-[1.5cqw]">
-              <Signatures text={text} ink={artwork.ink} />
-            </div>
-          ) : null}
+        {/* Blocos no fluxo (na ordem da folha); os soltos saem daqui e ficam onde foram arrastados. */}
+        <div className="flex w-[84%] flex-col items-center gap-[1.6cqw]">
+          {!artwork.logo ? logo : null}
+          {!artwork.text ? textBlock : null}
+          {!artwork.signatures ? signatures : null}
         </div>
       </div>
+      {artwork.logo ? logo : null}
+      {artwork.text ? textBlock : null}
+      {artwork.signatures ? signatures : null}
     </div>
   );
 }
@@ -283,7 +347,7 @@ export function CertificateSheet({
   logoUrl = null,
   artworkUrl = null,
   className,
-  onVerificationMove,
+  onBlockMove,
 }: {
   certificate: CourseCertificate;
   template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures" | "showAttendance"> & {
@@ -293,8 +357,8 @@ export function CertificateSheet({
   /** Imagem da arte de fundo (layout "custom"). */
   artworkUrl?: string | null;
   className?: string;
-  /** Editor da arte propria: arrastar o bloco do QR muda `artwork.verification`. */
-  onVerificationMove?: (position: SheetPosition) => void;
+  /** Editor da arte propria: arrastar um bloco (logo, texto, assinaturas, QR) muda a posicao dele. */
+  onBlockMove?: BlockMove;
 }) {
   const text = renderCertificate(certificate, template);
   const isCustom = template.layout === "custom" && Boolean(template.artwork);
@@ -315,7 +379,7 @@ export function CertificateSheet({
         style={{ "--cert-accent": accent } as CSSProperties}
       >
         {template.layout === "custom" && template.artwork ? (
-          <CustomSheet {...props} artworkUrl={artworkUrl} artwork={template.artwork} />
+          <CustomSheet {...props} artworkUrl={artworkUrl} artwork={template.artwork} onMove={onBlockMove} />
         ) : template.layout === "modern" ? (
           <ModernSheet {...props} />
         ) : template.layout === "minimal" ? (
@@ -328,7 +392,8 @@ export function CertificateSheet({
             code={certificate.verificationCode}
             ink={isCustom && template.artwork?.ink === "light" ? "light" : "dark"}
             position={verificationPosition}
-            onMove={isCustom ? onVerificationMove : undefined}
+            size={isCustom ? template.artwork?.qrSize : undefined}
+            onMove={isCustom ? onBlockMove : undefined}
           />
         ) : null}
       </article>

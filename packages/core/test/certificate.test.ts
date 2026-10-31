@@ -246,6 +246,10 @@ describe("certificado: validação do modelo", () => {
     assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: 12.5, y: 80 } }), []);
     assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: 101, y: 0 } }), ["artwork.verification"]);
     assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], verification: { x: "a" } }), ["artwork.verification"]);
+    assert.deepEqual(
+      fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: [], logo: { x: 1, y: 1 }, text: { x: -1, y: 0 }, qrSize: "giant" }),
+      ["artwork.text", "artwork.qrSize"],
+    );
     // Nos outros layouts a arte nao e conferida.
     assert.deepEqual(validateCertificateTemplate({ ...defaultCertificateTemplate(), artwork: { fileId: "" } as never }), []);
   });

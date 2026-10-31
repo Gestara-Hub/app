@@ -550,7 +550,7 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByText("Mostre pelo menos o título ou o texto.")).toBeVisible();
     await panel.getByRole("switch", { name: "Texto" }).click();
 
-    // Arrasta o QR para o canto superior esquerdo da previa; "Voltar ao canto" desfaz.
+    // Arrasta o QR para o canto superior esquerdo da previa; "Voltar ao lugar" desfaz.
     const qr = panel.getByTestId("certificate-verification");
     const sheetBox = (await panel.locator("article.certificate-sheet").boundingBox())!;
     const qrBox = (await qr.boundingBox())!;
@@ -561,7 +561,7 @@ test.describe("Configurações: Certificado", () => {
     const movedBox = (await qr.boundingBox())!;
     expect(movedBox.x - sheetBox.x).toBeLessThan(60);
     expect(movedBox.y - sheetBox.y).toBeLessThan(60);
-    const back = panel.getByRole("button", { name: "Voltar ao canto" });
+    const back = panel.getByRole("button", { name: "Voltar ao lugar" });
     await expect(back).toBeVisible();
     await back.click();
     expect(((await qr.boundingBox())!.x)).toBeGreaterThan(sheetBox.x + sheetBox.width / 2);
@@ -570,6 +570,25 @@ test.describe("Configurações: Certificado", () => {
     await page.mouse.move(sheetBox.x + qrBox.width / 2 + 20, sheetBox.y + qrBox.height / 2 + 20, { steps: 8 });
     await page.mouse.up();
 
+    // Os outros blocos tambem: a logo vai para o canto inferior esquerdo, grande; o QR fica pequeno.
+    await panel.locator("input[type=file]#logo").setInputFiles(files.png);
+    await panel.getByRole("combobox", { name: "Tamanho da logo" }).click();
+    await page.getByRole("option", { name: "Grande" }).click();
+    await panel.getByRole("combobox", { name: "Tamanho do QR Code" }).click();
+    await page.getByRole("option", { name: "Pequeno" }).click();
+    // O Select (Radix) deixa o body sem eventos de ponteiro enquanto fecha: espera liberar antes de arrastar.
+    await expect(page.locator("body")).not.toHaveCSS("pointer-events", "none");
+    const logoBlock = panel.getByTestId("certificate-block-logo");
+    const logoBox = (await logoBlock.boundingBox())!;
+    await page.mouse.move(logoBox.x + logoBox.width / 2, logoBox.y + logoBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(sheetBox.x + logoBox.width / 2 + 20, sheetBox.y + sheetBox.height - logoBox.height / 2 - 20, { steps: 8 });
+    await page.mouse.up();
+    const movedLogo = (await logoBlock.boundingBox())!;
+    expect(movedLogo.x - sheetBox.x).toBeLessThan(60);
+    expect(sheetBox.y + sheetBox.height - (movedLogo.y + movedLogo.height)).toBeLessThan(60);
+    await expect(panel.getByRole("button", { name: "Voltar ao lugar" })).toHaveCount(2);
+
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
     await waitForStore(page, (t) => t.certificateTemplate?.layout === "custom");
@@ -577,6 +596,10 @@ test.describe("Configurações: Certificado", () => {
     expect(saved.artwork).toMatchObject({ textPosition: "bottom", ink: "light", hidden: ["title"] });
     expect(saved.artwork.verification.x).toBeLessThan(10);
     expect(saved.artwork.verification.y).toBeLessThan(10);
+    expect(saved.artwork.logo.x).toBeLessThan(10);
+    expect(saved.artwork.logo.y).toBeGreaterThan(60);
+    expect(saved.artwork).toMatchObject({ logoSize: "large", qrSize: "small" });
+    expect(saved.logoFileId).toBeTruthy();
     expect(saved.artwork.fileId).toBeTruthy();
 
     // Recarregado: a arte atual, os ajustes e a previa com a imagem.
@@ -584,7 +607,9 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByText("Arte atual")).toBeVisible();
     await expect(panel.getByRole("radio", { name: "Embaixo" })).toHaveAttribute("aria-checked", "true");
     await expect(panel.getByRole("switch", { name: "Título" })).not.toBeChecked();
-    await expect(sheet.locator("img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
+    // Duas imagens: a arte (primeira) e a logo.
+    await expect(sheet.locator("img").first()).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
+    await expect(sheet.locator("img")).toHaveCount(2);
     // O QR volta onde foi deixado.
     const reloadedSheet = (await sheet.boundingBox())!;
     const reloadedQr = (await panel.getByTestId("certificate-verification").boundingBox())!;

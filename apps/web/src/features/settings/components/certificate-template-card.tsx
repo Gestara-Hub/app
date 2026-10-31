@@ -8,11 +8,14 @@ import { Award, Check, FileText, Plus, RotateCcw, Trash2, X } from "lucide-react
 import { isSupabaseOrganization } from "@/lib/session";
 import { logError } from "@/lib/log";
 import { useCallback, useState } from "react";
-import type { CertificatePart, CertificateTemplate, Id } from "@gestarahub/contracts";
+import type { CertificateBlock, CertificateLogoSize, CertificatePart, CertificateQrSize, CertificateTemplate, Id } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import {
   CERTIFICATE_ACCENT_COLORS,
+  CERTIFICATE_BLOCKS,
   CERTIFICATE_INKS,
+  CERTIFICATE_LOGO_SIZES,
+  CERTIFICATE_QR_SIZES,
   CERTIFICATE_LAYOUTS,
   CERTIFICATE_LIMITS,
   CERTIFICATE_PARTS,
@@ -109,21 +112,22 @@ const schema = z
     textPosition: z.enum(CERTIFICATE_TEXT_POSITIONS),
     ink: z.enum(CERTIFICATE_INKS),
     hidden: z.array(z.enum(CERTIFICATE_PARTS)),
-    /** Onde o QR foi arrastado na arte (% da folha); ausente = canto inferior direito. */
-    verificationPosition: z.object({ x: z.number(), y: z.number() }).optional(),
+    /** Blocos arrastados na arte (% da folha); ausente = lugar padrao. */
+    positions: z.object({
+      logo: z.object({ x: z.number(), y: z.number() }).optional(),
+      text: z.object({ x: z.number(), y: z.number() }).optional(),
+      signatures: z.object({ x: z.number(), y: z.number() }).optional(),
+      verification: z.object({ x: z.number(), y: z.number() }).optional(),
+    }),
+    logoSize: z.enum(CERTIFICATE_LOGO_SIZES),
+    qrSize: z.enum(CERTIFICATE_QR_SIZES),
   })
   // Mesmas regras do servico (titulo, texto, assinaturas, variaveis e arte), numa fonte so.
   .superRefine((values, ctx) => {
     const hasArtwork = values.keepArtwork || values.artwork.length > 0;
     const issues = validateCertificateTemplate({
       ...values,
-      artwork: {
-        fileId: hasArtwork ? "pending" : "",
-        textPosition: values.textPosition,
-        ink: values.ink,
-        hidden: values.hidden,
-        verification: values.verificationPosition,
-      },
+      artwork: artworkOf(values, hasArtwork ? "pending" : ""),
     });
     for (const issue of issues) {
       // Os ajustes da arte sao campos soltos no formulario (`artwork.hidden` -> `hidden`);
@@ -153,20 +157,46 @@ function toValues(template: CertificateTemplate): Values {
     textPosition: template.artwork?.textPosition ?? "center",
     ink: template.artwork?.ink ?? "dark",
     hidden: template.artwork?.hidden ?? [],
-    verificationPosition: template.artwork?.verification,
+    positions: {
+      logo: template.artwork?.logo,
+      text: template.artwork?.text,
+      signatures: template.artwork?.signatures,
+      verification: template.artwork?.verification,
+    },
+    logoSize: template.artwork?.logoSize ?? "medium",
+    qrSize: template.artwork?.qrSize ?? "normal",
   };
 }
 
 /** Os ajustes da arte, como a folha e o servico esperam. */
-function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden" | "verificationPosition">, fileId = "") {
+function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden" | "positions" | "logoSize" | "qrSize">, fileId = "") {
+  const positions = Object.fromEntries(CERTIFICATE_BLOCKS.filter((b) => values.positions[b]).map((b) => [b, values.positions[b]]));
   return {
     fileId,
     textPosition: values.textPosition,
     ink: values.ink,
     hidden: values.hidden,
-    ...(values.verificationPosition ? { verification: values.verificationPosition } : {}),
+    ...positions,
+    logoSize: values.logoSize,
+    qrSize: values.qrSize,
   };
 }
+
+const BLOCK_LABELS: Record<CertificateBlock, string> = {
+  logo: "Logo",
+  text: "Texto",
+  signatures: "Assinaturas",
+  verification: "QR Code e código",
+};
+const LOGO_SIZE_OPTIONS: { value: CertificateLogoSize; label: string }[] = [
+  { value: "small", label: "Pequena" },
+  { value: "medium", label: "Média" },
+  { value: "large", label: "Grande" },
+];
+const QR_SIZE_OPTIONS: { value: CertificateQrSize; label: string }[] = [
+  { value: "small", label: "Pequeno" },
+  { value: "normal", label: "Normal" },
+];
 
 const SPACE = "space";
 const SAMPLE = "sample";
@@ -666,22 +696,58 @@ function CertificateTemplateForm({
                       </p>
                     ) : null}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-sm">QR Code e código</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Na prévia, arraste o bloco do QR para onde a arte deixa espaço.
-                    </p>
-                    {values.verificationPosition ? (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => form.setValue("verificationPosition", undefined, { shouldDirty: true })}
-                        className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <RotateCcw className="size-3" aria-hidden />
-                        Voltar ao canto
-                      </button>
-                    ) : null}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Blocos</Label>
+                    <p className="text-xs text-muted-foreground">Na prévia, arraste cada bloco para onde a arte deixa espaço.</p>
+                    <ul className="divide-y rounded-lg border">
+                      {CERTIFICATE_BLOCKS.map((block) => {
+                        const moved = Boolean(values.positions?.[block]);
+                        return (
+                          <li key={block} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                            <span className="text-sm">{BLOCK_LABELS[block]}</span>
+                            <span className="flex items-center gap-3">
+                              {block === "logo" ? (
+                                <Select value={values.logoSize} disabled={pending} onValueChange={(v) => form.setValue("logoSize", v as CertificateLogoSize, { shouldDirty: true })}>
+                                  <SelectTrigger aria-label="Tamanho da logo" className="h-8 w-28 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {LOGO_SIZE_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : null}
+                              {block === "verification" ? (
+                                <Select value={values.qrSize} disabled={pending} onValueChange={(v) => form.setValue("qrSize", v as CertificateQrSize, { shouldDirty: true })}>
+                                  <SelectTrigger aria-label="Tamanho do QR Code" className="h-8 w-28 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {QR_SIZE_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : null}
+                              {moved ? (
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => form.setValue("positions", { ...values.positions, [block]: undefined }, { shouldDirty: true })}
+                                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <RotateCcw className="size-3" aria-hidden />
+                                  Voltar ao lugar
+                                </button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No lugar padrão</span>
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
@@ -864,9 +930,9 @@ function CertificateTemplateForm({
               template={{ ...values, artwork: artworkOf(values) }}
               logoUrl={logoUrl}
               artworkUrl={artworkUrl}
-              onVerificationMove={
+              onBlockMove={
                 isCustom && !pending
-                  ? (position) => form.setValue("verificationPosition", position, { shouldDirty: true })
+                  ? (block, position) => form.setValue("positions", { ...form.getValues("positions"), [block]: position }, { shouldDirty: true })
                   : undefined
               }
             />

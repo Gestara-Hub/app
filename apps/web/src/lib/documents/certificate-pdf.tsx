@@ -12,7 +12,10 @@ import type { DocumentLogo } from "./document-pdf";
 
 Font.registerHyphenationCallback((word) => [word]);
 
-const CQW = 841.89 / 100;
+/** Pagina A4 deitada em pontos (as posicoes dos blocos vem em % da folha). */
+const PAGE_W = 841.89;
+const PAGE_H = 595.28;
+const CQW = PAGE_W / 100;
 const cq = (value: number) => value * CQW;
 
 const INK = "#18181b";
@@ -188,7 +191,14 @@ function MinimalSheet({ text, organizationName, logo, accent, reserveFooter }: S
   );
 }
 
-/** "Minha arte": a imagem cobre a pagina e o texto fica por cima (mesmas regras da tela). */
+/** Posicao de um bloco solto, em pontos, a partir do % da folha. */
+function placeOf(position: { x: number; y: number }) {
+  return { position: "absolute" as const, left: (position.x / 100) * PAGE_W, top: (position.y / 100) * PAGE_H };
+}
+
+const LOGO_SIZE_CQ = { small: 3.5, medium: 5, large: 8 } as const;
+
+/** "Minha arte": a imagem cobre a pagina e os blocos ficam por cima, no fluxo ou onde foram arrastados (mesmas regras da tela). */
 function CustomSheet({
   text,
   organizationName,
@@ -202,6 +212,31 @@ function CustomSheet({
   const ink = light ? "#ffffff" : INK;
   const soft = light ? "#ffffffcc" : GRAY_600;
   const justify = settings.textPosition === "top" ? "flex-start" : settings.textPosition === "bottom" ? "flex-end" : "center";
+  const logoBlock =
+    show("logo") && logo ? (
+      // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
+      <Image src={logo.src} style={{ height: cq(LOGO_SIZE_CQ[settings.logoSize ?? "medium"]), objectFit: "contain", ...(settings.logo ? placeOf(settings.logo) : {}) }} />
+    ) : null;
+  const textBlock =
+    show("organizationName") || show("title") || show("body") || show("date") ? (
+      <View style={{ alignItems: "center", gap: cq(1.6), color: ink, ...(settings.text ? { ...placeOf(settings.text), width: "84%" } : { width: "100%" }) }}>
+        {show("organizationName") ? (
+          <Text style={{ fontSize: cq(1.3), fontFamily: "Helvetica-Bold", letterSpacing: cq(1.3) * 0.2, color: light ? "#ffffffcc" : GRAY_500 }}>
+            {organizationName.toUpperCase()}
+          </Text>
+        ) : null}
+        {show("title") ? (
+          <Text style={{ fontFamily: "Times-Bold", fontSize: cq(4.2), lineHeight: 1.2, color: ink, textAlign: "center" }}>{text.title}</Text>
+        ) : null}
+        {show("body") ? <Text style={[styles.body, { color: ink, textAlign: "center" }]}>{text.body}</Text> : null}
+        {show("date") ? <Text style={[styles.date, { color: soft }]}>{text.placeAndDate}</Text> : null}
+      </View>
+    ) : null;
+  const signaturesBlock = show("signatures") ? (
+    <View style={settings.signatures ? { ...placeOf(settings.signatures), width: "70%" } : { width: "100%", paddingTop: cq(1.5) }}>
+      <Signatures text={text} align="center" ink={settings.ink} />
+    </View>
+  ) : null;
   return (
     <View style={{ flex: 1 }}>
       {artwork ? (
@@ -218,43 +253,27 @@ function CustomSheet({
           alignItems: "center",
         }}
       >
-        <View style={{ maxWidth: "84%", alignItems: "center", gap: cq(1.6), color: ink }}>
-          {show("logo") && logo ? (
-            // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
-            <Image src={logo.src} style={{ height: cq(5), objectFit: "contain" }} />
-          ) : null}
-          {show("organizationName") ? (
-            <Text style={{ fontSize: cq(1.3), fontFamily: "Helvetica-Bold", letterSpacing: cq(1.3) * 0.2, color: light ? "#ffffffcc" : GRAY_500 }}>
-              {organizationName.toUpperCase()}
-            </Text>
-          ) : null}
-          {show("title") ? (
-            <Text style={{ fontFamily: "Times-Bold", fontSize: cq(4.2), lineHeight: 1.2, color: ink, textAlign: "center" }}>{text.title}</Text>
-          ) : null}
-          {show("body") ? <Text style={[styles.body, { color: ink, textAlign: "center" }]}>{text.body}</Text> : null}
-          {show("date") ? <Text style={[styles.date, { color: soft }]}>{text.placeAndDate}</Text> : null}
-          {show("signatures") ? (
-            <View style={{ width: "100%", paddingTop: cq(1.5) }}>
-              <Signatures text={text} align="center" ink={settings.ink} />
-            </View>
-          ) : null}
+        <View style={{ width: "84%", alignItems: "center", gap: cq(1.6) }}>
+          {!settings.logo ? logoBlock : null}
+          {!settings.text ? textBlock : null}
+          {!settings.signatures ? signaturesBlock : null}
         </View>
       </View>
+      {settings.logo ? logoBlock : null}
+      {settings.text ? textBlock : null}
+      {settings.signatures ? signaturesBlock : null}
     </View>
   );
 }
 
 /** Rodape de verificacao (doc 21 §1.3): codigo, endereco e QR no canto. */
-/** Pagina A4 deitada em pontos (a posicao do QR vem em % da folha). */
-const PAGE_W = 841.89;
-const PAGE_H = 595.28;
-
 function Verification({
   code,
   qr,
   lookup,
   light,
   position,
+  size,
 }: {
   code: string;
   url: string;
@@ -262,16 +281,18 @@ function Verification({
   lookup: string;
   light: boolean;
   position?: { x: number; y: number };
+  size?: "small" | "normal";
 }) {
   const color = light ? "#ffffffd9" : GRAY_500;
   const place = position
     ? { left: (position.x / 100) * PAGE_W, top: (position.y / 100) * PAGE_H }
     : { right: cq(2.2), bottom: cq(1.8) };
+  const qrSide = cq(size === "small" ? 3.2 : 4.5);
   return (
     <View style={{ position: "absolute", ...place, alignItems: "center", gap: cq(0.4) }}>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
-      <Image src={qr.src} style={{ width: cq(4.5), height: cq(4.5), backgroundColor: "#ffffff", padding: cq(0.3) }} />
-      <Text style={{ fontSize: cq(0.85), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
+      <Image src={qr.src} style={{ width: qrSide, height: qrSide, backgroundColor: "#ffffff", padding: cq(0.3) }} />
+      <Text style={{ fontSize: cq(size === "small" ? 0.75 : 0.85), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
       <Text style={{ fontSize: cq(0.65), color }}>{lookup}</Text>
     </View>
   );
@@ -306,7 +327,12 @@ function CertificatePage({ text, layout, organizationName, accent, logo, artwork
         <ClassicSheet {...props} />
       )}
       {verification ? (
-        <Verification {...verification} light={layout === "custom" && artworkSettings?.ink === "light"} position={position} />
+        <Verification
+          {...verification}
+          light={layout === "custom" && artworkSettings?.ink === "light"}
+          position={position}
+          size={layout === "custom" ? artworkSettings?.qrSize : undefined}
+        />
       ) : null}
     </Page>
   );

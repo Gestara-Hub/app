@@ -3,7 +3,10 @@ import { ptBR } from "date-fns/locale";
 import type {
   CertificateAccentColor,
   CertificateArtwork,
+  CertificateBlock,
   CertificateInk,
+  CertificateLogoSize,
+  CertificateQrSize,
   CertificateLayout,
   CertificatePart,
   CertificateSignature,
@@ -136,6 +139,10 @@ export const CERTIFICATE_PARTS = [
   "date",
   "signatures",
 ] as const satisfies readonly CertificatePart[];
+
+export const CERTIFICATE_BLOCKS = ["logo", "text", "signatures", "verification"] as const satisfies readonly CertificateBlock[];
+export const CERTIFICATE_LOGO_SIZES = ["small", "medium", "large"] as const satisfies readonly CertificateLogoSize[];
+export const CERTIFICATE_QR_SIZES = ["small", "normal"] as const satisfies readonly CertificateQrSize[];
 
 /** Posicao dentro da folha: x e y em % (0 a 100), com 2 casas no maximo. */
 export function isSheetPosition(value: unknown): value is { x: number; y: number } {
@@ -442,9 +449,17 @@ export function validateCertificateTemplate(
       } else if (hidden.includes("title") && hidden.includes("body")) {
         push({ field: "artwork.hidden", message: "Mostre pelo menos o título ou o texto." });
       }
-      const pos = art.verification;
-      if (pos !== undefined && !isSheetPosition(pos)) {
-        push({ field: "artwork.verification", message: "Posição do QR fora da folha." });
+      for (const block of CERTIFICATE_BLOCKS) {
+        const pos = art[block];
+        if (pos !== undefined && !isSheetPosition(pos)) {
+          push({ field: `artwork.${block}`, message: "Posição fora da folha." });
+        }
+      }
+      if (art.logoSize !== undefined && !(CERTIFICATE_LOGO_SIZES as readonly string[]).includes(String(art.logoSize))) {
+        push({ field: "artwork.logoSize", message: "Escolha o tamanho da logo." });
+      }
+      if (art.qrSize !== undefined && !(CERTIFICATE_QR_SIZES as readonly string[]).includes(String(art.qrSize))) {
+        push({ field: "artwork.qrSize", message: "Escolha o tamanho do QR Code." });
       }
     }
   }

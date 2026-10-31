@@ -1,11 +1,13 @@
 import type {
   CertificateArtwork,
+  CertificateBlock,
   CertificateTemplate,
   FileAttachment,
   Id,
   SaveCertificateTemplate,
 } from "@gestarahub/contracts";
 import {
+  CERTIFICATE_BLOCKS,
   defaultCertificateTemplate,
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
@@ -59,10 +61,20 @@ function normalizeArtwork(payload: SaveCertificateTemplate): CertificateArtwork 
     textPosition: art.textPosition,
     ink: art.ink,
     hidden: Array.isArray(art.hidden) ? [...new Set(art.hidden)] : [],
-    ...(art.verification
-      ? { verification: { x: round2(Number(art.verification.x)), y: round2(Number(art.verification.y)) } }
-      : {}),
+    ...positionsOf(art),
+    ...(art.logoSize ? { logoSize: art.logoSize } : {}),
+    ...(art.qrSize ? { qrSize: art.qrSize } : {}),
   };
+}
+
+/** Os blocos arrastados, com 2 casas. */
+function positionsOf(art: CertificateArtwork): Partial<Pick<CertificateArtwork, CertificateBlock>> {
+  const out: Partial<Pick<CertificateArtwork, CertificateBlock>> = {};
+  for (const block of CERTIFICATE_BLOCKS) {
+    const pos = art[block];
+    if (pos) out[block] = { x: round2(Number(pos.x)), y: round2(Number(pos.y)) };
+  }
+  return out;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;

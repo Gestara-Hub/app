@@ -28,12 +28,28 @@ export interface CertificateArtwork {
   /** Partes que nao aparecem sobre a arte. */
   hidden: CertificatePart[];
   /**
-   * Onde fica o bloco do QR e do codigo, em % da folha (canto superior esquerdo
-   * do bloco; x da largura, y da altura). Ausente = canto inferior direito. So na
-   * arte propria, arrastando na previa (31/10/2026).
+   * Blocos arrastados na previa (31/10/2026), em % da folha (canto superior
+   * esquerdo do bloco; x da largura, y da altura). Ausente = lugar padrao: o QR
+   * no canto inferior direito, os outros no fluxo do texto.
    */
-  verification?: { x: number; y: number };
+  verification?: SheetPosition;
+  logo?: SheetPosition;
+  text?: SheetPosition;
+  signatures?: SheetPosition;
+  /** Tamanho da logo sobre a arte; ausente = media. */
+  logoSize?: CertificateLogoSize;
+  /** Tamanho do QR sobre a arte; ausente = normal. */
+  qrSize?: CertificateQrSize;
 }
+
+export interface SheetPosition {
+  x: number;
+  y: number;
+}
+export type CertificateLogoSize = "small" | "medium" | "large";
+export type CertificateQrSize = "small" | "normal";
+/** Blocos que a pessoa pode arrastar na arte propria. */
+export type CertificateBlock = "logo" | "text" | "signatures" | "verification";
 
 /** Cor de destaque (paleta fechada, legivel na impressao). */
 export type CertificateAccentColor = "graphite" | "navy" | "green" | "wine" | "gold" | "purple";
