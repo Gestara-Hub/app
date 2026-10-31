@@ -24,6 +24,7 @@ import {
   getTwoFactorStatusAction,
   listTrustedDevicesAction,
   removeTwoFactorMethodAction,
+  startTotpEnrollmentAction,
 } from "../two-factor-actions";
 
 /**
@@ -361,6 +362,7 @@ describe("remover um método e manter o outro", () => {
 
   it("com um método só, remover não desliga: fica no Desligar", async () => {
     await setEmailTwoFactor(admin, authUserId, true);
+    await markSessionVerified(admin, authUserId, (await currentSessionId(sessionClient()))!, "email");
 
     expect(await removeTwoFactorMethodAction({ method: "email", code: "123456" })).toEqual({
       ok: false,
@@ -369,5 +371,27 @@ describe("remover um método e manter o outro", () => {
     expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: true, email: true });
     expect(await recoveryCodesLeft(admin, authUserId)).toBe(0);
     await disableTwoFactor(admin, authUserId);
+  });
+});
+
+describe("a barreira também no banco (auditoria de 30/10/2026)", () => {
+  it("com o e-mail ligado, o token só da senha não lê nem grava direto no banco; depois do código, lê", async () => {
+    await setEmailTwoFactor(admin, authUserId, true);
+    const fresh = await freshLogin();
+    const { data: blocked } = await fresh.from("organizations").select("id").eq("id", tenant.organizationId);
+    expect(blocked ?? []).toHaveLength(0);
+    const { data: clients } = await fresh.from("clients").select("id");
+    expect(clients ?? []).toHaveLength(0);
+
+    await markSessionVerified(admin, authUserId, (await currentSessionId(fresh))!, "email");
+    const { data: allowed } = await fresh.from("organizations").select("id").eq("id", tenant.organizationId);
+    expect(allowed).toHaveLength(1);
+  });
+
+  it("só a senha não cadastra outro aplicativo autenticador (tomada de conta)", async () => {
+    await setEmailTwoFactor(admin, authUserId, true);
+    await freshLogin();
+    expect(await startTotpEnrollmentAction()).toMatchObject({ ok: false });
+    expect(await enableEmailTwoFactorAction({ code: await knownCode("enable") })).toMatchObject({ ok: false });
   });
 });

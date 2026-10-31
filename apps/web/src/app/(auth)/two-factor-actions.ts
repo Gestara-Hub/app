@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { sendTwoFactorCodeEmail } from "@/lib/email/mailersend";
 import { isDemoOrganization } from "@/lib/demo";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { currentSessionId, markSessionVerified, secondFactorInfo } from "@/lib/security/second-factor";
+import { currentSessionId, markSessionVerified, secondFactorInfo, secondFactorState } from "@/lib/security/second-factor";
 import { isGoogleOnlyAccount, lastUsedLabel, maskEmail, normalizeRecoveryCode } from "@/lib/security/two-factor-rules";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -252,10 +252,16 @@ async function sessionForCurrentUser() {
   return { supabase, user, current };
 }
 
-/** Sessao para mudar a verificacao: fora da demonstracao e de conta so do Google. */
+/**
+ * Sessao para mudar a verificacao: fora da demonstracao e, com a verificacao
+ * ligada, so a sessao que ja passou pelo segundo fator. Antes, so a senha
+ * (sessao AAL1, antes do codigo) cadastrava outro aplicativo autenticador e
+ * tomava a conta de quem usava o codigo por e-mail (auditoria de 30/10/2026).
+ */
 async function sessionToChange() {
   const session = await sessionForCurrentUser();
   if (!session || isDemoOrganization(session.current.organizationId)) return null;
+  if ((await secondFactorState(session.supabase, session.user)) === "missing") return null;
   return session;
 }
 

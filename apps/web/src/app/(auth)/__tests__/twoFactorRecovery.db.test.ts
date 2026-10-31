@@ -103,6 +103,10 @@ describe("códigos de recuperação", () => {
   it("desligar com um código de recuperação (quem perdeu o app) apaga o resto dos códigos", async () => {
     await setEmailTwoFactor(admin, authUserId, true);
     const codes = (await issueRecoveryCodes(admin, authUserId))!;
+    // Sem o segundo fator nesta sessao (so a senha), nao muda nada.
+    expect(await disableTwoFactorAction({ code: codes[2], method: "recovery" })).toMatchObject({ ok: false });
+    // Quem perdeu o app entra com um codigo de recuperacao (a sessao passa a contar como verificada).
+    await markSessionVerified(admin, authUserId, (await currentSessionId(sessionClient()))!, "recovery");
     expect(await disableTwoFactorAction({ code: "AAAA-AAAA", method: "recovery" })).toMatchObject({ ok: false });
     expect(await disableTwoFactorAction({ code: codes[2], method: "recovery" })).toEqual({ ok: true });
     expect(await getTwoFactorStatusAction()).toMatchObject({ enabled: false, recoveryLeft: 0 });
