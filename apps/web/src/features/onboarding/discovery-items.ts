@@ -32,6 +32,13 @@ export interface DiscoveryInput {
   areaBillingMode: ClassBillingMode;
   /** Permissao do usuario: itens sem acesso ficam de fora. */
   can: (permission: Permission) => boolean;
+  /**
+   * Se a área do espaço tem acompanhamento de evolução por padrão
+   * (`useBusinessSegment().progressionTemplate !== null`).
+   * Ausente = true (compatibilidade). Quando falso (Pilates, Funcional),
+   * o item "Registrar a evolução" fica de fora do Descubra o dia a dia.
+   */
+  hasProgressionTrack?: boolean;
 }
 
 interface Candidate extends DiscoveryItem {
@@ -83,8 +90,9 @@ function moneyItem(input: DiscoveryInput): Candidate | null {
  * primeira matricula. Itens sem permissao do usuario ficam de fora.
  */
 export function buildDiscoveryItems(input: DiscoveryInput): DiscoveryItem[] {
-  const { milestones, visited, areaBillingMode } = input;
+  const { milestones, visited, areaBillingMode, hasProgressionTrack } = input;
   const isCourseArea = areaBillingMode === "course";
+  const showProgress = hasProgressionTrack !== false;
 
   const candidates: (Candidate | null)[] = [
     {
@@ -116,14 +124,16 @@ export function buildDiscoveryItems(input: DiscoveryInput): DiscoveryItem[] {
       done: milestones.hasMessage,
       permission: "communication:view",
     },
-    {
-      id: "progress",
-      title: "Registrar a evolução de um aluno",
-      hint: "Registro de aula, meta ou graduação.",
-      href: "/clients",
-      done: milestones.hasProgressRecord,
-      permission: "clients:manage",
-    },
+    showProgress
+      ? {
+          id: "progress",
+          title: "Registrar a evolução de um aluno",
+          hint: "Registro de aula, meta ou graduação.",
+          href: "/clients",
+          done: milestones.hasProgressRecord,
+          permission: "clients:manage",
+        }
+      : null,
     {
       id: "finance",
       title: "Ver o resultado do mês",

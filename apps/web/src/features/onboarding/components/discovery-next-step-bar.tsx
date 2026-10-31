@@ -21,10 +21,10 @@ export function DiscoveryNextStepBar() {
   const user = useCurrentUser();
   const pathname = usePathname();
   const search = useSearchParams()?.toString() ?? "";
-  const { isReady, isComplete, isClasses, areaBillingMode } = useOnboardingSteps();
+  const { isReady, isComplete, isClasses, areaBillingMode, hasProgressionTrack } = useOnboardingSteps();
   const allowed = user.profile === "owner" || user.profile === "manager";
   const active = allowed && isReady && isComplete && isClasses;
-  const discovery = useDiscovery(areaBillingMode, active);
+  const discovery = useDiscovery(areaBillingMode, active, hasProgressionTrack);
   const hiddenKey = discoveryBarHiddenKey(user);
   const hidden = useStorageFlag(hiddenKey);
 

@@ -40,6 +40,7 @@ export function useOnboardingSteps() {
   const isClasses = model === "classes";
   const areaBillingMode = isClasses ? segment.defaultBillingMode : "membership";
   const isCourseArea = areaBillingMode === "course";
+  const hasProgressionTrack = isClasses && segment.progressionTemplate !== null;
 
   const hoursSet = Boolean(
     unitQuery.data?.businessHours?.some((day) => !day.closed),
@@ -92,5 +93,6 @@ export function useOnboardingSteps() {
     isClasses,
     isCourseArea,
     areaBillingMode,
+    hasProgressionTrack,
   };
 }

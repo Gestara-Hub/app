@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ClassBillingMode } from "@gestarahub/contracts";
 import { useCan, useCurrentUser } from "@/features/auth";
+import { useBusinessSegment } from "@/features/settings";
 import {
   discoveryDismissedKey,
   discoveryVisitedKey,
@@ -20,9 +21,14 @@ import { buildDiscoveryItems, summarizeDiscovery } from "../discovery-items";
  * Atualizacao: qualquer mutacao bem-sucedida refaz a leitura se o card esta na
  * tela (`createQueryClient`); fora dela, a leitura fica velha e refaz ao montar.
  */
-export function useDiscovery(areaBillingMode: ClassBillingMode, enabled: boolean) {
+export function useDiscovery(
+  areaBillingMode: ClassBillingMode,
+  enabled: boolean,
+  hasProgressionTrack?: boolean,
+) {
   const user = useCurrentUser();
   const can = useCan();
+  const segment = useBusinessSegment();
   const dismissedKey = discoveryDismissedKey(user);
   const dismissed = useStorageFlag(dismissedKey);
   const courseBilling = useStorageFlag(discoveryVisitedKey(user, "course_billing"));
@@ -34,12 +40,16 @@ export function useDiscovery(areaBillingMode: ClassBillingMode, enabled: boolean
     enabled: enabled && !dismissed,
   });
 
+  const resolvedHasProgression =
+    hasProgressionTrack !== undefined ? hasProgressionTrack : segment.progressionTemplate !== null;
+
   const items = query.data
     ? buildDiscoveryItems({
         milestones: query.data,
         visited: { courseBilling, finance },
         areaBillingMode,
         can,
+        hasProgressionTrack: resolvedHasProgression,
       })
     : [];
 

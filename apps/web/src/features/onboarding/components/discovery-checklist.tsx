@@ -15,12 +15,19 @@ import { useDiscovery } from "../hooks/use-discovery";
  * (por organizacao e usuario) e some sozinho quando tudo foi feito.
  * Proprietario e gerente; cada item exige a permissao da acao.
  */
-export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: ClassBillingMode }) {
+export function DiscoveryChecklist({
+  areaBillingMode,
+  hasProgressionTrack,
+}: {
+  areaBillingMode: ClassBillingMode;
+  hasProgressionTrack?: boolean;
+}) {
   const user = useCurrentUser();
   const allowed = user.profile === "owner" || user.profile === "manager";
   const { items, doneCount, total, allDone, isReady, dismissed, dismiss } = useDiscovery(
     areaBillingMode,
     allowed,
+    hasProgressionTrack,
   );
 
   if (!allowed || dismissed || !isReady || total === 0 || allDone) return null;

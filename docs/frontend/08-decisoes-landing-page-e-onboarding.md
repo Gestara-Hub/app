@@ -347,7 +347,7 @@ Concluídos os primeiros passos, o Dashboard mostra no mesmo lugar um card **opc
      - Pacote: **Vender um pacote de aulas**, "O saldo aparece na chamada." Feito com algum pacote vendido. Leva a Alunos (`/clients`), onde fica "Vender pacote".
      - Sem cobrança: sem item de dinheiro.
   4. **Mandar um lembrete no WhatsApp**: "Mensagem pronta, sai do seu número." Feito com alguma mensagem registrada. Leva a `/communication`.
-  5. **Registrar a evolução de um aluno**: "Registro de aula, meta ou graduação." Feito com algum registro de aula, meta ou graduação na ficha. Leva a Alunos.
+  5. **Registrar a evolução de um aluno**: "Registro de aula, meta ou graduação." Feito com algum registro de aula, meta ou graduação na ficha. Leva a Alunos. *Exibido apenas nos segmentos com trilha de evolução por padrão (`progressionTemplate !== null`, como Lutas, Dança, Música, Idiomas, Natação, Gastronomia, Artes, Beleza); segmentos sem trilha por padrão (Pilates/Yoga, Funcional/Crossfit e Outra área sem etapas) omitem esta etapa para evitar atrito.*
   6. **Ver o resultado do mês**: "O que entrou, saiu e falta." Feito ao abrir o Financeiro (marca no navegador). Leva a `/finance`.
 - **Permissões**: item sem a permissão da ação fica de fora (matrícula `enrollment:manage`, chamada `attendance:mark`, pagamento e pacote `billing:manage`, parcelas `billing:view`, WhatsApp `communication:view`, evolução `clients:manage`, resultado `finance:view`).
 - **Atualização**: qualquer mutação bem-sucedida refaz a leitura dos marcos se o card ou a faixa "Próximo passo" (§4.8) está na tela (`createQueryClient`, em `lib/providers.tsx`). As marcas de "tela aberta" reagem na hora (`useSyncExternalStore`).

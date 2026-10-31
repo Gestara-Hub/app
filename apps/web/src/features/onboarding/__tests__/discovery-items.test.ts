@@ -116,6 +116,23 @@ describe("buildDiscoveryItems: regras dos itens", () => {
     expect(professional).not.toContain("membership_payment");
     expect(professional).not.toContain("finance");
   });
+
+  it("segmentos sem evolução por padrão (Pilates, Funcional): omite o item de progresso", () => {
+    const withoutProgression = input({ hasProgressionTrack: false });
+    expect(ids(withoutProgression)).not.toContain("progress");
+    expect(ids(withoutProgression)).toEqual([
+      "enroll",
+      "attendance",
+      "membership_payment",
+      "message",
+      "finance",
+    ]);
+  });
+
+  it("segmentos com evolução por padrão (Lutas, Dança, Música): inclui o item de progresso", () => {
+    const withProgression = input({ hasProgressionTrack: true });
+    expect(ids(withProgression)).toContain("progress");
+  });
 });
 
 describe("summarizeDiscovery", () => {

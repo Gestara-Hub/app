@@ -22,8 +22,17 @@ export function Onboarding() {
   const user = useCurrentUser();
   const [state, update] = useOnboardingState();
   const { data: organization, isLoading: orgLoading } = useOrganization();
-  const { steps, doneCount, total, isReady, isComplete, isClasses, isCourseArea, areaBillingMode } =
-    useOnboardingSteps();
+  const {
+    steps,
+    doneCount,
+    total,
+    isReady,
+    isComplete,
+    isClasses,
+    isCourseArea,
+    areaBillingMode,
+    hasProgressionTrack,
+  } = useOnboardingSteps();
   const [tourOpen, setTourOpen] = useState(false);
   // Fechou as boas-vindas sem pedir o tour: destaca o passo atual uma vez.
   const [spotlightStep, setSpotlightStep] = useState(false);
@@ -42,7 +51,12 @@ export function Onboarding() {
 
   // Primeiros passos concluídos: o card opcional do dia a dia ocupa o lugar.
   const discovery =
-    isComplete && isClasses ? <DiscoveryChecklist areaBillingMode={areaBillingMode} /> : null;
+    isComplete && isClasses ? (
+      <DiscoveryChecklist
+        areaBillingMode={areaBillingMode}
+        hasProgressionTrack={hasProgressionTrack}
+      />
+    ) : null;
 
   if (user.profile !== "owner") return discovery;
 
