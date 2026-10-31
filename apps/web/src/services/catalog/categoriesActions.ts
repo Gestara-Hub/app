@@ -178,8 +178,11 @@ async function resetStudentsToTrack(ctx: TenantContext, category: Category): Pro
       }) as Client,
   );
   const { changed, reset } = resetMissingLevels(clients, category, todayInSpace(), new Date().toISOString());
+  // Gravacao pelo servidor (chave de servico): o banco nao aceita mais escrita
+  // direta em clients pelo usuario (revisao geral de 31/10/2026, achado S3).
+  const admin = createSupabaseAdminClient();
   for (const client of changed) {
-    const { error: updateError } = await ctx.client
+    const { error: updateError } = await admin
       .from("clients")
       .update({ progressions: client.progressions })
       .eq("id", client.id)
