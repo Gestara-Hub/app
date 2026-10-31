@@ -3,65 +3,51 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Id, SubscriptionTier, UserView } from "@gestarahub/contracts";
-import { SESSION_COOKIE, SESSION_MAX_AGE, safeRedirectPath } from "@/lib/session";
+import { SESSION_COOKIE, SESSION_MAX_AGE, isSupabaseOrganization } from "@/lib/session";
 import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
 import {
   SUBSCRIPTION_COOKIE,
   encodeTierCookie,
   isSubscriptionTier,
 } from "@/lib/subscription";
-import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
-import { organizationModelById } from "@/mocks/store";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { forgetCurrentSessionVerification } from "@/lib/security/second-factor";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { discardUnstartedOwnerAccount } from "@/services/server/accountSetup";
+import { discardUnstartedOwnerAccount, loadSessionPayload } from "@/services/server/accountSetup";
 import { logError } from "@/lib/log";
 
 /**
- * Grava as claims do usuario no cookie de sessao. O client passa o `UserView`
- * completo (que ele ja tem do store do navegador) — nao ha lookup no server,
- * entao usuarios criados na UI tambem logam, nao so os do seed.
- */
-async function setSession(user: UserView): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, encodeSession(user), sessionCookieOptions());
-}
-
-/**
- * Login mockado: grava a sessao e redireciona. Nao valida senha (qualquer envio
- * entra). Vai para o destino original (`from`) quando permitido; senao, para a
- * primeira rota acessivel pelo perfil.
- */
-export async function signIn(user: UserView, from?: string): Promise<void> {
-  await setSession(user);
-
-  const model = organizationModelById(user.organizationId) ?? "scheduling";
-  // So caminho relativo do app (barra open redirect como "//evil.com").
-  const safeFrom = safeRedirectPath(from);
-  const target =
-    safeFrom && canAccessRoute(user, safeFrom, model)
-      ? safeFrom
-      : firstAllowedRoute(user, model);
-  redirect(target);
-}
-
-/** Troca o usuario logado (demo) e volta pra primeira rota do modelo do tenant. */
-export async function switchUser(user: UserView): Promise<void> {
-  await setSession(user);
-  const model = organizationModelById(user.organizationId) ?? "scheduling";
-  redirect(firstAllowedRoute(user, model));
-}
-
-/**
- * Regrava as claims do cookie sem redirecionar. Chamado pelo client quando o
- * proprio registro do usuario logado mudou no store (nome, perfil, vinculo),
- * para a sessao nao agir com um snapshot velho. O client faz `router.refresh()`
+ * Regrava as claims do cookie sem redirecionar, quando o proprio registro do
+ * usuario logado mudou (nome, perfil, vinculo). O client faz `router.refresh()`
  * em seguida para o layout server reler as claims.
+ *
+ * Revisao geral de 31/10/2026 (achado S1): antes o cookie era assinado com o
+ * `UserView` que o navegador mandasse, e um professor montava a sessao do dono.
+ * Conta real: as claims saem do banco, sempre para o usuario da sessao atual
+ * (o argumento e ignorado). Demonstracao (sem banco): so aceita o mesmo usuario
+ * e o mesmo espaco da sessao atual. `signIn` e `switchUser`, sobras do
+ * prototipo sem uso, sairam pelo mesmo motivo.
  */
 export async function refreshSession(user: UserView): Promise<void> {
-  await setSession(user);
+  const current = await getCurrentUser();
+  if (!current) return;
+  let next: UserView | null = null;
+  if (isSupabaseOrganization(current.organizationId)) {
+    const admin = createSupabaseAdminClient();
+    const { data: dbUser } = await admin
+      .from("users")
+      .select("*")
+      .eq("id", current.id)
+      .eq("organization_id", current.organizationId)
+      .maybeSingle();
+    if (!dbUser || dbUser.status !== "active") return;
+    next = (await loadSessionPayload(admin, dbUser)).user;
+  } else if (user.id === current.id && user.organizationId === current.organizationId) {
+    next = user;
+  }
+  if (!next) return;
+  (await cookies()).set(SESSION_COOKIE, encodeSession(next), sessionCookieOptions());
 }
 
 /**

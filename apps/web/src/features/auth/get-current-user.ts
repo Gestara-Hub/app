@@ -5,7 +5,7 @@ import { SESSION_COOKIE, isSupabaseOrganization } from "@/lib/session";
 import { decodeSession } from "@/lib/session-cookie";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { store } from "@/mocks/store";
-import type { SubscriptionTier, UserView } from "@gestarahub/contracts";
+import type { SubscriptionTier, UserProfile, UserView } from "@gestarahub/contracts";
 
 /**
  * Resolve o usuario logado no SERVER. Server-only (usa `next/headers`).
@@ -24,12 +24,14 @@ export async function getCurrentUser(): Promise<UserView | null> {
 
   const claims = decodeSession(raw);
   if (claims) {
+    if (!isSupabaseOrganization(claims.organizationId)) return claims;
     // Conta real: o usuario ainda existe e esta ativo no espaco? Inativado ou
     // removido, a sessao acaba (antes seguia navegando so com o cookie).
-    if (isSupabaseOrganization(claims.organizationId) && !(await loadSessionSpace(claims.id, claims.organizationId)).active) {
-      return null;
-    }
-    return claims;
+    const space = await loadSessionSpace(claims.id, claims.organizationId);
+    if (!space.active) return null;
+    // O perfil vale o do banco, nao o do cookie (revisao geral de 31/10/2026):
+    // quem mudou de perfil nao segue com o antigo ate o cookie ser regravado.
+    return space.profile ? { ...claims, profile: space.profile } : claims;
   }
 
   // Legado: `raw` e um `userId` puro (nao base64 de claims), so para o seed da
@@ -72,6 +74,7 @@ export async function getSessionTier(user: Pick<UserView, "id" | "organizationId
 
 interface SessionSpace {
   active: boolean;
+  profile?: UserProfile;
   timeZone: SpaceTimeZone;
   tier?: SubscriptionTier;
 }
@@ -81,7 +84,7 @@ const loadSessionSpace = cache(async (userId: string, organizationId: string): P
   try {
     const { data } = await createSupabaseAdminClient()
       .from("users")
-      .select("status, organizations(status, settings, subscription, units(address))")
+      .select("status, profile, organizations(status, settings, subscription, units(address))")
       .eq("id", userId)
       .eq("organization_id", organizationId)
       .maybeSingle();
@@ -94,6 +97,7 @@ const loadSessionSpace = cache(async (userId: string, organizationId: string): P
     return {
       // Espaco inativado pelo painel (LGPD/encerramento): ninguem entra nem segue logado.
       active: data?.status === "active" && organization?.status === "active",
+      profile: (data?.profile as UserProfile | undefined) ?? undefined,
       timeZone: resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address),
       tier: data ? (organization?.subscription?.tier ?? "free") : undefined,
     };
