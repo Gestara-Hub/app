@@ -20,10 +20,8 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
       )}
       data-testid="certificate-verification"
     >
-      <div className="text-[0.95cqw] leading-snug">
-        <p className="font-semibold tracking-wide">{code}</p>
-        <p>Confira em {url.replace(/^https?:\/\//, "")}</p>
-      </div>
+      {/* So o codigo e o QR (o endereco esta dentro do QR). */}
+      <p className="text-[0.95cqw] font-semibold tracking-wide">{code}</p>
       <QRCodeSVG
         value={url}
         level="M"

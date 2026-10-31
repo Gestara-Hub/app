@@ -245,7 +245,7 @@ function CustomSheet({
 }
 
 /** Rodape de verificacao (doc 21 §1.3): codigo, endereco e QR no canto. */
-function Verification({ code, url, qr, light }: { code: string; url: string; qr: DocumentLogo; light: boolean }) {
+function Verification({ code, qr, light }: { code: string; url: string; qr: DocumentLogo; light: boolean }) {
   const color = light ? "#ffffffd9" : GRAY_500;
   return (
     <View
@@ -258,10 +258,7 @@ function Verification({ code, url, qr, light }: { code: string; url: string; qr:
         gap: cq(1),
       }}
     >
-      <View style={{ alignItems: "flex-end" }}>
-        <Text style={{ fontSize: cq(0.95), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
-        <Text style={{ fontSize: cq(0.95), color }}>Confira em {url.replace(/^https?:\/\//, "")}</Text>
-      </View>
+      <Text style={{ fontSize: cq(0.95), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
       <Image src={qr.src} style={{ width: cq(6), height: cq(6), backgroundColor: "#ffffff", padding: cq(0.3) }} />
     </View>
