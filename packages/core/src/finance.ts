@@ -1,3 +1,4 @@
+import { dateInSpace } from "@gestarahub/core/date";
 import type {
   ClassBillingMode,
   DateISO,
@@ -42,18 +43,20 @@ function pad2(n: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Datas e competencias ("YYYY-MM"), sempre pela data LOCAL
+// Datas e competencias ("YYYY-MM"), sempre pela data do ESPACO
 // ---------------------------------------------------------------------------
 
-/** Data local 'YYYY-MM-DD' de um DateISO ou de um timestamp ISO (evita o bug de UTC). */
+/**
+ * Data 'YYYY-MM-DD' de um DateISO ou de um timestamp ISO no fuso do espaco
+ * (evita o bug de UTC). Antes usava o relogio do servidor (Brasilia): um
+ * pagamento as 23:30 de 31/10 num espaco de Manaus entrava em novembro no
+ * Financeiro e no DRE, e em outubro no extrato (revisao de valores, 30/10/2026).
+ */
 export function localDateOf(value: string): DateISO {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return dateInSpace(value);
 }
 
-/** Competencia "YYYY-MM" de uma data ou timestamp (data local). */
+/** Competencia "YYYY-MM" de uma data ou timestamp (data do espaco). */
 export function competenceOf(value: string): string {
   return localDateOf(value).slice(0, 7);
 }

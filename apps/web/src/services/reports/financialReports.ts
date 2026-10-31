@@ -15,6 +15,7 @@ import { buildHeader } from "./reportCatalog";
 import { VOID_STATUSES, paidIn, buildCourseReport, buildPackageReport } from "./courseAndPackageReports";
 import type { ReportContext } from "./reportContext";
 import { dateInSpace } from "@gestarahub/core/date";
+import { competenceOf } from "@gestarahub/core/finance";
 
 /** Relatorios de dinheiro: cobrancas, cursos, pacotes e DRE. */
 
@@ -116,12 +117,12 @@ export async function buildIncomeStatement({ competence, periodLabel }: ReportCo
       chargeRevenue.set(label, (chargeRevenue.get(label) ?? 0) + c.amountCents);
     });
 
-    // 2. Receitas avulsas e produtos de lançamentos financeiros
+    // 2. Receitas avulsas e produtos de lançamentos financeiros. Como as
+    // cobranças e o Resumo do Financeiro: pelo dia do pagamento (sem ele, o
+    // vencimento). Antes, pelo vencimento: o DRE e o Resumo nunca fechavam.
+    const entryPaidIn = (e: { paidAt?: string; dueDate: string }) => competenceOf(e.paidAt ?? e.dueDate) === competence;
     const manualIncomes = store.financialEntries.filter(
-      (e) =>
-        e.type === "income" &&
-        e.status === "paid" &&
-        e.dueDate.startsWith(competence),
+      (e) => e.type === "income" && e.status === "paid" && entryPaidIn(e),
     );
 
     // Agrupa receitas por categoria
@@ -134,15 +135,14 @@ export async function buildIncomeStatement({ competence, periodLabel }: ReportCo
 
     // 3. Despesas do mês
     const manualExpenses = store.financialEntries.filter(
-      (e) =>
-        e.type === "expense" &&
-        e.status === "paid" &&
-        e.dueDate.startsWith(competence),
+      (e) => e.type === "expense" && e.status === "paid" && entryPaidIn(e),
     );
 
-    // 4. Pagamentos a professores
+    // 4. Pagamentos a professores: pelo dia do pagamento (sem ele, o mês
+    // trabalhado). O repasse de setembro pago em 05/10 entra em outubro, como
+    // no Resumo do Financeiro (antes ia para setembro e mudava o DRE fechado).
     const teacherPayouts = store.teacherPayouts.filter(
-      (p) => p.competence === competence && p.status === "paid",
+      (p) => p.status === "paid" && (p.paidAt ? competenceOf(p.paidAt) === competence : p.competence === competence),
     );
     const teacherPayoutTotalCents = teacherPayouts.reduce((acc, p) => acc + p.totalCents, 0);
 

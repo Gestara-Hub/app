@@ -589,3 +589,21 @@ describe("isEntryOverdue / entryDisplayStatus", () => {
     assert.equal(isEntryOverdue({ status: "overdue", dueDate: "2026-12-01" }, today), true);
   });
 });
+
+describe("data do pagamento no fuso do espaço (revisão de valores, 30/10/2026)", () => {
+  it("23:30 de 31/10 em Manaus é outubro no espaço de Manaus e novembro em Brasília", async () => {
+    const { competenceOf, localDateOf } = await import("@gestarahub/core/finance");
+    const { setSpaceTimeZoneProvider } = await import("@gestarahub/core/date");
+    const paidAt = "2026-11-01T03:30:00.000Z"; // 23:30 de 31/10 em Manaus (UTC-4); 00:30 de 01/11 em Brasília
+    setSpaceTimeZoneProvider(() => "America/Manaus");
+    try {
+      assert.equal(localDateOf(paidAt), "2026-10-31");
+      assert.equal(competenceOf(paidAt), "2026-10");
+    } finally {
+      setSpaceTimeZoneProvider(undefined);
+    }
+    assert.equal(competenceOf(paidAt), "2026-11");
+    // Data pura passa como está.
+    assert.equal(localDateOf("2026-10-31"), "2026-10-31");
+  });
+});
