@@ -333,11 +333,12 @@ describe("v30: WhatsApp com o numero do proprio espaco", () => {
 
   it("sem sessao antiga usa o padrao", async () => {
     const { store } = await hydrate(29, oldWorld(() => {}));
+    // Padrao do Gratis: franquia 0 (o plano pago zera e define a franquia ao ser pago).
     expect(store.whatsAppConnection).toEqual({
       organizationId: ACADEMY_ORG,
       officialStatus: "not_connected",
       allowedSendHours: { start: "08:00", end: "20:00" },
-      monthlyQuota: { used: 0, included: 1000 },
+      monthlyQuota: { used: 0, included: 0 },
     });
   });
 

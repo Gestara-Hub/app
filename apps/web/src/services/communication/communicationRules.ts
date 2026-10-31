@@ -1,12 +1,13 @@
-import type {
-  ApiErrorField,
-  MessageCategory,
-  MessageLog,
-  MessageTemplate,
-  MessageTrigger,
-  SendMessagePayload,
-  WhatsAppConnection,
-  WhatsAppConnectionView,
+import {
+  type ApiErrorField,
+  type MessageCategory,
+  type MessageLog,
+  type MessageTemplate,
+  type MessageTrigger,
+  type SendMessagePayload,
+  type WhatsAppConnection,
+  type WhatsAppConnectionView,
+  tierWhatsAppQuota,
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
@@ -14,6 +15,7 @@ import { MESSAGE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from
 import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
+import { chargeInvoiceUrl, paymentPageUrl } from "@/lib/payment-page";
 import { store } from "@/services/world/store";
 import { tenantHasFeature } from "../subscription/subscriptionService";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -29,19 +31,48 @@ import { dateInSpace } from "@gestarahub/core/date";
  */
 
 export function ensureConnection(): WhatsAppConnection {
+  // Sem assinatura = Gratis (sem envio automatico, franquia 0).
+  const tier = store.organization.subscription?.tier ?? "free";
   if (!store.whatsAppConnection) {
-    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id);
+    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id, tier);
+  } else {
+    // Reconcilia com a cota oficial do tier caso esteja com o default legado de 1000 no Pro
+    const expectedQuota = tierWhatsAppQuota(tier);
+    if (tier === "pro" && store.whatsAppConnection.monthlyQuota.included === 1000) {
+      store.whatsAppConnection.monthlyQuota.included = expectedQuota;
+    }
   }
   return store.whatsAppConnection;
+}
+
+/**
+ * O envio automatico pode sair? Ainda nao ha credenciais por espaco (doc
+ * technical/07 §1.1): tudo sairia do numero da plataforma. Decisao do usuario
+ * (30/10/2026): em producao fica bloqueado ate o numero de cada espaco. Fora
+ * de producao segue, com o numero de testes da Meta (que so alcanca os numeros
+ * cadastrados como teste); o servidor do e2e tambem.
+ */
+export function officialSendingAvailable(): boolean {
+  return process.env.NODE_ENV !== "production" || Boolean(process.env.E2E_NOW);
 }
 
 export function connectionView(): WhatsAppConnectionView {
   const connection = ensureConnection();
   const canUseOfficial = tenantHasFeature("messaging");
+  const officialAvailable = officialSendingAvailable();
+  const isQuotaExhausted =
+    connection.monthlyQuota.included > 0 &&
+    connection.monthlyQuota.used >= connection.monthlyQuota.included;
+
   return {
     ...connection,
     canUseOfficial,
-    mode: canUseOfficial && connection.officialStatus === "connected" ? "official" : "assisted",
+    isQuotaExhausted,
+    officialAvailable,
+    mode:
+      canUseOfficial && officialAvailable && connection.officialStatus === "connected" && !isQuotaExhausted
+        ? "official"
+        : "assisted",
   };
 }
 
@@ -121,7 +152,7 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
  * so saia se alguem abrisse a tela de mensagens, e a leitura gravava.
  */
 export function runBirthdayGreetings(): number {
-  if (connectionView().mode !== "official") return 0;
+  if (!tenantHasFeature("messaging") || connectionView().mode !== "official") return 0;
   const connection = ensureConnection();
   const template = ensureTemplates().find((t) => t.trigger === "birthday_greeting");
   if (!template?.enabled) return 0;
@@ -132,6 +163,7 @@ export function runBirthdayGreetings(): number {
   const logs = ensureLogs();
   let sent = 0;
   for (const client of store.clients) {
+    if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
     if (client.status !== "active" || !whatsappNumber(client.phone)) continue;
     if (!isBirthdayToday(client.birthDate, today)) continue;
     const alreadySent = logs.some(
@@ -169,7 +201,7 @@ export function runBirthdayGreetings(): number {
  * Respeita o horário de envio permitido (`allowedSendHours`) e o horário da regra (`sendHour`).
  */
 export function runBillingReminders(): number {
-  if (connectionView().mode !== "official") return 0;
+  if (!tenantHasFeature("messaging") || connectionView().mode !== "official") return 0;
   const connection = ensureConnection();
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");
@@ -204,6 +236,7 @@ export function runBillingReminders(): number {
     );
 
     for (const charge of targetCharges) {
+      if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
       const client = (store.clients ?? []).find((cl) => cl.id === charge.studentId);
       if (!client || client.status !== "active" || !whatsappNumber(client.phone)) continue;
 
@@ -225,9 +258,16 @@ export function runBillingReminders(): number {
       const onlinePayment = (store.onlinePayments ?? []).find(
         (p) => p.chargeId === charge.id && p.status !== "canceled" && p.status !== "expired",
       );
+      const hasOnlinePayments = Boolean(
+        store.organization.settings?.onlinePayments?.enabled,
+      );
       const paymentLink = onlinePayment?.publicCode
-        ? `https://gestarahub.com/p/${onlinePayment.publicCode}`
-        : onlinePayment?.linkUrl || "";
+        ? paymentPageUrl(onlinePayment.publicCode)
+        : onlinePayment?.linkUrl
+          ? onlinePayment.linkUrl
+          : hasOnlinePayments
+            ? chargeInvoiceUrl(charge.id)
+            : "";
 
       const content = fillMessage(template.content, {
         aluno: client.name,

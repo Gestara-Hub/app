@@ -276,6 +276,17 @@ function OrgUnitForm({
     if (suggested && suggested !== form.getValues("timeZone")) form.setValue("timeZone", suggested);
   }, [state, organization.settings?.timeZone, form]);
 
+  // Se a tela abriu com deep link para o telefone (#phone), foca no campo
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#phone") {
+      const el = document.getElementById("phone");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+    }
+  }, []);
+
   const currentTiming = useWatch({ control: form.control, name: "billingTiming" });
   const currentStrategy = useWatch({ control: form.control, name: "midMonthStrategy" });
   const currentDueDay = useWatch({ control: form.control, name: "defaultDueDay" });
@@ -501,6 +512,7 @@ function OrgUnitForm({
                   disabled={pending}
                 />
                 <InputPhone<OrgUnitValues>
+                  id="phone"
                   name="phone"
                   label="Telefone / WhatsApp"
                   placeholder="(11) 99999-9999"

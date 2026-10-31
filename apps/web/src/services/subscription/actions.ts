@@ -3,11 +3,13 @@ export { updateOrganizationSubscriptionAction } from "./subscriptionActions";
 export {
   checkAsaasSubscriptionPaymentAction,
   createAsaasSubscriptionCheckoutAction,
+  getPendingSubscriptionPixAction,
   simulateAsaasSubscriptionPaymentAction,
 } from "./subscriptionCheckoutActions";
 export type {
   CreateSubscriptionInput,
   SubscriptionCheckoutResult,
+  SubscriptionPendingPixResult,
 } from "./subscriptionCheckoutActions";
 export {
   cancelScheduledPlanChangeAction,

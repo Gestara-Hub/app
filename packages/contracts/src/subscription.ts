@@ -17,6 +17,23 @@ export type PaidFeature =
   | "certificates" // Certificado de conclusao do curso (doc 20, fase D)
   | "bi"; // Inteligencia e analytics preditivos (nivel Scale)
 
+/**
+ * Franquia mensal de mensagens automáticas de WhatsApp inclusas por plano (doc product/13 §2).
+ * - Free: 0 (somente envio assistido manual via wa.me)
+ * - Pro: 300 mensagens automáticas/mês
+ * - Scale: 1.000 mensagens automáticas/mês
+ */
+export const TIER_WHATSAPP_QUOTA: Record<SubscriptionTier, number> = {
+  free: 0,
+  pro: 300,
+  scale: 1000,
+};
+
+export function tierWhatsAppQuota(tier?: SubscriptionTier | null): number {
+  if (!tier) return 0;
+  return TIER_WHATSAPP_QUOTA[tier] ?? 0;
+}
+
 export interface Subscription {
   tier: SubscriptionTier;
   interval?: SubscriptionInterval;

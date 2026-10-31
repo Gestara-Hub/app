@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, MessageCircle, Unplug } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Info, Loader2, MessageCircle, Unplug } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { WhatsAppConnectionView } from "@gestarahub/contracts";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -22,6 +23,8 @@ import {
   useUpdateConnectionSettings,
   useWhatsAppConnection,
 } from "../hooks/use-communication";
+import { useMetaEmbeddedSignup } from "../hooks/use-meta-embedded-signup";
+import { TestWhatsAppDialog } from "./test-whatsapp-dialog";
 
 const ASSISTED_STEPS = [
   "Você toca no botão do WhatsApp (na mensalidade, no aniversariante, no aluno).",
@@ -125,6 +128,8 @@ export function ConnectionSettingsTab() {
   const connectMut = useConnectOfficialWhatsApp();
   const disconnectMut = useDisconnectOfficialWhatsApp();
   const { confirm, dialog } = useConfirmAction();
+  const { launchSignup, isSigningUp, isConfigured } = useMetaEmbeddedSignup();
+  const phone = unit?.phone;
 
   if (isPending || !connection) return <Skeleton className="h-64 w-full rounded-xl" />;
 
@@ -178,35 +183,132 @@ export function ConnectionSettingsTab() {
     );
   }
 
-  if (connection.officialStatus !== "connected") {
-    const phone = unit?.phone;
+  // Ainda sem o numero de cada espaco (doc technical/07 §1.1): em producao, so o assistido.
+  if (!connection.officialAvailable && connection.officialStatus !== "connected") {
     return (
       <div className="space-y-4">
-        <section className="space-y-4 rounded-xl border bg-card p-5">
+        {assistedCard}
+        <section className="space-y-2 rounded-xl border bg-card p-5">
+          <h3 className="text-sm font-semibold text-foreground">Envio automático: em breve</h3>
+          <p className="text-sm text-muted-foreground">
+            Em breve, lembretes, boas-vindas e parabéns vão sair sozinhos pelo número do seu espaço. Até lá, use o envio assistido.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  if (connection.officialStatus !== "connected") {
+    const hasPhone = Boolean(phone && whatsappNumber(phone));
+
+    return (
+      <div className="space-y-4">
+        <section className="space-y-5 rounded-xl border bg-card p-5">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Conectar o WhatsApp oficial</h3>
             <p className="text-sm text-muted-foreground">
               Use o número do seu espaço com a API oficial do WhatsApp. É uma conexão feita uma vez.
             </p>
           </div>
+
           <Steps items={OFFICIAL_STEPS} />
-          <p className="text-xs text-muted-foreground">
-            {phone
-              ? `Número do espaço: ${formatPhone(phone)}.`
-              : "Cadastre o telefone do espaço em Configurações antes de conectar."}
-          </p>
-          <Button
-            type="button"
-            disabled={!canManage || !whatsappNumber(phone) || connectMut.isPending}
-            onClick={() =>
-              connectMut.mutate(undefined, {
-                onSuccess: () => toast.success("WhatsApp oficial conectado."),
-                onError: (err) => toast.error(getErrorMessage(err, "Não foi possível conectar o WhatsApp oficial.")),
-              })
-            }
-          >
-            {connectMut.isPending ? "Conectando..." : "Conectar WhatsApp oficial"}
-          </Button>
+
+          {hasPhone ? (
+            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span>
+                  Número sugerido: <strong className="font-semibold text-foreground">{formatPhone(phone!)}</strong>
+                  <span className="hidden sm:inline text-muted-foreground"> — você pode confirmar ou escolher outro no popup da Meta</span>
+                </span>
+              </div>
+              <Link href="/settings#phone" className="font-medium text-primary hover:underline">
+                Alterar
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <span>
+                Você escolherá e verificará o número de WhatsApp diretamente na janela da Meta. Após a conexão, salvaremos o número no seu espaço automaticamente.
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              disabled={!canManage || connectMut.isPending || isSigningUp}
+              onClick={async () => {
+                try {
+                  if (isConfigured) {
+                    const result = await launchSignup({
+                      businessName: unit?.name,
+                      phone: phone ?? undefined,
+                    });
+                    connectMut.mutate(
+                      {
+                        code: result.code,
+                        phoneNumberId: result.phoneNumberId,
+                        wabaId: result.wabaId,
+                      },
+                      {
+                        onSuccess: () => toast.success("WhatsApp oficial conectado via Meta!"),
+                        onError: (err) =>
+                          toast.error(
+                            getFieldErrors(err)?.[0]?.message ??
+                              getErrorMessage(err, "Não foi possível concluir a conexão do WhatsApp oficial."),
+                          ),
+                      },
+                    );
+                  } else {
+                    connectMut.mutate(undefined, {
+                      onSuccess: () => toast.success("WhatsApp oficial conectado."),
+                      onError: (err) =>
+                        toast.error(
+                          getFieldErrors(err)?.[0]?.message ??
+                            getErrorMessage(err, "Não foi possível conectar o WhatsApp oficial."),
+                        ),
+                    });
+                  }
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : "Conexão com a Meta cancelada ou interrompida.");
+                }
+              }}
+            >
+              {isSigningUp ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Aguardando autorização na Meta...
+                </>
+              ) : connectMut.isPending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Conectando WhatsApp oficial...
+                </>
+              ) : (
+                "Conectar via Popup da Meta"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canManage || connectMut.isPending || isSigningUp}
+              onClick={() => {
+                connectMut.mutate(undefined, {
+                  onSuccess: () => toast.success("WhatsApp oficial conectado em modo Sandbox / Local!"),
+                  onError: (err) =>
+                    toast.error(
+                      getFieldErrors(err)?.[0]?.message ??
+                        getErrorMessage(err, "Não foi possível ativar a conexão de teste."),
+                    ),
+                });
+              }}
+            >
+              Conectar modo Sandbox (Ambiente local)
+            </Button>
+          </div>
         </section>
         {assistedCard}
       </div>
@@ -221,6 +323,11 @@ export function ConnectionSettingsTab() {
             <CheckCircle2 className="mt-0.5 size-5 text-emerald-500" />
             <div>
               <h3 className="text-sm font-semibold text-foreground">WhatsApp oficial conectado</h3>
+              {!connection.officialAvailable ? (
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Envio automático pausado até o número do seu espaço ser ligado. Use o envio assistido.
+                </p>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 {connection.displayName} · {phoneLabel(connection.phoneNumber)}
                 {connection.connectedAt
@@ -229,22 +336,54 @@ export function ConnectionSettingsTab() {
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!canManage || disconnectMut.isPending}
-            onClick={() => void disconnect()}
-          >
-            <Unplug className="size-4" />
-            Desconectar
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Ferramenta de desenvolvimento: fora do build de producao (a acao tambem recusa). */}
+            {process.env.NODE_ENV !== "production" && canManage ? <TestWhatsAppDialog defaultPhone={phone} /> : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canManage || disconnectMut.isPending}
+              onClick={() => void disconnect()}
+            >
+              <Unplug className="size-4" />
+              Desconectar
+            </Button>
+          </div>
         </div>
         <div className="border-t border-border/60 pt-4">
           <SendHoursForm connection={connection} disabled={!canManage} />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Franquia do mês: {connection.monthlyQuota.used} de {connection.monthlyQuota.included} mensagens.
-        </p>
+        <div className="space-y-2 border-t border-border/60 pt-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Franquia do ciclo: <strong className="font-semibold text-foreground">{connection.monthlyQuota.used} de {connection.monthlyQuota.included}</strong> mensagens
+            </span>
+            {connection.isQuotaExhausted && (
+              <span className="font-medium text-amber-600 dark:text-amber-400">
+                Franquia atingida — envio assistido ativo
+              </span>
+            )}
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${
+                connection.isQuotaExhausted ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+              style={{
+                width: `${
+                  connection.monthlyQuota.included > 0
+                    ? Math.min(100, Math.round((connection.monthlyQuota.used / connection.monthlyQuota.included) * 100))
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {connection.isQuotaExhausted
+              ? "Franquia de mensagens automáticas atingida. As mensagens seguem com 1 toque (envio assistido) até a franquia renovar, no próximo pagamento do plano."
+              : "A franquia de mensagens automáticas é renovada automaticamente a cada pagamento mensal confirmado da assinatura."}
+          </p>
+        </div>
       </section>
       {dialog}
     </div>

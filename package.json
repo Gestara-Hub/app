@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "pnpm --filter @gestarahub/web dev",
+    "dev:https": "pnpm --filter @gestarahub/web dev:https",
     "tunnel": "node apps/web/scripts/dev-tunnel.mjs",
     "setup:local": "node apps/web/scripts/local-setup.mjs",
     "setup:local:reset": "node apps/web/scripts/local-setup.mjs --reset",

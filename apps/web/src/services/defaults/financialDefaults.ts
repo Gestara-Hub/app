@@ -1,9 +1,11 @@
-import type {
-  FinancialCategory,
-  FinancialEntryType,
-  FinancialSystemCategoryKey,
-  Id,
-  WhatsAppConnection,
+import {
+  type FinancialCategory,
+  type FinancialEntryType,
+  type FinancialSystemCategoryKey,
+  type Id,
+  type SubscriptionTier,
+  type WhatsAppConnection,
+  tierWhatsAppQuota,
 } from "@gestarahub/contracts";
 
 /**
@@ -86,11 +88,11 @@ function toFinancialCategory(organizationId: Id) {
  * WhatsApp do espaco: comeca no envio assistido (gratis). A conexao oficial
  * (Pro) e feita pelo espaco, com o proprio numero.
  */
-export function defaultWhatsAppConnection(organizationId: Id): WhatsAppConnection {
+export function defaultWhatsAppConnection(organizationId: Id, tier: SubscriptionTier = "free"): WhatsAppConnection {
   return {
     organizationId,
     officialStatus: "not_connected",
     allowedSendHours: { start: "08:00", end: "20:00" },
-    monthlyQuota: { used: 0, included: 1000 },
+    monthlyQuota: { used: 0, included: tierWhatsAppQuota(tier) },
   };
 }

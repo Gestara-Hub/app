@@ -89,7 +89,15 @@ export const messagesService = {
   sendMessage(payload: SendMessagePayload): Promise<MessageLog> {
     return writeOp(async () => {
       assertFeature("messaging");
-      if (connectionView().mode !== "official") {
+      const view = connectionView();
+      if (view.mode !== "official") {
+        if (view.isQuotaExhausted) {
+          throw apiError(
+            "CONFLICT",
+            `Franquia de mensagens automáticas atingida (${view.monthlyQuota.used} de ${view.monthlyQuota.included}). Use o envio assistido até a franquia renovar, no próximo pagamento do plano.`,
+            { httpStatus: 409 },
+          );
+        }
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para enviar automaticamente.", {
           httpStatus: 409,
         });

@@ -5,6 +5,13 @@ export interface WhatsAppConfig {
   businessAccountId?: string;
 }
 
+export interface MetaPhoneNumberDetails {
+  id: string;
+  verifiedName: string;
+  displayPhoneNumber: string;
+  qualityRating?: string;
+}
+
 export interface SendWhatsAppTextMessagePayload {
   to: string; // E.164 sem o '+' (ex: 5592991844219)
   text: string;

@@ -52,3 +52,5 @@ next-env.d.ts
 
 # servidor local de conferencia dos documentos
 /.next-docs/
+
+certificates

@@ -3,9 +3,11 @@ import {
   sendWhatsAppTemplateMessage as libSendTemplate,
   listWhatsAppTemplates as libListTemplates,
   createOrUpdateWhatsAppTemplate as libCreateOrUpdateTemplate,
+  getWhatsAppPhoneNumberDetails as libGetPhoneNumberDetails,
   normalizeWhatsAppNumber,
   getWhatsAppConfig,
   WhatsAppApiError,
+  type MetaPhoneNumberDetails,
   type MetaTemplateInfo,
   type MetaTemplateStatus,
   type WhatsAppMessageResponse,
@@ -122,5 +124,13 @@ export const whatsappClient = {
       throw new Error("Meta WhatsApp Cloud API não está configurada.");
     }
     return libCreateOrUpdateTemplate(payload);
+  },
+
+  /**
+   * Obtém os detalhes de um número de WhatsApp registrado na Meta.
+   */
+  async getPhoneNumberDetails(phoneNumberId: string): Promise<MetaPhoneNumberDetails | null> {
+    if (!this.isConfigured()) return null;
+    return libGetPhoneNumberDetails(phoneNumberId);
   },
 };

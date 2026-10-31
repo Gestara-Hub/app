@@ -30,6 +30,8 @@ export interface WhatsAppConnection {
   monthlyQuota: {
     used: number;
     included: number;
+    /** Inicio do ciclo atual da franquia (zera no pagamento do plano; no anual, todo mes). */
+    cycleStart?: string;
   };
 }
 
@@ -38,6 +40,14 @@ export interface WhatsAppConnectionView extends WhatsAppConnection {
   mode: WhatsAppSendMode;
   /** O plano tem envio automatico (recurso `messaging`). */
   canUseOfficial: boolean;
+  /** Franquia mensal do plano esgotada no ciclo atual. */
+  isQuotaExhausted: boolean;
+  /**
+   * O envio automatico pode sair neste ambiente. Falso em producao ate cada
+   * espaco ter as credenciais do proprio numero (doc technical/07 §1.1):
+   * decisao do usuario de 30/10/2026, nada sai pelo numero da plataforma.
+   */
+  officialAvailable: boolean;
 }
 
 export type MessageTrigger =

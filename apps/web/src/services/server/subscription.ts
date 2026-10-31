@@ -7,6 +7,7 @@ import { getPayment, getSubscription } from "@/lib/asaas";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { decodeSubscriptionReference } from "@/lib/subscription";
 import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
+import { resetWhatsAppQuota } from "./whatsappQuota";
 
 /**
  * Plano GestaraHub no banco. Modulo so do servidor, sem "use server": o plano
@@ -79,6 +80,7 @@ export async function confirmSubscriptionPayment(
     changedAt: new Date().toISOString(),
   };
   await writeOrganizationSubscription(admin, organizationId, subscription);
+  await resetWhatsAppQuota(admin, organizationId, reference.tier, payment.dueDate);
   await recordActivation(admin, organizationId, author, current, subscription, payment.id);
   return { status: payment.status, isPaid: true, subscription };
 }

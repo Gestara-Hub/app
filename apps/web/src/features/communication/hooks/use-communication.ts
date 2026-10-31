@@ -29,6 +29,8 @@ function useInvalidateCommunication() {
     qc.invalidateQueries({ queryKey: queryKeys.communication.all });
     // Ultimas mensagens na ficha do aluno.
     qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+    qc.invalidateQueries({ queryKey: queryKeys.unit.detail });
+    qc.invalidateQueries({ queryKey: queryKeys.organization.detail });
   };
 }
 
@@ -41,7 +43,11 @@ export function useWhatsAppConnection() {
 
 export function useConnectOfficialWhatsApp() {
   const invalidate = useInvalidateCommunication();
-  return useMutation({ mutationFn: () => communicationService.connectOfficial(), onSuccess: invalidate });
+  return useMutation({
+    mutationFn: (payload?: { code?: string; phoneNumberId?: string; wabaId?: string }) =>
+      communicationService.connectOfficial(payload),
+    onSuccess: invalidate,
+  });
 }
 
 export function useDisconnectOfficialWhatsApp() {

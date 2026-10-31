@@ -33,33 +33,61 @@ function ModeBanner({
   connection: WhatsAppConnectionView;
   onConnect: () => void;
 }) {
-  if (connection.mode === "official") {
+  if (connection.officialStatus === "connected" && connection.canUseOfficial) {
     const { used, included } = connection.monthlyQuota;
     const pct = included > 0 ? Math.min(100, Math.round((used / included) * 100)) : 0;
+    const isExhausted = connection.isQuotaExhausted;
+
     return (
-      <div className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+          isExhausted
+            ? "border-amber-500/30 bg-amber-500/5"
+            : "border-emerald-500/30 bg-emerald-500/5"
+        }`}
+      >
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+          <span
+            className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${
+              isExhausted
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+            }`}
+          >
             <MessageCircle className="size-4" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-foreground">WhatsApp oficial conectado</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">WhatsApp oficial conectado</p>
+              {isExhausted && (
+                <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-200">
+                  Franquia atingida
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {connection.displayName}
-              {connection.phoneNumber ? ` · ${formatPhone(connection.phoneNumber.replace(/^55/, ""))}` : ""}. As
-              mensagens ligadas saem sozinhas.
+              {isExhausted
+                ? "Franquia do ciclo atingida. Suas mensagens continuam disponíveis em 1 toque (envio assistido) até o próximo pagamento da assinatura."
+                : `${connection.displayName}${
+                    connection.phoneNumber ? ` · ${formatPhone(connection.phoneNumber.replace(/^55/, ""))}` : ""
+                  }. As mensagens ligadas saem sozinhas.`}
             </p>
           </div>
         </div>
         <div className="w-full space-y-1 sm:w-56">
           <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>Franquia do mês</span>
-            <span className="tabular-nums">
+            <span>Franquia do ciclo</span>
+            <span className="tabular-nums font-medium text-foreground">
               {used} de {included}
             </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+            <div
+              className={`h-full rounded-full transition-all ${
+                isExhausted ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       </div>

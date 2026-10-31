@@ -29,6 +29,7 @@ import {
 } from "../server/subscription";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { userActor } from "../server/systemAudit";
+import { resetWhatsAppQuota } from "../server/whatsappQuota";
 import { logError } from "@/lib/log";
 
 /**
@@ -119,6 +120,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+      await resetWhatsAppQuota(createSupabaseAdminClient(), input.organizationId, subscription.tier);
       await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
@@ -222,6 +224,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+      await resetWhatsAppQuota(createSupabaseAdminClient(), input.organizationId, subscription.tier);
       await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
@@ -333,6 +336,7 @@ export async function simulateAsaasSubscriptionPaymentAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
+      await resetWhatsAppQuota(admin, ctx.organizationId, subscription.tier);
       await recordActivation(admin, ctx.organizationId, { actor: await userActor(admin, ctx) }, undefined, subscription);
       return { success: true, subscription };
     }
@@ -350,4 +354,87 @@ export async function simulateAsaasSubscriptionPaymentAction(
         err instanceof Error ? err.message : "Erro ao simular liquidação.",
     };
   }
+}
+
+export interface SubscriptionPendingPixResult {
+  ok: boolean;
+  error?: string;
+  paymentId?: string;
+  pixQrCode?: {
+    encodedImage?: string;
+    payload: string;
+    expirationDate?: string;
+  };
+  invoiceUrl?: string;
+  dueDate?: string;
+  amountCents?: number;
+}
+
+/**
+ * Obtém os dados do Pix (QR Code e Copia e Cola) da fatura atual ou próxima renovação do Plano GestaraHub.
+ */
+export async function getPendingSubscriptionPixAction(): Promise<SubscriptionPendingPixResult> {
+  const ctx = await requireTenant();
+  ctx.require("subscription:manage");
+  const admin = createSupabaseAdminClient();
+  const subscription = await readOrganizationSubscription(admin, ctx.organizationId);
+
+  if (!subscription || subscription.tier === "free") {
+    return { ok: false, error: "A organização está no Plano Grátis." };
+  }
+
+  const tier = subscription.tier;
+  const interval = subscription.interval ?? "monthly";
+  const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
+  const amountCents = subscription.priceCents ?? priceConfig.priceCents;
+  const dueDate = subscription.pendingPayment?.dueDate ?? subscription.renewsOn ?? asaasToday();
+  const invoiceUrl = subscription.pendingPayment?.invoiceUrl;
+  const paymentId = subscription.pendingPayment?.id;
+
+  // Se houver cobrança ativa gerada no Asaas, busca o QR Code oficial
+  if (paymentId && !paymentId.startsWith("pay_mock_")) {
+    try {
+      const pixRes = await getPixQrCode(paymentId);
+      if (pixRes?.payload) {
+        return {
+          ok: true,
+          paymentId,
+          pixQrCode: {
+            encodedImage: pixRes.encodedImage,
+            payload: pixRes.payload,
+            expirationDate: pixRes.expirationDate,
+          },
+          invoiceUrl,
+          dueDate,
+          amountCents,
+        };
+      }
+    } catch (err) {
+      logError("[getPendingSubscriptionPixAction] Erro ao buscar QR Code no Asaas:", err);
+    }
+    // Sem o QR: so a fatura do parceiro (Pix ou cartao), nunca um Pix inventado.
+    return invoiceUrl
+      ? { ok: true, paymentId, invoiceUrl, dueDate, amountCents }
+      : { ok: false, error: "Não foi possível carregar o Pix agora. Tente de novo em instantes." };
+  }
+
+  // Conta real sem cobranca em aberto: nada a pagar agora (o Pix de exemplo e so do checkout simulado).
+  if (getAsaasConfig().masterApiKey || !mockCheckoutAllowed()) {
+    return { ok: false, error: "Nenhuma cobrança do plano em aberto agora." };
+  }
+
+  const effectivePaymentId = paymentId || `pay_mock_${ctx.organizationId.slice(0, 8)}`;
+  const mockPixPayload = `00020126580014br.gov.bcb.pix0136${effectivePaymentId}520400005303986540${(amountCents / 100).toFixed(2)}5802BR5910GESTARAHUB6009SAO PAULO62070503***6304`;
+
+  return {
+    ok: true,
+    paymentId: effectivePaymentId,
+    pixQrCode: {
+      payload: mockPixPayload,
+      expirationDate: dueDate,
+    },
+    invoiceUrl,
+    dueDate,
+    amountCents,
+  };
 }

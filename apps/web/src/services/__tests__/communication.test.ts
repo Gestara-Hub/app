@@ -1,7 +1,7 @@
-import type { SendMessagePayload } from "@gestarahub/contracts";
+import { tierWhatsAppQuota, type SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { runBirthdayGreetings } from "@/services/communication/communicationRules";
+import { runBillingReminders, runBirthdayGreetings } from "@/services/communication/communicationRules";
 import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
 import { checkSlice } from "@/services/world/sliceCheck";
 import { billingService } from "@/services/billing";
@@ -30,6 +30,10 @@ function message(overrides: Partial<SendMessagePayload> = {}): SendMessagePayloa
 
 function setTier(tier: "free" | "pro" | "scale") {
   store.organization.subscription = { tier };
+  // Como o pagamento do plano faz no servidor (resetWhatsAppQuota): a franquia do plano.
+  if (store.whatsAppConnection) {
+    store.whatsAppConnection.monthlyQuota = { used: 0, included: tierWhatsAppQuota(tier) };
+  }
 }
 
 /** Pro com o numero oficial conectado (telefone da unidade). */
@@ -100,6 +104,34 @@ describe("conexao do WhatsApp", () => {
       fields: [{ field: "phoneNumber" }],
     });
     expect(store.whatsAppConnection?.officialStatus).toBe("not_connected");
+  });
+
+  it("cadastro guiado sem o numero confirmado pela Meta nao conecta nem inventa telefone", async () => {
+    setTier("pro");
+    store.unit.phone = undefined;
+    await expect(communicationService.connectOfficial({ phoneNumberId: "123456789012345" })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "phoneNumber" }],
+    });
+    // Nunca o id do numero na Meta (ou um numero ficticio) como telefone do espaco.
+    expect(store.unit.phone).toBeUndefined();
+    expect(store.whatsAppConnection?.officialStatus).toBe("not_connected");
+  });
+
+  it("em producao, sem o numero de cada espaco, nada sai automatico nem conecta", async () => {
+    await connectOfficial();
+    expect((await communicationService.getConnection()).mode).toBe("official");
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      // Ja conectado: o automatico pausa e o botao volta ao assistido.
+      const view = await communicationService.getConnection();
+      expect(view).toMatchObject({ officialAvailable: false, mode: "assisted" });
+      expect(runBillingReminders()).toBe(0);
+      await communicationService.disconnectOfficial();
+      await expect(communicationService.connectOfficial()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("desconectar volta ao assistido e limpa numero e nome", async () => {
@@ -608,10 +640,11 @@ describe("numeros do mes", () => {
     const failed = await communicationService.registerAssistedMessage(message());
     store.messageLogs.find((l) => l.id === failed.id)!.status = "failed";
     const metrics = await communicationService.getMetrics();
+    // Gratis: sem envio automatico, franquia 0 (Pro 300, Expansao 1.000).
     expect(metrics).toMatchObject({
       mode: "assisted",
       messagesThisMonth: 2,
-      monthlyQuota: 1000,
+      monthlyQuota: 0,
       deliveryRate: null,
       readRate: null,
       recoveredAmountCents: 0,

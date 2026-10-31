@@ -1,4 +1,5 @@
 import type {
+  MetaPhoneNumberDetails,
   MetaTemplateInfo,
   MetaTemplateStatus,
   SendWhatsAppTemplateMessagePayload,
@@ -311,4 +312,44 @@ export async function createOrUpdateWhatsAppTemplate(
     id: data.id,
     status: data.status || "PENDING",
   };
+}
+
+/**
+ * Consulta na Graph API os detalhes do número de telefone registrado na Meta.
+ */
+export async function getWhatsAppPhoneNumberDetails(
+  phoneNumberId: string,
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<MetaPhoneNumberDetails | null> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken || !phoneNumberId) {
+    return null;
+  }
+
+  const url = `${config.apiUrl}/${phoneNumberId}?fields=verified_name,display_phone_number,quality_rating`;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      logError("[WhatsApp] Falha ao consultar detalhes do número na Meta:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    return {
+      id: String(data.id || phoneNumberId),
+      verifiedName: String(data.verified_name || ""),
+      displayPhoneNumber: String(data.display_phone_number || ""),
+      qualityRating: data.quality_rating ? String(data.quality_rating) : undefined,
+    };
+  } catch (err) {
+    logError("[WhatsApp] Erro de rede ao buscar detalhes do telefone na Meta:", err);
+    return null;
+  }
 }

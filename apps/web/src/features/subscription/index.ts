@@ -8,4 +8,5 @@ export { useSubscriptionCheckout } from "./hooks/use-subscription-checkout";
 export { PlanChangeDialog } from "./components/plan-change-dialog";
 export { ScheduledPlanChangeNotice } from "./components/scheduled-plan-change-notice";
 export { PlanNoticeBanner } from "./components/plan-notice-banner";
+export { PendingSubscriptionInvoiceCard } from "./components/pending-subscription-invoice-card";
 export { PlanHistory } from "./components/plan-history";

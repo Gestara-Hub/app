@@ -15,7 +15,12 @@ import { isDemoSpace } from "@/lib/demo";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { proOnlyFeatures } from "@/lib/subscription";
 import { useCan, useCurrentUser } from "@/features/auth";
-import { PlanChangeDialog, PlanHistory, ScheduledPlanChangeNotice } from "@/features/subscription";
+import {
+  PendingSubscriptionInvoiceCard,
+  PlanChangeDialog,
+  PlanHistory,
+  ScheduledPlanChangeNotice,
+} from "@/features/subscription";
 import { useState } from "react";
 import { formatDate } from "@gestarahub/core/format";
 import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscription";
@@ -142,6 +147,7 @@ export function SubscriptionPlanCard() {
         </CardHeader>
         <CardContent className="space-y-5">
           <ScheduledPlanChangeNotice subscription={data} />
+          <PendingSubscriptionInvoiceCard subscription={data} />
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="size-4 text-primary" aria-hidden />O que o Profissional inclui

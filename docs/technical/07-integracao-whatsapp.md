@@ -2,7 +2,7 @@
 
 Data: 2026-10-14.
 
-> **Status:** 13/10/2026. Checklist para quando o backend começar. Hoje só o **envio assistido** funciona de verdade; a conexão oficial e os envios automáticos são simulados no mock.
+> **Status (30/10/2026):** a API oficial da Meta já está ligada no código (cliente, webhook, rotina de lembretes de cobrança, situação dos modelos e o cadastro guiado da Meta na tela), mas **sempre com as credenciais do ambiente: o número único da plataforma**. As credenciais de cada espaço (token, id do número e da conta) ainda não são guardadas nem usadas (seção 1.1). O app da Meta está em modo de desenvolvimento; a revisão do app e a virada para produção ficam para o deploy (`docs/pendencias.md`).
 > Decisão de produto (número do próprio espaço; assistido no grátis, oficial no Pro): [../product/13-modelo-de-negocio.md](../product/13-modelo-de-negocio.md), seção 5. Custos e repasse: [../product/19-levantamento-pagamentos.md](../product/19-levantamento-pagamentos.md), seção 3.
 
 ## 1. O que existe hoje
@@ -10,10 +10,21 @@ Data: 2026-10-14.
 | Parte | Situação |
 |---|---|
 | Envio assistido (`api.whatsapp.com/send` com o texto pronto) | **Real.** Abre o WhatsApp do aparelho; registra "Aberto no WhatsApp". |
-| Botão "Conectar WhatsApp oficial" | Simulado: usa o telefone da unidade e o nome do espaço, sem falar com a Meta. |
-| Envio pelo oficial, status "Entregue/Lida/Falhou" | Simulado: nada sai do sistema. |
-| Parabéns automático | Simulado na leitura da tela Comunicação. |
-| Lembretes automáticos de cobrança | Não existem ainda. |
+| Botão "Conectar WhatsApp oficial" | Abre o cadastro guiado da Meta (`use-meta-embedded-signup.ts`, SDK v21, `pt_BR`). Com o id do número devolvido, consulta o número e o nome verificados na Meta (`getWhatsAppPhoneNumberDetails`). Sem número confirmado (pela Meta ou no cadastro do espaço), não conecta: nunca grava o id da Meta nem um número inventado como telefone. Unidade sem telefone recebe o número confirmado pela Meta. |
+| Envio pelo oficial, status "Entregue/Lida/Falhou" | Real pela Cloud API, **com o número da plataforma** (variáveis `WHATSAPP_*` do ambiente). Status pelo webhook da Meta (`/api/webhooks/whatsapp`). |
+| Parabéns automático e lembretes de cobrança | Rotinas automáticas (só no Pro, só no oficial, até a franquia). O lembrete leva o link do pagamento online; sem ele, o da fatura pública (`/p/c/<cobrança>`, doc 25 §7). |
+| Mensagem de teste ("Testar envio real") | Ferramenta de desenvolvimento: só fora de produção e para quem gerencia a comunicação (`whatsappTestActions.ts`). Usa o número da plataforma. |
+
+### 1.1 O que falta para cada espaço usar o próprio número (antes de produção)
+A doc 13 §5 decidiu que as mensagens saem do número do próprio espaço. Hoje o código do cadastro guiado, o id do número e o id da conta que a Meta devolve não são guardados. Falta:
+1. trocar, no servidor, o código do cadastro guiado pelo token do espaço (com o segredo do app da Meta);
+2. guardar por espaço o id do número, o id da conta e o token, o token num lugar seguro (Vault do Supabase), nunca no `settings`;
+3. registrar o número e inscrever o app nos avisos da conta do espaço;
+4. enviar, ler modelos e tratar avisos com as credenciais do espaço, não as do ambiente.
+**Decisão do usuário (30/10/2026): bloqueado em produção até isso existir.** `officialSendingAvailable()` (`communicationRules.ts`) é falso em produção: o oficial não conecta (aviso "Envio automático: em breve" na aba Conexão), um espaço já conectado volta ao assistido e as rotinas não enviam. Fora de produção (e no servidor do e2e) segue com o número de testes da Meta, que só alcança os números cadastrados como teste.
+
+### 1.2 Franquia de mensagens automáticas
+Grátis 0, Pro 300 e Expansão 1.000 por ciclo (`TIER_WHATSAPP_QUOTA`, doc 13 §5). Ao esgotar, o automático para e o botão volta ao envio assistido. A franquia zera quando o pagamento do plano é confirmado (`resetWhatsAppQuota`, `services/server/whatsappQuota.ts`): ativação, renovação, religar e troca aplicada. **Plano anual (decisão do usuário, 30/10/2026): renova todo mês, no dia do ciclo**, pela rotina diária (`renewAnnualQuotaIfDue`), contando mês a mês desde o início do ano pago (`annualQuotaCycleStart` em `@gestarahub/core/subscription-plan`, sem deriva de fim de mês). A franquia guarda o início do ciclo (`monthlyQuota.cycleStart`). Com a renovação anual vencida (tolerância), não renova.
 
 Contrato pronto para a integração (`packages/contracts/src/communication.ts`): `WhatsAppConnection` (`officialStatus` com `pending`, número, nome exibido, `allowedSendHours`, `monthlyQuota`), `MessageTemplate`, `MessageLog` (status, `clientId`, `chargeId`, `errorReason`).
 

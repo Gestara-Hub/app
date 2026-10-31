@@ -30,6 +30,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Source maps de produção (tradução da pilha, `.map` no deploy) | `technical/21-registro-de-erros.md`, 5.1 | Decidido em 25/10: fora por ora; precisa de um preview na Vercel para conferir se os `.map` chegam
 | Imagem anexada e captura de tela no relato de problema (avaliado e adiado em 24/10: complexidade e dado de aluno na imagem, LGPD); sugestões em lista/votação para priorizar | `technical/26-painel-admin-gestarahub.md`, fase 1 (problema e sugestão) | Hoje o problema leva texto, tela de origem, código do erro e contexto técnico |
 | Botões `xs` com texto (ações de linha e chips: ficam, pela regra do doc `frontend/07` §1.5). Os `sm` e `lg` de texto foram tirados em 24/10, sem captura de tela | `qa/2026-10-23-teste-geral.md`, achado 9 | Conferir com o olho (linha abaixo) |
+| **WhatsApp pelo número de cada espaço:** guardar as credenciais que o cadastro guiado da Meta devolve (token no Vault, id do número e da conta), registrar o número, inscrever os avisos e enviar com elas. Até lá, o envio automático fica bloqueado em produção (decisão de 30/10/2026) | `technical/07-integracao-whatsapp.md` §1.1, `product/13-modelo-de-negocio.md` §5 | Antes de produção |
 
 ## Testes deixados para o fim
 
@@ -45,6 +46,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | Rodada de e2e depois das mudanças de 24/10 (nenhum rodado): `permissoes` (ficha do professor), `comunicacao` (vários alunos), `areas-setup` (instrutores x professores), `financeiro` e `dinheiro-financeiro` (aba Instrutores), `avisos-erros`, `areas-settings` (texto do certificado) | Decisões 1B, 4B, 8A, 9A, 10A, 11A | `pnpm --filter @gestarahub/web e2e:area <área>` ou o completo |
 | Conferir com o olho: pausar aluno (duas confirmações), mensagem para vários alunos, tela de Planos sem Expansão, botões depois de tirar `size="sm"` e `lg` | Decisões 8A, 11A, 7A e achado 9 | Abrir cada tela |
 | Conferir com o olho: janela com rolagem e botão "Certificado" do Grátis | #32 (seta de rolar cobrindo texto) e #49 (clicar em "Certificado" no Grátis) | Nova turma com horário fora do expediente; curso encerrado → ⋮ do aluno → Certificado numa conta Grátis |
+| À mão: cadastro guiado da Meta de ponta a ponta (`pnpm dev:https`), conectar sem telefone no espaço, franquia esgotada voltando ao assistido; fatura pública `/p/c/<cobrança>` (CPF, menor, forma desligada, código antigo cancelado no Asaas); card da fatura do plano em Configurações → Plano | Mudanças de 29 e 30/10 (WhatsApp, fatura pública, fatura do plano) | `pnpm dev:https`, Asaas sandbox |
 
 ## Esperando decisão sua
 
@@ -64,6 +66,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | `ASAAS_API_URL` da API real antes do build (desliga os botões de simular pagamento) | `technical/14-asaas-mcp.md` |
 | `ASAAS_WEBHOOK_EMAIL` (contato@gestarahub.com.br) na Vercel; webhooks de subcontas já criadas só pegam ao registrar de novo | `technical/19-desempenho-e-escala.md` |
 | Aprovar a conta do MailerSend ("Get approved"); hoje só entrega para 1 destinatário | Painel do MailerSend (ação sua, não é código) |
+| App da Meta: revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management` e virada para o modo de produção (precisa do domínio com `/privacy` e `/terms`) | `technical/07-integracao-whatsapp.md` |
 
 ## Só se você pedir
 
