@@ -1,15 +1,14 @@
 "use server";
 
 import type { Id, OnlinePayment } from "@gestarahub/contracts";
-import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { forbiddenError } from "@gestarahub/core/api-error";
+import { forbiddenError, notFoundError } from "@gestarahub/core/api-error";
 import { dateInSpace } from "@gestarahub/core/date";
 import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "./gateway";
 import { notAfterAsaasToday, receiveInCash } from "@/lib/asaas";
 import { isDemoOrganization } from "@/lib/demo";
 import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
-import { requireTenant } from "../server/tenant";
+import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
 import { logError, logWarn } from "@/lib/log";
 
@@ -17,20 +16,29 @@ import { logError, logWarn } from "@/lib/log";
  * Codigos de pagamento online no banco: gravar, listar, simular o pago e cancelar (aqui e no Asaas).
  */
 
-export async function insertOnlinePaymentInDb(
-  payment: OnlinePayment,
-  clientId?: string,
-): Promise<OnlinePayment> {
-  const client = await getClientForTenant();
-  const { data, error } = await client
+export async function insertOnlinePaymentInDb(payment: OnlinePayment): Promise<OnlinePayment> {
+  // Grava pelo servidor depois de conferir a sessao (o banco nao aceita escrita
+  // direta do usuario, migracao 78): espaco da sessao, cobranca e aluno desse
+  // espaco e sempre um codigo novo em aberto.
+  const ctx = await requireTenant();
+  ctx.require("billing:manage");
+  const admin = createSupabaseAdminClient();
+  const { data: charge } = await admin
+    .from("charges")
+    .select("id, student_id")
+    .eq("id", payment.chargeId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+  if (!charge) throw notFoundError("Cobrança não encontrada.");
+  const { data, error } = await admin
     .from("online_payments")
     .insert({
       id: payment.id,
-      organization_id: payment.organizationId,
-      charge_id: payment.chargeId,
-      client_id: clientId ?? null,
+      organization_id: ctx.organizationId,
+      charge_id: charge.id,
+      client_id: charge.student_id ?? null,
       method: payment.method,
-      status: payment.status,
+      status: "awaiting",
       amount_cents: payment.amountCents,
       split_amount_cents: payment.splitAmountCents ?? 0,
       gateway_fee_cents: payment.gatewayFeeCents ?? 0,
@@ -42,7 +50,7 @@ export async function insertOnlinePaymentInDb(
       public_code: payment.publicCode ?? null,
       fee_passed_to_customer: Boolean(payment.feePassedToCustomer),
       expires_at: payment.expiresAt,
-      paid_at: payment.paidAt ?? null,
+      paid_at: null,
     })
     .select()
     .single();
@@ -62,7 +70,8 @@ export async function listOnlinePaymentsForChargeFromDb(
   chargeId: Id,
   organizationId: string,
 ): Promise<OnlinePayment[]> {
-  const client = await getClientForTenant();
+  // O espaco do pedido precisa ser o da sessao: a expiracao abaixo grava pelo servidor.
+  const { client } = await requireSameOrganization(organizationId);
   // A modal Cobrar online mostra o codigo em aberto: o vencido expira antes (e sai do Asaas).
   await expireDueOnlinePayments(organizationId).catch((err) =>
     logError("[listOnlinePaymentsForChargeFromDb] Erro ao expirar cobranças vencidas:", err),
@@ -188,12 +197,14 @@ export async function cancelOnlinePaymentsForChargeInDb(
   organizationId: string,
   reason?: string,
 ): Promise<void> {
-  const client = await getClientForTenant();
-  const { data: rows } = await client
+  // Grava pelo servidor (migracao 78): so quem cobra, no espaco da sessao.
+  const ctx = await requireSameOrganization(organizationId, { permissions: ["billing:manage"] });
+  const admin = createSupabaseAdminClient();
+  const { data: rows } = await ctx.client
     .from("online_payments")
     .select("id, gateway_provider, gateway_payment_id")
     .eq("charge_id", chargeId)
-    .eq("organization_id", organizationId)
+    .eq("organization_id", ctx.organizationId)
     .eq("status", "awaiting");
   if (!rows?.length) return;
 
@@ -214,10 +225,14 @@ export async function cancelOnlinePaymentsForChargeInDb(
 
   const updatePayload: Record<string, unknown> = { status: "canceled" };
   if (reason) updatePayload.canceled_reason = reason;
-  await client.from("online_payments").update(updatePayload).in("id", toCancel);
+  await admin.from("online_payments").update(updatePayload).eq("organization_id", ctx.organizationId).in("id", toCancel);
   // Falhou no Asaas: cancela aqui mesmo assim e marca para tentar de novo.
   if (pendingAtGateway.length > 0) {
-    await client.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
+    await admin
+      .from("online_payments")
+      .update({ gateway_cancel_pending: true })
+      .eq("organization_id", ctx.organizationId)
+      .in("id", pendingAtGateway);
   }
 }
 
@@ -226,17 +241,20 @@ export async function cancelOnlinePaymentsForChargeInDb(
  * cancela tambem no Asaas. O espaco vem da sessao e as linhas sao lidas com o
  * RLS dela. Ja pago no Asaas fica para o webhook dar a baixa; falha no Asaas
  * marca para tentar de novo.
+ *
+ * Roda com quem fez a acao (o atendente que inativou o aluno, por exemplo), por
+ * isso nao pede a permissao de cobrancas: so repassa ao Asaas o que o banco ja
+ * marcou como cancelado. Chamada de fora, nao cancela codigo em aberto
+ * (revisao geral de 31/10/2026, achado S7 e a sua correcao).
  */
 export async function cancelGatewayPaymentsAction(paymentIds: Id[]): Promise<void> {
   if (paymentIds.length === 0) return;
-  const { requireTenant } = await import("../server/tenant");
   const ctx = await requireTenant();
-  // Cancela codigos no parceiro: so quem cobra (revisao geral de 31/10/2026, achado S7).
-  ctx.require("billing:manage");
   const { data: rows } = await ctx.client
     .from("online_payments")
     .select("id, gateway_provider, gateway_payment_id")
     .eq("organization_id", ctx.organizationId)
+    .eq("status", "canceled")
     .in("id", paymentIds);
   const asaasRows = (rows ?? []).filter((r) => r.gateway_provider === "asaas" && r.gateway_payment_id);
   if (asaasRows.length === 0) return;

@@ -221,7 +221,7 @@ export const onlineChargesService = {
             store.organization.id,
             "Substituído por novo código",
           );
-          await insertOnlinePaymentInDb(payment, c.studentId);
+          await insertOnlinePaymentInDb(payment);
         } catch (dbErr) {
           logError("[onlinePaymentsService] Erro ao salvar online_payment no banco:", dbErr);
         }
