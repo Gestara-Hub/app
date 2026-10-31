@@ -51,16 +51,25 @@ export async function recordLegalConsentAction(
     };
   }
 
-  const documentHash =
-    input.documentHash || computeTermsDocumentHash(input.termsVersion);
+  // Revisao geral de 31/10/2026 (achado S8): o navegador escolhia o tipo, a
+  // versao, o hash e sobrescrevia e-mail, nome e perfil nos metadados. Aqui so
+  // valem os termos da plataforma na versao em vigor; o hash e calculado no
+  // servidor e os dados da prova vem da sessao. Do navegador, so a origem.
+  if (input.consentType !== "platform_terms" && input.consentType !== "privacy_policy") {
+    return { success: false, error: "Tipo de aceite inválido." };
+  }
+  if (input.termsVersion !== CURRENT_PLATFORM_TERMS_VERSION) {
+    return { success: false, error: "Versão dos termos inválida." };
+  }
+  const documentHash = computeTermsDocumentHash(input.termsVersion);
+  const source = typeof input.metadata?.source === "string" ? input.metadata.source.slice(0, 40) : "first_login_modal";
 
   const enrichedMetadata = {
+    source,
     email: currentUser?.email,
     userName: currentUser?.name,
     userProfile: currentUser?.profile,
     recordedAtUtc: new Date().toISOString(),
-    source: input.metadata?.source || "first_login_modal",
-    ...input.metadata,
   };
 
   const adminClient = createSupabaseAdminClient();
