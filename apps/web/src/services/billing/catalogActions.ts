@@ -1,5 +1,6 @@
 "use server";
 
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { selectAllRows } from "@/lib/supabase/select-all";
 import type {
   ClassGroup,
@@ -27,6 +28,8 @@ import { activeStudentsInPlan, periodChangeError, sortByName } from "./planRules
  * espaco da sessao e as mesmas regras da demonstracao.
  */
 
+// Gravacao pelo servidor (chave de servico) depois de conferir a permissao e com
+// o espaco da sessao: o banco nao aceita escrita direta do usuario (migracao 78).
 const MANAGE = ["billing:manage"] as const;
 
 /** Antes e depois, para a auditoria do navegador. */
@@ -92,7 +95,7 @@ export async function createPlanAction(payload: CreatePlan): Promise<ActionResul
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     validatePlan(payload);
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("plans")
       .insert({
         organization_id: ctx.organizationId,
@@ -160,7 +163,7 @@ export async function updatePlanAction(id: Id, payload: UpdatePlan): Promise<Act
     if (payload.priceCents !== undefined) patch.price_cents = payload.priceCents;
     if (payload.period !== undefined) patch.period = payload.period;
     if (payload.status !== undefined) patch.status = payload.status;
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("plans")
       .update(patch)
       .eq("id", id)
@@ -193,7 +196,7 @@ export async function createPackageAction(input: CreateLessonPackage): Promise<A
     ctx.require(...MANAGE);
     const payload = normalizePackage(input);
     validatePackage(payload, await classGroupsForPackages(ctx));
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("lesson_packages")
       .insert(
         lessonPackageToRow({
@@ -222,7 +225,7 @@ export async function updatePackageAction(
     const before = await fetchPackage(ctx, id);
     const next = normalizePackage({ ...before, ...payload });
     validatePackage(next, await classGroupsForPackages(ctx));
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("lesson_packages")
       .update(lessonPackageToRow({ ...before, ...next, name: next.name ?? before.name }))
       .eq("id", id)

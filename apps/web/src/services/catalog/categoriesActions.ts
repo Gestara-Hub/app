@@ -27,6 +27,8 @@ import {
  * com o espaco da sessao. Mesmas regras da demonstracao (`categoryRules`).
  */
 
+// Gravacao pelo servidor (chave de servico) depois de conferir a permissao e com
+// o espaco da sessao: o banco nao aceita escrita direta do usuario (migracao 78).
 const MANAGE = ["classes:manage", "services:manage"] as const;
 const NOT_FOUND = "Categoria não encontrada.";
 
@@ -91,7 +93,7 @@ export async function createCategoryAction(payload: CreateCategory): Promise<Act
       ? normalizedAssessments(payload)
       : defaultAssessmentsForNewModality(org);
 
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("categories")
       .insert({
         organization_id: ctx.organizationId,
@@ -141,7 +143,7 @@ export async function updateCategoryAction(
     if (payload.measurements !== undefined) patch.measurements = normalizedMeasurements(payload) ?? null;
     if (payload.status !== undefined) patch.status = payload.status;
 
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("categories")
       .update(patch)
       .eq("id", id)
@@ -209,7 +211,7 @@ export async function removeCategoryAction(id: Id): Promise<ActionResult<Categor
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     await fetchCategory(ctx, id);
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("categories")
       .update({ status: "inactive" })
       .eq("id", id)

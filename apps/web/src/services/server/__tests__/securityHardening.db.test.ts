@@ -69,6 +69,27 @@ describe("gravação direta fechada", () => {
     expect(denied(consent.error)).toBe(true);
   });
 
+  it("nem o dono grava direto catálogo, equipe, anexos e pagamentos online (migração 78)", async () => {
+    const client = sessionClient();
+    const org = tenant.organizationId;
+    const attempts = {
+      categories: { organization_id: org, name: "Direto" },
+      roles: { organization_id: org, name: "Direto" },
+      professionals: { organization_id: org, unit_id: tenant.unitId, name: "Direto" },
+      plans: { organization_id: org, name: "Direto", price_cents: 100, period: "monthly" },
+      lesson_packages: { organization_id: org, name: "Direto" },
+      attachments: { organization_id: org, name: "a.txt", content_type: "text/plain", size_bytes: 1, storage_path: `${org}/a.txt` },
+    };
+    for (const [table, row] of Object.entries(attempts)) {
+      const { error } = await client.from(table).insert(row);
+      expect(denied(error), table).toBe(true);
+    }
+    for (const table of [...Object.keys(attempts), "online_payments"]) {
+      const { error } = await client.from(table).update({ organization_id: org }).eq("organization_id", org);
+      expect(denied(error), table).toBe(true);
+    }
+  });
+
   it("professor não apaga matrícula direto", async () => {
     const teacher = await tenant.addUser("professional");
     const client = await signInAs(teacher);

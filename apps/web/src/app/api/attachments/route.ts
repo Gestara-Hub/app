@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/session";
 import { decodeSession } from "@/lib/session-cookie";
 import { saveAttachmentInStorage } from "@/services/attachments/attachmentsBackend";
-import type { FileAttachment } from "@gestarahub/contracts";
+import { isApiError, type FileAttachment } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";
 
 export async function POST(req: NextRequest) {
@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ attachments: results });
   } catch (error) {
+    // Sem permissao ou sessao vencida: resposta do proprio erro, sem registrar falha.
+    if (isApiError(error)) {
+      return NextResponse.json({ message: error.message }, { status: error.httpStatus ?? 400 });
+    }
     logError("[POST /api/attachments] Erro no upload:", error);
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Erro interno no upload." },

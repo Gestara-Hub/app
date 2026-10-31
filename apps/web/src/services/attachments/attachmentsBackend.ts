@@ -1,8 +1,13 @@
 "use server";
 
 import type { FileAttachment, Id } from "@gestarahub/contracts";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { logError } from "@/lib/log";
+import { requireSameOrganization } from "../server/tenant";
+
+/** Quem anexa arquivos (o mesmo que o banco aceitava antes da migracao 78). */
+const UPLOADERS = ["owner", "manager", "attendant"] as const;
 
 export interface AttachmentRecord {
   id: Id;
@@ -23,10 +28,13 @@ export async function saveAttachmentInStorage(
   },
   organizationId: string,
 ): Promise<FileAttachment> {
-  const client = await getClientForTenant();
+  // Espaco e perfil da sessao no banco; a linha do anexo e gravada pelo servidor,
+  // porque o banco nao aceita escrita direta do usuario (migracao 78).
+  const ctx = await requireSameOrganization(organizationId, { profiles: [...UPLOADERS] });
+  const client = ctx.client;
   const id = crypto.randomUUID();
   const safeFilename = encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g, "_"));
-  const storagePath = `${organizationId}/${id}/${safeFilename}`;
+  const storagePath = `${ctx.organizationId}/${id}/${safeFilename}`;
   const uploadedAt = new Date().toISOString();
 
   // 1. Upload to Supabase Storage bucket 'attachments'
@@ -43,9 +51,9 @@ export async function saveAttachmentInStorage(
   }
 
   // 2. Persist metadata in public.attachments
-  const { error: dbError } = await client.from("attachments").insert({
+  const { error: dbError } = await createSupabaseAdminClient().from("attachments").insert({
     id,
-    organization_id: organizationId,
+    organization_id: ctx.organizationId,
     name: file.name,
     content_type: file.type || "application/octet-stream",
     size_bytes: file.size,

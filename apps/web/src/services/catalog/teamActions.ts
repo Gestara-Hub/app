@@ -13,6 +13,7 @@ import type {
   UpdateRole,
 } from "@gestarahub/contracts";
 import { notFoundError } from "@gestarahub/core/api-error";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { textIncludes } from "@/lib/text";
 import { runAction, type ActionResult } from "../server/action";
 import { decodeArgs } from "../world/transport";
@@ -35,6 +36,8 @@ import {
  * sessao e as mesmas regras da demonstracao (`teamRules`).
  */
 
+// Gravacao pelo servidor (chave de servico) depois de conferir a permissao e com
+// o espaco da sessao: o banco nao aceita escrita direta do usuario (migracao 78).
 const MANAGE = ["team:manage"] as const;
 
 async function fetchRoles(ctx: TenantContext): Promise<Role[]> {
@@ -92,7 +95,7 @@ export async function createRoleAction(payload: CreateRole): Promise<ActionResul
     validateRolePayload(payload, { partial: false });
     const position =
       payload.position ?? Math.max(0, ...(await fetchRoles(ctx)).map((r) => r.position)) + 1;
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("roles")
       .insert({
         organization_id: ctx.organizationId,
@@ -124,7 +127,7 @@ export async function updateRoleAction(id: Id, payload: UpdateRole): Promise<Act
     if (payload.name !== undefined) patch.name = payload.name.trim();
     if (payload.position !== undefined) patch.position = payload.position;
     if (payload.status !== undefined) patch.status = payload.status;
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("roles")
       .update(patch)
       .eq("id", id)
@@ -143,7 +146,7 @@ export async function removeRoleAction(id: Id): Promise<ActionResult<Role>> {
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     await fetchRole(ctx, id);
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("roles")
       .update({ status: "inactive" })
       .eq("id", id)
@@ -203,7 +206,7 @@ export async function createProfessionalAction(
     ctx.require(...MANAGE);
     validateProfessionalPayload(payload, { partial: false, roleExists: await roleChecker(ctx, payload.roleId) });
     const unit = await loadUnit(ctx);
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("professionals")
       .insert({
         organization_id: ctx.organizationId,
@@ -251,7 +254,7 @@ export async function updateProfessionalAction(
     if (payload.workingHours !== undefined) patch.working_hours = payload.workingHours;
     if (payload.serviceIds !== undefined) patch.service_ids = payload.serviceIds;
     if (payload.modalityIds !== undefined) patch.modality_ids = payload.modalityIds;
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("professionals")
       .update(patch)
       .eq("id", id)
@@ -272,7 +275,7 @@ export async function removeProfessionalAction(id: Id): Promise<ActionResult<Pro
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     await fetchProfessional(ctx, id);
-    const { data, error } = await ctx.client
+    const { data, error } = await createSupabaseAdminClient()
       .from("professionals")
       .update({ status: "inactive" })
       .eq("id", id)
