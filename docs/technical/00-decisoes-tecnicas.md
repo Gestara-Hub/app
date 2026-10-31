@@ -187,6 +187,14 @@ type CustomSegmentProgression = "belts" | "levels" | "modules" | "none";
 
 Decisao em [`04-estrategia-de-testes.md`](04-estrategia-de-testes.md): motor de cobranca com `node --test` (`packages/core/test`), regras de negocio dos services com Vitest (`apps/web/src/services/__tests__`) e fluxos com Playwright (`apps/web/e2e`). Comandos: `pnpm test` e `pnpm e2e`. Todo bug corrigido ganha o teste que o reproduz.
 
+## Cabeçalhos de segurança e CSP (31/10/2026)
+
+- **Cabeçalhos fixos** em `apps/web/next.config.ts`, em todas as rotas: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` (sem câmera, microfone e localização) e, só em produção, `Strict-Transport-Security`.
+- **Content-Security-Policy** (decisão 5 do diário da noite de 31/10/2026, confirmada pelo usuário): lista de origens em `src/lib/security/content-security-policy.ts`. Só podem ser carregados scripts, conexões, quadros e fontes do próprio app, do Supabase, do PostHog, da Meta (WhatsApp oficial), do ViaCEP e do Google Fonts. Imagens aceitam qualquer `https:`. O app não abre dentro de outro site (`frame-ancestors 'none'`) e formulários só enviam para o próprio app.
+- **Script inline liberado (`'unsafe-inline'`), sem nonce por enquanto.** O Next grava os dados de cada página em `<script>` inline, e as páginas de marketing são estáticas: um nonce exigiria render dinâmico em todas as páginas (custo em cada visita à landing). Próximo passo, se precisar: nonce com `'strict-dynamic'` só nas rotas logadas, via `proxy.ts`. `'unsafe-eval'` só no `pnpm dev`.
+- **Zod sem JIT no navegador** (`src/lib/zod-config.ts`): o teste de `new Function` do Zod 4 gera um aviso de violação do CSP mesmo com o erro capturado.
+- **Nova origem de fora** (um script, uma API chamada do navegador, um quadro): entra na lista do CSP, senão o navegador bloqueia e o console mostra "Refused to ...".
+
 ## Mocks como contrato de API (principio central)
 
 - A UI nunca acessa mocks diretamente. O fluxo e sempre: hooks (TanStack Query) -> services (funcoes async tipadas) -> store em memoria.

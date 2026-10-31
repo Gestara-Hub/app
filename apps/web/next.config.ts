@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { isAsaasSandboxUrl } from "./src/lib/payments-test-mode";
+import { contentSecurityPolicy } from "./src/lib/security/content-security-policy";
 
 const nextConfig: NextConfig = {
   // Servidor dos testes do navegador em outra porta usa outra pasta de build,
@@ -55,6 +56,14 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy({
+              isDev: process.env.NODE_ENV === "development",
+              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+              posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+            }),
           },
         ],
       },
