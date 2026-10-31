@@ -16,7 +16,7 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 - **Segurança:** 2 falhas altas corrigidas.
   - O cookie de sessão era assinado com o que o navegador mandava: um professor montava a sessão do dono.
   - As escritas da evolução devolviam o cadastro inteiro do aluno, com CPF, ao professor.
-  - Também corrigidos 9 itens médios e baixos: escrita direta no banco em 15 tabelas, leituras sem o escopo do professor, anexo que rodava script, aceite de termos forjável e outros.
+  - Também corrigidos 13 itens médios e baixos: escrita direta no banco em 22 tabelas, cancelamento no Asaas que falhava para o atendente, leituras sem o escopo do professor, anexo que rodava script, aceite de termos forjável e outros.
 - **Valores:** 2 defeitos altos corrigidos.
   - Troca de plano de aluno antigo gravava valor e datas errados.
   - Voltar da pausa pulava um ciclo inteiro sem cobrança.
@@ -28,8 +28,8 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
   - leitor de número decimal único;
   - `.gitignore` que escondia código-fonte.
 - **Usabilidade:** 3 ajustes nas telas novas, achados nas capturas do celular e do computador.
-- **Banco:** migrações 76 (escrita só pelo servidor e leitura direta mais estreita) e 77 (higiene).
-- **Para você validar:** 5 decisões (seção "Decisões tomadas por mim").
+- **Banco:** migrações 76 (escrita só pelo servidor e leitura direta mais estreita), 77 (higiene) e 78 (as sete tabelas que a 76 deixou de fora).
+- **Decisões:** as 5 foram validadas pelo dono no mesmo dia; a 5 virou a migração 78 (seção "Decisões tomadas por mim").
 
 ## Testes
 
@@ -40,6 +40,7 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 | Suítes rápidas no fim | typecheck e lint sem erro; Vitest 1356 de 1356; core 326 de 326; banco 196 de 196 | |
 | Teste de tela (celular e computador) | 20 telas, nenhuma com rolagem lateral | 3 ajustes, na seção Melhorias de usabilidade |
 | e2e completo, rodada 2 (build de produção, depois das correções) | 429 passaram, 2 pulados de propósito, nenhuma falha | Celular e computador, 25,6 min |
+| Depois das decisões (S14, S15) | typecheck e lint sem erro; Vitest 1356 de 1356; banco 206 de 206 | 10 testes de banco novos; e2e não rodou de novo |
 
 ## Correções de segurança
 
@@ -51,13 +52,15 @@ Pedido do usuário: rodar os testes completos do web (e2e e de tela, sem o paine
 | S4 | média | Leituras sem o escopo do professor: boletim, avaliações da turma, lançamento, faltas seguidas (com `minStreak` 0 voltavam todos os alunos com telefone), matrículas, espera, graduação, certificado | Professor só nos alunos e turmas dele (titular ou substituto); `minStreak` no mínimo 1 | `100437a`, `b379425`, `432da38` |
 | S5 | média | O anexo saía com o tipo gravado na linha: um HTML virava script na origem do app; a linha podia apontar outro caminho do armazenamento | Abre no navegador só imagem e PDF; o resto desce como arquivo; o arquivo precisa estar na pasta do espaço (também na logo dos documentos) | `752633f` |
 | S6 | média | Leitura direta no banco era do espaço inteiro: professor lia notas e testes e medidas de todos; consentimentos (IP, navegador, responsável) abertos a todos | Migração 76: notas e medidas só dono, gerente e atendente pelo banco (as telas leem pelo servidor, com o escopo); consentimentos só dono e gerente | `38f38ce` |
-| S7 | baixa-média | `cancelGatewayPaymentsAction` sem permissão de cobrança | Exige `billing:manage` | `53ed108` |
+| S7 | baixa-média | `cancelGatewayPaymentsAction` sem permissão de cobrança | Exigia `billing:manage`; trocado pela S14, que só repassa o que o banco já cancelou | `53ed108`, `e447bbe` |
 | S8 | baixa | O aceite de termos aceitava do navegador o tipo, a versão, o hash e metadados que sobrescreviam e-mail e perfil | Só os termos da plataforma na versão em vigor; hash no servidor; dados da prova vindos da sessão | `30566e1` |
 | S9 | baixa | Recibos usavam o `organizationId` do pedido para expirar códigos de outro espaço | Espaço da sessão | `53ed108` |
 | S10 | baixa | `serviceAction` resolvia o método antes do login e andava por `__proto__` (enchia o registro de erros) | Sessão primeiro; só `namespace.metodo` próprios do registro | `cf08841` |
 | S11 | baixa | Login limitado só por IP e e-mail | Também 20 tentativas por conta a cada 15 minutos, de qualquer endereço | `3ae3f36` |
 | S12 | baixa | O comentário do CSP prometia bloquear o envio de dados para fora | Comentário honesto: com script inline, uma imagem ainda leva dado para fora; fechar pede nonce | `577b549` |
 | S13 | baixa | Regra `system` no armazenamento; duas funções `SECURITY DEFINER` sem `search_path`; preferências com qualquer chave e tamanho | Migração 77; preferências só com as chaves conhecidas, até 64 KB | `577b549` |
+| S14 | média | Efeito da S7: o cancelamento no Asaas roda depois da gravação com quem fez a ação. O atendente que inativava aluno ou cancelava matrícula deixava o Pix ou o link valendo no Asaas, com o app mostrando cancelado | Sem a permissão de cobranças; só repassa ao Asaas o código que o banco já marcou como cancelado (chamada de fora não cancela código em aberto) | `e447bbe` |
+| S15 | baixa-média | Categorias, cargos, equipe, planos, pacotes, anexos e pagamentos online aceitavam escrita direta de dono e gerente (anexos também atendente), pulando validação e auditoria; as ações antigas de pagamento online recebiam do navegador o espaço, a situação e o aluno | Migração 78; as ações gravam pelo servidor com a permissão e o espaço da sessão; código novo sempre em aberto, numa cobrança do espaço e com o aluno dela; o envio de anexo confere o perfil na sessão | `e447bbe`, `2cfb6a8` |
 
 ## Correções de valores e cálculos
 
@@ -122,20 +125,19 @@ Conferido e sem defeito: o foco no "Nome" da nova avaliação que apareceu numa 
   - `measurementsServiceImpl` nomeado na origem.
 - Guardas do professor num lugar só (`assertTeacherSeesStudent`, `assertTeacherSeesClass`, `teacherSeesClassRoster` em `teacherScope.ts`) no lugar das checagens escritas à mão.
 
-## Decisões tomadas por mim, para validar
+## Decisões tomadas por mim (validadas pelo dono em 31/10/2026)
 
-1. **Desconto e bolsa só com a permissão de cobranças** (`80cff45`). O atendente que tenta recebe "Desconto e bolsa só com a permissão de cobranças." e o curso fica com o preço da turma. É a mesma regra da 1ª mensalidade, que você confirmou hoje.
-2. **Modalidade com notas lançadas não troca de escala nem de forma de fechar o resultado** (`66a6b64`). Para trocar, crie outra modalidade.
-3. **Volta da pausa recomeça depois do período já cobrado** (`344a975`). Quem pagou de 15/10 a 14/11 e volta em 14/11 tem a próxima cobrança em 15/11.
-4. **Professor não lê notas nem testes e medidas pelo banco direto** (migração 76). As telas leem pelo servidor, com o escopo dele.
-5. **Sete tabelas seguem com escrita pelo cliente do usuário:** categorias, cargos, equipe, planos, pacotes, anexos e pagamentos online. Passá-las para o servidor é o próximo passo (pendências).
+1. **Desconto e bolsa só com a permissão de cobranças** (`80cff45`). Mantida. O atendente que tenta recebe "Desconto e bolsa só com a permissão de cobranças." e o curso fica com o preço da turma. É a mesma regra da 1ª mensalidade.
+2. **Modalidade com notas lançadas não troca de escala nem de forma de fechar o resultado** (`66a6b64`). Mantida. Para trocar, crie outra modalidade.
+3. **Volta da pausa recomeça depois do período já cobrado** (`344a975`). Mantida. Quem pagou de 15/10 a 14/11 e volta em 14/11 tem a próxima cobrança em 15/11; os dias pausados dentro do período pago não viram crédito.
+4. **Professor não lê notas nem testes e medidas pelo banco direto** (migração 76). Mantida. As telas leem pelo servidor, com o escopo dele.
+5. **Sete tabelas com escrita pelo cliente do usuário** (categorias, cargos, equipe, planos, pacotes, anexos e pagamentos online). O dono pediu para fazer já: migração 78 (S15). Ao conferir, apareceu a S14.
 
 ## O que ficou para depois
 
 Está em `docs/pendencias.md`.
 
 **Segurança:**
-- Passar para o servidor a escrita das sete tabelas acima.
 - Leitura direta de presenças, matrículas, reservas, espera e equipe ainda é do espaço inteiro.
 - Registro com permissão obrigatória em todo método (negar por padrão).
 - Reconferir no Asaas o pagamento do webhook antes da baixa.
