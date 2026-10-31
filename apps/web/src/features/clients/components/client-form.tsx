@@ -323,6 +323,10 @@ export function ClientForm({
     control: form.control,
     name: "billPastMonths",
   });
+  const discountValidUntil = useWatch({
+    control: form.control,
+    name: "discountValidUntil",
+  });
   const billingStrategy = useWatch({
     control: form.control,
     name: "billingStrategy",
@@ -681,16 +685,22 @@ export function ClientForm({
   // deste mes so e cobrado se o dono escolher "Desde o início".
   const currentMonthStart = `${todayDateISO().slice(0, 7)}-01`;
 
+  const clientChargesFrom = client?.chargesFrom;
   // Mesmo motor da geracao em lote e da previa das Configuracoes.
   const billingCalculation = useMemo(() => {
     if (!selectedPlan) return null;
+    // Revisao geral de 31/10/2026: o motor recebe o preco cheio e o desconto com a
+    // validade (achado V6: a previa e o valor gravado ignoravam o fim do desconto)
+    // e, na troca de plano, o "a partir de" do aluno antigo (achado V1).
     const input = {
       period: selectedPlan.period,
-      planPriceCents: basePriceCents,
+      planPriceCents: selectedPlan.priceCents,
+      ...(effectiveDiscount ? { discount: { ...effectiveDiscount, validUntil: discountValidUntil || undefined } } : {}),
       startDate: planStartDate || todayDateISO(),
       strategy: billingStrategy,
       timing: cyclePaymentTiming,
       dueDay: billingStrategy === "full_cycle" ? undefined : defaultDueDay,
+      ...(isEdit && clientChargesFrom ? { chargesFrom: clientChargesFrom } : {}),
     };
     const fullTerms = resolveMembershipTerms(input, orgSettings);
     const pastCharges = isEdit || isFullScholarship ? [] : chargesDueBefore(fullTerms, currentMonthStart);
@@ -702,7 +712,9 @@ export function ClientForm({
     return { terms, first, next, pastCharges };
   }, [
     selectedPlan,
-    basePriceCents,
+    effectiveDiscount,
+    discountValidUntil,
+    clientChargesFrom,
     planStartDate,
     billingStrategy,
     cyclePaymentTiming,
