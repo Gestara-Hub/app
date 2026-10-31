@@ -6,7 +6,7 @@ import { clientsService } from "@/services/clients";
 import { studentSummaryService } from "@/services/clients/studentSummaryService";
 import { turmasService } from "@/services/classes";
 import { can } from "@/lib/permissions";
-import { createClass, createInstructor, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
+import { createClass, createInstructor, createPlan, enrollStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 /**
  * Ficha do professor (achado 70, decisao de 24/10): so os alunos das turmas
@@ -81,5 +81,39 @@ describe("ficha do professor", () => {
   it("professor sem vínculo com a equipe não abre ficha nenhuma", async () => {
     loginAsTeacher("prof-que-nao-existe");
     await expect(studentSummaryService.getStudentSummary(ana.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+// Auditoria de 30/10/2026: a lista de alunos (e a busca por id) trazia todos
+// os alunos do espaco, com CPF e plano, para o professor.
+describe("lista de alunos do professor", () => {
+  it("só os alunos das turmas dele, sem CPF, plano nem endereço; os outros não acham por id", async () => {
+    loginAsTeacher(carlosId);
+    const list = await clientsService.list();
+    expect(list.map((c) => c.name)).toEqual(["Ana"]);
+    expect(list[0]).not.toHaveProperty("cpf");
+    expect(list[0]).not.toHaveProperty("planId");
+    expect(list[0]).not.toHaveProperty("discount");
+    expect(list[0].guardians?.[0]).not.toHaveProperty("cpf");
+    const page = await clientsService.listPaginated({ page: 1, pageSize: 20 });
+    expect(page.items.map((c) => c.name)).toEqual(["Ana"]);
+    await expect(clientsService.getById(bia.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect((await clientsService.getById(ana.id)).name).toBe("Ana");
+  });
+
+  it("o substituto vê os alunos da turma da aula que substitui", async () => {
+    const eva = await createInstructor("Eva");
+    const afternoon = { weekday: 1 as const, start: "15:00", end: "16:00" };
+    const tarde = await createClass({ name: "Tarde", instructorId: eva.id, slots: [afternoon] });
+    await turmasService.enroll({ classGroupId: tarde.id, studentId: bia.id });
+    await turmasService.substituteInstructor(sessionIdOf(tarde.id, "2026-09-21", afternoon.start), { instructorId: carlosId });
+    loginAsTeacher(carlosId);
+    expect((await clientsService.list()).map((c) => c.name).sort()).toEqual(["Ana", "Bia"]);
+  });
+
+  it("dono e gerente seguem vendo todos, completos", async () => {
+    const list = await clientsService.list();
+    expect(list.map((c) => c.name).sort()).toEqual(["Ana", "Bia"]);
+    expect(list.find((c) => c.name === "Ana")?.cpf).toBeDefined();
   });
 });

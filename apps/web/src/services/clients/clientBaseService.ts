@@ -16,13 +16,24 @@ import { ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientM
 import { NOT_FOUND, clone } from "./clientStore";
 import { validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
+import { teacherStudentIds } from "../classes/teacherScope";
+import { clientWithoutMoney } from "./studentSummaryRules";
+
+/**
+ * O professor ve so os alunos das turmas dele, sem dinheiro, documentos nem
+ * endereco (como na ficha); os outros perfis, todos, completos.
+ */
+function visibleClients(): Client[] {
+  const allowed = teacherStudentIds();
+  return allowed ? store.clients.filter((c) => allowed.has(c.id)).map(clientWithoutMoney) : store.clients;
+}
 
 /** Cadastro, lista e leitura do aluno. */
 export const clientBaseService = {
   list(filter?: ClientFilter): Promise<Client[]> {
     return readOp(async () => {
 
-      let result = store.clients;
+      let result = visibleClients();
       if (filter?.search) {
         const term = filter.search;
         result = result.filter(
@@ -41,7 +52,7 @@ export const clientBaseService = {
   listPaginated(filter?: ClientFilter): Promise<PaginatedResult<Client>> {
     return readOp(async () => {
 
-      let result = store.clients;
+      let result = visibleClients();
       if (filter?.search) {
         const term = filter.search;
         result = result.filter(
@@ -66,7 +77,7 @@ export const clientBaseService = {
   getById(id: Id): Promise<Client> {
     return readOp(async () => {
 
-      const found = store.clients.find((c) => c.id === id);
+      const found = visibleClients().find((c) => c.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(found);
     });

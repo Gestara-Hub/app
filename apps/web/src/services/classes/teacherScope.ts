@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions";
 import { getCurrentActor } from "@/services/world/actor";
 import { apiError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
+import { parseSessionId } from "./classShared";
 
 /**
  * Escopo do professor (decisao de 18/10/2026): ve e age (chamada, registros,
@@ -50,6 +51,26 @@ export function teacherTeachesStudent(studentId: Id, teacherId = actorTeacherId(
       e.status === "active" &&
       store.classGroups.some((g) => g.id === e.classGroupId && g.instructorId === teacherId),
   );
+}
+
+/**
+ * Alunos que o professor ve na lista e na busca por id (auditoria de 30/10/2026:
+ * antes a lista trazia todos os alunos do espaco, com CPF, para o professor):
+ * matriculados nas turmas em que e titular ou em que substitui alguma aula, e
+ * quem reservou aula avulsa nelas. `undefined` para os outros perfis: sem recorte.
+ */
+export function teacherStudentIds(teacherId = actorTeacherId()): Set<Id> | undefined {
+  if (teacherId === undefined) return undefined;
+  const classIds = new Set(store.classGroups.filter((g) => g.instructorId === teacherId).map((g) => g.id));
+  for (const o of store.sessionOverrides ?? []) {
+    if (o.instructorId !== teacherId) continue;
+    const parsed = parseSessionId(o.sessionId);
+    if (parsed) classIds.add(parsed.classGroupId);
+  }
+  const ids = new Set<Id>();
+  for (const e of store.enrollments) if (classIds.has(e.classGroupId) && e.status === "active") ids.add(e.studentId);
+  for (const r of store.reservations ?? []) if (classIds.has(r.classGroupId)) ids.add(r.studentId);
+  return ids;
 }
 
 function forbidden(message: string) {

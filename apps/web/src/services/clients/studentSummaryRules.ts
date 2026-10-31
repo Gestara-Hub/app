@@ -303,11 +303,11 @@ export function activePackagesOf(client: Client, today: DateISO): StudentPackage
 }
 
 /**
- * Ficha do professor (decisao de 24/10, achado 70): o aluno, as turmas e a
- * evolucao, sem dinheiro (plano, bolsa, saldo, parcelas, pacotes) nem
- * documentos e endereco. O professor nao ve mensagens do aluno.
+ * O cadastro do aluno como o professor ve (decisao de 24/10, achado 70): sem
+ * dinheiro (plano, bolsa, desconto, vencimento) nem documentos e endereco. Vale
+ * para a ficha e, desde a auditoria de 30/10/2026, para a lista e a busca por id.
  */
-export function summaryWithoutMoney(summary: StudentSummary): StudentSummary {
+export function clientWithoutMoney(client: Client): Client {
   const {
     discount: _discount,
     planId: _planId,
@@ -319,17 +319,26 @@ export function summaryWithoutMoney(summary: StudentSummary): StudentSummary {
     address: _address,
     guardians,
     ...student
-  } = summary.student;
+  } = client;
   void [_discount, _planId, _planStartDate, _billingStrategy, _cyclePaymentTiming, _dueDay, _cpf, _address];
   return {
+    ...student,
+    guardians: guardians?.map(({ cpf: _guardianCpf, ...guardian }: NonNullable<Client["guardians"]>[number]) => {
+      void _guardianCpf;
+      return guardian;
+    }),
+  } as Client;
+}
+
+/**
+ * Ficha do professor (decisao de 24/10, achado 70): o aluno, as turmas e a
+ * evolucao, sem dinheiro (plano, bolsa, saldo, parcelas, pacotes) nem
+ * documentos e endereco. O professor nao ve mensagens do aluno.
+ */
+export function summaryWithoutMoney(summary: StudentSummary): StudentSummary {
+  return {
     ...summary,
-    student: {
-      ...student,
-      guardians: guardians?.map(({ cpf: _guardianCpf, ...guardian }: NonNullable<Client["guardians"]>[number]) => {
-        void _guardianCpf;
-        return guardian;
-      }),
-    },
+    student: clientWithoutMoney(summary.student),
     membership: { status: summary.membership.status, recurringActive: false },
     enrollments: summary.enrollments.map(({ course: _course, ...enrollment }: StudentSummaryEnrollment) => {
       void _course;
