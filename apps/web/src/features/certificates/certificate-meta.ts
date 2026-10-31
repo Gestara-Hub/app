@@ -1,6 +1,9 @@
 import type {
   CertificateAccentColor,
+  CertificateInk,
   CertificateLayout,
+  CertificatePart,
+  CertificateTextPosition,
   CourseCertificate,
   DateISO,
 } from "@gestarahub/contracts";
@@ -20,7 +23,29 @@ export const LAYOUT_OPTIONS: { value: CertificateLayout; label: string; descript
   { value: "classic", label: "Clássico", description: "Moldura e título com serifa" },
   { value: "modern", label: "Moderno", description: "Faixa lateral colorida" },
   { value: "minimal", label: "Limpo", description: "Só texto e linhas finas" },
+  { value: "custom", label: "Minha arte", description: "Sua imagem de fundo" },
 ];
+
+export const TEXT_POSITION_OPTIONS: { value: CertificateTextPosition; label: string }[] = [
+  { value: "top", label: "Em cima" },
+  { value: "center", label: "No centro" },
+  { value: "bottom", label: "Embaixo" },
+];
+
+export const INK_OPTIONS: { value: CertificateInk; label: string; description: string }[] = [
+  { value: "dark", label: "Escuro", description: "Arte clara" },
+  { value: "light", label: "Claro", description: "Arte escura" },
+];
+
+/** Partes que a arte pode ja trazer impressas, na ordem da folha. */
+export const PART_LABELS: Record<CertificatePart, string> = {
+  logo: "Logo",
+  organizationName: "Nome do espaço",
+  title: "Título",
+  body: "Texto",
+  date: "Local e data",
+  signatures: "Assinaturas",
+};
 
 /** Nome amigavel de cada variavel nos chips do editor. */
 export const VARIABLE_LABELS: Record<CertificateVariable, string> = {

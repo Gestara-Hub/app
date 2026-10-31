@@ -377,12 +377,58 @@
         {
           "kind": "texto",
           "label": "Assinaturas",
-          "text": "Aqui você define quem assina o certificado."
-        },
+          "text": "Aqui você escolhe quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo."
+        }
+      ]
+    }
+  },
+  {
+    "id": "certificados#usar-a-minha-propria-arte",
+    "article": "Certificados de conclusão",
+    "title": "Usar a minha própria arte",
+    "route": "/settings?tab=certificado",
+    "text": "Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Depois, salve na barra que aparece embaixo.",
+    "summary": "Use a imagem que você já tem como fundo do certificado.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
         {
           "kind": "botão",
-          "label": "Salvar",
-          "text": "Clique aqui para guardar o modelo."
+          "label": "Minha arte",
+          "text": "Escolha este layout para usar a sua imagem de fundo."
+        },
+        {
+          "kind": "texto",
+          "label": "Arte de fundo",
+          "text": "Envie uma imagem PNG ou JPG, no formato de folha deitada, até 2 MB."
+        },
+        {
+          "kind": "texto",
+          "label": "Posição do texto",
+          "text": "Escolha se o texto fica em cima, no centro ou embaixo da arte."
+        },
+        {
+          "kind": "texto",
+          "label": "Partes que aparecem",
+          "text": "Desligue o que a sua arte já traz impresso, como o título ou a logo."
+        }
+      ]
+    }
+  },
+  {
+    "id": "certificados#voltar-ao-texto-padrao",
+    "article": "Certificados de conclusão",
+    "title": "Voltar ao texto padrão",
+    "route": "/settings?tab=certificado",
+    "text": "O botão só aparece quando o texto está diferente do padrão. Layout, cor, assinaturas e logo não mudam.",
+    "summary": "Volte o título e o texto do certificado aos originais.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Voltar ao texto padrão",
+          "text": "Clique aqui para voltar o título e o texto originais. O sistema pede confirmação. Depois, salve na barra que aparece embaixo."
         }
       ]
     }

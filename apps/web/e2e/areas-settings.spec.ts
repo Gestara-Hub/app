@@ -347,15 +347,18 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByText("Dados de exemplo.")).toBeVisible();
 
     const layouts = panel.getByRole("radiogroup", { name: "Layout" }).getByRole("radio");
-    await expect(layouts).toHaveCount(3);
+    // Classico, Moderno, Limpo e Minha arte (31/10/2026).
+    await expect(layouts).toHaveCount(4);
     await expect(panel.getByRole("radio", { name: /^Clássico/ })).toHaveAttribute("aria-checked", "true");
     const classicHtml = await sheet.innerHTML();
-    for (const name of ["Moderno", "Limpo"]) {
+    for (const name of ["Moderno", "Limpo", "Minha arte"]) {
       await panel.getByRole("radio", { name: new RegExp(`^${name}`) }).click();
       await expect(panel.getByRole("radio", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-checked", "true");
       expect(await sheet.innerHTML()).not.toBe(classicHtml);
       await expect(sheet).toContainText(DEFAULT_BODY_PREVIEW);
     }
+    // A cor de destaque nao vale em "Minha arte": volta ao Classico para conferir a paleta.
+    await panel.getByRole("radio", { name: /^Clássico/ }).click();
 
     const colors = panel.getByRole("radiogroup", { name: "Cor" }).getByRole("radio");
     await expect(colors).toHaveCount(6);
@@ -372,6 +375,8 @@ test.describe("Configurações: Certificado", () => {
       await expect(panel.getByRole("radio", { name: label, exact: true })).toHaveAttribute("aria-checked", "true");
       await expect(sheet).toHaveAttribute("style", new RegExp(`--cert-accent: ${hex}`));
     }
+    // A ultima cor da lista e a padrao: muda para uma que nao e, para a barra de salvar aparecer.
+    await panel.getByRole("radio", { name: "Verde", exact: true }).click();
     await expect(panel.getByText("Alterações não salvas")).toBeVisible();
   });
 
@@ -446,6 +451,48 @@ test.describe("Configurações: Certificado", () => {
     await panel.getByRole("button", { name: "Remover assinatura" }).first().click();
     await expect(panel.getByRole("button", { name: "Remover assinatura" })).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Adicionar assinatura" })).toBeVisible();
+  });
+
+  test("Pro: Minha arte com posição, cor do texto e partes escondidas, salva e emitida", async ({ page }, testInfo) => {
+    const files = await logoFiles(testInfo);
+    const panel = await openEditor(page);
+    const sheet = panel.locator("article.certificate-sheet");
+    await panel.getByRole("radio", { name: /^Minha arte/ }).click();
+    // Sem a cor de destaque; com o bloco da arte.
+    await expect(panel.getByRole("radiogroup", { name: "Cor", exact: true })).toHaveCount(0);
+    await expect(panel.getByText("Arte de fundo", { exact: true })).toBeVisible();
+    await expect(sheet).toContainText(DEFAULT_BODY_PREVIEW);
+
+    // Salvar sem a imagem avisa.
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(panel.getByText("Envie a arte de fundo.")).toBeVisible();
+
+    await panel.locator("input[type=file]").first().setInputFiles(files.png);
+    await expect(sheet.locator("img")).toHaveAttribute("src", /^blob:/);
+    await panel.getByRole("radio", { name: "Embaixo" }).click();
+    await panel.getByRole("radio", { name: /^Claro/ }).click();
+    await panel.getByRole("switch", { name: "Título" }).click();
+    await expect(sheet).not.toContainText("Certificado de conclusão");
+    await expect(sheet).toContainText(DEFAULT_BODY_PREVIEW);
+    // Esconder o texto tambem seria um certificado vazio.
+    await panel.getByRole("switch", { name: "Texto" }).click();
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(panel.getByText("Mostre pelo menos o título ou o texto.")).toBeVisible();
+    await panel.getByRole("switch", { name: "Texto" }).click();
+
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
+    await waitForStore(page, (t) => t.certificateTemplate?.layout === "custom");
+    const saved = (await readTenant(page)).certificateTemplate;
+    expect(saved.artwork).toMatchObject({ textPosition: "bottom", ink: "light", hidden: ["title"] });
+    expect(saved.artwork.fileId).toBeTruthy();
+
+    // Recarregado: a arte atual, os ajustes e a previa com a imagem.
+    await page.reload();
+    await expect(panel.getByText("Arte atual")).toBeVisible();
+    await expect(panel.getByRole("radio", { name: "Embaixo" })).toHaveAttribute("aria-checked", "true");
+    await expect(panel.getByRole("switch", { name: "Título" })).not.toBeChecked();
+    await expect(sheet.locator("img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
   });
 
   test("Pro: logo válida, recusada por formato e por tamanho", async ({ page }, testInfo) => {

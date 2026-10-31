@@ -47,14 +47,16 @@ export function CourseCertificateLocked({
   );
 }
 
-/** Folha com o modelo do espaco (layout, cor, logo e texto). */
+/** Folha com o modelo do espaco (layout, cor, logo, arte de fundo e texto). */
 function TemplateCertificateSheet({ sheet }: { sheet: CourseCertificateDocument }) {
   const logoUrl = useStoredFileUrl(sheet.template.logoFileId);
+  const artworkUrl = useStoredFileUrl(sheet.template.layout === "custom" ? sheet.template.artwork?.fileId : undefined);
   return (
     <CertificateSheet
       certificate={sheet.certificate}
       template={sheet.template}
       logoUrl={logoUrl}
+      artworkUrl={artworkUrl}
       className="mx-auto max-w-4xl print:max-w-none"
     />
   );

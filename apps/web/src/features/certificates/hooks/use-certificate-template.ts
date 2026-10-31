@@ -24,19 +24,30 @@ function useInvalidateCertificates() {
 }
 
 export interface SaveCertificateTemplateInput {
+  /** Em `artwork`, o `fileId` da arte atual (ou vazio quando vem um arquivo novo). */
   template: Omit<SaveCertificateTemplate, "logoFileId">;
   /** Logo atual que fica (sem arquivo novo). */
   keepLogoFileId?: Id;
   /** Logo nova: sobe antes e entra no lugar da atual. */
   logoFile?: File;
+  /** Arte de fundo nova ("Minha arte"): sobe antes e entra em `artwork.fileId`. */
+  artworkFile?: File;
 }
 
 export function useSaveCertificateTemplate() {
   const invalidate = useInvalidateCertificates();
   return useMutation({
-    mutationFn: async ({ template, keepLogoFileId, logoFile }: SaveCertificateTemplateInput) => {
+    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile }: SaveCertificateTemplateInput) => {
       const logoFileId = logoFile ? (await certificatesService.uploadLogo(logoFile)).id : keepLogoFileId;
-      return certificatesService.saveTemplate({ ...template, ...(logoFileId ? { logoFileId } : {}) });
+      const artwork =
+        template.layout === "custom" && template.artwork
+          ? { ...template.artwork, fileId: artworkFile ? (await certificatesService.uploadArtwork(artworkFile)).id : template.artwork.fileId }
+          : undefined;
+      return certificatesService.saveTemplate({
+        ...template,
+        ...(logoFileId ? { logoFileId } : {}),
+        ...(artwork ? { artwork } : {}),
+      });
     },
     onSuccess: invalidate,
   });

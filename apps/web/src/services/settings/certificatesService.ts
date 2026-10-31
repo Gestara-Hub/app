@@ -1,4 +1,5 @@
 import type {
+  CertificateArtwork,
   CertificateTemplate,
   FileAttachment,
   SaveCertificateTemplate,
@@ -7,7 +8,7 @@ import {
   defaultCertificateTemplate,
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
-import { CERTIFICATE_LOGO_RULES } from "@/lib/files";
+import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES } from "@/lib/files";
 import { delegateAll } from "../world/delegate";
 import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -31,9 +32,22 @@ export function currentCertificateTemplate(): CertificateTemplate {
   return structuredClone(store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title));
 }
 
+/** Ajustes da arte, so no layout "Minha arte" (nos outros a arte e esquecida). */
+function normalizeArtwork(payload: SaveCertificateTemplate): CertificateArtwork | undefined {
+  const art = payload.artwork;
+  if (payload.layout !== "custom" || !art) return undefined;
+  return {
+    fileId: String(art.fileId ?? "").trim(),
+    textPosition: art.textPosition,
+    ink: art.ink,
+    hidden: Array.isArray(art.hidden) ? [...new Set(art.hidden)] : [],
+  };
+}
+
 /** Tira espacos das pontas; o texto guarda as quebras de linha do meio. */
 function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
   const logoFileId = payload.logoFileId?.trim();
+  const artwork = normalizeArtwork(payload);
   return {
     layout: payload.layout,
     accentColor: payload.accentColor,
@@ -42,6 +56,7 @@ function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
     signatures: payload.signatures.map((s) => ({ name: s.name.trim(), role: s.role.trim() })),
     showAttendance: Boolean(payload.showAttendance),
     ...(logoFileId ? { logoFileId } : {}),
+    ...(artwork ? { artwork } : {}),
   };
 }
 
@@ -92,7 +107,14 @@ export const certificatesServiceImpl = {
     const [logo] = await attachmentsService.upload([file], CERTIFICATE_LOGO_RULES, "logo");
     return logo;
   },
+
+  /** Envia a arte de fundo (PNG ou JPG ate 2 MB). Devolve o anexo; o id vai em `artwork.fileId`. */
+  async uploadArtwork(file: File): Promise<FileAttachment> {
+    assertFeature("certificates");
+    const [artwork] = await attachmentsService.upload([file], CERTIFICATE_ARTWORK_RULES, "artwork");
+    return artwork;
+  },
 };
 
 /** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
-export const certificatesService = delegateAll("certificates", certificatesServiceImpl, ["uploadLogo"]);
+export const certificatesService = delegateAll("certificates", certificatesServiceImpl, ["uploadLogo", "uploadArtwork"]);

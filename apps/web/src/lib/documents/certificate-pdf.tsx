@@ -1,12 +1,13 @@
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import type { CertificateLayout } from "@gestarahub/contracts";
+import type { CertificateArtwork, CertificateLayout, CertificatePart } from "@gestarahub/contracts";
 import type { RenderedCertificate } from "@gestarahub/core/certificate";
 import type { DocumentLogo } from "./document-pdf";
 
 /**
- * Certificado em PDF (A4 deitado), nos tres modelos da folha da tela
- * (features/certificates/certificate-sheet): classico, moderno e limpo. As
- * medidas da tela sao em % da largura da folha (cqw); aqui 1 cqw = 8,42 pt.
+ * Certificado em PDF (A4 deitado), nos modelos da folha da tela
+ * (features/certificates/certificate-sheet): classico, moderno, limpo e a arte
+ * do espaco ("Minha arte"). As medidas da tela sao em % da largura da folha
+ * (cqw); aqui 1 cqw = 8,42 pt.
  */
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -44,8 +45,17 @@ interface SheetProps {
   accent: string;
 }
 
-function Signatures({ text, align }: { text: RenderedCertificate; align: "center" | "left" }) {
+function Signatures({
+  text,
+  align,
+  ink = "dark",
+}: {
+  text: RenderedCertificate;
+  align: "center" | "left";
+  ink?: "dark" | "light";
+}) {
   const single = text.signatures.length === 1;
+  const light = ink === "light";
   return (
     <View
       style={{
@@ -58,10 +68,18 @@ function Signatures({ text, align }: { text: RenderedCertificate; align: "center
       {text.signatures.map((signature, index) => (
         <View
           key={index}
-          style={{ flex: 1, borderTopWidth: 0.75, borderTopColor: GRAY_500, paddingTop: cq(0.8), textAlign: align }}
+          style={{
+            flex: 1,
+            borderTopWidth: 0.75,
+            borderTopColor: light ? "#ffffffb3" : GRAY_500,
+            paddingTop: cq(0.8),
+            textAlign: align,
+          }}
         >
-          <Text style={styles.signatureName}>{signature.name}</Text>
-          {signature.role ? <Text style={styles.signatureRole}>{signature.role}</Text> : null}
+          <Text style={[styles.signatureName, light ? { color: "#ffffff" } : {}]}>{signature.name}</Text>
+          {signature.role ? (
+            <Text style={[styles.signatureRole, light ? { color: "#ffffffbf" } : {}]}>{signature.role}</Text>
+          ) : null}
         </View>
       ))}
     </View>
@@ -164,24 +182,77 @@ function MinimalSheet({ text, organizationName, logo, accent }: SheetProps) {
   );
 }
 
+/** "Minha arte": a imagem cobre a pagina e o texto fica por cima (mesmas regras da tela). */
+function CustomSheet({
+  text,
+  organizationName,
+  logo,
+  artwork,
+  settings,
+}: SheetProps & { artwork: DocumentLogo | null; settings: Omit<CertificateArtwork, "fileId"> }) {
+  const show = (part: CertificatePart) => !settings.hidden.includes(part);
+  const light = settings.ink === "light";
+  const ink = light ? "#ffffff" : INK;
+  const soft = light ? "#ffffffcc" : GRAY_600;
+  const justify = settings.textPosition === "top" ? "flex-start" : settings.textPosition === "bottom" ? "flex-end" : "center";
+  return (
+    <View style={{ flex: 1 }}>
+      {artwork ? (
+        // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
+        <Image src={artwork.src} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      ) : null}
+      <View style={{ flex: 1, paddingHorizontal: cq(8), paddingVertical: cq(5), justifyContent: justify, alignItems: "center" }}>
+        <View style={{ maxWidth: "84%", alignItems: "center", gap: cq(1.6), color: ink }}>
+          {show("logo") && logo ? (
+            // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
+            <Image src={logo.src} style={{ height: cq(5), objectFit: "contain" }} />
+          ) : null}
+          {show("organizationName") ? (
+            <Text style={{ fontSize: cq(1.3), fontFamily: "Helvetica-Bold", letterSpacing: cq(1.3) * 0.2, color: light ? "#ffffffcc" : GRAY_500 }}>
+              {organizationName.toUpperCase()}
+            </Text>
+          ) : null}
+          {show("title") ? (
+            <Text style={{ fontFamily: "Times-Bold", fontSize: cq(4.2), lineHeight: 1.2, color: ink, textAlign: "center" }}>{text.title}</Text>
+          ) : null}
+          {show("body") ? <Text style={[styles.body, { color: ink, textAlign: "center" }]}>{text.body}</Text> : null}
+          {show("date") ? <Text style={[styles.date, { color: soft }]}>{text.placeAndDate}</Text> : null}
+          {show("signatures") ? (
+            <View style={{ width: "100%", paddingTop: cq(1.5) }}>
+              <Signatures text={text} align="center" ink={settings.ink} />
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function CertificatePdf({
   text,
   layout,
   organizationName,
   accent,
   logo,
+  artwork = null,
+  artworkSettings,
 }: {
   text: RenderedCertificate;
   layout: CertificateLayout;
   organizationName: string;
   accent: string;
   logo: DocumentLogo | null;
+  /** Imagem da arte de fundo (layout "custom"). */
+  artwork?: DocumentLogo | null;
+  artworkSettings?: Omit<CertificateArtwork, "fileId">;
 }) {
   const props: SheetProps = { text, organizationName, logo, accent };
   return (
     <Document title={text.title} author={organizationName} creator="GestaraHub" producer="GestaraHub">
       <Page size="A4" orientation="landscape" style={styles.page}>
-        {layout === "modern" ? (
+        {layout === "custom" && artworkSettings ? (
+          <CustomSheet {...props} artwork={artwork} settings={artworkSettings} />
+        ) : layout === "modern" ? (
           <ModernSheet {...props} />
         ) : layout === "minimal" ? (
           <MinimalSheet {...props} />

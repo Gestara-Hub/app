@@ -254,6 +254,32 @@ describe("modelo de certificado", () => {
     expect("logoFileId" in (await certificatesService.saveTemplate(customTemplate()))).toBe(false);
   });
 
+  it("Minha arte: PNG ou JPG até 2 MB; o modelo guarda a arte só nesse layout", async () => {
+    setTier("pro");
+    await expect(certificatesService.uploadArtwork(imageFile(10, "image/gif", "arte.gif"))).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "artwork", message: "“arte.gif”: Formato não aceito (use PNG ou JPG)." }],
+    });
+    await expect(certificatesService.uploadArtwork(imageFile(2 * 1024 * 1024 + 1, "image/jpeg", "arte.jpg"))).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "artwork", message: "“arte.jpg”: Arquivo maior que 2 MB." }],
+    });
+    const art = await certificatesService.uploadArtwork(imageFile(2 * 1024 * 1024, "image/jpeg", "arte.jpg"));
+    expect(await getFileBlob(art.id)).toBeDefined();
+
+    // Sem a arte, o layout nao vale.
+    await expect(certificatesService.saveTemplate(customTemplate({ layout: "custom" }))).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "artwork", message: "Envie a arte de fundo." }],
+    });
+    const artwork = { fileId: art.id, textPosition: "bottom" as const, ink: "light" as const, hidden: ["title" as const, "logo" as const, "logo" as const] };
+    const saved = await certificatesService.saveTemplate(customTemplate({ layout: "custom", artwork }));
+    expect(saved.artwork).toEqual({ ...artwork, hidden: ["title", "logo"] });
+    // Em outro layout a arte e esquecida.
+    const modern = await certificatesService.saveTemplate(customTemplate({ layout: "modern", artwork }));
+    expect("artwork" in modern).toBe(false);
+  });
+
   it("o certificado do aluno vem com o modelo do espaco", async () => {
     setTier("pro");
     const { g, student, enrollment } = await completedEnrollment();

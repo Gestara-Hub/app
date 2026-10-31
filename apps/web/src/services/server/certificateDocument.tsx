@@ -5,13 +5,13 @@ import { CertificatePdf } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
-import { loadSpaceLogo } from "./documents";
+import { loadSpaceImage, loadSpaceLogo } from "./documents";
 import type { TenantContext } from "./tenant";
 
 /**
  * Certificado de conclusao em PDF, no servidor: os mesmos dados e o mesmo
  * modelo do espaco da tela (o servico confere o plano e se o curso terminou).
- * Logo so a do espaco, como na folha da tela. Modulo so do servidor.
+ * Logo e arte de fundo so as do espaco, como na folha da tela. Modulo so do servidor.
  */
 export async function renderCertificatePdf(
   ctx: TenantContext,
@@ -24,6 +24,10 @@ export async function renderCertificatePdf(
   const { certificate, template } = sheet;
   const text = renderCertificate(certificate, template);
   const logo = template.logoFileId ? await loadSpaceLogo(ctx.organizationId) : null;
+  const artwork =
+    template.layout === "custom" && template.artwork
+      ? await loadSpaceImage(ctx.organizationId, template.artwork.fileId)
+      : null;
   const pdf = await renderToBuffer(
     <CertificatePdf
       text={text}
@@ -31,6 +35,8 @@ export async function renderCertificatePdf(
       organizationName={certificate.organizationName}
       accent={CERTIFICATE_ACCENT_HEX[template.accentColor] ?? CERTIFICATE_ACCENT_HEX.graphite}
       logo={logo}
+      artwork={artwork}
+      artworkSettings={template.artwork}
     />,
   );
   const slug = certificate.studentName

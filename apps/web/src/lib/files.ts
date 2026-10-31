@@ -40,6 +40,14 @@ export const CERTIFICATE_LOGO_RULES = {
   acceptLabel: "imagem",
 } as const satisfies FileRules;
 
+/** Arte de fundo do certificado (doc 21 §1.1): PNG ou JPG em A4 deitado, ate 2 MB. */
+export const CERTIFICATE_ARTWORK_RULES = {
+  accept: ["image/png", "image/jpeg"],
+  maxSizeBytes: 2 * MB,
+  maxFiles: 1,
+  acceptLabel: "PNG ou JPG",
+} as const satisfies FileRules;
+
 /** Rotulo curto do tipo ("PDF", "PNG"); cai na extensao quando nao ha MIME. */
 export function fileTypeLabel(name: string, contentType: string): string {
   const sub = contentType.split("/")[1];

@@ -2,9 +2,13 @@ import { eachDayOfInterval, format, getDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type {
   CertificateAccentColor,
+  CertificateArtwork,
+  CertificateInk,
   CertificateLayout,
+  CertificatePart,
   CertificateSignature,
   CertificateTemplate,
+  CertificateTextPosition,
   CourseCertificate,
   DateISO,
   Id,
@@ -120,7 +124,23 @@ export function buildCourseCertificate(input: CourseCertificateInput): CourseCer
 
 // --- Modelo do certificado (variaveis e texto) -----------------------------
 
-export const CERTIFICATE_LAYOUTS = ["classic", "modern", "minimal"] as const satisfies readonly CertificateLayout[];
+export const CERTIFICATE_LAYOUTS = ["classic", "modern", "minimal", "custom"] as const satisfies readonly CertificateLayout[];
+
+export const CERTIFICATE_TEXT_POSITIONS = ["top", "center", "bottom"] as const satisfies readonly CertificateTextPosition[];
+export const CERTIFICATE_INKS = ["dark", "light"] as const satisfies readonly CertificateInk[];
+export const CERTIFICATE_PARTS = [
+  "logo",
+  "organizationName",
+  "title",
+  "body",
+  "date",
+  "signatures",
+] as const satisfies readonly CertificatePart[];
+
+/** Ajustes iniciais da arte (texto no centro, escuro, tudo aparecendo). */
+export function defaultCertificateArtwork(fileId: string): CertificateArtwork {
+  return { fileId, textPosition: "center", ink: "dark", hidden: [] };
+}
 
 export const CERTIFICATE_ACCENT_COLORS = [
   "graphite",
@@ -364,7 +384,9 @@ function variableIssue(field: string, text: string): CertificateTemplateIssue | 
 
 /** Regras do modelo (o servico recusa com VALIDATION). Lista vazia = ok. */
 export function validateCertificateTemplate(
-  template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures">,
+  template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures"> & {
+    artwork?: Partial<CertificateArtwork>;
+  },
 ): CertificateTemplateIssue[] {
   const issues: CertificateTemplateIssue[] = [];
   const push = (issue: CertificateTemplateIssue | null) => {
@@ -372,6 +394,25 @@ export function validateCertificateTemplate(
   };
   if (!(CERTIFICATE_LAYOUTS as readonly string[]).includes(template.layout)) {
     push({ field: "layout", message: "Escolha um layout." });
+  }
+  // "Minha arte": precisa da imagem e de ajustes conhecidos.
+  if (template.layout === "custom") {
+    const art = template.artwork;
+    if (!art?.fileId?.trim()) push({ field: "artwork", message: "Envie a arte de fundo." });
+    else {
+      if (!(CERTIFICATE_TEXT_POSITIONS as readonly string[]).includes(String(art.textPosition))) {
+        push({ field: "artwork.textPosition", message: "Escolha onde o texto fica." });
+      }
+      if (!(CERTIFICATE_INKS as readonly string[]).includes(String(art.ink))) {
+        push({ field: "artwork.ink", message: "Escolha a cor do texto." });
+      }
+      const hidden = art.hidden ?? [];
+      if (!Array.isArray(hidden) || hidden.some((part) => !(CERTIFICATE_PARTS as readonly string[]).includes(part))) {
+        push({ field: "artwork.hidden", message: "Parte desconhecida." });
+      } else if (hidden.includes("title") && hidden.includes("body")) {
+        push({ field: "artwork.hidden", message: "Mostre pelo menos o título ou o texto." });
+      }
+    }
   }
   if (!(CERTIFICATE_ACCENT_COLORS as readonly string[]).includes(template.accentColor)) {
     push({ field: "accentColor", message: "Escolha uma cor." });

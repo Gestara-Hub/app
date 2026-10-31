@@ -7,8 +7,27 @@ import type { CourseCertificate } from "./class";
  * desenho e texto: os dados de cada aluno vem de `CourseCertificate`.
  */
 
-/** Desenho da folha: classico (moldura), moderno (faixa lateral) ou limpo. */
-export type CertificateLayout = "classic" | "modern" | "minimal";
+/**
+ * Desenho da folha: classico (moldura), moderno (faixa lateral), limpo ou a
+ * arte do proprio espaco como fundo ("Minha arte", doc 21 §1.1).
+ */
+export type CertificateLayout = "classic" | "modern" | "minimal" | "custom";
+
+/** Onde o bloco de texto fica sobre a arte. */
+export type CertificateTextPosition = "top" | "center" | "bottom";
+/** Cor do texto sobre a arte: escura (arte clara) ou clara (arte escura). */
+export type CertificateInk = "dark" | "light";
+/** Partes do certificado que a arte pode ja trazer impressas (e que entao saem). */
+export type CertificatePart = "logo" | "organizationName" | "title" | "body" | "date" | "signatures";
+
+/** Arte propria como fundo (layout "custom"): imagem A4 deitado no armazenamento de arquivos. */
+export interface CertificateArtwork {
+  fileId: Id;
+  textPosition: CertificateTextPosition;
+  ink: CertificateInk;
+  /** Partes que nao aparecem sobre a arte. */
+  hidden: CertificatePart[];
+}
 
 /** Cor de destaque (paleta fechada, legivel na impressao). */
 export type CertificateAccentColor = "graphite" | "navy" | "green" | "wine" | "gold" | "purple";
@@ -30,13 +49,15 @@ export interface CertificateTemplate {
   signatures: CertificateSignature[];
   /** Logo (imagem) no armazenamento de arquivos. */
   logoFileId?: Id;
+  /** Arte de fundo e seus ajustes; obrigatoria no layout "custom", ignorada nos outros. */
+  artwork?: CertificateArtwork;
   /** Sem frequencia, a variavel {frequencia} fica sem valor. */
   showAttendance: boolean;
   /** Ausente = modelo padrao, nunca salvo. */
   updatedAt?: DateTimeISO;
 }
 
-/** Salvar troca o modelo inteiro (sem `logoFileId` = sem logo). */
+/** Salvar troca o modelo inteiro (sem `logoFileId` = sem logo; sem `artwork` = sem arte). */
 export type SaveCertificateTemplate = Omit<CertificateTemplate, "updatedAt">;
 
 /** O que a tela do certificado recebe: os dados do aluno e o modelo do espaco. */

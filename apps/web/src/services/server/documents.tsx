@@ -46,27 +46,39 @@ export async function loadSpaceLogo(organizationId: string): Promise<DocumentLog
       .eq("id", organizationId)
       .maybeSingle();
     const fileId = (org?.certificate_template as { logoFileId?: string } | null)?.logoFileId;
-    if (fileId) {
-      const { data: file } = await admin
-        .from("attachments")
-        .select("storage_path, content_type")
-        .eq("id", fileId)
-        .eq("organization_id", organizationId)
-        .maybeSingle();
-      const type = String(file?.content_type ?? "").toLowerCase();
-      // So a pasta do proprio espaco (revisao geral de 31/10/2026, achado S5).
-      if (file?.storage_path && String(file.storage_path).startsWith(`${organizationId}/`) && LOGO_TYPES.has(type)) {
-        const { data: blob } = await admin.storage.from("attachments").download(String(file.storage_path));
-        if (blob) {
-          const buffer = Buffer.from(await blob.arrayBuffer());
-          return { src: `data:${type === "image/jpg" ? "image/jpeg" : type};base64,${buffer.toString("base64")}` };
-        }
-      }
-    }
+    return fileId ? await loadSpaceImage(organizationId, fileId) : null;
   } catch (error) {
     logError("[documents] Erro ao carregar a logo do espaço:", error);
+    return null;
   }
-  return null;
+}
+
+/**
+ * Imagem guardada nos anexos do espaco (logo, arte do certificado), em data URL
+ * para o PDF. So PNG e JPG, e so da pasta do proprio espaco (revisao geral de
+ * 31/10/2026, achado S5).
+ */
+export async function loadSpaceImage(organizationId: string, fileId: string): Promise<DocumentLogo | null> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: file } = await admin
+      .from("attachments")
+      .select("storage_path, content_type")
+      .eq("id", fileId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    const type = String(file?.content_type ?? "").toLowerCase();
+    if (!file?.storage_path || !String(file.storage_path).startsWith(`${organizationId}/`) || !LOGO_TYPES.has(type)) {
+      return null;
+    }
+    const { data: blob } = await admin.storage.from("attachments").download(String(file.storage_path));
+    if (!blob) return null;
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    return { src: `data:${type === "image/jpg" ? "image/jpeg" : type};base64,${buffer.toString("base64")}` };
+  } catch (error) {
+    logError("[documents] Erro ao carregar a imagem do espaço:", error);
+    return null;
+  }
 }
 
 /** Logo dos documentos: a do espaco; sem ela, a do GestaraHub. */

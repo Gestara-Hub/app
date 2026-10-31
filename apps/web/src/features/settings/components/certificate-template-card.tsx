@@ -5,11 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
 import { Award, Check, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import type { CertificateTemplate } from "@gestarahub/contracts";
+import type { CertificatePart, CertificateTemplate } from "@gestarahub/contracts";
 import {
   CERTIFICATE_ACCENT_COLORS,
+  CERTIFICATE_INKS,
   CERTIFICATE_LAYOUTS,
   CERTIFICATE_LIMITS,
+  CERTIFICATE_PARTS,
+  CERTIFICATE_TEXT_POSITIONS,
   CERTIFICATE_VARIABLES,
   DEFAULT_CERTIFICATE_BODY,
   DEFAULT_CERTIFICATE_TITLE,
@@ -26,19 +29,23 @@ import {
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { CERTIFICATE_LOGO_RULES, filesSchema, fileIssue } from "@/lib/files";
+import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES, filesSchema, fileIssue } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
 import {
   ACCENT_COLORS,
   CertificateSheet,
+  INK_OPTIONS,
   LAYOUT_OPTIONS,
+  PART_LABELS,
+  TEXT_POSITION_OPTIONS,
   VARIABLE_LABELS,
   sampleCertificate,
   useCertificateTemplate,
@@ -88,13 +95,27 @@ const schema = z
     /** A logo salva continua (o usuario nao clicou em "Remover"). */
     keepLogo: z.boolean(),
     logo: filesSchema(CERTIFICATE_LOGO_RULES),
+    /** "Minha arte": a arte salva continua; `artwork` e o arquivo novo. */
+    keepArtwork: z.boolean(),
+    artwork: filesSchema(CERTIFICATE_ARTWORK_RULES),
+    textPosition: z.enum(CERTIFICATE_TEXT_POSITIONS),
+    ink: z.enum(CERTIFICATE_INKS),
+    hidden: z.array(z.enum(CERTIFICATE_PARTS)),
   })
-  // Mesmas regras do servico (titulo, texto, assinaturas e variaveis), numa fonte so.
+  // Mesmas regras do servico (titulo, texto, assinaturas, variaveis e arte), numa fonte so.
   .superRefine((values, ctx) => {
-    for (const issue of validateCertificateTemplate(values)) {
+    const hasArtwork = values.keepArtwork || values.artwork.length > 0;
+    const issues = validateCertificateTemplate({
+      ...values,
+      artwork: { fileId: hasArtwork ? "pending" : "", textPosition: values.textPosition, ink: values.ink, hidden: values.hidden },
+    });
+    for (const issue of issues) {
+      // Os ajustes da arte sao campos soltos no formulario (`artwork.hidden` -> `hidden`);
+      // "artwork" sozinho e o campo do arquivo.
+      const field = issue.field.startsWith("artwork.") ? issue.field.slice("artwork.".length) : issue.field;
       ctx.addIssue({
         code: "custom",
-        path: issue.field.split(".").map((part) => (/^\d+$/.test(part) ? Number(part) : part)),
+        path: field.split(".").map((part) => (/^\d+$/.test(part) ? Number(part) : part)),
         message: issue.message,
       });
     }
@@ -111,7 +132,17 @@ function toValues(template: CertificateTemplate): Values {
     showAttendance: template.showAttendance,
     keepLogo: Boolean(template.logoFileId),
     logo: [],
+    keepArtwork: Boolean(template.artwork?.fileId),
+    artwork: [],
+    textPosition: template.artwork?.textPosition ?? "center",
+    ink: template.artwork?.ink ?? "dark",
+    hidden: template.artwork?.hidden ?? [],
   };
+}
+
+/** Os ajustes da arte, como a folha e o servico esperam. */
+function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden">, fileId = "") {
+  return { fileId, textPosition: values.textPosition, ink: values.ink, hidden: values.hidden };
 }
 
 /**
@@ -240,6 +271,18 @@ function CertificateTemplateForm({
   const newLogoUrl = useLocalFileUrl(newLogoOk);
   const savedLogoUrl = useStoredFileUrl(template.logoFileId);
   const logoUrl = newLogoUrl ?? (values.keepLogo ? savedLogoUrl : null);
+  const isCustom = values.layout === "custom";
+  const newArtwork = values.artwork?.[0];
+  const newArtworkOk = newArtwork && !fileIssue(newArtwork, CERTIFICATE_ARTWORK_RULES) ? newArtwork : undefined;
+  const newArtworkUrl = useLocalFileUrl(newArtworkOk);
+  const savedArtworkUrl = useStoredFileUrl(template.artwork?.fileId);
+  const artworkUrl = newArtworkUrl ?? (values.keepArtwork ? savedArtworkUrl : null);
+  const hidden = values.hidden ?? [];
+  const togglePart = (part: CertificatePart, shown: boolean) =>
+    form.setValue("hidden", shown ? hidden.filter((p) => p !== part) : [...hidden, part], {
+      shouldDirty: true,
+      shouldValidate: form.formState.isSubmitted,
+    });
 
   const address = unit?.address;
   const sample = sampleCertificate({
@@ -278,9 +321,11 @@ function CertificateTemplateForm({
           body: v.body,
           signatures: v.signatures,
           showAttendance: v.showAttendance,
+          ...(v.layout === "custom" ? { artwork: artworkOf(v, v.keepArtwork ? template.artwork?.fileId : "") } : {}),
         },
         keepLogoFileId: v.keepLogo ? template.logoFileId : undefined,
         logoFile: v.logo[0],
+        artworkFile: v.layout === "custom" ? v.artwork[0] : undefined,
       });
       toast.success("Modelo de certificado salvo.");
       form.reset(toValues(saved));
@@ -323,16 +368,95 @@ function CertificateTemplateForm({
                     disabled={pending}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Cor</Label>
-                  <AccentColorPicker
-                    value={values.accentColor}
-                    onChange={(next) => form.setValue("accentColor", next, { shouldDirty: true })}
-                    disabled={pending}
-                  />
-                </div>
+                {!isCustom ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Cor</Label>
+                    <AccentColorPicker
+                      value={values.accentColor}
+                      onChange={(next) => form.setValue("accentColor", next, { shouldDirty: true })}
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
+
+            {isCustom ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Arte de fundo</CardTitle>
+                  <CardDescription>Sua imagem cobre a folha; o texto do modelo fica por cima.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {values.keepArtwork && template.artwork?.fileId ? (
+                    <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                      {savedArtworkUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
+                        <img src={savedArtworkUrl} alt="" className="h-10 w-14 shrink-0 rounded-md border bg-white object-cover" />
+                      ) : (
+                        <Skeleton className="h-10 w-14 shrink-0 rounded-md" />
+                      )}
+                      <p className="flex-1 text-sm text-foreground">Arte atual</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="gap-1.5"
+                        disabled={pending}
+                        onClick={() => form.setValue("keepArtwork", false, { shouldDirty: true })}
+                      >
+                        <Trash2 className="size-4" />
+                        Remover
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <FileDropField<Values> name="artwork" multiple={false} disabled={pending} {...CERTIFICATE_ARTWORK_RULES} />
+                      <p className="text-xs text-muted-foreground">Folha deitada (A4). A imagem é esticada para cobrir a folha.</p>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Posição do texto</Label>
+                    <SegmentedChoiceField<Values>
+                      name="textPosition"
+                      options={TEXT_POSITION_OPTIONS}
+                      ariaLabel="Posição do texto"
+                      disabled={pending}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Cor do texto</Label>
+                    <SegmentedChoiceField<Values> name="ink" options={INK_OPTIONS} ariaLabel="Cor do texto" disabled={pending} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Partes que aparecem</Label>
+                    <p className="text-xs text-muted-foreground">Desligue o que a sua arte já traz impresso.</p>
+                    <ul className="divide-y rounded-lg border">
+                      {CERTIFICATE_PARTS.map((part) => {
+                        const shown = !hidden.includes(part);
+                        return (
+                          <li key={part} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <Label htmlFor={`artwork-part-${part}`} className="text-sm font-normal">
+                              {PART_LABELS[part]}
+                            </Label>
+                            <Switch
+                              id={`artwork-part-${part}`}
+                              checked={shown}
+                              disabled={pending}
+                              onCheckedChange={(next) => togglePart(part, next)}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {form.formState.errors.hidden?.message ? (
+                      <p role="alert" className="text-xs text-destructive">
+                        {String(form.formState.errors.hidden.message)}
+                      </p>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
             <Card>
               <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -516,7 +640,12 @@ function CertificateTemplateForm({
 
           <div className="space-y-2 lg:sticky lg:top-20">
             <p className="text-sm font-medium text-foreground">Prévia</p>
-            <CertificateSheet certificate={sample} template={values} logoUrl={logoUrl} />
+            <CertificateSheet
+              certificate={sample}
+              template={{ ...values, artwork: artworkOf(values) }}
+              logoUrl={logoUrl}
+              artworkUrl={artworkUrl}
+            />
             <p className="text-xs text-muted-foreground">Dados de exemplo.</p>
           </div>
         </div>

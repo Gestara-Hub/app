@@ -226,6 +226,23 @@ describe("certificado: validação do modelo", () => {
     assert.deepEqual(fields({ layout: "kids" as never, accentColor: "pink" as never }), ["layout", "accentColor"]);
   });
 
+  it("Minha arte: exige a imagem, ajustes conhecidos e pelo menos título ou texto", () => {
+    const base = { ...defaultCertificateTemplate(), layout: "custom" as const };
+    const fields = (artwork: unknown) =>
+      validateCertificateTemplate({ ...base, artwork: artwork as never }).map((issue) => issue.field);
+    assert.deepEqual(fields(undefined), ["artwork"]);
+    assert.deepEqual(fields({ fileId: " ", textPosition: "center", ink: "dark", hidden: [] }), ["artwork"]);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "center", ink: "dark", hidden: [] }), []);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "middle", ink: "neon", hidden: ["logo"] }), [
+      "artwork.textPosition",
+      "artwork.ink",
+    ]);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: ["qr"] }), ["artwork.hidden"]);
+    assert.deepEqual(fields({ fileId: "f-1", textPosition: "top", ink: "light", hidden: ["title", "body"] }), ["artwork.hidden"]);
+    // Nos outros layouts a arte nao e conferida.
+    assert.deepEqual(validateCertificateTemplate({ ...defaultCertificateTemplate(), artwork: { fileId: "" } as never }), []);
+  });
+
   it("variável desconhecida vem com a lista das válidas", () => {
     const [issue] = validateCertificateTemplate({ ...defaultCertificateTemplate(), body: "Nota {nota} de {aluno}." });
     assert.equal(issue.field, "body");

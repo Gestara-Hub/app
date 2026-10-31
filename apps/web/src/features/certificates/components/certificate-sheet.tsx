@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
+import type { CertificateArtwork, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
 import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/certificate";
 import { cn } from "@/lib/utils";
 import { ACCENT_COLORS } from "../certificate-meta";
@@ -13,14 +13,26 @@ import { ACCENT_COLORS } from "../certificate-meta";
 
 type SheetProps = { text: RenderedCertificate; organizationName: string; logoUrl: string | null };
 
+/** Posicao do bloco de texto sobre a arte ("Minha arte"). */
+const TEXT_POSITION_CLASS = { top: "justify-start", center: "justify-center", bottom: "justify-end" } as const;
+
 function Logo({ url, className }: { url: string | null; className?: string }) {
   if (!url) return null;
   // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
   return <img src={url} alt="" className={cn("w-auto object-contain", className)} />;
 }
 
-function Signatures({ text, align = "center" }: { text: RenderedCertificate; align?: "center" | "left" }) {
+function Signatures({
+  text,
+  align = "center",
+  ink = "dark",
+}: {
+  text: RenderedCertificate;
+  align?: "center" | "left";
+  ink?: "dark" | "light";
+}) {
   const single = text.signatures.length === 1;
+  const light = ink === "light";
   return (
     <div
       className={cn(
@@ -33,10 +45,16 @@ function Signatures({ text, align = "center" }: { text: RenderedCertificate; ali
       {text.signatures.map((signature, index) => (
         <div
           key={index}
-          className={cn("border-t border-zinc-500 pt-[0.8cqw]", align === "center" ? "text-center" : "text-left")}
+          className={cn(
+            "border-t pt-[0.8cqw]",
+            light ? "border-white/70" : "border-zinc-500",
+            align === "center" ? "text-center" : "text-left",
+          )}
         >
           <p className="min-h-[1.4em] text-[1.4cqw] font-medium">{signature.name}</p>
-          {signature.role ? <p className="text-[1.15cqw] text-zinc-500">{signature.role}</p> : null}
+          {signature.role ? (
+            <p className={cn("text-[1.15cqw]", light ? "text-white/75" : "text-zinc-500")}>{signature.role}</p>
+          ) : null}
         </div>
       ))}
     </div>
@@ -112,15 +130,66 @@ function MinimalSheet({ text, organizationName, logoUrl }: SheetProps) {
   );
 }
 
+/**
+ * "Minha arte" (doc 21 §1.1): a imagem do espaco cobre a folha e o texto fica
+ * por cima, na posicao e na cor escolhidas; as partes que a arte ja traz
+ * impressas ficam de fora. Sem a imagem (ainda carregando), fundo branco.
+ */
+function CustomSheet({
+  text,
+  organizationName,
+  logoUrl,
+  artworkUrl,
+  artwork,
+}: SheetProps & { artworkUrl: string | null; artwork: Omit<CertificateArtwork, "fileId"> }) {
+  const show = (part: CertificatePart) => !artwork.hidden.includes(part);
+  const light = artwork.ink === "light";
+  return (
+    <div className={cn("relative flex h-full flex-col", light ? "text-white" : "text-zinc-900")}>
+      {artworkUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
+        <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : null}
+      <div className={cn("relative flex h-full flex-col items-center px-[8cqw] py-[5cqw] text-center", TEXT_POSITION_CLASS[artwork.textPosition])}>
+        <div className="flex max-w-[84%] flex-col items-center gap-[1.6cqw]">
+          {show("logo") ? <Logo url={logoUrl} className="h-[5cqw]" /> : null}
+          {show("organizationName") ? (
+            <p className={cn("text-[1.3cqw] font-semibold tracking-[0.2em] uppercase", light ? "text-white/80" : "text-zinc-500")}>
+              {organizationName}
+            </p>
+          ) : null}
+          {show("title") ? (
+            <h1 className="font-serif text-[4.2cqw] leading-tight font-semibold">{text.title}</h1>
+          ) : null}
+          {show("body") ? <p className="text-[1.9cqw] leading-relaxed whitespace-pre-line">{text.body}</p> : null}
+          {show("date") ? (
+            <p className={cn("text-[1.35cqw]", light ? "text-white/80" : "text-zinc-600")}>{text.placeAndDate}</p>
+          ) : null}
+          {show("signatures") ? (
+            <div className="w-full pt-[1.5cqw]">
+              <Signatures text={text} ink={artwork.ink} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CertificateSheet({
   certificate,
   template,
   logoUrl = null,
+  artworkUrl = null,
   className,
 }: {
   certificate: CourseCertificate;
-  template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures" | "showAttendance">;
+  template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures" | "showAttendance"> & {
+    artwork?: Omit<CertificateArtwork, "fileId"> & { fileId?: string };
+  };
   logoUrl?: string | null;
+  /** Imagem da arte de fundo (layout "custom"). */
+  artworkUrl?: string | null;
   className?: string;
 }) {
   const text = renderCertificate(certificate, template);
@@ -133,7 +202,9 @@ export function CertificateSheet({
         className="certificate-sheet aspect-[297/210] w-full overflow-hidden rounded-md bg-white text-zinc-900 shadow-sm ring-1 ring-black/10 [-webkit-print-color-adjust:exact] [print-color-adjust:exact] print:aspect-auto print:h-[190mm] print:rounded-none print:shadow-none print:ring-0"
         style={{ "--cert-accent": accent } as CSSProperties}
       >
-        {template.layout === "modern" ? (
+        {template.layout === "custom" && template.artwork ? (
+          <CustomSheet {...props} artworkUrl={artworkUrl} artwork={template.artwork} />
+        ) : template.layout === "modern" ? (
           <ModernSheet {...props} />
         ) : template.layout === "minimal" ? (
           <MinimalSheet {...props} />
