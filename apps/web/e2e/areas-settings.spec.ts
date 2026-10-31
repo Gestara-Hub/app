@@ -384,7 +384,9 @@ test.describe("Configurações: Certificado", () => {
     await body.pressSequentially(". Curso: ");
     await panel.getByRole("button", { name: "+ Curso" }).click();
     await expect(body).toHaveValue("Parabéns, {aluno}. Curso: {curso}");
-    // Cursor no inicio: a variavel entra antes do texto.
+    // Cursor no inicio: a variavel entra antes do texto. Espera o quadro em que o
+    // app devolve o cursor para depois da variavel anterior (senao ele vence a corrida).
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await body.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
     await panel.getByRole("button", { name: "+ Professor" }).click();
     await expect(body).toHaveValue("{professor}Parabéns, {aluno}. Curso: {curso}");
