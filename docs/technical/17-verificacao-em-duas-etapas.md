@@ -122,6 +122,6 @@ Constantes em `lib/security/two-factor-rules.ts`:
 Registradas em 23/10/2026 durante a entrega 2, com a escolha feita para seguir:
 
 1. **Desligar um método só.** Decidido em 30/10/2026: "Remover" por método, com os dois ligados (ver Regras e Fluxos). "Desligar" segue desligando tudo.
-2. **Demonstração sem verificação.** Bloqueei ligar a verificação no espaço de demonstração (todos usam as mesmas contas). O aviso de segurança também não aparece lá. Escolha: bloquear. Confirma?
-3. **Esquecer um dispositivo não encerra a sessão aberta nele.** O próximo login nele pede o código; a sessão que já está aberta segue até sair ou vencer (7 dias). Escolha: manter, como fazem Google e bancos. Quer encerrar também?
+2. **Demonstração sem verificação.** Decidido em 30/10/2026 (usuário confirmou): ligar a verificação fica bloqueado no espaço de demonstração (todos usam as mesmas contas) e o aviso de segurança não aparece lá.
+3. **Esquecer um dispositivo não encerra a sessão aberta nele.** Decidido em 30/10/2026 (usuário confirmou): o próximo login nele pede o código; a sessão que já está aberta segue até sair ou vencer (7 dias), como fazem Google e bancos.
 4. **Login de convidado.** `finishSignIn` busca o usuário por `users.id = id da conta de login`, mas o convidado tem `users.id` próprio (ligado por `auth_user_id`). Parece impedir o login com senha de quem entrou por convite. Não mexi (fora do escopo); fica para conferir no teste geral (Parte B).

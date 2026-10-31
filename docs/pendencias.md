@@ -52,7 +52,6 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 
 | Pendência | Onde está o detalhe |
 | --- | --- |
-| Verificação em duas etapas: demonstração sem verificação, esquecer dispositivo sem encerrar a sessão | `technical/17-verificacao-em-duas-etapas.md`, Perguntas para o usuário |
 | Landing sem planos até decidir mostrar os planos e quem paga o WhatsApp automático e o pagamento online (os preços já foram aprovados em 19/10: Profissional R$ 79,90 e Expansão R$ 199) | `product/13-modelo-de-negocio.md`, `frontend/08-decisoes-landing-page-e-onboarding.md` §3.5 |
 
 ## Antes de ir para produção
