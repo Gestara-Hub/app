@@ -298,3 +298,11 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - Sem busca (8 itens fixos) e sem seletor de mês no catálogo: o mês se escolhe dentro do relatório aberto, no cabeçalho ao lado do título (todos os relatórios são do mês, inclusive a relação de alunos, que mostra quem já era aluno no mês).
 - Os do Plano Profissional ficam no grupo deles com a etiqueta e o cadeado; a linha abre o convite ("Ver no Plano Profissional: {título}").
 - Relatório aberto e convite usam o "‹ Voltar" padrão (volta ao catálogo, que é estado da mesma tela).
+
+## Auditoria (01/11/2026, decidido com o dono)
+
+- **Cor só na ação** (`features/audit/audit-meta.tsx`): Criou e Reativou verde, Atualizou azul, Removeu e Cancelou vermelho, Inativou âmbar, Remarcou roxo, Mudou status cinza. O tipo do alvo fica cinza com um ícone (aluno, turma, certificado...). Colorir os dois viraria arco-íris.
+- **Frase sem o autor:** a linha começa no verbo ("Atualizou a turma X"); o autor e o perfil ficam à direita. O resumo completo segue no registro, no drawer e no nome acessível da linha ("Detalhes: ...", que os testes usam).
+- **Grupos por dia** com cabeçalho fixo ao rolar ("Hoje", "Ontem" ou a data) e só a hora em cada linha.
+- **Filtros:** busca, "O quê" (tipo do alvo), "Ação" (novo: `AuditLogFilter.action`), "Quem" (pessoas, sistema, só o que falhou, ou um usuário) e "Período" (hoje, 7 dias, 30 dias, este mês, personalizado). O primeiro item de cada select diz o que ele filtra ("O quê: tudo", "Ação: todas").
+- **Detalhe em drawer** à direita: autor, ação e tipo, a frase completa, o alvo com "Abrir aluno" ou "Abrir turma" quando a tela existe, alterações (só quando há), detalhes técnicos recolhidos com "Copiar registro (JSON)" lá dentro, e a nota de registro imutável.

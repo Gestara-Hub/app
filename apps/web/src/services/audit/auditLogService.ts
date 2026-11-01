@@ -105,6 +105,7 @@ export const auditLogService = {
       if (realAccountInBrowser()) return listAuditLogPage(filter, page, pageSize);
 
       let result = store.auditLog.filter((e) => canView(e, viewer));
+      if (filter?.action) result = result.filter((e) => e.action === filter.action);
       if (filter?.entityType) {
         result = result.filter((e) => e.target.type === filter.entityType);
       }

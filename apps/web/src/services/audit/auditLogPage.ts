@@ -52,6 +52,7 @@ export async function auditLogPageFor(
   }
   if (filter?.security !== undefined) query = query.eq("security", filter.security);
   if (filter?.entityType) query = query.eq("target->>type", filter.entityType);
+  if (filter?.action) query = query.eq("action", filter.action);
   if (filter?.actorId) query = query.eq("actor->>userId", filter.actorId);
   // Pessoas ou sistema (rotinas, parceiro de pagamentos); so o que falhou.
   if (filter?.actorKind === "system") query = query.not("source", "is", null);

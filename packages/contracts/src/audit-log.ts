@@ -109,6 +109,8 @@ export interface AuditLogEntry {
 
 export interface AuditLogFilter {
   entityType?: AuditEntityType;
+  /** A acao (criou, atualizou...), filtro da tela desde 01/11/2026. */
+  action?: AuditAction;
   actorId?: Id;
   dateFrom?: DateTimeISO;
   dateTo?: DateTimeISO;

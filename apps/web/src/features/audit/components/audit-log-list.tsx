@@ -1,7 +1,7 @@
 "use client";
 
 import { useTeamWords } from "@/features/settings";
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -34,11 +34,12 @@ import {
   auditEntityTypeLabel,
   userProfileLabel,
 } from "@/lib/labels";
-import { formatDateTime } from "@gestarahub/core/format";
-import type { AuditEntityType, AuditLogEntry, AuditLogFilter, OperationalModel } from "@gestarahub/contracts";
+import { formatDate, formatDateTime } from "@gestarahub/core/format";
+import type { AuditAction, AuditEntityType, AuditLogEntry, AuditLogFilter, OperationalModel } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
 import { useUsers } from "@/features/users";
 import { useAuditLog } from "../hooks/use-audit-log";
+import { AuditEntityIcon, auditActionClass, summaryWithoutActor } from "../audit-meta";
 import { AuditLogDetailDialog } from "./audit-log-detail-dialog";
 
 const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
@@ -49,6 +50,7 @@ const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
     "class_group",
     "enrollment",
     "assessment",
+    "certificate",
     "plan",
     "lesson_package",
     "charge",
@@ -65,6 +67,21 @@ const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
   delivery: ["client", "service", "category", "role", "professional", "user", "settings", "subscription"],
 };
 
+/** Acoes no filtro, na ordem em que aparecem na tela. */
+const ACTIONS: AuditAction[] = ["created", "updated", "deleted", "cancelled", "rescheduled", "status_changed", "activated", "inactivated"];
+
+/** "31/10/2026, 21:44" vem de `formatDateTime` no fuso do espaco: a data agrupa, a hora fica na linha. */
+function splitDateTime(timestamp: string): { date: string; time: string } {
+  const [date, time] = formatDateTime(timestamp).split(", ");
+  return { date, time: time ?? "" };
+}
+
+function dayLabel(date: string, today: string, yesterday: string): string {
+  if (date === today) return "Hoje";
+  if (date === yesterday) return "Ontem";
+  return date;
+}
+
 function AuditRow({
   entry,
   onSelect,
@@ -74,6 +91,7 @@ function AuditRow({
 }) {
   const team = useTeamWords();
   const model = useModel();
+  const { time } = splitDateTime(entry.timestamp);
   return (
     <ListRow
       onClick={() => onSelect(entry)}
@@ -83,10 +101,9 @@ function AuditRow({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {auditActionLabel(entry.action)}
-            </span>
-            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className={auditActionClass(entry.action)}>{auditActionLabel(entry.action)}</span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <AuditEntityIcon type={entry.target.type} />
               {auditEntityTypeLabel(entry.target.type, model, team.title)}
             </span>
             {entry.failed ? (
@@ -103,8 +120,9 @@ function AuditRow({
             ) : null}
           </div>
 
-          <p className="mt-1 text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-            {entry.summary}
+          {/* A frase sem o autor (ele fica a direita); o resumo completo esta no nome acessivel e no registro. */}
+          <p className="mt-1 min-w-0 break-words text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+            {summaryWithoutActor(entry.summary, entry.actor.name)}
           </p>
 
           {entry.changes && entry.changes.length > 0 ? (
@@ -125,9 +143,7 @@ function AuditRow({
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-xs font-medium text-muted-foreground">
-            {formatDateTime(entry.timestamp)}
-          </p>
+          <p className="text-xs font-medium text-muted-foreground tabular-nums">{time}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {entry.actor.name}
             <span className="text-muted-foreground/70">
@@ -138,6 +154,15 @@ function AuditRow({
         </div>
       </div>
     </ListRow>
+  );
+}
+
+/** Cabecalho do dia, fixo ao rolar: "Hoje", "Ontem" ou a data. */
+function DayHeader({ label }: { label: string }) {
+  return (
+    <div className="sticky top-0 z-10 border-b border-border/40 bg-background/95 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur sm:px-5">
+      {label}
+    </div>
   );
 }
 
@@ -163,6 +188,7 @@ export function AuditLogList() {
   const model = useModel();
   const [search, setSearch] = useState("");
   const [entityType, setEntityType] = useState<"all" | AuditEntityType>("all");
+  const [action, setAction] = useState<"all" | AuditAction>("all");
   const [actorId, setActorId] = useState<string>("all");
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState("");
@@ -208,7 +234,8 @@ export function AuditLogList() {
     () => ({
       search: search.trim() || undefined,
       entityType: entityType === "all" ? undefined : entityType,
-      // "Responsavel": pessoas, sistema, so o que falhou ou um usuario.
+      action: action === "all" ? undefined : action,
+      // "Quem": pessoas, sistema, so o que falhou ou um usuario.
       ...(actorId === "kind:user" ? { actorKind: "user" as const } : {}),
       ...(actorId === "kind:system" ? { actorKind: "system" as const } : {}),
       ...(actorId === "failed" ? { failed: true } : {}),
@@ -216,7 +243,7 @@ export function AuditLogList() {
       dateFrom,
       dateTo,
     }),
-    [search, entityType, actorId, dateFrom, dateTo],
+    [search, entityType, action, actorId, dateFrom, dateTo],
   );
 
   const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useAuditLog(filter);
@@ -236,29 +263,11 @@ export function AuditLogList() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [usersData, entries]);
 
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-  };
-  const handleEntityTypeChange = (val: "all" | AuditEntityType) => {
-    setEntityType(val);
-  };
-  const handleActorIdChange = (val: string) => {
-    setActorId(val);
-  };
-  const handleDatePresetChange = (val: DatePreset) => {
-    setDatePreset(val);
-  };
-  const handleCustomFromChange = (val: string) => {
-    setCustomFrom(val);
-  };
-  const handleCustomToChange = (val: string) => {
-    setCustomTo(val);
-  };
-
   const hasSearch = Boolean(filter.search);
   const hasFilters = Boolean(
     filter.search ||
     filter.entityType ||
+    filter.action ||
     filter.actorId ||
     filter.actorKind ||
     filter.failed ||
@@ -271,6 +280,7 @@ export function AuditLogList() {
   const clearAll = () => {
     setSearch("");
     setEntityType("all");
+    setAction("all");
     setActorId("all");
     setDatePreset("all");
     setCustomFrom("");
@@ -279,8 +289,11 @@ export function AuditLogList() {
 
   // Total do banco (com os filtros); a lista traz uma pagina por vez.
   const totalCount = data?.pages[0]?.total ?? 0;
-  const visibleEntries = entries;
   const hasMore = Boolean(hasNextPage);
+
+  // Agrupado por dia (01/11/2026): "Hoje", "Ontem" ou a data, uma vez por grupo.
+  const today = formatDate(todayISO());
+  const yesterday = formatDate(format(subDays(parseISO(todayISO()), 1), "yyyy-MM-dd"));
 
   let items: ReactNode[] = [];
   let emptyState: ReactNode = null;
@@ -317,34 +330,40 @@ export function AuditLogList() {
       />
     );
   } else {
-    items = visibleEntries.map((entry) => (
-      <AuditRow key={entry.id} entry={entry} onSelect={setSelected} />
-    ));
+    let lastDay = "";
+    items = entries.map((entry) => {
+      const { date } = splitDateTime(entry.timestamp);
+      const header = date !== lastDay ? <DayHeader label={dayLabel(date, today, yesterday)} /> : null;
+      lastDay = date;
+      return (
+        <Fragment key={entry.id}>
+          {header}
+          <AuditRow entry={entry} onSelect={setSelected} />
+        </Fragment>
+      );
+    });
   }
 
   return (
     <>
       <div className="space-y-4">
-        {/* Barra de Filtros Compostos */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Filtros: busca, O que, Acao, Quem e Periodo. O primeiro item de cada um diz o que o filtro e. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <SearchInput
             value={search}
-            onChange={handleSearchChange}
+            onChange={setSearch}
             onClear={clearSearch}
             placeholder="Buscar no histórico..."
             aria-label="Buscar no log de auditoria"
             className="w-full"
           />
 
-          <Select
-            value={entityType}
-            onValueChange={handleEntityTypeChange}
-          >
+          <Select value={entityType} onValueChange={(v) => setEntityType(v as "all" | AuditEntityType)}>
             <SelectTrigger className="w-full" aria-label="Filtrar por tipo">
-              <SelectValue placeholder="Tipo de registro" />
+              <SelectValue placeholder="O quê" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="all">O quê: tudo</SelectItem>
               {ENTITY_TYPES_BY_MODEL[model].map((type) => (
                 <SelectItem key={type} value={type}>
                   {auditEntityTypeLabel(type, model, team.title)}
@@ -353,15 +372,26 @@ export function AuditLogList() {
             </SelectContent>
           </Select>
 
-          <Select
-            value={actorId}
-            onValueChange={handleActorIdChange}
-          >
-            <SelectTrigger className="w-full" aria-label="Filtrar por responsável">
-              <SelectValue placeholder="Responsável" />
+          <Select value={action} onValueChange={(v) => setAction(v as "all" | AuditAction)}>
+            <SelectTrigger className="w-full" aria-label="Filtrar por ação">
+              <SelectValue placeholder="Ação" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">Ação: todas</SelectItem>
+              {ACTIONS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {auditActionLabel(value)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={actorId} onValueChange={setActorId}>
+            <SelectTrigger className="w-full" aria-label="Filtrar por responsável">
+              <SelectValue placeholder="Quem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Quem: todos</SelectItem>
               <SelectItem value="kind:user">Pessoas</SelectItem>
               <SelectItem value="kind:system">Sistema (rotinas e pagamentos)</SelectItem>
               <SelectItem value="failed">Só o que falhou</SelectItem>
@@ -373,15 +403,12 @@ export function AuditLogList() {
             </SelectContent>
           </Select>
 
-          <Select
-            value={datePreset}
-            onValueChange={(val) => handleDatePresetChange(val as DatePreset)}
-          >
+          <Select value={datePreset} onValueChange={(val) => setDatePreset(val as DatePreset)}>
             <SelectTrigger className="w-full" aria-label="Filtrar por período">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="all">Período: todo</SelectItem>
               <SelectItem value="today">Hoje</SelectItem>
               <SelectItem value="7d">Últimos 7 dias</SelectItem>
               <SelectItem value="30d">Últimos 30 dias</SelectItem>
@@ -402,7 +429,7 @@ export function AuditLogList() {
               <Input
                 type="date"
                 value={customFrom}
-                onChange={(e) => handleCustomFromChange(e.target.value)}
+                onChange={(e) => setCustomFrom(e.target.value)}
                 className="h-8 w-36 text-xs"
               />
             </div>
@@ -411,7 +438,7 @@ export function AuditLogList() {
               <Input
                 type="date"
                 value={customTo}
-                onChange={(e) => handleCustomToChange(e.target.value)}
+                onChange={(e) => setCustomTo(e.target.value)}
                 className="h-8 w-36 text-xs"
               />
             </div>
@@ -444,12 +471,12 @@ export function AuditLogList() {
                 variant="outline"
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
-                className="gap-2 text-xs font-medium"
+                className="gap-2"
               >
-                <ChevronDown className="size-3.5" />
+                <ChevronDown className="size-4" />
                 {isFetchingNextPage
                   ? "Carregando..."
-                  : `Carregar mais eventos (${visibleEntries.length} de ${totalCount})`}
+                  : `Carregar mais eventos (${entries.length} de ${totalCount})`}
               </Button>
             </div>
           ) : (data?.pages.length ?? 0) > 1 ? (
