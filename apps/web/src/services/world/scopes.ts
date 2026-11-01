@@ -34,7 +34,7 @@ export const SCOPE_FIELDS: Record<string, readonly string[]> = {
   studentPackages: ["status", "studentId"],
   sessionOverrides: ["sessionId"],
   waitlist: ["id", "classGroupId"],
-  messageLogs: ["clientId", "trigger"],
+  messageLogs: ["clientId", "trigger", "category"],
   onlinePayments: ["chargeId"],
   assessments: ["classGroupId"],
   studentMeasurements: ["studentId"],
