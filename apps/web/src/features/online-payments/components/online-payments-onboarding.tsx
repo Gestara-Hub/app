@@ -51,7 +51,7 @@ export function OnlinePaymentsOnboarding({
         <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-card p-6 md:p-8">
           <div className="max-w-2xl space-y-4">
             <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Receba pelo Pix com baixa automática
+              Pix e cartão com baixa automática
             </h2>
 
             <p className="text-sm text-muted-foreground sm:text-base leading-relaxed">
