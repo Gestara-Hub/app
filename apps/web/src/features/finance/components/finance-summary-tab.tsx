@@ -32,6 +32,7 @@ import { todayISO } from "@gestarahub/core/date";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
@@ -188,7 +189,11 @@ function VariantSimplified({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-3xl lg:text-2xl xl:text-3xl">
-              {formatCents(summary.expensePaidCents)}
+              {(summary.onlineFeesPaidCents ?? 0) > 0 ? (
+                <ExpensesPopover totalCents={summary.expensePaidCents} onlineFeesCents={summary.onlineFeesPaidCents!} />
+              ) : (
+                formatCents(summary.expensePaidCents)
+              )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {summary.expenseForecastCents > 0
@@ -1181,5 +1186,47 @@ export function FinanceSummaryTab({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * "Saiu" com taxa de pagamento online no mes (01/11/2026, decidido com o dono):
+ * o valor abre um popover com o que foi taxa e o resto numa linha so; o
+ * detalhe das demais saidas fica em Lancamentos. Sem taxa, o numero e liso.
+ */
+function ExpensesPopover({ totalCents, onlineFeesCents }: { totalCents: number; onlineFeesCents: number }) {
+  const otherCents = Math.max(0, totalCents - onlineFeesCents);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="cursor-pointer underline decoration-dotted decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground"
+          aria-label="Ver o que saiu em taxas"
+        >
+          {formatCents(totalCents)}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 space-y-2.5 text-xs">
+        <p className="text-sm font-medium text-foreground">O que saiu no mês</p>
+        <div className="space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-muted-foreground">
+              Taxas de pagamento online
+              <span className="block text-[11px]">Parceiro e GestaraHub, nos Pix e links pagos.</span>
+            </span>
+            <span className="shrink-0 font-medium text-foreground">{formatCents(onlineFeesCents)}</span>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-muted-foreground">Demais saídas</span>
+            <span className="shrink-0 font-medium text-foreground">{formatCents(otherCents)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-1.5 font-semibold text-foreground">
+            <span>Total</span>
+            <span>{formatCents(totalCents)}</span>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

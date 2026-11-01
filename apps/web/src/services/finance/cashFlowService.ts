@@ -44,6 +44,7 @@ export const cashFlowService = {
       );
       return {
         ...summary,
+        onlineFeesPaidCents: onlineFeesInCompetence(competence).totalCents,
         scholarshipGrantedCents,
         scholarshipStudents: new Set(withScholarship.map((c) => c.studentId)).size,
         // Mes atual: o atraso de meses anteriores continua devido (acumula).

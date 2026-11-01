@@ -220,6 +220,7 @@ describe("cobrança online: pagamento", () => {
     const summary = await financeService.getSummary(competence);
     expect(summary.incomePaidCents).toBe(15000);
     expect(summary.expensePaidCents).toBe(feeCents);
+    expect(summary.onlineFeesPaidCents).toBe(feeCents);
     const row = (await financeService.listEntries({ competence })).find((r) => r.source === "online_fee");
     expect(row).toMatchObject({
       type: "expense",

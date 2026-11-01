@@ -387,6 +387,8 @@ export interface FinanceSummary {
   scholarshipGrantedCents?: number;
   /** Alunos com bolsa nas mensalidades do mes. */
   scholarshipStudents?: number;
+  /** Parte do "Saiu" que sao taxas do pagamento online (popover do card, 01/11/2026). */
+  onlineFeesPaidCents?: number;
   /**
    * So no mes atual: atrasos ate hoje de TODOS os meses (divida nao some na
    * virada do mes). Os campos `*OverdueCents` acima continuam so do mes.
