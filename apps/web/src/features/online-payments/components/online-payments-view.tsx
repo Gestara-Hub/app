@@ -125,9 +125,10 @@ export function OnlinePaymentsView() {
 
   return (
     <>
+      {/* A linha de saldos, historico e saques so faz sentido com a conta ativa; antes, o hero apresenta a tela. */}
       <PageHeader
         title="Recebimentos online"
-        description="Saldos das mensalidades, histórico de cobranças e saques via Pix."
+        description={isSubaccountActive ? "Saldos das mensalidades, histórico de cobranças e saques via Pix." : undefined}
       >
         <div className="flex flex-wrap items-center gap-2">
           {isSubaccountActive ? (
