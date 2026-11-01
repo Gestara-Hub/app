@@ -31,8 +31,8 @@ interface OnlinePaymentsOnboardingProps {
 /** "Parceiro + GestaraHub (seu plano)" no Pro; no Gratis, com o valor dos planos pagos. */
 function feeNoteFor(tier: ReturnType<typeof useSubscriptionTier>): string {
   return tier === "free"
-    ? `Parceiro + GestaraHub (${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos planos pagos).`
-    : "Parceiro + GestaraHub do seu plano.";
+    ? `parceiro + GestaraHub (${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos planos pagos)`
+    : "parceiro + GestaraHub";
 }
 
 export function OnlinePaymentsOnboarding({
@@ -55,7 +55,7 @@ export function OnlinePaymentsOnboarding({
             </h2>
 
             <p className="text-sm text-muted-foreground sm:text-base leading-relaxed">
-              Pix e link de cartão baixam a cobrança sozinhos, no instante em que o aluno paga.
+              O aluno paga; a cobrança baixa sozinha.
             </p>
 
             <div className="pt-2">
@@ -69,7 +69,7 @@ export function OnlinePaymentsOnboarding({
               </Button>
               {!canManage ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Apenas proprietários e administradores podem ativar a conta.
+                  Só o dono ou o gerente ativa a conta.
                 </p>
               ) : null}
             </div>
@@ -83,12 +83,8 @@ export function OnlinePaymentsOnboarding({
               <div className="w-fit rounded-lg bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400">
                 <QrCode className="size-5" />
               </div>
-              <CardTitle className="text-base font-semibold">
-                Pix Dinâmico e Automático
-              </CardTitle>
-              <CardDescription className="text-xs">
-                QR Code e copia-e-cola únicos por cobrança. O aluno paga pelo app do banco e a mensalidade dá baixa sozinha.
-              </CardDescription>
+              <CardTitle className="text-base font-semibold">Pix</CardTitle>
+              <CardDescription className="text-xs">QR Code por cobrança. Baixa na hora.</CardDescription>
             </CardHeader>
           </Card>
 
@@ -97,12 +93,8 @@ export function OnlinePaymentsOnboarding({
               <div className="w-fit rounded-lg bg-blue-500/10 p-2.5 text-blue-600 dark:text-blue-400">
                 <CreditCard className="size-5" />
               </div>
-              <CardTitle className="text-base font-semibold">
-                Link de Cartão de Crédito
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Compartilhe o link pelo WhatsApp ou e-mail. Seu aluno paga com comodidade e segurança antifraude.
-              </CardDescription>
+              <CardTitle className="text-base font-semibold">Link de cartão</CardTitle>
+              <CardDescription className="text-xs">Mande pelo WhatsApp. O aluno paga no celular.</CardDescription>
             </CardHeader>
           </Card>
 
@@ -111,11 +103,9 @@ export function OnlinePaymentsOnboarding({
               <div className="w-fit rounded-lg bg-purple-500/10 p-2.5 text-purple-600 dark:text-purple-400">
                 <Zap className="size-5" />
               </div>
-              <CardTitle className="text-base font-semibold">
-                Saque via Pix: {PIX_WITHDRAWAL.freePerMonth} grátis por mês
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Saque via Pix</CardTitle>
               <CardDescription className="text-xs">
-                Transfira o saldo disponível para uma chave Pix do titular. Depois dos saques grátis do mês, a tarifa é de {formatCents(PIX_WITHDRAWAL.feeCents)} cada.
+                {PIX_WITHDRAWAL.freePerMonth} grátis por mês; depois, {formatCents(PIX_WITHDRAWAL.feeCents)} cada.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -127,12 +117,8 @@ export function OnlinePaymentsOnboarding({
             <div className="flex items-center gap-2">
               <Receipt className="size-5 text-primary" />
               <div>
-                <CardTitle className="text-base">
-                  Transparência de Tarifas
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Sem pegadinhas: você só paga taxa quando o aluno efetivamente pagar.
-                </CardDescription>
+                <CardTitle className="text-base">Taxas</CardTitle>
+                <CardDescription className="text-xs">Só quando o aluno paga.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -144,7 +130,7 @@ export function OnlinePaymentsOnboarding({
                 <p className="text-lg font-bold text-foreground">
                   até {formatCents(ASAAS_FEES.pix.fixedCents)} + {platformFee}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{feeNote} Cai na hora.</p>
+                <p className="text-[11px] text-muted-foreground">{feeNote} · na hora</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
@@ -152,7 +138,7 @@ export function OnlinePaymentsOnboarding({
                 <p className="text-lg font-bold text-foreground">
                   até 2,99% + {formatCents(ASAAS_FEES.creditCard.fixedCents)} + {platformFee}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{feeNote} Cai em 30 dias.</p>
+                <p className="text-[11px] text-muted-foreground">{feeNote} · em 30 dias</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
@@ -160,9 +146,7 @@ export function OnlinePaymentsOnboarding({
                 <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                   {PIX_WITHDRAWAL.freePerMonth} grátis por mês
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Saque via Pix para a sua conta; depois, {formatCents(PIX_WITHDRAWAL.feeCents)} cada
-                </p>
+                <p className="text-[11px] text-muted-foreground">depois, {formatCents(PIX_WITHDRAWAL.feeCents)} cada</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
@@ -170,17 +154,13 @@ export function OnlinePaymentsOnboarding({
                 <p className="text-lg font-bold text-foreground">
                   R$ 0,00
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Custo zero em canceladas ou expiradas
-                </p>
+                <p className="text-[11px] text-muted-foreground">cancelada ou vencida</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
               <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-              <span>
-                Processado por parceiro de pagamentos regulado pelo Banco Central.
-              </span>
+              <span>Parceiro de pagamentos regulado pelo Banco Central.</span>
             </div>
           </CardContent>
         </Card>
