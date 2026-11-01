@@ -78,10 +78,11 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
 - **Erro do parceiro na ativação não chega cru à tela (01/11/2026).** `setupSubaccountAction` registra a frase do Asaas no registro de erros e devolve `{ error, field }` com mensagem neutra ("Não foi possível usar este e-mail. Informe outro e-mail financeiro.", "Confira o CPF ou CNPJ."): a frase original ("o e-mail X já está em uso") confirmava a um invasor que aquele e-mail tem conta no parceiro. O diálogo mostra a mensagem no campo indicado e foca nele.
 - Desfazer o pagamento de uma cobrança paga online **não é permitido** na demonstração (seria estorno). **[DECIDIR]**
 - **Conta real nunca recebe código de demonstração** (23/10/2026, achado 56). Se o parceiro falhar, a conta real recebe uma mensagem de erro e nada é gravado. Só o espaço de demonstração e o servidor do e2e caem no Pix simulado (`allowDemo` em `paymentGateway`, `services/payments/paymentGateway.ts`).
-- **Pix logo depois de ativar a conta de recebimento:** nos primeiros minutos, o Asaas cria a cobrança mas ainda não entrega o QR, porque a chave Pix está sendo cadastrada.
-  - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
-  - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
-  - Outro erro na busca do QR também cancela a cobrança no parceiro.
+- **Pix logo depois de ativar a conta de recebimento:** a subconta nova não tem chave Pix, e o Asaas só cria uma temporária na primeira cobrança: o primeiro QR falhava ("Você não possui uma chave Pix cadastrada") e só o segundo saía (visto em 01/11/2026).
+  - Na ativação, depois das tarifas e do webhook, `ensureSubaccountPixKey` (`services/onlinePayments/gatewaySetup.ts`) cria uma chave aleatória (EVP, a única que a API aceita) se a subconta não tem nenhuma; falhar aqui não desfaz a ativação.
+  - Na hora do Pix, se o QR falha por falta de chave, `asaasAdapter.createPix` cria a chave e pede o QR de novo uma vez. Só se ainda falhar a cobrança é cancelada no Asaas (não fica órfã) e a tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
+  - Outro erro na busca do QR também cancela a cobrança no parceiro, sem tentar criar chave.
+  - Limites do Asaas: uma chave por minuto, 5 por conta PF e 20 por PJ (`POST /v3/pix/addressKeys`).
 - **Taxa do GestaraHub só quando o parceiro a retém** (31/10/2026, decisão 4 do diário da noite, confirmada pelo usuário). Com o Asaas e sem `ASAAS_MASTER_WALLET_ID`, não há split: a taxa é zero, não entra no valor repassado ao aluno nem sai do líquido do espaço. Um ponto só decide isso no servidor, `effectivePlatformSplitCents` (`services/payments/platformSplit.ts`), usado por "Cobrar online", pelo checkout, pela fatura gerada e pela página pública. Sem o Asaas (demonstração e e2e), o provedor de demonstração segue simulando a taxa.
 
 ## 7. Fatura Pública e Autoatendimento do Aluno (/p/c/:id)

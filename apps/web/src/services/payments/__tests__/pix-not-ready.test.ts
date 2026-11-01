@@ -11,6 +11,7 @@ const asaas = vi.hoisted(() => ({
   createPixPayment: vi.fn(),
   getPixQrCode: vi.fn(),
   deletePayment: vi.fn(),
+  createPixAddressKey: vi.fn(),
 }));
 const actions = vi.hoisted(() => ({
   createOnlinePixPaymentAction: vi.fn(),
@@ -49,12 +50,33 @@ beforeEach(() => {
   asaas.createOrFindCustomer.mockResolvedValue({ id: "cus_1" });
   asaas.createPixPayment.mockResolvedValue({ id: "pay_1" });
   asaas.deletePayment.mockResolvedValue({ deleted: true, id: "pay_1" });
+  asaas.createPixAddressKey.mockResolvedValue({ id: "key_1", type: "EVP", status: "AWAITING_ACTIVATION" });
 });
 
 describe("Asaas: Pix sem QR logo depois de ativar a conta", () => {
-  it("cancela a cobrança no parceiro e avisa que o Pix ainda está liberando", async () => {
+  // 01/11/2026: o primeiro Pix da subconta falhava por falta de chave Pix e so
+  // o segundo saia. Agora o adaptador cria a chave aleatoria e pede o QR de novo.
+  it("sem chave Pix, cria a chave na subconta e pede o QR de novo", async () => {
+    asaas.getPixQrCode.mockRejectedValueOnce(noPixKey()).mockResolvedValueOnce({ payload: "000201pix" });
+    const pix = await asaasPaymentGateway.createPix(input);
+    expect(pix.pixCopyPaste).toBe("000201pix");
+    expect(asaas.createPixAddressKey).toHaveBeenCalledWith("chave-da-subconta");
+    expect(asaas.getPixQrCode).toHaveBeenCalledTimes(2);
+    expect(asaas.deletePayment).not.toHaveBeenCalled();
+  });
+
+  it("se mesmo com a chave o QR não sai, cancela a cobrança e avisa que o Pix ainda está liberando", async () => {
     asaas.getPixQrCode.mockRejectedValue(noPixKey());
     await expect(asaasPaymentGateway.createPix(input)).rejects.toBeInstanceOf(PixNotReadyError);
+    expect(asaas.createPixAddressKey).toHaveBeenCalledTimes(1);
+    expect(asaas.deletePayment).toHaveBeenCalledWith("pay_1", "chave-da-subconta");
+  });
+
+  it("se a criação da chave falha, a cobrança é cancelada e o erro é o da chave", async () => {
+    asaas.getPixQrCode.mockRejectedValue(noPixKey());
+    const keyError = new AsaasApiError("Aguarde 1 minuto para criar outra chave", 400);
+    asaas.createPixAddressKey.mockRejectedValue(keyError);
+    await expect(asaasPaymentGateway.createPix(input)).rejects.toBe(keyError);
     expect(asaas.deletePayment).toHaveBeenCalledWith("pay_1", "chave-da-subconta");
   });
 
@@ -62,6 +84,7 @@ describe("Asaas: Pix sem QR logo depois de ativar a conta", () => {
     const other = new AsaasApiError("Falha no parceiro", 500);
     asaas.getPixQrCode.mockRejectedValue(other);
     await expect(asaasPaymentGateway.createPix(input)).rejects.toBe(other);
+    expect(asaas.createPixAddressKey).not.toHaveBeenCalled();
     expect(asaas.deletePayment).toHaveBeenCalledWith("pay_1", "chave-da-subconta");
   });
 

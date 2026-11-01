@@ -5,7 +5,7 @@ import { after } from "next/server";
 import type { OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
+import { ensureSubaccountPixKey, ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
 import { createSubAccount } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
@@ -174,6 +174,8 @@ export async function setupSubaccountAction(
     if (process.env.ASAAS_API_KEY) {
       await syncGatewayFees(input.organizationId);
       await ensureSubaccountWebhook(input.organizationId);
+      // Chave Pix da subconta: sem ela o primeiro Pix falhava no QR (01/11/2026).
+      await ensureSubaccountPixKey(input.organizationId);
     }
 
     // 4. Registra auditoria jurídica de consentimento (LGPD, Marco Civil, Bacen)

@@ -5,7 +5,7 @@ import {
   isGatewayFeeDivergent,
   parseAsaasAccountFees,
 } from "@gestarahub/core/payment-fees";
-import { asaasToday, createWebhook, getAccountFees, getAccountInfo, listWebhooks, updateWebhook } from "@/lib/asaas";
+import { asaasToday, createPixAddressKey, createWebhook, getAccountFees, getAccountInfo, listPixAddressKeys, listWebhooks, updateWebhook } from "@/lib/asaas";
 import type { AsaasWebhookConfig } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
@@ -34,6 +34,31 @@ const WEBHOOK_EVENTS = ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_OVERDU
 /** Chave de subconta de verdade (as do modo de demonstracao comecam com "mock_"). */
 export function realSubaccountKey(key: unknown): string | null {
   return typeof key === "string" && key.length > 0 && !key.startsWith("mock_") ? key : null;
+}
+
+/**
+ * Garante uma chave Pix (aleatoria) na subconta recem-criada (01/11/2026): sem
+ * ela, o primeiro Pix do espaco falhava no QR e so o segundo saia. Falha aqui
+ * nao desfaz a ativacao: o adaptador tenta criar a chave de novo na hora do Pix.
+ */
+export async function ensureSubaccountPixKey(organizationId: string): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const { data: org } = await admin
+    .from("organizations")
+    .select("gateway_api_key")
+    .eq("id", organizationId)
+    .maybeSingle();
+  const key = realSubaccountKey(org?.gateway_api_key);
+  if (!key || !process.env.ASAAS_API_KEY) return false;
+  try {
+    const keys = await listPixAddressKeys(key);
+    if (keys.some((k) => k.status !== "ERROR" && k.status !== "REMOVED")) return true;
+    await createPixAddressKey(key);
+    return true;
+  } catch (err) {
+    logWarn("[gatewayAccount] Não foi possível criar a chave Pix da subconta (o Pix tenta de novo na primeira cobrança):", err);
+    return false;
+  }
 }
 
 /** Busca as tarifas da subconta no Asaas e grava em organizations.gateway_fees. */

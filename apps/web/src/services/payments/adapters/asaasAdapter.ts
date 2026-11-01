@@ -4,6 +4,7 @@ import {
   AsaasApiError,
   asaasToday,
   createOrFindCustomer,
+  createPixAddressKey,
   deletePayment,
   createPixPayment,
   getPixQrCode,
@@ -24,6 +25,20 @@ import { brazilNationalDigits } from "@gestarahub/core/phone";
 import type { Address } from "@gestarahub/contracts";
 
 /** O Asaas recusa o QR porque a conta ainda nao tem chave Pix (recem-ativada). */
+/**
+ * Subconta sem chave Pix (o primeiro Pix depois de ativar, 01/11/2026): cria a
+ * chave aleatoria e pede o QR de novo uma vez; se ainda falhar, o erro segue.
+ */
+async function getPixQrCodeCreatingKey(paymentId: string, apiKey?: string): ReturnType<typeof getPixQrCode> {
+  try {
+    return await getPixQrCode(paymentId, apiKey);
+  } catch (error) {
+    if (!isPixKeyMissing(error)) throw error;
+    await createPixAddressKey(apiKey);
+    return getPixQrCode(paymentId, apiKey);
+  }
+}
+
 function isPixKeyMissing(error: unknown): boolean {
   if (!(error instanceof AsaasApiError)) return false;
   const texts = [error.message, ...(error.errors ?? []).map((e) => e.description)];
@@ -179,7 +194,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     // para nada: cancela no parceiro (nao fica orfa) antes de avisar.
     let qrCode: Awaited<ReturnType<typeof getPixQrCode>>;
     try {
-      qrCode = await getPixQrCode(payment.id, input.subaccountApiKey);
+      qrCode = await getPixQrCodeCreatingKey(payment.id, input.subaccountApiKey);
     } catch (qrError) {
       try {
         await deletePayment(payment.id, input.subaccountApiKey);

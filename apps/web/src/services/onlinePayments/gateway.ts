@@ -1,6 +1,7 @@
 // Conta do Asaas (tarifas, webhook, cancelamento e expiracao), num import so.
 export {
   GESTARAHUB_WEBHOOK_NAME,
+  ensureSubaccountPixKey,
   ensureSubaccountWebhook,
   recheckFeesAfterPayment,
   refreshGatewayIfNeeded,

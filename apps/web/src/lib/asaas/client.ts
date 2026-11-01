@@ -252,6 +252,33 @@ export async function getPixQrCode(
   );
 }
 
+/** Chaves Pix da conta (so o que interessa para saber se existe alguma). */
+export interface AsaasPixAddressKey {
+  id: string;
+  key?: string;
+  type: string;
+  status: string;
+}
+
+/** Lista as chaves Pix da subconta. */
+export async function listPixAddressKeys(subaccountApiKey?: string): Promise<AsaasPixAddressKey[]> {
+  const res = await asaasFetch<{ data?: AsaasPixAddressKey[] }>("/pix/addressKeys", { apiKey: subaccountApiKey });
+  return res.data ?? [];
+}
+
+/**
+ * Cria uma chave Pix aleatoria (EVP) na subconta. Sem chave, o Asaas gera uma
+ * temporaria a cada cobranca e o primeiro QR costuma falhar ("Você não possui
+ * uma chave Pix cadastrada"). Uma por minuto, no maximo 5 (PF) ou 20 (PJ).
+ */
+export async function createPixAddressKey(subaccountApiKey?: string): Promise<AsaasPixAddressKey> {
+  return asaasFetch<AsaasPixAddressKey>("/pix/addressKeys", {
+    method: "POST",
+    body: { type: "EVP" },
+    apiKey: subaccountApiKey,
+  });
+}
+
 /**
  * Consulta os detalhes de um pagamento pelo ID no Asaas.
  */
