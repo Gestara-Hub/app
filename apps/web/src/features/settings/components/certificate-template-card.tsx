@@ -4,11 +4,12 @@ import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
-import { Award, Check, FileText, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Award, Check, CircleHelp, FileText, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { isSupabaseOrganization } from "@/lib/session";
 import { logError } from "@/lib/log";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import type { CertificateBlock, CertificateLogoSize, CertificatePart, CertificateQrSize, CertificateTemplate, Id } from "@gestarahub/contracts";
+import type { FieldErrors } from "react-hook-form";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import {
   CERTIFICATE_ACCENT_COLORS,
@@ -21,8 +22,8 @@ import {
   CERTIFICATE_PARTS,
   CERTIFICATE_TEXT_POSITIONS,
   CERTIFICATE_VARIABLES,
-  DEFAULT_CERTIFICATE_BODY,
-  DEFAULT_CERTIFICATE_TITLE,
+  certificateTemplateFromPreset,
+  defaultCertificateTemplate,
   validateCertificateTemplate,
   type CertificateVariable,
 } from "@gestarahub/core/certificate";
@@ -32,8 +33,9 @@ import {
   InputText,
   SegmentedChoiceField,
   SwitchField,
-  TextArea,
+  TokenTextArea,
 } from "@/components/form";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -48,15 +50,19 @@ import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useCompletedEnrollments, usePreviewCourseCertificate } from "@/features/turmas";
+import { openHelp } from "@/features/support";
 import {
   ACCENT_COLORS,
+  CertificatePresetGallery,
   CertificateSheet,
   INK_OPTIONS,
   LAYOUT_OPTIONS,
   PART_LABELS,
   TEXT_POSITION_OPTIONS,
   VARIABLE_LABELS,
+  matchingCertificatePreset,
   sampleCertificate,
+  type CertificatePresetOption,
   useCertificateTemplate,
   useLocalFileUrl,
   useModalitiesWithOwnTemplate,
@@ -297,6 +303,11 @@ export function CertificateTemplateCard({
           <p className="pb-2.5 text-xs text-muted-foreground">Usa o modelo do espaço. Mude algo e salve para ter o próprio.</p>
         )
       ) : null}
+      {/* Travou em algum ajuste: a ajuda abre nos artigos desta tela, com "Me mostre na tela". */}
+      <Button type="button" variant="ghost" className="ml-auto gap-1.5" onClick={() => openHelp()}>
+        <CircleHelp className="size-4" aria-hidden />
+        Como funciona?
+      </Button>
     </div>
   );
 
@@ -367,6 +378,26 @@ export function CertificateTemplateCard({
   );
 }
 
+/** Variaveis do texto, para o campo destacar e sugerir ao digitar "{". */
+const VARIABLE_TOKENS = CERTIFICATE_VARIABLES.map((key) => ({ key, label: VARIABLE_LABELS[key] }));
+
+/** Bloco do editor: cartao que abre e fecha pelo titulo (os ajustes ficam recolhidos). */
+function EditorBlock({ value, title, hint, children }: { value: string; title: string; hint: string; children: ReactNode }) {
+  return (
+    <Card className="gap-0 py-0">
+      <AccordionItem value={value} className="border-b-0">
+        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="text-base leading-none font-semibold">{title}</span>
+            <span className="text-xs font-normal text-muted-foreground">{hint}</span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="space-y-4 px-6 pb-6">{children}</AccordionContent>
+      </AccordionItem>
+    </Card>
+  );
+}
+
 function AccentColorPicker({
   value,
   onChange,
@@ -433,6 +464,19 @@ function CertificateTemplateForm({
   const dirty = form.formState.isDirty;
   useReportDirty(dirty, onDirtyChange);
   const pending = save.isPending;
+  // Blocos recolhidos (31/10/2026): quem nunca salvou comeca pela galeria; os
+  // ajustes abrem ao clicar, ou sozinhos quando tem erro ao salvar.
+  const neverSaved = !template.updatedAt;
+  const [openBlocks, setOpenBlocks] = useState<string[]>(neverSaved ? ["presets"] : []);
+  const openErrorBlocks = (errors: FieldErrors<Values>) => {
+    const blocks: string[] = [];
+    if (errors.layout || errors.accentColor || errors.logo) blocks.push("appearance");
+    if (errors.title || errors.body) blocks.push("text");
+    if (errors.signatures) blocks.push("signatures");
+    if (blocks.length > 0) setOpenBlocks((prev) => Array.from(new Set([...prev, ...blocks])));
+  };
+  // A palavra do espaco para quem da aula vem da assinatura do professor no modelo.
+  const teacherTitle = template.signatures.find((s) => s.name.trim() === SIGNER_NAMES.teacher)?.role || "Instrutor";
 
   const values = useWatch({ control: form.control }) as Values;
   const newLogo = values.logo?.[0];
@@ -465,6 +509,19 @@ function CertificateTemplateForm({
       city: typeof address === "object" ? address?.city : undefined,
       today: todayISO(),
     });
+
+  const selectedPreset = matchingCertificatePreset(values)?.id;
+  /** Galeria: preenche layout, cor, titulo, texto e cargos; logo e arte ficam. */
+  function applyPreset(option: CertificatePresetOption) {
+    const next = certificateTemplateFromPreset(option.preset, teacherTitle);
+    const opts = { shouldDirty: true, shouldValidate: form.formState.isSubmitted };
+    form.setValue("layout", next.layout, opts);
+    form.setValue("accentColor", next.accentColor, opts);
+    form.setValue("title", next.title, opts);
+    form.setValue("body", next.body, opts);
+    form.setValue("showAttendance", next.showAttendance, opts);
+    signatures.replace(next.signatures.map((s) => ({ ...s })));
+  }
 
   // Insere a variavel onde esta o cursor do texto (ou no fim).
   function insertVariable(variable: CertificateVariable) {
@@ -508,9 +565,10 @@ function CertificateTemplateForm({
     } catch (error) {
       handleFormApiError(error, form, "Não foi possível salvar o modelo.");
     }
-  });
+  }, openErrorBlocks);
 
-  // Volta o titulo e o texto padrao no rascunho; quem grava e o "Salvar" da barra.
+  // Volta o titulo e o texto padrao da area no rascunho; quem grava e o "Salvar" da barra.
+  const areaDefault = defaultCertificateTemplate(teacherTitle, organization?.classSegment);
   async function restoreDefaultText() {
     const ok = await confirm({
       title: "Voltar ao texto padrão?",
@@ -519,16 +577,17 @@ function CertificateTemplateForm({
       cancelLabel: "Cancelar",
     });
     if (!ok) return;
-    form.setValue("title", DEFAULT_CERTIFICATE_TITLE, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
-    form.setValue("body", DEFAULT_CERTIFICATE_BODY, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+    form.setValue("title", areaDefault.title, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+    form.setValue("body", areaDefault.body, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
   }
 
-  const textIsDefault = values.title === DEFAULT_CERTIFICATE_TITLE && values.body === DEFAULT_CERTIFICATE_BODY;
+  const textIsDefault = values.title === areaDefault.title && values.body === areaDefault.body;
 
   /** PDF da previa com o modelo como esta agora (sem salvar); logo e arte so as ja salvas. */
   async function previewPdf() {
     const ok = await form.trigger();
     if (!ok) {
+      openErrorBlocks(form.formState.errors);
       toast.error("Revise os campos destacados.");
       return;
     }
@@ -576,12 +635,24 @@ function CertificateTemplateForm({
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {/* Campos numa coluna estreita; a previa fica com o resto da tela (pedido de 31/10/2026). */}
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Aparência</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <Accordion type="multiple" value={openBlocks} onValueChange={setOpenBlocks} className="space-y-4">
+            <EditorBlock
+              value="presets"
+              title={neverSaved ? "Comece por um modelo" : "Modelos prontos"}
+              hint="Um clique preenche tudo; ajuste depois."
+            >
+              <CertificatePresetGallery
+                sample={sample}
+                segment={organization?.classSegment}
+                teacherTitle={teacherTitle}
+                logoUrl={logoUrl}
+                selectedId={selectedPreset}
+                disabled={pending}
+                onPick={applyPreset}
+              />
+            </EditorBlock>
+
+            <EditorBlock value="appearance" title="Aparência" hint="Layout, logo e cor.">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Layout</Label>
                   {/* Cartoes 2x2: na coluna estreita do editor, 4 opcoes lado a lado ficavam espremidas. */}
@@ -637,8 +708,7 @@ function CertificateTemplateForm({
                     />
                   </div>
                 ) : null}
-              </CardContent>
-            </Card>
+            </EditorBlock>
 
             {isCustom ? (
               <Card>
@@ -771,9 +841,7 @@ function CertificateTemplateForm({
               </Card>
             ) : null}
 
-            <Card>
-              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-                <CardTitle>Texto</CardTitle>
+            <EditorBlock value="text" title="Texto" hint="A frase do certificado, com os dados do aluno.">
                 {!textIsDefault ? (
                   <button
                     type="button"
@@ -785,8 +853,6 @@ function CertificateTemplateForm({
                     Voltar ao texto padrão
                   </button>
                 ) : null}
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <InputText<Values>
                   name="title"
                   label="Título"
@@ -795,28 +861,33 @@ function CertificateTemplateForm({
                   disabled={pending}
                 />
                 <div className="space-y-1.5">
-                  <TextArea<Values>
+                  <TokenTextArea<Values>
                     id={BODY_ID}
                     name="body"
                     label="Texto"
                     required
                     rows={5}
                     placeholder="Escreva o texto do certificado"
-                    hint={`Trecho com informação que falta sai do texto. Até ${CERTIFICATE_LIMITS.body} caracteres.`}
+                    hint={`Digite { para escolher um dado do aluno. Trecho sem informação sai do texto. Até ${CERTIFICATE_LIMITS.body} caracteres.`}
                     disabled={pending}
+                    tokens={VARIABLE_TOKENS}
                   />
-                  <div className="flex flex-wrap gap-1" aria-label="Inserir variável">
-                    {CERTIFICATE_VARIABLES.map((variable) => (
-                      <button
-                        key={variable}
-                        type="button"
-                        disabled={pending}
-                        onClick={() => insertVariable(variable)}
-                        className="cursor-pointer rounded-md border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                      >
-                        + {VARIABLE_LABELS[variable]}
-                      </button>
-                    ))}
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Inserir no texto</p>
+                    <div className="flex flex-wrap gap-1" aria-label="Inserir no texto">
+                      {CERTIFICATE_VARIABLES.map((variable) => (
+                        <button
+                          key={variable}
+                          type="button"
+                          disabled={pending}
+                          onClick={() => insertVariable(variable)}
+                          className="inline-flex cursor-pointer items-center gap-0.5 rounded-md border bg-muted/60 px-2 py-1 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Plus className="size-3" aria-hidden />
+                          {VARIABLE_LABELS[variable]}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <SwitchField<Values>
@@ -825,15 +896,10 @@ function CertificateTemplateForm({
                   hint="Inclui a frequência no texto."
                   disabled={pending}
                 />
-              </CardContent>
-            </Card>
+            </EditorBlock>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Assinaturas</CardTitle>
-                <CardDescription>O professor da turma e o nome do espaço saem de cada curso.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <EditorBlock value="signatures" title="Assinaturas" hint="Quem assina e com qual cargo.">
+                <p className="text-xs text-muted-foreground">O professor da turma e o nome do espaço saem de cada curso.</p>
                 {signatures.fields.map((field, index) => {
                   const signer = signerOf(values.signatures?.[index]?.name ?? "");
                   return (
@@ -911,10 +977,8 @@ function CertificateTemplateForm({
                     Adicionar assinatura
                   </Button>
                 ) : null}
-              </CardContent>
-            </Card>
-
-          </div>
+            </EditorBlock>
+          </Accordion>
 
           <div className="space-y-2 lg:sticky lg:top-20">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -943,6 +1007,7 @@ function CertificateTemplateForm({
                 </Button>
               ) : null}
             </div>
+            <div data-testid="certificate-preview">
             <CertificateSheet
               certificate={sample}
               template={{ ...values, artwork: artworkOf(values) }}
@@ -954,6 +1019,7 @@ function CertificateTemplateForm({
                   : undefined
               }
             />
+            </div>
             <p className="text-xs text-muted-foreground">
               {previewEnrollmentId && realPreview.data ? "Dados de verdade, como sairiam agora." : "Dados de exemplo."}
             </p>

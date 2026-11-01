@@ -153,6 +153,8 @@ test.describe("eventos das ações principais", () => {
     await expect(page.getByText("Avaliação criada.")).toBeVisible();
 
     await page.goto("/settings?tab=certificado");
+    // O bloco "Texto" comeca recolhido (31/10/2026).
+    await page.getByRole("button", { name: /^Texto/ }).click();
     await page.getByLabel("Título").fill("Certificado de Formatura");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();

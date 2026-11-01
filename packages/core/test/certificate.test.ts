@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 import {
   attendancePercent,
   buildCourseCertificate,
+  CERTIFICATE_PRESETS,
   CERTIFICATE_VARIABLES,
+  certificateTemplateFromPreset,
   countCourseLessons,
   countCourseWorkloadMinutes,
+  DEFAULT_CERTIFICATE_BODY,
   defaultCertificateTemplate,
   defaultCertificateText,
   fillCertificateText,
@@ -18,6 +21,7 @@ import {
   CERTIFICATE_CODE_RE,
   type CourseCertificateInput,
 } from "../src/certificate.ts";
+import type { ClassesBusinessSegment } from "@gestarahub/contracts";
 
 function input(over: Partial<CourseCertificateInput> = {}): CourseCertificateInput {
   return {
@@ -288,5 +292,40 @@ describe("certificado: código de verificação", () => {
     assert.equal(normalizeCertificateCode("GH-7K3M-2A90"), null);
     assert.equal(normalizeCertificateCode("GH-7K3M"), null);
     assert.equal(normalizeCertificateCode("' OR 1=1"), null);
+  });
+});
+
+describe("certificado: modelos prontos por área", () => {
+  it("toda área tem um modelo válido, só com variáveis conhecidas", () => {
+    const segments = Object.keys(CERTIFICATE_PRESETS) as ClassesBusinessSegment[];
+    assert.equal(segments.length, 11);
+    for (const segment of segments) {
+      const template = certificateTemplateFromPreset(CERTIFICATE_PRESETS[segment], "Professor");
+      assert.deepEqual(validateCertificateTemplate(template), [], segment);
+      assert.deepEqual(unknownCertificateVariables(template.body), [], segment);
+      assert.ok(template.body.includes("{aluno}") && template.body.includes("{curso}"), segment);
+      assert.deepEqual(template.signatures.map((s) => s.name), ["{professor}", "{empresa}"], segment);
+      assert.equal(template.signatures[0].role, "Professor", segment);
+      assert.ok(CERTIFICATE_PRESETS[segment].description.length > 0, segment);
+    }
+  });
+
+  it("o padrão do espaço é o modelo da área; sem área, o genérico", () => {
+    const lutas = defaultCertificateTemplate("Instrutor", "martial_arts");
+    assert.equal(lutas.accentColor, "wine");
+    assert.ok(lutas.body.includes("de treino"));
+    assert.equal(lutas.signatures[0].role, "Instrutor");
+    const generic = defaultCertificateTemplate();
+    assert.equal(generic.body, DEFAULT_CERTIFICATE_BODY);
+    assert.deepEqual(defaultCertificateTemplate("Instrutor", "custom"), generic);
+  });
+
+  it("o texto de cada área rende com os dados do curso", () => {
+    const cert = buildCourseCertificate(input());
+    for (const preset of Object.values(CERTIFICATE_PRESETS)) {
+      const text = renderCertificate(cert, certificateTemplateFromPreset(preset));
+      assert.ok(text.body.includes("Ana Souza"), preset.description);
+      assert.ok(!text.body.includes("{"), preset.description);
+    }
   });
 });

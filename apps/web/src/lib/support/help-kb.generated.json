@@ -355,15 +355,43 @@
     "text": "Na turma de curso encerrada, abra o menu ⋮ do aluno e escolha \"Certificado\". Dá para imprimir ou salvar em PDF."
   },
   {
+    "id": "certificados#comece-por-um-modelo",
+    "article": "Certificados de conclusão",
+    "title": "Comece por um modelo",
+    "route": "/settings?tab=certificado",
+    "text": "Sem configurar nada, seus certificados já saem com o modelo da sua área. Em Configurações, aba Certificado, a galeria \"Comece por um modelo\" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em \"Modelos prontos\", fechada; abra para trocar.",
+    "summary": "Escolha um modelo pronto da sua área e ajuste só o que quiser.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Comece por um modelo",
+          "text": "Cada cartão é um modelo pronto. O da sua área vem primeiro. Clique em um para preencher layout, cor, título, texto e assinaturas."
+        },
+        {
+          "kind": "texto",
+          "label": "Aparência",
+          "text": "Os ajustes ficam em blocos fechados. Clique no título para abrir cada um. Depois, salve na barra que aparece embaixo."
+        }
+      ]
+    }
+  },
+  {
     "id": "certificados#personalizar-o-texto",
     "article": "Certificados de conclusão",
     "title": "Personalizar o texto",
     "route": "/settings?tab=certificado",
-    "text": "Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase.",
+    "text": "Em Configurações, aba Certificado, os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de \"Inserir no texto\". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.",
     "summary": "Edite título, texto, assinaturas e cor do certificado.",
     "guide": {
       "route": "/settings?tab=certificado",
       "steps": [
+        {
+          "kind": "texto",
+          "label": "Texto",
+          "text": "Clique aqui para abrir o bloco do texto."
+        },
         {
           "kind": "campo",
           "label": "Título",
@@ -372,12 +400,12 @@
         {
           "kind": "campo",
           "label": "Texto",
-          "text": "Edite o texto. Os botões de variável inserem aluno, curso, datas e outros dados."
+          "text": "Edite o texto. Digite { para escolher um dado do aluno na lista, ou use os botões \"Inserir no texto\". Os dados aparecem destacados no campo."
         },
         {
           "kind": "texto",
           "label": "Assinaturas",
-          "text": "Aqui você escolhe quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo."
+          "text": "Abra aqui para escolher quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo."
         }
       ]
     }

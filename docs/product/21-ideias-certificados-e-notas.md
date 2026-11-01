@@ -63,6 +63,17 @@ No menu ⋮ da turma de curso terminada, "Emitir certificados" emite para todos 
 
 Em Configurações → Certificado, o seletor **"Vale para"** troca entre o modelo do espaço e o de uma modalidade. Modalidade sem modelo próprio abre com o do espaço como ponto de partida; salvar grava o dela (`categories.certificate_template`, migração 79) e os cursos dela passam a sair com ele; as outras seguem com o do espaço. "Usar o modelo do espaço" apaga o da modalidade, com confirmação. Por modalidade, não por curso: a modalidade é estável e o curso pertence a uma; se um espaço pedir por curso, entra como exceção dentro da modalidade. A emissão (`getCourseCertificate`) escolhe o modelo pela modalidade da turma; o PDF segue o mesmo caminho.
 
+### 1.5 Modelos prontos por área e editor mais simples (entregue em 31/10/2026)
+
+Decisão com o usuário (31/10/2026), a partir de dois problemas: as variáveis `{aluno}` pareciam coisa para digitar à mão, e a tela abria tudo de uma vez, sem ponto de partida.
+
+- **Modelo pronto por área** (`CERTIFICATE_PRESETS` em `@gestarahub/core/certificate`, um por área de `business-segment-presets` mais o "Padrão"): layout, cor, título, texto e o cargo de quem assina pelo espaço. O título e o texto são no tom de cada área (lutas falam de disciplina e treino; gastronomia, de técnicas e receitas; idiomas, formal e com aproveitamento), não só o visual. O professor assina com a palavra do espaço (`teacherTitle`). **O espaço que nunca salvou o próprio modelo já emite com o da sua área** (`defaultCertificateTemplate(teacherTitle, classSegment)`; sem área, o genérico de sempre). "Outra área" usa o genérico.
+- **Galeria "Comece por um modelo"** no topo da coluna do editor: um cartão por área com a miniatura da folha de verdade (com a logo do espaço), a área do espaço primeiro e marcada como "Sua área". Um clique preenche layout, cor, título, texto, frequência e cargos; logo e arte ficam. Depois de salvar, o bloco vira "Modelos prontos" e fica recolhido. O cartão marcado é o modelo que o formulário reproduz agora (`matchingCertificatePreset`); ajustou à mão, nenhum fica marcado.
+- **Variáveis no texto** (`TokenTextArea` em `@/components/form`): as conhecidas aparecem destacadas dentro do campo e as desconhecidas em vermelho; digitar `{` abre a lista para escolher (setas, Enter ou Tab inserem; Escape fecha); os chips viraram botões "Inserir no texto". O campo escreve transparente sobre um fundo com a mesma fonte: cursor, seleção e rolagem continuam do navegador.
+- **Blocos recolhidos:** Aparência, Texto e Assinaturas abrem pelo título (acordeão, vários abertos ao mesmo tempo), cada um com uma linha de dica. Erro ao salvar ou ao gerar o PDF abre o bloco do campo com erro. "Minha arte" segue em Aparência; o cartão "Arte de fundo" aparece ao escolhê-lo.
+- **"Como funciona?"** ao lado de "Vale para" abre a ajuda, que já traz os artigos desta tela com "Me mostre na tela".
+- "Voltar ao texto padrão" volta ao texto da área do espaço.
+
 ## 2. Notas dos alunos (avaliações)
 
 **Motivo:** várias áreas lançam nota: idiomas (provas por nível), reforço escolar e cursinho, música (prova prática), cursos profissionalizantes, natação e lutas (avaliação técnica em exame). Hoje a evolução tem trilha, registros de aula e metas, mas não tem nota.

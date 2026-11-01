@@ -135,8 +135,8 @@ test("página para digitar o código e prévia do editor com um aluno de verdade
   const panel = page.locator("#settings-panel-certificado");
   await panel.getByRole("combobox", { name: "Prévia com" }).click();
   await page.getByRole("option", { name: "Ana Souza · Defesa Pessoal" }).click();
-  await expect(panel.locator("article.certificate-sheet")).toContainText("Ana Souza concluiu o curso Defesa Pessoal");
-  await expect(panel.getByTestId("certificate-verification")).toContainText(code);
+  await expect(panel.getByTestId("certificate-preview").locator("article.certificate-sheet")).toContainText("Ana Souza concluiu o curso Defesa Pessoal");
+  await expect(panel.getByTestId("certificate-preview").getByTestId("certificate-verification")).toContainText(code);
   await expect(panel.getByText("Dados de verdade, como sairiam agora.")).toBeVisible();
   expect((await readTenant(page)).issuedCertificates).toHaveLength(1);
 });

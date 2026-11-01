@@ -32,9 +32,9 @@ import { teamWords } from "../world/nouns";
  * 31/10/2026): vale nos cursos dela; sem ele, o do espaco.
  */
 
-/** Modelo do espaco (salvo ou padrao). */
+/** Modelo do espaco (salvo, ou o modelo pronto da area do espaco). */
 function spaceTemplate(): CertificateTemplate {
-  return store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title);
+  return store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title, store.organization.classSegment);
 }
 
 function modalityOf(modalityId: Id) {

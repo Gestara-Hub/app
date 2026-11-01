@@ -1,6 +1,6 @@
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Page, TestInfo } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
 import { editWorld, expect, seedAcademy, skipWelcome, test } from "./fixtures";
 import { AREAS, CUSTOM_BILLINGS, CUSTOM_PROGRESSIONS, ORG, readTenant, waitForStore, type Tenant } from "./areas-helpers";
 
@@ -334,13 +334,92 @@ test.describe("Configurações: Certificado", () => {
     await activatePro(page);
     await page.goto("/settings?tab=certificado");
     const panel = page.locator("#settings-panel-certificado");
-    await expect(panel.getByText("Aparência", { exact: true })).toBeVisible();
+    await openBlocks(panel);
     return panel;
   }
 
+  /** Blocos recolhidos (31/10/2026): fecha a galeria e abre Aparencia, Texto e Assinaturas. */
+  async function openBlocks(panel: Locator) {
+    const presets = panel.getByRole("button", { name: /^(Comece por um modelo|Modelos prontos)/ });
+    await expect(presets).toBeVisible();
+    if ((await presets.getAttribute("aria-expanded")) === "true") await presets.click();
+    for (const name of ["Aparência", "Texto", "Assinaturas"]) {
+      const trigger = panel.getByRole("button", { name: new RegExp(`^${name}`) });
+      if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+    }
+    await expect(panel.getByLabel("Título")).toBeVisible();
+  }
+
+  test("Pro: modelo pronto da área, galeria, lista ao digitar { e bloco que abre no erro", async ({ page }) => {
+    await seedAcademy(page);
+    await editWorld(page, ORG, (t) => {
+      t.organization.classSegment = "gastronomy";
+    });
+    await activatePro(page);
+    await page.goto("/settings?tab=certificado");
+    const panel = page.locator("#settings-panel-certificado");
+    const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
+    // Sem modelo salvo, o espaco ja emite com o modelo da sua area (Gastronomia: dourado, carga horaria).
+    await expect(sheet).toContainText("Certificamos que Ana Souza concluiu o curso Confeitaria Básica, com carga horária de 16 horas, realizado de 04/08/2026 a 22/09/2026, com frequência de 92%, dominando as técnicas e as receitas do programa.");
+    await expect(sheet).toContainText("Certificado de conclusão de curso");
+    // A galeria comeca aberta, com a area do espaco primeiro e marcada; os ajustes ficam recolhidos.
+    const gallery = panel.getByRole("radiogroup", { name: "Modelos prontos" });
+    await expect(panel.getByRole("button", { name: /^Comece por um modelo/ })).toHaveAttribute("aria-expanded", "true");
+    await expect(gallery.getByRole("radio")).toHaveCount(11);
+    await expect(gallery.getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
+    await expect(gallery.getByRole("radio").first()).toContainText("Gastronomia");
+    await expect(gallery.getByRole("radio").first()).toContainText("Sua área.");
+    await expect(panel.getByRole("button", { name: /^Texto/ })).toHaveAttribute("aria-expanded", "false");
+    await expect(panel.getByLabel("Título")).toBeHidden();
+    await expect(panel.getByRole("button", { name: "Como funciona?" })).toBeVisible();
+
+    // Um clique troca layout, cor, texto e cargos; a logo nao entra na conta.
+    await gallery.getByRole("radio", { name: /^Lutas/ }).click();
+    await expect(gallery.getByRole("radio", { name: /^Lutas/ })).toHaveAttribute("aria-checked", "true");
+    await expect(sheet).toContainText("somando 16 horas de treino, com frequência de 92%, demonstrando disciplina, respeito e dedicação nos treinos.");
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
+    await waitForStore(page, (t) => t.certificateTemplate?.accentColor === "wine");
+    expect((await readTenant(page)).certificateTemplate).toMatchObject({ layout: "classic", accentColor: "wine", signatures: [{ name: "{professor}", role: "Instrutor" }, { name: "{empresa}", role: "Responsável" }] });
+    // Salvo: a galeria vira "Modelos prontos" e fica recolhida.
+    await page.reload();
+    await expect(panel.getByRole("button", { name: /^Modelos prontos/ })).toHaveAttribute("aria-expanded", "false");
+    await expect(gallery).toBeHidden();
+
+    // Texto: digitar "{" abre a lista; setas e Enter inserem a variavel.
+    await panel.getByRole("button", { name: /^Texto/ }).click();
+    const body = panel.locator("#certificate-body");
+    await body.fill("Parabéns, ");
+    // Depois do fill o Chrome deixa o cursor no inicio e o "End" nao o move: poe no fim como a pessoa teria.
+    await body.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
+    await body.pressSequentially("{cu");
+    const list = panel.getByRole("listbox", { name: "Variáveis" });
+    await expect(list.getByRole("option")).toHaveCount(1);
+    await expect(list.getByRole("option", { name: /Curso/ })).toHaveAttribute("aria-selected", "true");
+    await body.press("Enter");
+    await expect(body).toHaveValue("Parabéns, {curso}");
+    await expect(list).toBeHidden();
+    await expect(sheet).toContainText("Parabéns, Confeitaria Básica");
+    // A lista some com Escape; o botao "Aluno" tambem insere.
+    await body.pressSequentially(" {");
+    await expect(list).toBeVisible();
+    await body.press("Escape");
+    await expect(list).toBeHidden();
+    await panel.getByRole("button", { name: "Aluno", exact: true }).click();
+    await expect(body).toHaveValue("Parabéns, {curso} {{aluno}");
+
+    // Erro num bloco fechado: ele abre sozinho ao salvar.
+    await panel.getByLabel("Título").fill("");
+    await panel.getByRole("button", { name: /^Texto/ }).click();
+    await expect(panel.getByLabel("Título")).toBeHidden();
+    await panel.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(panel.getByLabel("Título")).toBeVisible();
+    await expect(panel.getByText("Informe o título.")).toBeVisible();
+  });
+
   test("Pro: layouts, cores e prévia ao vivo", async ({ page }) => {
     const panel = await openEditor(page);
-    const sheet = panel.locator("article.certificate-sheet");
+    const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
     await expect(sheet).toContainText("Certificado de conclusão");
     await expect(sheet).toContainText(DEFAULT_BODY_PREVIEW);
     await expect(sheet).toContainText("Carla Mendes");
@@ -383,19 +462,19 @@ test.describe("Configurações: Certificado", () => {
   test("Pro: variáveis entram onde está o cursor e a frequência pode sair", async ({ page }) => {
     const panel = await openEditor(page);
     const body = panel.locator("#certificate-body");
-    const sheet = panel.locator("article.certificate-sheet");
+    const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
     await body.fill("Parabéns, ");
-    await panel.getByRole("button", { name: "+ Aluno" }).click();
+    await panel.getByRole("button", { name: "Aluno", exact: true }).click();
     await expect(body).toHaveValue("Parabéns, {aluno}");
     await body.press("End");
     await body.pressSequentially(". Curso: ");
-    await panel.getByRole("button", { name: "+ Curso" }).click();
+    await panel.getByRole("button", { name: "Curso", exact: true }).click();
     await expect(body).toHaveValue("Parabéns, {aluno}. Curso: {curso}");
     // Cursor no inicio: a variavel entra antes do texto. Espera o quadro em que o
     // app devolve o cursor para depois da variavel anterior (senao ele vence a corrida).
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await body.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
-    await panel.getByRole("button", { name: "+ Professor" }).click();
+    await panel.getByRole("button", { name: "Professor", exact: true }).click();
     await expect(body).toHaveValue("{professor}Parabéns, {aluno}. Curso: {curso}");
     await expect(sheet).toContainText("Carla MendesParabéns, Ana Souza. Curso: Confeitaria Básica");
     // Sem cidade nos dados de exemplo: a frase com {cidade} sai da previa.
@@ -405,7 +484,7 @@ test.describe("Configurações: Certificado", () => {
 
     // Todas as variaveis viram chip.
     for (const label of ["Aluno", "Curso", "Início", "Fim", "Aulas", "Carga horária", "Frequência", "Professor", "Nome do espaço", "Cidade", "Data de emissão"]) {
-      await expect(panel.getByRole("button", { name: `+ ${label}`, exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: label, exact: true })).toBeVisible();
     }
 
     // Frequencia desligada: o trecho sai da previa.
@@ -486,6 +565,8 @@ test.describe("Configurações: Certificado", () => {
     await scope.click();
     await page.getByRole("option", { name: "Jiu-Jitsu", exact: true }).click();
     await expect(panel.getByText("Usa o modelo do espaço. Mude algo e salve para ter o próprio.")).toBeVisible();
+    // Trocar o "Vale para" recomeca o formulario: os blocos voltam recolhidos.
+    await openBlocks(panel);
 
     await panel.getByLabel("Título").fill("Certificado de Jiu-Jitsu");
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
@@ -496,6 +577,8 @@ test.describe("Configurações: Certificado", () => {
     await expect(scope).toContainText("Jiu-Jitsu · modelo próprio");
     const back = panel.getByRole("button", { name: "Usar o modelo do espaço" });
     await expect(back).toBeVisible();
+    // Salvo o modelo proprio, o formulario recomeca (blocos recolhidos de novo).
+    await openBlocks(panel);
 
     // Trocar com alteracao nao salva pergunta antes.
     await panel.getByLabel("Título").fill("Rascunho");
@@ -507,16 +590,19 @@ test.describe("Configurações: Certificado", () => {
     await scope.click();
     await page.getByRole("option", { name: "Todo o espaço" }).click();
     await confirm.getByRole("button", { name: "Trocar mesmo assim" }).click();
+    await openBlocks(panel);
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
 
     // Volta a modalidade ao modelo do espaco, com confirmacao.
     await scope.click();
     await page.getByRole("option", { name: /^Jiu-Jitsu · modelo próprio/ }).click();
+    await openBlocks(panel);
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de Jiu-Jitsu");
     await back.click();
     await page.getByRole("alertdialog", { name: "Usar o modelo do espaço?" }).getByRole("button", { name: "Usar o do espaço" }).click();
     await expect(page.getByText("Jiu-Jitsu voltou ao modelo do espaço.")).toBeVisible();
     await waitForStore(page, (t) => !t.categories.find((c: { id: string }) => c.id === "m-jj")?.certificateTemplate);
+    await openBlocks(panel);
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
     await expect(scope).toContainText("Jiu-Jitsu");
     await expect(scope).not.toContainText("modelo próprio");
@@ -525,7 +611,7 @@ test.describe("Configurações: Certificado", () => {
   test("Pro: Minha arte com posição, cor do texto e partes escondidas, salva e emitida", async ({ page }, testInfo) => {
     const files = await logoFiles(testInfo);
     const panel = await openEditor(page);
-    const sheet = panel.locator("article.certificate-sheet");
+    const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
     await panel.getByRole("radio", { name: /^Minha arte/ }).click();
     // Sem a cor de destaque; com o bloco da arte.
     await expect(panel.getByRole("radiogroup", { name: "Cor", exact: true })).toHaveCount(0);
@@ -552,7 +638,7 @@ test.describe("Configurações: Certificado", () => {
 
     // Arrasta o QR para o canto superior esquerdo da previa; "Voltar ao lugar" desfaz.
     const qr = panel.getByTestId("certificate-verification");
-    const sheetBox = (await panel.locator("article.certificate-sheet").boundingBox())!;
+    const sheetBox = (await panel.getByTestId("certificate-preview").locator("article.certificate-sheet").boundingBox())!;
     const qrBox = (await qr.boundingBox())!;
     // Clicar num bloco (com o mouse tremendo um pouco) nao e arrastar: nada muda de lugar.
     const signatures = panel.getByTestId("certificate-block-signatures");
@@ -639,7 +725,7 @@ test.describe("Configurações: Certificado", () => {
     const panel = await openEditor(page);
     const input = panel.locator("input[type=file]");
     const list = panel.getByRole("list", { name: "Arquivos anexados" });
-    const sheet = panel.locator("article.certificate-sheet");
+    const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
     await expect(sheet.locator("img")).toHaveCount(0);
 
     await input.setInputFiles(files.txt);
@@ -695,6 +781,7 @@ test.describe("Configurações: Certificado", () => {
     expect(saved.logoFileId).toBeTruthy();
 
     await page.reload();
+    await openBlocks(panel);
     await expect(panel.getByRole("radio", { name: /^Moderno/ })).toHaveAttribute("aria-checked", "true");
     await expect(panel.getByRole("radio", { name: "Verde", exact: true })).toHaveAttribute("aria-checked", "true");
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de participação");
@@ -722,7 +809,7 @@ test.describe("Configurações: Certificado", () => {
     await confirm.getByRole("button", { name: "Voltar ao padrão" }).click();
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de conclusão");
     // Texto padrao, mas a frequencia continua desligada: o trecho dela sai da previa.
-    await expect(panel.locator("article.certificate-sheet")).toContainText(
+    await expect(panel.getByTestId("certificate-preview").locator("article.certificate-sheet")).toContainText(
       "Certificamos que Ana Souza concluiu o curso Confeitaria Básica, de 04/08/2026 a 22/09/2026, que teve 8 aulas.",
     );
     await expect(restore).toHaveCount(0);

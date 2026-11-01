@@ -12,6 +12,7 @@ import type {
   CertificateSignature,
   CertificateTemplate,
   CertificateTextPosition,
+  ClassesBusinessSegment,
   CourseCertificate,
   DateISO,
   Id,
@@ -215,21 +216,141 @@ export const DEFAULT_CERTIFICATE_SIGNATURES: readonly CertificateSignature[] = [
 ];
 
 /**
- * Modelo padrao (o espaco que nunca salvou o proprio). `teacherTitle` e a
- * palavra do espaco para quem da aula ("Instrutor" ou "Professor").
+ * Modelo pronto de uma area (doc 21 §1.5, 31/10/2026): layout, cor, titulo,
+ * texto e o cargo de quem assina pelo espaco. O professor assina com a palavra
+ * do espaco (`teacherTitle`). O espaco que nunca salvou o proprio modelo ja
+ * emite com o da sua area; na tela, a galeria "Comece por um modelo" troca.
  */
-export function defaultCertificateTemplate(teacherTitle = "Instrutor"): CertificateTemplate {
-  return {
+export interface CertificatePreset {
+  layout: CertificateLayout;
+  accentColor: CertificateAccentColor;
+  title: string;
+  body: string;
+  /** Cargo da assinatura do espaco ("{empresa}"). */
+  spaceRole: string;
+  /** Uma linha na galeria. */
+  description: string;
+}
+
+/**
+ * Cada area tem titulo e texto no tom dela (31/10/2026: "o que se escreve numa
+ * graduacao de artes marciais e diferente de uma escola de culinaria"). Os
+ * trechos sem variavel ficam sempre; os com variavel sem valor saem sozinhos.
+ */
+export const CERTIFICATE_PRESETS: Record<ClassesBusinessSegment, CertificatePreset> = {
+  martial_arts: {
+    layout: "classic",
+    accentColor: "wine",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, somando {carga_horaria} de treino, com frequência de {frequencia}, demonstrando disciplina, respeito e dedicação nos treinos.",
+    spaceRole: "Responsável",
+    description: "Moldura clássica, vinho, disciplina e treino",
+  },
+  pilates_yoga: {
+    layout: "minimal",
+    accentColor: "green",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} participou e concluiu o curso {curso}, realizado de {inicio} a {fim}, com {carga_horaria} de prática orientada e frequência de {frequencia}, cultivando consciência corporal e presença em cada aula.",
+    spaceRole: "Responsável",
+    description: "Limpo, verde, prática e consciência corporal",
+  },
+  functional_training: {
+    layout: "modern",
+    accentColor: "graphite",
+    title: "Certificado",
+    body: "{aluno} completou o programa {curso}, de {inicio} a {fim}: {aulas} de treino, {carga_horaria} no total e frequência de {frequencia}. Programa concluído com constância e superação.",
+    spaceRole: "Responsável",
+    description: "Moderno, grafite, direto e motivador",
+  },
+  dance: {
+    layout: "modern",
+    accentColor: "purple",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, com {carga_horaria} de aulas e frequência de {frequencia}, com ritmo, presença e expressão em cada ensaio.",
+    spaceRole: "Direção",
+    description: "Moderno, roxo, ritmo e expressão",
+  },
+  music: {
+    layout: "classic",
+    accentColor: "navy",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, com carga horária de {carga_horaria}, realizado de {inicio} a {fim}, com frequência de {frequencia} e aproveitamento nas aulas e nas apresentações.",
+    spaceRole: "Direção",
+    description: "Clássico, azul, aulas e apresentações",
+  },
+  languages: {
+    layout: "classic",
+    accentColor: "navy",
+    title: "Certificado de conclusão de curso",
+    body: "Certificamos que {aluno} concluiu com aproveitamento o curso {curso}, com carga horária de {carga_horaria}, no período de {inicio} a {fim}, com frequência de {frequencia}.",
+    spaceRole: "Direção",
+    description: "Clássico, azul, formal e com aproveitamento",
+  },
+  swimming_sports: {
+    layout: "modern",
+    accentColor: "navy",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, com {aulas} e frequência de {frequencia}, cumprindo as etapas previstas para o nível.",
+    spaceRole: "Direção",
+    description: "Moderno, azul, etapas do nível",
+  },
+  gastronomy: {
+    layout: "classic",
+    accentColor: "gold",
+    title: "Certificado de conclusão de curso",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, com carga horária de {carga_horaria}, realizado de {inicio} a {fim}, com frequência de {frequencia}, dominando as técnicas e as receitas do programa.",
+    spaceRole: "Responsável",
+    description: "Clássico, dourado, técnicas e receitas",
+  },
+  arts_crafts: {
+    layout: "minimal",
+    accentColor: "wine",
+    title: "Certificado de conclusão",
+    body: "Certificamos que {aluno} concluiu o curso {curso}, realizado de {inicio} a {fim}, com carga horária de {carga_horaria}, desenvolvendo as técnicas trabalhadas no ateliê.",
+    spaceRole: "Responsável",
+    description: "Limpo, vinho, técnicas do ateliê",
+  },
+  beauty_courses: {
+    layout: "minimal",
+    accentColor: "gold",
+    title: "Certificado de curso livre",
+    body: "Certificamos que {aluno} concluiu o curso livre {curso}, com carga horária de {carga_horaria}, realizado de {inicio} a {fim}, com frequência de {frequencia} e aproveitamento nas atividades práticas.",
+    spaceRole: "Responsável",
+    description: "Limpo, dourado, curso livre e prática",
+  },
+  // Sem area definida (ou "Outra area"): o texto padrao de sempre.
+  custom: {
     layout: "classic",
     accentColor: "graphite",
     title: DEFAULT_CERTIFICATE_TITLE,
     body: DEFAULT_CERTIFICATE_BODY,
-    signatures: DEFAULT_CERTIFICATE_SIGNATURES.map((s) => ({
-      ...s,
-      role: s.name === "{professor}" ? teacherTitle : s.role,
-    })),
+    spaceRole: "Responsável",
+    description: "Clássico, grafite, texto padrão",
+  },
+};
+
+/** Modelo a partir de um modelo pronto (sem logo nem arte). */
+export function certificateTemplateFromPreset(preset: CertificatePreset, teacherTitle = "Instrutor"): CertificateTemplate {
+  return {
+    layout: preset.layout,
+    accentColor: preset.accentColor,
+    title: preset.title,
+    body: preset.body,
+    signatures: [
+      { name: "{professor}", role: teacherTitle },
+      { name: "{empresa}", role: preset.spaceRole },
+    ],
     showAttendance: true,
   };
+}
+
+/**
+ * Modelo padrao (o espaco que nunca salvou o proprio): o modelo pronto da area
+ * do espaco, ou o generico sem area. `teacherTitle` e a palavra do espaco para
+ * quem da aula ("Instrutor" ou "Professor").
+ */
+export function defaultCertificateTemplate(teacherTitle = "Instrutor", segment?: ClassesBusinessSegment): CertificateTemplate {
+  return certificateTemplateFromPreset(CERTIFICATE_PRESETS[segment ?? "custom"], teacherTitle);
 }
 
 const VARIABLE_RE = /\{(\w+)\}/g;

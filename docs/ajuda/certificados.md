@@ -7,13 +7,21 @@ Em cursos, o aluno que concluiu recebe um certificado em PDF. Faz parte do plano
 ## Emitir
 Na turma de curso encerrada, abra o menu ⋮ do aluno e escolha "Certificado". Dá para imprimir ou salvar em PDF.
 
+## Comece por um modelo
+Resumo: Escolha um modelo pronto da sua área e ajuste só o que quiser.
+Guia: /settings?tab=certificado
++ texto "Comece por um modelo": Cada cartão é um modelo pronto. O da sua área vem primeiro. Clique em um para preencher layout, cor, título, texto e assinaturas.
++ texto "Aparência": Os ajustes ficam em blocos fechados. Clique no título para abrir cada um. Depois, salve na barra que aparece embaixo.
+Sem configurar nada, seus certificados já saem com o modelo da sua área. Em Configurações, aba Certificado, a galeria "Comece por um modelo" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em "Modelos prontos", fechada; abra para trocar.
+
 ## Personalizar o texto
 Resumo: Edite título, texto, assinaturas e cor do certificado.
 Guia: /settings?tab=certificado
++ texto "Texto": Clique aqui para abrir o bloco do texto.
 + campo "Título": Escreva o título do certificado.
-+ campo "Texto": Edite o texto. Os botões de variável inserem aluno, curso, datas e outros dados.
-+ texto "Assinaturas": Aqui você escolhe quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo.
-Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase.
++ campo "Texto": Edite o texto. Digite { para escolher um dado do aluno na lista, ou use os botões "Inserir no texto". Os dados aparecem destacados no campo.
++ texto "Assinaturas": Abra aqui para escolher quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo.
+Em Configurações, aba Certificado, os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de "Inserir no texto". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.
 
 ## Ver o PDF antes de salvar
 Resumo: Confira como o certificado sai no papel, com dados de exemplo.
