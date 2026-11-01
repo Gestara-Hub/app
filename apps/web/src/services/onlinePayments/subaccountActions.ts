@@ -51,8 +51,13 @@ function missingSubaccountField(input: SetupSubaccountInput, isCnpj: boolean): s
   return null;
 }
 
+/** Campo do formulario a que o erro se refere (a tela foca e mostra a mensagem nele). */
+export type SetupSubaccountField = "email" | "cpfCnpj" | "mobilePhone" | "birthDate" | "incomeValueCents" | "address.postalCode";
+
 export interface SetupSubaccountResult {
   success: boolean;
+  /** Com `error`: o campo do formulario a conferir, quando o erro fala de um. */
+  field?: SetupSubaccountField;
   accountId?: string;
   walletId?: string;
   status?: string;
@@ -217,14 +222,29 @@ export async function setupSubaccountAction(
       status: "approved",
     };
   } catch (err: unknown) {
-    const errorMsg =
-      err instanceof Error ? err.message : "Erro ao processar ativação de subconta.";
+    // A frase do parceiro fica so no registro de erros: para a tela vai uma mensagem
+    // neutra, que nao confirma se um e-mail ou documento ja tem conta (01/11/2026).
     logError("[setupSubaccountAction] Erro:", err);
-    return {
-      success: false,
-      error: errorMsg,
-    };
+    return { success: false, ...safeActivationError(err) };
   }
+}
+
+/**
+ * Mensagem segura para a tela a partir do erro do parceiro: aponta o campo a
+ * conferir sem repetir a frase dele (que dizia "o e-mail X já está em uso").
+ */
+function safeActivationError(err: unknown): { error: string; field?: SetupSubaccountField } {
+  const raw = (err instanceof Error ? err.message : "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (/\be-?mail\b/.test(raw)) return { field: "email", error: "Não foi possível usar este e-mail. Informe outro e-mail financeiro." };
+  if (/\b(cpf|cnpj)\b/.test(raw)) return { field: "cpfCnpj", error: "Confira o CPF ou CNPJ." };
+  if (/\b(telefone|celular|phone)\b/.test(raw)) return { field: "mobilePhone", error: "Confira o celular com DDD." };
+  if (/\bcep\b|postal/.test(raw)) return { field: "address.postalCode", error: "Confira o CEP." };
+  if (/\bnascimento\b|birth/.test(raw)) return { field: "birthDate", error: "Confira a data de nascimento." };
+  if (/\b(renda|faturamento|income)\b/.test(raw)) return { field: "incomeValueCents", error: "Confira o faturamento mensal." };
+  return { error: "Não foi possível ativar a conta agora. Tente de novo em instantes." };
 }
 
 /** As tarifas vivem na coluna gateway_fees; nunca dentro de settings. */

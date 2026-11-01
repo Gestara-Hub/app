@@ -74,6 +74,7 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
 
 - Só cobranças `pending` ou `overdue` podem ser cobradas online. Pagar manualmente cancela os `OnlinePayment` em aberto da cobrança.
 - Cancelar a cobrança cancela os `OnlinePayment` dela.
+- **Erro do parceiro na ativação não chega cru à tela (01/11/2026).** `setupSubaccountAction` registra a frase do Asaas no registro de erros e devolve `{ error, field }` com mensagem neutra ("Não foi possível usar este e-mail. Informe outro e-mail financeiro.", "Confira o CPF ou CNPJ."): a frase original ("o e-mail X já está em uso") confirmava a um invasor que aquele e-mail tem conta no parceiro. O diálogo mostra a mensagem no campo indicado e foca nele.
 - Desfazer o pagamento de uma cobrança paga online **não é permitido** na demonstração (seria estorno). **[DECIDIR]**
 - **Conta real nunca recebe código de demonstração** (23/10/2026, achado 56). Se o parceiro falhar, a conta real recebe uma mensagem de erro e nada é gravado. Só o espaço de demonstração e o servidor do e2e caem no Pix simulado (`allowDemo` em `paymentGateway`, `services/payments/paymentGateway.ts`).
 - **Pix logo depois de ativar a conta de recebimento:** nos primeiros minutos, o Asaas cria a cobrança mas ainda não entrega o QR, porque a chave Pix está sendo cadastrada.
