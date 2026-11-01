@@ -4,19 +4,14 @@ import { useTeamWords } from "@/features/settings";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { toast } from "@/lib/toast";
-import { RotateCcw, UserCheck } from "lucide-react";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { RotateCcw } from "lucide-react";
+import { DialogBody } from "@/components/ui/dialog";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -104,114 +99,97 @@ function SubstituteInstructorForm({
 
   const isPending = substituteMut.isPending || restoreMut.isPending;
 
+  // Drawer a direita, como os outros formularios (doc 07 §2.7; pedido de 31/10/2026).
   return (
     <>
-      <DialogHeader className="pr-14">
-        <DialogTitle className="flex items-center gap-2">
-          <UserCheck className="size-5 text-primary" />
-          Trocar {team.lower} desta aula
-        </DialogTitle>
-        <DialogDescription>
-          Altere o {team.lower} responsável apenas por esta data e horário. As
-          demais aulas da turma continuarão com o {team.lower} titular.
-        </DialogDescription>
-      </DialogHeader>
+      <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+        <SheetTitle className="text-lg font-semibold text-foreground">Trocar {team.lower} desta aula</SheetTitle>
+        <SheetDescription className="text-sm text-muted-foreground">
+          Só nesta aula. As outras seguem com o {team.lower} titular.
+        </SheetDescription>
+      </SheetHeader>
 
-      {/* Resumo da Ocorrência */}
-      <div className="rounded-lg border border-border/70 bg-muted/30 p-3 space-y-1 text-xs">
-        <p className="font-semibold text-foreground">{session.className}</p>
-        <p className="text-muted-foreground">
-          Data:{" "}
-          <span className="font-medium text-foreground">
-            {format(parseISO(session.date), "dd/MM/yyyy")}
-          </span>{" "}
-          · Horário:{" "}
-          <span className="font-medium text-foreground">
-            {session.start}–{session.end}
-          </span>
-        </p>
-        <p className="text-muted-foreground">
-          {team.title} titular da turma:{" "}
-          <span className="font-medium text-foreground">
-            {primaryInstructorName}
-          </span>
-        </p>
-      </div>
-
-      <form onSubmit={handleConfirm} className="space-y-4 py-1">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            {team.title} substituto <span className="text-destructive">*</span>
-          </label>
-          <Select
-            value={instructorId}
-            onValueChange={(value) => {
-              setInstructorId(value);
-              setSubmitError(null);
-            }}
-            disabled={isPending || loadingProfessionals}
-          >
-            <SelectTrigger
-              className="w-full"
-              aria-label={`${team.title} substituto`}
-              aria-invalid={submitError ? true : undefined}
-            >
-              <SelectValue placeholder={`Selecione o ${team.lower} substituto`} />
-            </SelectTrigger>
-            <SelectContent>
-              {substituteOptions(professionals, session.modalityId, primaryInstructorId).map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {substituteLabel(option)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {submitError ? (
-            <p role="alert" className="text-xs text-destructive">
-              {submitError}
+      <form onSubmit={handleConfirm} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          {/* Resumo da aula: o que esta sendo trocado. */}
+          <div className="space-y-0.5 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+            <p className="font-medium text-foreground">{session.className}</p>
+            <p className="text-muted-foreground">
+              {format(parseISO(session.date), "EEEE, dd/MM/yyyy", { locale: ptBR })} · {session.start} às {session.end}
             </p>
-          ) : null}
-        </div>
+            <p className="text-muted-foreground">
+              {team.title} titular: <span className="font-medium text-foreground">{primaryInstructorName}</span>
+            </p>
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            Motivo da substituição (opcional)
-          </label>
-          <Input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Informe o motivo da substituição (opcional)"
-            disabled={isPending}
-          />
-        </div>
-
-        <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between pt-2">
-          {session.isSubstitute ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRestore}
-              disabled={isPending}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
+          <div className="space-y-1.5">
+            <Label htmlFor="substitute-instructor">
+              {team.title} substituto<span className="ml-0.5 text-destructive">*</span>
+            </Label>
+            <Select
+              value={instructorId}
+              onValueChange={(value) => {
+                setInstructorId(value);
+                setSubmitError(null);
+              }}
+              disabled={isPending || loadingProfessionals}
             >
-              <RotateCcw className="size-3.5" />
+              <SelectTrigger
+                id="substitute-instructor"
+                className="w-full"
+                aria-label={`${team.title} substituto`}
+                aria-invalid={submitError ? true : undefined}
+              >
+                <SelectValue placeholder={`Selecione o ${team.lower}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {substituteOptions(professionals, session.modalityId, primaryInstructorId).map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {substituteLabel(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {submitError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {submitError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="substitute-reason">Motivo (opcional)</Label>
+            <Input
+              id="substitute-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Descreva o motivo"
+              disabled={isPending}
+            />
+            <p className="text-xs text-muted-foreground">Aparece na aula, ao lado do nome de quem substitui.</p>
+          </div>
+        </DialogBody>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border/40 bg-background p-6 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          {session.isSubstitute ? (
+            <Button type="button" variant="outline" onClick={handleRestore} disabled={isPending} className="gap-1.5">
+              <RotateCcw className="size-4" />
               Restaurar titular
             </Button>
           ) : (
-            <div />
+            <span />
           )}
-
-          <div className="flex items-center gap-2 justify-end">
-            <DialogClose asChild>
-              <Button type="button" variant="ghost" disabled={isPending}>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <SheetClose asChild>
+              <Button type="button" variant="outline" disabled={isPending}>
                 Cancelar
               </Button>
-            </DialogClose>
+            </SheetClose>
             <Button type="submit" disabled={isPending || !instructorId}>
               {isPending ? "Salvando..." : "Confirmar alteração"}
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </form>
     </>
   );
@@ -224,12 +202,11 @@ export function SubstituteInstructorDialog({
 }: SubstituteInstructorDialogProps) {
   const present = useDialogPresence(open);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-md"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="substitute-instructor"
       >
         {present && (
           <SubstituteInstructorForm
@@ -238,7 +215,7 @@ export function SubstituteInstructorDialog({
             onClose={() => onOpenChange(false)}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

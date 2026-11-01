@@ -193,7 +193,7 @@ Formulário de cadastro e edição abre em drawer (`Sheet` à direita). O rodap�
 - Rodapé (`DialogFormFooter` ou `DialogFooter`) com `shrink-0 border-t border-border/40 bg-background p-6 pt-4`, fora do `DialogBody`.
 - Nunca envolver o formulário num `div` com `flex-1 overflow-y-auto`: o rodapé passa a rolar junto e fica colado nos campos.
 - Exemplos: `sell-package-dialog.tsx`, `plan-form.tsx`, `components/shared/payment-dialog.tsx`.
-- Em 22/10/2026 também viraram drawer: matricular da lista de espera (curso), editar mensagem automática, ativar conta de recebimento, transferir saldo (Pix), pagamento do mês do professor e nova série recorrente. Em 31/10/2026, adicionar aluno na aula (avulsa, pacote ou experimental): tipos um por linha com marcador, valor da avulsa como linha só de leitura (vem da turma). Continuam modal: ações de um ou dois campos, janelas empilhadas sobre um drawer (gerenciar categorias, termos de intermediação, nova meta), fluxos guiados e telas só de leitura.
+- Em 22/10/2026 também viraram drawer: matricular da lista de espera (curso), editar mensagem automática, ativar conta de recebimento, transferir saldo (Pix), pagamento do mês do professor e nova série recorrente. Em 31/10/2026, adicionar aluno na aula (avulsa, pacote ou experimental): tipos um por linha com marcador, valor da avulsa como linha só de leitura (vem da turma). Também em 31/10/2026, trocar o instrutor da aula (resumo da aula, substituto, motivo; "Restaurar titular" no rodapé quando há substituto). Continuam modal: ações de um ou dois campos, janelas empilhadas sobre um drawer (gerenciar categorias, termos de intermediação, nova meta), fluxos guiados e telas só de leitura.
 
 ## 3. Usabilidade Mobile (iOS Safari & iOS/Android Chrome)
 

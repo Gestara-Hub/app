@@ -228,7 +228,7 @@ test.describe("aula", () => {
     await expect(dialog.getByRole("button", { name: "Confirmar alteração" })).toBeDisabled();
     await dialog.getByRole("combobox", { name: "Instrutor substituto" }).click();
     await page.getByRole("option", { name: /Paula Souza/ }).click();
-    await dialog.getByPlaceholder("Informe o motivo da substituição (opcional)").fill("Carlos em viagem");
+    await dialog.getByLabel("Motivo (opcional)").fill("Carlos em viagem");
     await dialog.getByRole("button", { name: "Confirmar alteração" }).click();
     await expect(page.getByText("Instrutor da aula atualizado com sucesso.")).toBeVisible();
     // O cabecalho diz quem da a aula e quem ele substitui.
