@@ -74,6 +74,23 @@ Decisão com o usuário (31/10/2026), a partir de dois problemas: as variáveis 
 - **"Como funciona?"** ao lado de "Vale para" abre a ajuda, que já traz os artigos desta tela com "Me mostre na tela".
 - "Voltar ao texto padrão" volta ao texto da área do espaço.
 
+### 1.6 Certificado de graduação (definido em 31/10/2026, a fazer)
+
+Problema: o certificado só existe para turma de curso (início, fim, aulas, frequência). Lutas, dança, música e natação vivem de mensalidade e graduação por faixa, nível, módulo ou fase, e para a graduação o sistema não emite nada: o "Graduar/Avançar" grava o registro na evolução do aluno (`promotionHistory`: etapa anterior e nova, grau, data, exame, examinador, observações) e para por aí.
+
+Decisões (31/10/2026, com o usuário):
+
+- **Segundo tipo de certificado, "Graduação"**, ao lado do de curso. Nasce do registro de graduação do aluno (no máximo um certificado por registro), não da turma. Só em modalidade com trilha ligada; recurso Pro (`certificates`), como o de curso.
+- **Emissão sob demanda:** na evolução do aluno, cada graduação do histórico ganha "Certificado" no menu ⋮; depois de Graduar/Avançar, o aviso de sucesso oferece "Ver certificado". O código nasce na primeira abertura, como no curso. Nada é emitido sozinho.
+- **Variáveis próprias:** `{aluno}`, `{modalidade}`, `{etapa}` (com a palavra da trilha: "Faixa Azul", "Nível 2", "Módulo 3"), `{etapa_anterior}`, `{grau}` (só trilha de faixas: "2º grau"; vazio sai do texto), `{data}` (data da graduação), `{professor}`, `{empresa}`, `{cidade}`. Sem curso, aulas, frequência e carga horária.
+- **`{professor}`** é o examinador informado no Graduar; sem ele, o professor da turma do aluno naquela modalidade; sem turma, vazio (o trecho sai).
+- **Modelo separado, com galeria própria:** na aba Certificado, uma escolha no topo entre "Conclusão de curso" e "Graduação" (`PageTabs` ou segmento), cada um com seu modelo, seu "Vale para" por modalidade e seus modelos prontos. Guarda em `organizations.graduation_certificate_template` e `categories.graduation_certificate_template` (mesmo formato `CertificateTemplate`). Presets de graduação por área: lutas ("Certificamos que {aluno} foi graduado à {etapa} de {modalidade} em {data}..."), dança, natação, idiomas e música (nível, módulo ou fase), gastronomia, artes e beleza (módulo); "Padrão" genérico. A galeria e o editor são os mesmos componentes, com o conjunto de variáveis do tipo.
+- **Verificação igual:** `issued_certificates` ganha `kind` (`course` | `graduation`) e `promotion_id` (id do registro no histórico; único por organização). A página pública mostra "Graduação: Faixa Azul de Jiu-Jitsu em 12/09/2026" no lugar de curso e período, com o nome do aluno mascarado como hoje. Cancelar funciona igual.
+- **PDF e impressão:** mesma folha (`CertificateSheet`) e mesmo PDF, com o texto do modelo de graduação; rota `/api/documents/certificates/graduation/<promotionId>`; tela `/clients/<id>/graduation-certificate/<promotionId>` (ou dentro da evolução), com "Baixar PDF" e "Cancelar certificado".
+- **Lote por exame** (todos que graduaram no mesmo dia num PDF só): segunda etapa, depois do individual rodar (anotado em `docs/pendencias.md`).
+
+Fora desta etapa: certificado no acesso do aluno (portal), assinatura em imagem, kids.
+
 ## 2. Notas dos alunos (avaliações)
 
 **Motivo:** várias áreas lançam nota: idiomas (provas por nível), reforço escolar e cursinho, música (prova prática), cursos profissionalizantes, natação e lutas (avaliação técnica em exame). Hoje a evolução tem trilha, registros de aula e metas, mas não tem nota.

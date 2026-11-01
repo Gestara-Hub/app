@@ -84,3 +84,4 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | Rodada de testes pendentes (regras da mensalidade e horários na primeira vez, configuração inicial e landing atualizadas sem rodar, sessão, esqueletos, agenda) | Lista na memória do agente; vira doc quando a rodada começar |
 | Ideias de certificado e notas | `product/21-ideias-certificados-e-notas.md` |
 | Barbearia (modelo de agendamento) segue no modo demonstração | `product/16-backlog-barbearia.md` |
+- **Certificado de graduação em lote por exame** (31/10/2026): depois do individual (doc product/21 §1.6), um "Emitir certificados" por data de graduação na modalidade, um PDF com todos que graduaram no dia.
