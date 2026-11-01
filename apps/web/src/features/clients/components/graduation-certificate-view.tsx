@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { hasPreviousRoute } from "@/lib/navigation-history";
 import { Award, Ban, ChevronLeft, FileText, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -18,10 +20,19 @@ import { useCancelGraduationCertificate, useGraduationCertificate } from "../hoo
 /** Texto da tela de upsell (uma linha, como os outros recursos do Pro). */
 export const GRADUATION_CERTIFICATE_LOCKED_HINT = "Faz parte do Plano Profissional. Imprima ou salve em PDF a cada graduação.";
 
+/** Volta para a tela anterior (a ficha ou o dialogo de graduacao); aberto direto, vai para a ficha. Um link novo fazia a ficha voltar para ca em laco. */
 function BackLink({ studentId }: { studentId: string }) {
+  const router = useRouter();
   return (
     <Button variant="ghost" className="-ml-2 gap-1" asChild>
-      <Link href={`/clients/${studentId}?tab=evolution`}>
+      <Link
+        href={`/clients/${studentId}?tab=evolution`}
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || !hasPreviousRoute()) return;
+          event.preventDefault();
+          router.back();
+        }}
+      >
         <ChevronLeft className="size-4" />
         Voltar à ficha
       </Link>

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { hasPreviousRoute } from "@/lib/navigation-history";
 import { Award, Ban, ChevronLeft, FileText, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -18,10 +20,19 @@ import { useCancelCertificate, useCourseCertificate } from "../hooks/use-turmas"
 /** Texto da tela de upsell (uma linha, como os outros recursos do Pro). */
 export const CERTIFICATE_LOCKED_HINT = "Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.";
 
+/** Volta para a tela anterior; aberto direto, vai para a turma (um link novo fazia a turma voltar para ca em laco). */
 function BackLink({ classGroupId }: { classGroupId: string }) {
+  const router = useRouter();
   return (
     <Button variant="ghost" className="-ml-2 gap-1" asChild>
-      <Link href={`/classes/${classGroupId}`}>
+      <Link
+        href={`/classes/${classGroupId}`}
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || !hasPreviousRoute()) return;
+          event.preventDefault();
+          router.back();
+        }}
+      >
         <ChevronLeft className="size-4" />
         Voltar à turma
       </Link>
