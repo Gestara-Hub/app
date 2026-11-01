@@ -404,6 +404,23 @@ export function FinanceEntriesTab({
           </Link>
         </Button>
       );
+    } else if (row.source === "online_fee") {
+      // Taxas do pagamento online: so leitura, com atalho para o extrato dos recebimentos.
+      meta = (
+        <>
+          <span>{plural(row.onlinePaymentCount ?? 0, "pagamento online", "pagamentos online")}</span>
+          <span>·</span>
+          <span>parceiro e GestaraHub</span>
+        </>
+      );
+      trailing = (
+        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
+          <Link href="/online-payments" aria-label="Ver recebimentos online">
+            <span className="max-sm:hidden">Ver recebimentos</span>
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </Button>
+      );
     } else if (row.source === "teacher_payout") {
       meta = (
         <>

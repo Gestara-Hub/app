@@ -1,3 +1,4 @@
+import { onlineFeesInCompetence } from "@/services/finance/cashFlowSources";
 import type {
   BillingStatementReportData,
   BillingStatementRow,
@@ -159,9 +160,10 @@ export async function buildIncomeStatement({ competence, periodLabel }: ReportCo
     const grossRevenueCents = Array.from(incomeMap.values()).reduce((a, b) => a + b, 0);
     const operatingExpensesCents = Array.from(expenseMap.values()).reduce((a, b) => a + b, 0);
 
-    // Taxas do provedor de pagamento ainda nao sao registradas; quando forem,
-    // entram aqui. Ate la, sem deducao estimada.
-    const deductionsCents = 0;
+    // Deducoes: taxas do pagamento online que ficaram com o espaco (tarifa do
+    // parceiro + taxa GestaraHub, menos o que o aluno pagou a mais), pelo dia do
+    // pagamento, como no Resumo (01/11/2026).
+    const deductionsCents = onlineFeesInCompetence(competence).totalCents;
     const netRevenueCents = grossRevenueCents - deductionsCents;
     const operationalResultCents = netRevenueCents - operatingExpensesCents;
     const operatingMarginPercent =

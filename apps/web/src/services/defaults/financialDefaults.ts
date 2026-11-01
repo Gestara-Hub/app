@@ -43,6 +43,7 @@ const DEFAULT_FINANCIAL_CATEGORIES: {
   { key: "graduation", type: "income", name: "Taxa de graduação" },
   { key: "other-income", type: "income", name: "Outras receitas" },
   { key: "teachers", type: "expense", name: "Professores", systemKey: "teachers" },
+  { key: "online_fees", type: "expense", name: "Taxas de pagamento online", systemKey: "online_fees" },
   { key: "rent", type: "expense", name: "Aluguel" },
   { key: "utilities", type: "expense", name: "Contas (luz, água, internet)" },
   { key: "equipment", type: "expense", name: "Material e equipamentos" },

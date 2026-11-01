@@ -4,6 +4,7 @@ import type {
   FinancialEntryDisplayStatus,
   FinancialSystemCategoryKey,
   Id,
+  OnlinePayment,
   TeacherPayout,
 } from "@gestarahub/contracts";
 import { teamWords } from "@/services/world/nouns";
@@ -69,7 +70,57 @@ export function professionalName(id: Id): string {
   return store.professionals.find((p) => p.id === id)?.name ?? teamWords().title;
 }
 
-/** Todos os itens de caixa do tenant (cobrancas, lancamentos, professores). */
+/**
+ * Taxas do pagamento online que ficaram com o espaco (01/11/2026, decidido com
+ * o dono: "taxas como saida"). A cobranca entra pelo valor cheio, como o aluno
+ * pagou; o que o parceiro e o GestaraHub retiveram sai numa linha propria, no
+ * dia do pagamento. Com a taxa repassada ao aluno, ele pagou a mais e o espaco
+ * recebeu o valor da cobranca: nada sai.
+ */
+export function onlineFeeCents(payment: OnlinePayment, charge: Charge | undefined): number {
+  if (payment.status !== "paid") return 0;
+  const chargeAmount = charge?.amountCents ?? payment.amountCents;
+  if (typeof payment.netAmountCents === "number") return Math.max(0, chargeAmount - payment.netAmountCents);
+  // Sem liquido gravado (codigo antigo): tarifa + taxa, menos o que o aluno pagou a mais.
+  const fees = (payment.gatewayFeeCents ?? 0) + (payment.splitAmountCents ?? 0);
+  return Math.max(0, fees - Math.max(0, payment.amountCents - chargeAmount));
+}
+
+export interface OnlineFeeFact {
+  paymentId: Id;
+  chargeId: Id;
+  feeCents: number;
+  paidAt: string;
+}
+
+/** Pagamentos online pagos com taxa a cargo do espaco (so os com taxa > 0). */
+export function onlineFeeFacts(): OnlineFeeFact[] {
+  const chargesById = new Map(store.charges.map((c) => [c.id, c]));
+  const facts: OnlineFeeFact[] = [];
+  for (const p of store.onlinePayments) {
+    if (p.status !== "paid" || !p.paidAt) continue;
+    const feeCents = onlineFeeCents(p, chargesById.get(p.chargeId));
+    if (feeCents <= 0) continue;
+    facts.push({ paymentId: p.id, chargeId: p.chargeId, feeCents, paidAt: p.paidAt });
+  }
+  return facts;
+}
+
+/** Taxas pagas no mes (pelo dia do pagamento), para o DRE e a linha de Lancamentos. */
+export function onlineFeesInCompetence(competence: string): { totalCents: number; count: number; lastPaidAt?: string } {
+  let totalCents = 0;
+  let count = 0;
+  let lastPaidAt: string | undefined;
+  for (const f of onlineFeeFacts()) {
+    if (competenceOf(f.paidAt) !== competence) continue;
+    totalCents += f.feeCents;
+    count += 1;
+    if (!lastPaidAt || f.paidAt > lastPaidAt) lastPaidAt = f.paidAt;
+  }
+  return { totalCents, count, lastPaidAt };
+}
+
+/** Todos os itens de caixa do tenant (cobrancas, lancamentos, professores, taxas online). */
 export function cashFlowItems(): CashFlowItem[] {
   const items: CashFlowItem[] = [];
   for (const c of store.charges) {
@@ -114,6 +165,17 @@ export function cashFlowItems(): CashFlowItem[] {
       dueDate: p.dueDate,
       status: p.dueDate < todayISO() ? "overdue" : "pending",
       categoryId: teachers,
+    });
+  }
+  const onlineFees = systemCategoryId("online_fees");
+  for (const f of onlineFeeFacts()) {
+    items.push({
+      type: "expense",
+      amountCents: f.feeCents,
+      dueDate: f.paidAt.slice(0, 10),
+      status: "paid",
+      paidAt: f.paidAt,
+      categoryId: onlineFees,
     });
   }
   return items;

@@ -103,9 +103,11 @@ export interface FinancialEntryFilter { competence?: string; type?: FinancialEnt
 ### 4.3 Categorias padrão (seed ao criar a organização / ao ativar o módulo)
 
 - **Receitas:** Mensalidades *(sistema, só leitura: representa `Charge` membership)*, Aulas avulsas *(sistema: `Charge` dropin)*, Cobranças avulsas *(sistema: `Charge` extra, desde 14/10/2026)*, Cursos *(sistema: `Charge` course, desde 14/10/2026)*, Pacotes de aulas *(sistema: `Charge` package, desde 14/10/2026)*, Venda de produtos, Eventos e seminários, Taxa de graduação, Outras receitas.
-- **Despesas:** Professores *(sistema: representa `TeacherPayout`)*, Aluguel, Contas (luz, água, internet), Material e equipamentos, Marketing, Impostos e taxas, Outras despesas.
+- **Despesas:** Professores *(sistema: representa `TeacherPayout`)*, Taxas de pagamento online *(sistema, desde 01/11/2026: taxas do Pix e do link que ficaram com o espaço)*, Aluguel, Contas (luz, água, internet), Material e equipamentos, Marketing, Impostos e taxas, Outras despesas.
 
 As categorias de sistema aparecem nos relatórios e no resumo, mas não podem ser escolhidas num lançamento manual.
+
+**Taxas do pagamento online como saída (01/11/2026, decidido com o dono).** A cobrança paga online entra pelo valor cheio, como o aluno pagou (R$ 200,00); o que o parceiro e o GestaraHub retiveram (R$ 1,29 + tarifa) sai numa linha automática "Taxas de pagamento online de {mês}", no dia do pagamento, na categoria de sistema `online_fees`. Assim "Entrou" continua batendo com Cobranças e o "Saldo do mês" bate com "Recebido no mês" de Recebimentos online. A taxa de cada pagamento é `valor da cobrança - líquido` (`onlineFeeCents`, `services/finance/cashFlowSources.ts`); com a taxa repassada ao aluno, ele pagou a mais, o espaço recebeu o valor cheio e nada sai. A mesma soma é a linha "Deduções" do DRE (`financialReports.ts`). Em Lançamentos a linha é só leitura, com "Ver recebimentos". Migração `20261101000082` cria a categoria nos espaços que já têm as categorias padrão.
 
 ### 4.4 Lançamentos recorrentes
 

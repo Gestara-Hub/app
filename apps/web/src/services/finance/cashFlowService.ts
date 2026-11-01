@@ -17,7 +17,7 @@ import {
 import { addDays, format, parseISO } from "date-fns";
 import { readOp, textIncludes } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { cashFlowItems, chargeCompetence, openPreviews, professionalName } from "./cashFlowSources";
+import { cashFlowItems, chargeCompetence, onlineFeesInCompetence, openPreviews, professionalName } from "./cashFlowSources";
 import { clone, currentCompetence, monthName, todayISO } from "./financeHelpers";
 import { ensureMaterialized } from "./financeRecurrenceService";
 import { categoryName, systemCategoryId } from "./financeStore";
@@ -156,6 +156,24 @@ export const cashFlowService = {
           professionalId: p.professionalId,
         });
       }
+      // Taxas do pagamento online do mes, numa linha so (saida automatica, 01/11/2026).
+      const fees = onlineFeesInCompetence(competence);
+      if (fees.totalCents > 0) {
+        const onlineFees = systemCategoryId("online_fees");
+        rows.push({
+          id: `online_fees:${competence}`,
+          source: "online_fee",
+          type: "expense",
+          categoryId: onlineFees,
+          categoryName: categoryName(onlineFees, "Taxas de pagamento online"),
+          description: `Taxas de pagamento online de ${monthName(competence)}`,
+          amountCents: fees.totalCents,
+          dueDate: fees.lastPaidAt!.slice(0, 10),
+          status: "paid",
+          paidAt: fees.lastPaidAt,
+          onlinePaymentCount: fees.count,
+        });
+      }
       for (const e of store.financialEntries) {
         if (competenceOf(e.dueDate) === competence) rows.push(toEntryView(e, today));
       }
@@ -184,7 +202,7 @@ export const cashFlowService = {
         );
       }
 
-      const sourceOrder = { charge: 0, teacher_payout: 1, entry: 2 } as const;
+      const sourceOrder = { charge: 0, online_fee: 1, teacher_payout: 2, entry: 3 } as const;
       return clone(
         result.sort(
           (a, b) =>

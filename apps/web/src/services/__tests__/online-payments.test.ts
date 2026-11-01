@@ -209,6 +209,32 @@ describe("cobrança online: pagamento", () => {
     expect((await financeService.getSummary("2026-09")).incomePaidCents).toBe(15000);
   });
 
+  it("taxas que ficaram com o espaço saem no Financeiro; repassadas ao aluno, não (01/11/2026)", async () => {
+    const { charge } = await studentWithCharge();
+    const pix = await onlinePaymentsService.createForCharge(charge.id, "pix", false);
+    const paid = await onlinePaymentsService.simulatePaid(pix.id);
+    const competence = paid.paidAt!.slice(0, 7);
+    const feeCents = 15000 - paid.netAmountCents!;
+    expect(feeCents).toBeGreaterThan(0);
+    // A cobranca entra cheia; tarifa do parceiro + taxa GestaraHub saem.
+    const summary = await financeService.getSummary(competence);
+    expect(summary.incomePaidCents).toBe(15000);
+    expect(summary.expensePaidCents).toBe(feeCents);
+    const row = (await financeService.listEntries({ competence })).find((r) => r.source === "online_fee");
+    expect(row).toMatchObject({
+      type: "expense",
+      status: "paid",
+      amountCents: feeCents,
+      onlinePaymentCount: 1,
+      categoryName: "Taxas de pagamento online",
+    });
+    // Taxa repassada: o aluno pagou a mais e o espaco recebeu o valor cheio.
+    const other = await studentWithCharge("Outro");
+    const passed = await onlinePaymentsService.createForCharge(other.charge.id, "pix", true);
+    await onlinePaymentsService.simulatePaid(passed.id);
+    expect((await financeService.getSummary(competence)).expensePaidCents).toBe(feeCents);
+  });
+
   it("pago por link: forma cartão, via online", async () => {
     const { charge } = await studentWithCharge();
     const link = await onlinePaymentsService.createForCharge(charge.id, "link");

@@ -24,7 +24,15 @@ export type FinancialEntryDisplayStatus = FinancialEntryStatus | "overdue";
  * Chave das categorias de sistema (representam fontes automaticas). Nao podem
  * ser apagadas, renomeadas nem escolhidas num lancamento manual.
  */
-export type FinancialSystemCategoryKey = "memberships" | "dropins" | "extras" | "courses" | "packages" | "teachers";
+export type FinancialSystemCategoryKey =
+  | "memberships"
+  | "dropins"
+  | "extras"
+  | "courses"
+  | "packages"
+  | "teachers"
+  /** Taxas do pagamento online que ficaram com o espaco (saida automatica, 01/11/2026). */
+  | "online_fees";
 
 export interface FinancialCategory {
   id: Id;
@@ -353,7 +361,7 @@ export type ChargePaidVia = "manual" | "online" | "recurring";
 // ---------------------------------------------------------------------------
 
 /** Origem de um item de caixa (para agregacao e links). */
-export type CashFlowSource = "charge" | "entry" | "teacher_payout";
+export type CashFlowSource = "charge" | "entry" | "teacher_payout" | "online_fee";
 
 /** Cartoes do Resumo de uma competencia. Valores em centavos. */
 export interface FinanceSummary {
@@ -444,6 +452,8 @@ export interface FinanceEntryView {
   /** Pagamento de professor (source = "teacher_payout"). */
   professionalId?: Id;
   payoutId?: Id;
+  /** Taxas do pagamento online (source = "online_fee"): quantos pagamentos somaram a linha. */
+  onlinePaymentCount?: number;
 }
 
 /** Proximo vencimento (contas a pagar e pagamentos de professores). */
