@@ -26,6 +26,9 @@ import {
   RecordStatusBadge,
   SearchInput,
   StatusFilterSelect,
+  ViewModeSkeleton,
+  ViewModeToggle,
+  useViewMode,
 } from "@/components/shared/list";
 import {
   ListItemActionsMenu,
@@ -39,6 +42,9 @@ import type { RecordStatus, UserView } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
 import { useUsers } from "../hooks/use-users";
 
+/** Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro (01/11/2026). */
+const DEFAULT_STATUS: "all" | RecordStatus = "active";
+
 interface UsersListProps {
   canManage: boolean;
   onCreate: () => void;
@@ -48,15 +54,7 @@ interface UsersListProps {
   onResendInvite?: (user: UserView) => void;
 }
 
-function UserRow({
-  user,
-  canManage,
-  isSelf,
-  onEdit,
-  onInactivate,
-  onReactivate,
-  onResendInvite,
-}: {
+interface UserItemProps {
   user: UserView;
   canManage: boolean;
   isSelf: boolean;
@@ -64,11 +62,12 @@ function UserRow({
   onInactivate: (u: UserView) => void;
   onReactivate: (u: UserView) => void;
   onResendInvite?: (u: UserView) => void;
-}) {
-  const team = useTeamWords();
-  const isActive = user.status === "active";
+}
 
-  const actions: ListItemAction[] = canManage
+/** Acoes do usuario (menu ⋮ e botao direito), iguais na linha e no cartao. */
+function userActions({ user, canManage, isSelf, onEdit, onInactivate, onReactivate, onResendInvite }: UserItemProps): ListItemAction[] {
+  const isActive = user.status === "active";
+  return canManage
     ? [
         ...(user.pendingInvite && onResendInvite
           ? [
@@ -103,6 +102,36 @@ function UserRow({
             },
       ]
     : [];
+}
+
+/** Etiquetas do usuario: perfil, equipe, convite pendente e situacao. */
+function UserTags({ user }: { user: UserView }) {
+  const team = useTeamWords();
+  return (
+    <>
+      <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+        {userProfileLabel(user.profile, team.title)}
+      </span>
+      {user.professional ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+          <Contact className="size-3" />
+          Equipe
+        </span>
+      ) : null}
+      {user.pendingInvite ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+          <Clock className="size-3" />
+          Convite pendente
+        </span>
+      ) : null}
+      <RecordStatusBadge status={user.status} />
+    </>
+  );
+}
+
+function UserRow(props: UserItemProps) {
+  const { user, canManage, onEdit } = props;
+  const actions = userActions(props);
 
   const content = (
     <ListRow
@@ -127,22 +156,7 @@ function UserRow({
             <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
               {user.name}
             </p>
-            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {userProfileLabel(user.profile, team.title)}
-            </span>
-            {user.professional ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
-                <Contact className="size-3" />
-                Equipe
-              </span>
-            ) : null}
-            {user.pendingInvite ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                <Clock className="size-3" />
-                Convite pendente
-              </span>
-            ) : null}
-            <RecordStatusBadge status={user.status} />
+            <UserTags user={user} />
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
@@ -164,6 +178,81 @@ function UserRow({
 
   if (!canManage) return content;
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
+}
+
+/** Cartao do modo "Cartões" (01/11/2026), com os mesmos dados e acoes da linha. */
+function UserCard(props: UserItemProps) {
+  const { user, canManage, onEdit } = props;
+  const actions = userActions(props);
+  const card = (
+    <div
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onClick={canManage ? () => onEdit(user) : undefined}
+      onKeyDown={(e) => {
+        if (canManage && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onEdit(user);
+        }
+      }}
+      className={`group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-colors ${canManage ? "cursor-pointer hover:border-primary/40 hover:bg-muted/30" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <InitialsAvatar name={user.name} />
+          <div className="min-w-0">
+            <p className="min-w-0 break-words text-sm font-semibold text-foreground transition-colors group-hover:text-primary">{user.name}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <UserTags user={user} />
+            </div>
+          </div>
+        </div>
+        {canManage ? (
+          <div className="-mr-2 -mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <ListItemActionsMenu actions={actions} title="Ações do usuário" ariaLabel={`Ações de ${user.name}`} variant="ghost" />
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-4 flex flex-col gap-1 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <Mail className="size-3.5 text-muted-foreground/60" />
+          <span className="break-all">{user.email}</span>
+        </span>
+        {user.professional ? (
+          <span className="inline-flex items-center gap-1.5">
+            <User className="size-3.5 text-muted-foreground/60" />
+            <span>{user.professional.name}</span>
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+  if (!canManage) return card;
+  return <ListItemContextMenu actions={actions}>{card}</ListItemContextMenu>;
+}
+
+function UserSkeletonCards({ showAction }: { showAction: boolean }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+            {showAction ? <Skeleton className="size-8 shrink-0 rounded-md" /> : null}
+          </div>
+          <div className="mt-4 border-t border-border/50 pt-3">
+            <Skeleton className="h-3 w-48" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
@@ -195,7 +284,8 @@ export function UsersList({
   const team = useTeamWords();
   const currentUser = useCurrentUser();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
+  const [viewMode, setViewMode] = useViewMode("users", "list");
 
   const filter = {
     search: search.trim() || undefined,
@@ -214,19 +304,20 @@ export function UsersList({
   const limitedView = currentUser.profile !== "owner";
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = status !== "all";
+  // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
+  const hasFilters = status !== DEFAULT_STATUS;
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setStatus("all");
+    setStatus(DEFAULT_STATUS);
   };
 
   let items: ReactNode[] = [];
   let emptyState: ReactNode = null;
 
   if (isPending) {
-    items = [<SkeletonRows key="skeleton" showAction={canManage} />];
+    items = [];
   } else if (isError) {
     emptyState = (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
@@ -293,11 +384,14 @@ export function UsersList({
           aria-label="Buscar usuário"
         />
 
-        <StatusFilterSelect
-          value={status}
-          onChange={setStatus}
-          gender="male"
-        />
+        <div className="flex items-center gap-2">
+          <StatusFilterSelect
+            value={status}
+            onChange={setStatus}
+            gender="male"
+          />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
 
       {/* Contador / Resumo */}
@@ -320,10 +414,38 @@ export function UsersList({
         />
       ) : null}
 
-      {/* Container Unificado da Lista */}
-      <ListContainer emptyState={emptyState}>
-        {items}
-      </ListContainer>
+      {/* Lista ou grade de cartoes */}
+      {isPending ? (
+        <ViewModeSkeleton
+          storageKey="users"
+          mode={viewMode}
+          list={
+            <ListContainer>
+              <SkeletonRows showAction={canManage} />
+            </ListContainer>
+          }
+          grid={<UserSkeletonCards showAction={canManage} />}
+        />
+      ) : !isError && users.length > 0 && viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {users.map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              canManage={canManage}
+              isSelf={user.id === currentUser.id}
+              onEdit={onEdit}
+              onInactivate={onInactivate}
+              onReactivate={onReactivate}
+              onResendInvite={onResendInvite}
+            />
+          ))}
+        </div>
+      ) : (
+        <ListContainer emptyState={emptyState}>
+          {items}
+        </ListContainer>
+      )}
     </div>
   );
 }

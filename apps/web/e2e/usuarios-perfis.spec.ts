@@ -132,11 +132,17 @@ test.describe("cadastro de usuários (proprietário)", () => {
     const confirm = page.getByRole("alertdialog");
     await confirm.getByRole("button", { name: "Inativar" }).click();
     await expect(page.getByText("Usuário inativado.")).toBeVisible();
-    await expect(page.getByRole("button", { name: /^BR Bia Recepção Gerente Inativo/ })).toBeVisible();
+    // O filtro comeca em "Ativos" (01/11/2026): a inativada sai da lista e aparece em "Inativos".
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção/ })).toHaveCount(0);
 
     await page.getByRole("combobox", { name: "Filtrar por status" }).click();
     await page.getByRole("option", { name: "Inativos" }).click();
     await expect(page.getByText("1 usuário cadastrado")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção Gerente Inativo/ })).toBeVisible();
+    // Modo cartoes: o mesmo usuario, com as mesmas acoes.
+    await page.getByRole("button", { name: "Visualização em cartões" }).click();
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção Gerente Inativo/ })).toBeVisible();
+    await page.getByRole("button", { name: "Visualização em lista" }).click();
     await page.getByRole("button", { name: "Ações de Bia Recepção", exact: true }).click();
     await page.getByRole("menuitem", { name: "Reativar" }).click();
     await page.getByRole("alertdialog", { name: "Reativar usuário?" }).getByRole("button", { name: "Reativar" }).click();
