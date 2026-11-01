@@ -48,12 +48,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText } from "@gestarahub/core/payment-fees";
+import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText, platformSplitCents } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { isValidCpfOrCnpj } from "@gestarahub/core/payer";
 import { PERSON_ACCOUNT_NOTICE, showsPersonAccountNotice } from "../account-notice";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
-import { requestSecurityPrompt } from "@/features/auth";
+import { requestSecurityPrompt, useSubscriptionTier } from "@/features/auth";
 import { todayISO } from "@gestarahub/core/date";
 
 function maskCpfCnpj(value: string): string {
@@ -338,52 +338,8 @@ export function ActivateSubaccountDialog({
                   <AddressFields<FormValues> prefix="address" required disabled={setup.isPending} />
                 </div>
 
-                {/* Quadro detalhado de taxas por modalidade */}
-                <div className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-3.5 text-xs text-foreground">
-                  <div className="flex items-center justify-between border-b border-primary/15 pb-2">
-                    <span className="flex items-center gap-1.5 font-semibold text-primary">
-                      <Receipt className="size-4" />
-                      Tabela de Taxas por Modalidade
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      Descontadas apenas quando o aluno paga
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {/* Pix: tarifa do parceiro + taxa do GestaraHub (doc 19, decisao A). */}
-                    <FeeRow
-                      icon={<QrCode className="size-4 text-emerald-600 dark:text-emerald-400" />}
-                      title="Pix Dinâmico e Pix Automático"
-                      subtitle="Disponibilidade imediata (D+0 na sua conta)"
-                      partnerFee={`até ${formatCents(ASAAS_FEES.pix.fixedCents)}`}
-                    />
-
-                    {/* Cartao de credito pelo link */}
-                    <FeeRow
-                      icon={<CreditCard className="size-4 text-sky-600 dark:text-sky-400" />}
-                      title="Cartão de Crédito (Link de Pagamento)"
-                      subtitle="Recebimento em 30 dias (D+30)"
-                      partnerFee={`até ${percentLabel(ASAAS_FEES.creditCard.percent)} + ${formatCents(ASAAS_FEES.creditCard.fixedCents)}`}
-                    />
-
-                    {/* Transferência / Saque */}
-                    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px]">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <Zap className="size-3.5 text-amber-500" />
-                        Transferência Pix para sua conta bancária:
-                      </span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        {pixWithdrawalRuleText()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    • <strong>Sem surpresas:</strong> você só paga quando receber do aluno. Não há mensalidade de gateway, não há taxa de adesão e cobranças não pagas ou canceladas têm custo zero.
-                    <br />• A tarifa do parceiro acima é a sem promoção; contas novas costumam ter tarifa menor nos primeiros meses. A prévia de cada cobrança mostra quanto você recebe, e você pode repassar as taxas ao aluno.
-                  </p>
-                </div>
+                {/* Taxas por forma de pagamento (01/11/2026): uma linha por forma, a taxa do plano atual, e quando o dinheiro chega. */}
+                <FeeTable />
 
                 {/* Termo de Aceite Jurídico Obrigatório */}
                 <div
@@ -590,43 +546,90 @@ export function ActivateSubaccountDialog({
   );
 }
 
-const PLATFORM_FEE_LABEL = `${formatCents(PLATFORM_SPLIT_CENTS.free)} no plano grátis · ${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos pagos`;
-
 function percentLabel(fraction: number): string {
   return `${(fraction * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 }
 
-/** Linha da tabela: as duas partes que saem do valor recebido, separadas. */
-function FeeRow({
-  icon,
-  title,
-  subtitle,
-  partnerFee,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  partnerFee: string;
-}) {
+/**
+ * Taxas por forma de pagamento: tarifa do parceiro (a cheia, sem promocao) e a
+ * taxa do GestaraHub do plano atual, so descontadas quando o aluno paga.
+ */
+function FeeTable() {
+  const tier = useSubscriptionTier();
+  const platformFee = formatCents(platformSplitCents(tier));
+  const rows = [
+    {
+      icon: <QrCode className="size-4 text-emerald-600 dark:text-emerald-400" />,
+      method: "Pix",
+      detail: "Dinâmico e automático",
+      partner: `até ${formatCents(ASAAS_FEES.pix.fixedCents)}`,
+      when: "Na hora",
+    },
+    {
+      icon: <CreditCard className="size-4 text-sky-600 dark:text-sky-400" />,
+      method: "Cartão de crédito",
+      detail: "Pelo link de pagamento",
+      partner: `até ${percentLabel(ASAAS_FEES.creditCard.percent)} + ${formatCents(ASAAS_FEES.creditCard.fixedCents)}`,
+      when: "Em 30 dias",
+    },
+  ];
   return (
-    <div className="space-y-2 rounded-md border border-border/80 bg-card/90 p-2.5">
-      <div className="flex items-center gap-2">
-        {icon}
-        <div>
-          <p className="font-medium text-foreground">{title}</p>
-          <p className="text-[10px] text-muted-foreground">{subtitle}</p>
-        </div>
+    <div className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-3.5 text-xs text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 pb-2">
+        <span className="flex items-center gap-1.5 font-semibold text-primary">
+          <Receipt className="size-4" />
+          Taxas por forma de pagamento
+        </span>
+        <span className="text-[11px] text-muted-foreground">Só quando o aluno paga</span>
       </div>
-      <dl className="space-y-1 border-t border-border/60 pt-2 text-[11px]">
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground">Tarifa do parceiro de pagamentos</dt>
-          <dd className="text-right font-semibold text-foreground">{partnerFee}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground">Taxa do GestaraHub</dt>
-          <dd className="text-right font-semibold text-foreground">{PLATFORM_FEE_LABEL}</dd>
-        </div>
-      </dl>
+
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-[11px] text-muted-foreground">
+            <th scope="col" className="pb-1.5 text-left font-medium">Forma</th>
+            <th scope="col" className="pb-1.5 text-right font-medium">Parceiro</th>
+            <th scope="col" className="pb-1.5 text-right font-medium">GestaraHub</th>
+            <th scope="col" className="pb-1.5 text-right font-medium">Recebe</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {rows.map((row) => (
+            <tr key={row.method}>
+              <td className="py-2 pr-2">
+                <span className="flex items-center gap-2">
+                  {row.icon}
+                  <span className="min-w-0">
+                    <span className="block font-medium text-foreground">{row.method}</span>
+                    <span className="block text-[10px] text-muted-foreground">{row.detail}</span>
+                  </span>
+                </span>
+              </td>
+              <td className="py-2 pl-2 text-right font-semibold whitespace-nowrap tabular-nums">{row.partner}</td>
+              <td className="py-2 pl-2 text-right font-semibold whitespace-nowrap tabular-nums">{platformFee}</td>
+              <td className="py-2 pl-2 text-right whitespace-nowrap text-muted-foreground">{row.when}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px]">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Zap className="size-3.5 text-amber-500" />
+          Transferência Pix para o seu banco
+        </span>
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{pixWithdrawalRuleText()}</span>
+      </div>
+
+      <ul className="space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+        <li>
+          Taxa do GestaraHub do seu plano:{" "}
+          {tier === "free"
+            ? `${formatCents(PLATFORM_SPLIT_CENTS.free)} no Grátis; ${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos planos pagos.`
+            : `${platformFee} (no Grátis seria ${formatCents(PLATFORM_SPLIT_CENTS.free)}).`}
+        </li>
+        <li>Sem mensalidade nem adesão. Cobrança não paga ou cancelada não custa nada.</li>
+        <li>A tarifa do parceiro é a cheia; contas novas costumam ter promoção. A prévia de cada cobrança mostra o líquido, e você pode repassar as taxas ao aluno.</li>
+      </ul>
     </div>
   );
 }
