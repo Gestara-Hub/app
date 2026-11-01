@@ -1,196 +1,145 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { ReportType } from "@gestarahub/contracts";
+import type { ReportCategory, ReportMetadata, ReportType } from "@gestarahub/contracts";
 import {
   Cake,
+  ChevronRight,
   ClipboardCheck,
   FileSpreadsheet,
   GraduationCap,
   Lock,
-  Search,
-  Sparkles,
   Ticket,
   TrendingUp,
   Users,
   Wallet,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ListContainer, ListRow } from "@/components/shared/list";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useHasFeature } from "@/features/auth";
-import { CompetencePicker } from "@/features/finance";
 import { useReportsCatalog } from "../hooks/use-reports";
 
 interface ReportsCatalogTabProps {
   onSelectReport: (reportType: ReportType) => void;
-  competence: string;
-  onCompetenceChange: (competence: string) => void;
 }
 
-export function ReportsCatalogTab({
-  onSelectReport,
-  competence,
-  onCompetenceChange,
-}: ReportsCatalogTabProps) {
+/** Grupos na ordem da tela; o nome e o que o usuario le como titulo do bloco. */
+const CATEGORIES: { value: ReportCategory; label: string }[] = [
+  { value: "operational", label: "Operacionais" },
+  { value: "financial", label: "Financeiros" },
+  { value: "retention", label: "Retenção" },
+];
+
+function ReportIcon({ name }: { name: string }) {
+  const className = "size-5";
+  switch (name) {
+    case "ClipboardCheck":
+      return <ClipboardCheck className={`${className} text-sky-500`} />;
+    case "Users":
+      return <Users className={`${className} text-indigo-500`} />;
+    case "Wallet":
+      return <Wallet className={`${className} text-emerald-500`} />;
+    case "Cake":
+      return <Cake className={`${className} text-amber-500`} />;
+    case "GraduationCap":
+      return <GraduationCap className={`${className} text-teal-500`} />;
+    case "Ticket":
+      return <Ticket className={`${className} text-orange-500`} />;
+    case "FileSpreadsheet":
+      return <FileSpreadsheet className={`${className} text-purple-500`} />;
+    case "TrendingUp":
+      return <TrendingUp className={`${className} text-rose-500`} />;
+    default:
+      return <FileSpreadsheet className={`${className} text-primary`} />;
+  }
+}
+
+/**
+ * Catalogo de relatorios (revisao de 01/11/2026): uma linha por relatorio,
+ * agrupadas por categoria, a linha inteira abre. Sem busca nem mes: sao 8
+ * itens fixos, e o mes se escolhe dentro do relatorio aberto. Os do Plano
+ * Profissional ficam no grupo deles, com cadeado; clicar abre o convite.
+ */
+export function ReportsCatalogTab({ onSelectReport }: ReportsCatalogTabProps) {
   const { data: catalog = [], isLoading } = useReportsCatalog();
   const hasFeature = useHasFeature();
   const hasAdvancedReports = hasFeature("reports_advanced");
 
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-
-  const filteredCatalog = useMemo(() => {
-    return catalog.filter((r) => {
-      if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        return r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [catalog, categoryFilter, search]);
-
-  const getReportIcon = (iconName: string) => {
-    switch (iconName) {
-      case "ClipboardCheck":
-        return <ClipboardCheck className="size-5 text-sky-500" />;
-      case "Users":
-        return <Users className="size-5 text-indigo-500" />;
-      case "Wallet":
-        return <Wallet className="size-5 text-emerald-500" />;
-      case "Cake":
-        return <Cake className="size-5 text-amber-500" />;
-      case "GraduationCap":
-        return <GraduationCap className="size-5 text-teal-500" />;
-      case "Ticket":
-        return <Ticket className="size-5 text-orange-500" />;
-      case "FileSpreadsheet":
-        return <FileSpreadsheet className="size-5 text-purple-500" />;
-      case "TrendingUp":
-        return <TrendingUp className="size-5 text-rose-500" />;
-      default:
-        return <FileSpreadsheet className="size-5 text-primary" />;
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse h-44 bg-muted/20" />
+      <div className="space-y-6" aria-busy>
+        {[3, 1, 1].map((rows, group) => (
+          <div key={group} className="space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <div className="divide-y rounded-xl border">
+              {Array.from({ length: rows }, (_, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     );
   }
 
+  const groups = CATEGORIES.map((category) => ({
+    ...category,
+    reports: catalog.filter((r) => r.category === category.value),
+  })).filter((g) => g.reports.length > 0);
+
   return (
-    <div className="space-y-6">
-      {/* Search and Period Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar relatório"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-
-        {/* Mes em portugues (o campo "month" do navegador mostrava "September 202"). */}
-        <CompetencePicker competence={competence} onChange={onCompetenceChange} label="Mês" />
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={categoryFilter === "all" ? "default" : "outline"}
-          onClick={() => setCategoryFilter("all")}
-        >
-          Todos ({catalog.length})
-        </Button>
-        <Button
-          variant={categoryFilter === "operational" ? "default" : "outline"}
-          onClick={() => setCategoryFilter("operational")}
-        >
-          Operacionais
-        </Button>
-        <Button
-          variant={categoryFilter === "financial" ? "default" : "outline"}
-          onClick={() => setCategoryFilter("financial")}
-        >
-          Financeiros
-        </Button>
-        <Button
-          variant={categoryFilter === "retention" ? "default" : "outline"}
-          onClick={() => setCategoryFilter("retention")}
-        >
-          Retenção
-        </Button>
-      </div>
-
-      {/* Grid of Report Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCatalog.map((report) => {
-          const isLocked = report.tierRequired === "pro" && !hasAdvancedReports;
-
-          return (
-            <Card
-              key={report.type}
-              className={`flex flex-col justify-between transition-all duration-200 hover:border-primary/30 ${
-                isLocked ? "bg-muted/15 border-dashed" : "shadow-xs"
-              }`}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-lg border bg-background p-2 shadow-2xs">
-                    {getReportIcon(report.iconName)}
-                  </div>
-                  {report.tierRequired === "pro" ? (
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] gap-1 ${
-                        isLocked
-                          ? "border-amber-500/40 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
-                          : "border-primary/40 bg-primary/5 text-primary"
-                      }`}
-                    >
-                      {isLocked ? <Lock className="size-2.5" /> : <Sparkles className="size-2.5" />}
-                      Plano Profissional
-                    </Badge>
-                  ) : null}
-                </div>
-
-                <CardTitle className="text-base font-semibold mt-3">
-                  {report.title}
-                </CardTitle>
-                <CardDescription className="text-xs leading-relaxed">
-                  {report.description}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="pt-0">
-                <Button
-                  className="w-full"
-                  variant={isLocked ? "outline" : "default"}
-                  onClick={() => onSelectReport(report.type)}
-                >
-                  {isLocked ? (
-                    <>
-                      <Lock className="size-3" />
-                      Disponível no Plano Profissional
-                    </>
-                  ) : (
-                    "Abrir"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+    <div className="space-y-6" data-testid="reports-catalog">
+      {groups.map((group) => (
+        <section key={group.value} className="space-y-2" aria-labelledby={`reports-group-${group.value}`}>
+          <h2 id={`reports-group-${group.value}`} className="text-sm font-medium text-muted-foreground">
+            {group.label}
+          </h2>
+          <ListContainer>
+            {group.reports.map((report) => (
+              <ReportRow
+                key={report.type}
+                report={report}
+                locked={report.tierRequired === "pro" && !hasAdvancedReports}
+                onOpen={() => onSelectReport(report.type)}
+              />
+            ))}
+          </ListContainer>
+        </section>
+      ))}
     </div>
+  );
+}
+
+function ReportRow({ report, locked, onOpen }: { report: ReportMetadata; locked: boolean; onOpen: () => void }) {
+  return (
+    <ListRow
+      onClick={onOpen}
+      aria-label={locked ? `Ver no Plano Profissional: ${report.title}` : `Abrir ${report.title}`}
+      className={locked ? "bg-muted/15" : undefined}
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background shadow-2xs">
+          <ReportIcon name={report.iconName} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium text-foreground">
+            <span className="min-w-0 break-words">{report.title}</span>
+            {report.tierRequired === "pro" ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
+                {locked ? <Lock className="size-3" aria-hidden /> : null}
+                Plano Profissional
+              </span>
+            ) : null}
+          </p>
+          <p className="min-w-0 break-words text-xs text-muted-foreground">{report.description}</p>
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </div>
+    </ListRow>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useTeamWords } from "@/features/settings";
 import type { DocumentModel, GeneratedReportData } from "@gestarahub/contracts";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ChevronLeft, Download, FileText } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { DocumentPreview } from "@/components/shared/document-preview";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { reportToDocument } from "@/lib/documents/report-documents";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useCategories } from "@/features/categories";
+import { CompetencePicker } from "@/features/finance";
 import { useModalityVocabulary, useSegmentVocabulary } from "@/features/settings";
 import { AttendanceSheetPicker } from "./attendance-sheet-picker";
 
@@ -21,6 +22,8 @@ interface ReportDocumentScreenProps {
   onSheetChange?: (sheet: { classGroupId?: string; sessionId?: string }) => void;
   /** Mes do relatorio ("2026-10"). */
   competence: string;
+  /** O mes se escolhe aqui dentro (01/11/2026), nao no catalogo: todos os relatorios sao do mes. */
+  onCompetenceChange: (competence: string) => void;
 }
 
 /** Endereco do PDF ou do CSV gerado no servidor, com os mesmos filtros da tela. */
@@ -53,7 +56,7 @@ function downloadCsv(model: DocumentModel) {
  * baixam o PDF e o CSV gerados no servidor. Na conta de demonstracao (sem
  * banco) o PDF sai pela impressao do navegador.
  */
-export function ReportDocumentScreen({ report, onBack, onSheetChange, competence }: ReportDocumentScreenProps) {
+export function ReportDocumentScreen({ report, onBack, onSheetChange, competence, onCompetenceChange }: ReportDocumentScreenProps) {
   const team = useTeamWords();
   const user = useCurrentUser();
   const can = useCan();
@@ -75,38 +78,45 @@ export function ReportDocumentScreen({ report, onBack, onSheetChange, competence
     levelLabelForModality: () => sheetVocabulary.level,
   });
   return (
-    <div className="space-y-6">
-      <div className="print:hidden flex flex-col justify-between gap-4 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-center">
-        <Button variant="outline" onClick={onBack} className="w-fit gap-2 text-xs">
-          <ArrowLeft className="size-3.5" />
-          Voltar aos relatórios
+    <div className="space-y-4">
+      <div className="print:hidden">
+        <Button variant="ghost" className="-ml-2 gap-1" onClick={onBack}>
+          <ChevronLeft className="size-4" />
+          Voltar
         </Button>
+      </div>
+      {/* Titulo, o mes (escolhido aqui) e as saidas; o cabecalho do documento repete o titulo na folha. */}
+      <div className="print:hidden flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{model.title}</h1>
+          <CompetencePicker competence={competence} onChange={onCompetenceChange} label="Mês" />
+        </div>
 
         {canExport ? (
           <div className="flex flex-wrap items-center gap-2">
             {serverDocuments ? (
               <>
-                <Button variant="outline" asChild className="gap-1.5 text-xs">
+                <Button variant="outline" asChild className="gap-1.5">
                   <a href={documentUrl(report, competence, "csv")} download>
-                    <Download className="size-3.5" />
+                    <Download className="size-4" />
                     Exportar CSV
                   </a>
                 </Button>
-                <Button asChild className="gap-1.5 text-xs shadow-xs">
+                <Button asChild className="gap-1.5">
                   <a href={documentUrl(report, competence, "pdf")} target="_blank" rel="noopener">
-                    <FileText className="size-3.5" />
+                    <FileText className="size-4" />
                     Baixar PDF
                   </a>
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => downloadCsv(model)} className="gap-1.5 text-xs">
-                  <Download className="size-3.5" />
+                <Button variant="outline" onClick={() => downloadCsv(model)} className="gap-1.5">
+                  <Download className="size-4" />
                   Exportar CSV
                 </Button>
-                <Button onClick={() => window.print()} className="gap-1.5 text-xs shadow-xs">
-                  <FileText className="size-3.5" />
+                <Button onClick={() => window.print()} className="gap-1.5">
+                  <FileText className="size-4" />
                   Baixar PDF
                 </Button>
               </>

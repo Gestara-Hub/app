@@ -291,3 +291,10 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Certificado:** "Quem assina" escolhe entre professor da turma, nome do espaço ou outro nome (ninguém digita `{professor}` ou `{empresa}`). "Voltar ao texto padrão", no bloco Texto, volta o título e o texto no rascunho, com confirmação; quem grava é a barra.
 - **Aparência:** tema (claro, escuro ou do sistema), cor de destaque (um cinza só, "Padrão") e som. Cor base, cantos, menu lateral (escuro), fonte e estilo ficam fixos no CSS (`lib/theme-accent.ts`); sem Google Fonts na política de segurança.
 - **Abas segmentadas (`PageTabs`):** o contorno de foco aparece só pelo teclado.
+
+## Relatórios: catálogo em lista (01/11/2026, decidido com o dono)
+
+- O catálogo (`features/reports/reports-catalog-tab.tsx`) é uma lista por categoria (Operacionais, Financeiros, Retenção): uma linha por relatório (ícone, título, descrição de uma linha, chevron), a linha inteira abre (`aria-label` "Abrir {título}"). Antes eram cards grandes com botão "Abrir" de largura total e a tela rolava para 8 itens.
+- Sem busca (8 itens fixos) e sem seletor de mês no catálogo: o mês se escolhe dentro do relatório aberto, no cabeçalho ao lado do título (todos os relatórios são do mês, inclusive a relação de alunos, que mostra quem já era aluno no mês).
+- Os do Plano Profissional ficam no grupo deles com a etiqueta e o cadeado; a linha abre o convite ("Ver no Plano Profissional: {título}").
+- Relatório aberto e convite usam o "‹ Voltar" padrão (volta ao catálogo, que é estado da mesma tela).

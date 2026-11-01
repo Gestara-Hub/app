@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ReportType } from "@gestarahub/contracts";
 import { FeatureLocked } from "@/components/shared/feature-locked";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useHasFeature } from "@/features/auth";
@@ -55,6 +56,14 @@ export function ReportsView({
     setSelectedReport(type);
   };
 
+  // "‹ Voltar" no padrao das telas de detalhe (o catalogo e a tela anterior, sem rota propria).
+  const backButton = (
+    <Button variant="ghost" className="-ml-2 gap-1" onClick={() => openReport(null)}>
+      <ChevronLeft className="size-4" />
+      Voltar
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
       {/* Top Header (only when in catalog mode) */}
@@ -71,20 +80,10 @@ export function ReportsView({
 
       {/* View routing: Catalog vs Document View vs Upsell Locked */}
       {!selectedReport ? (
-        <ReportsCatalogTab
-          onSelectReport={(type) => openReport(type)}
-          competence={competence}
-          onCompetenceChange={setCompetence}
-        />
+        <ReportsCatalogTab onSelectReport={(type) => openReport(type)} />
       ) : isProReport && !hasAdvancedReports ? (
         <div className="space-y-6">
-          <Button
-            variant="outline"
-            onClick={() => openReport(null)}
-            className="text-xs"
-          >
-            ← Voltar ao Catálogo de Relatórios
-          </Button>
+          {backButton}
 
           <FeatureLocked
             title="Relatórios Gerenciais Avançados"
@@ -107,13 +106,12 @@ export function ReportsView({
           onBack={() => openReport(null)}
           onSheetChange={setSheet}
           competence={competence}
+          onCompetenceChange={setCompetence}
         />
       ) : (
         <div className="p-8 text-center text-sm text-muted-foreground space-y-3">
           <p>Não foi possível carregar os dados deste relatório.</p>
-          <Button variant="outline" onClick={() => openReport(null)}>
-            Voltar ao Catálogo
-          </Button>
+          {backButton}
         </div>
       )}
     </div>

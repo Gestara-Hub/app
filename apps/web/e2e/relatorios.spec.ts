@@ -137,7 +137,7 @@ async function seedReports(page: Page, opts: { pro?: boolean; extra?: (t: Tenant
 
 async function openReport(page: Page, type: string, period = "2026-09") {
   await page.goto(`/reports?type=${type}&period=${period}`);
-  await expect(page.getByRole("button", { name: "Voltar aos relatórios" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voltar", exact: true })).toBeVisible();
 }
 
 /** Clica em exportar (CSV gerado no servidor) e devolve o nome e o conteudo baixado. */
@@ -151,41 +151,42 @@ async function exportCsv(page: Page) {
   return { name: download.suggestedFilename(), text };
 }
 
+/** As linhas do catalogo (a tela tem outros botoes "Abrir ..." fora dele). */
+const catalog = (page: Page) => page.getByTestId("reports-catalog");
+
 test.describe("catálogo", () => {
   test("grátis: 8 relatórios, os de gestão travados no Pro", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page);
     await page.goto("/reports");
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Todos (8)" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(6);
-    await expect(page.getByRole("button", { name: "Disponível no Plano Profissional" })).toHaveCount(2);
-    // Sem palavra em ingles no filtro.
-    await expect(page.getByRole("button", { name: "Operacionais" })).toBeVisible();
-
-    await page.getByRole("button", { name: "Financeiros" }).click();
+    // Lista por categoria (01/11/2026): uma linha por relatorio, sem busca nem mes no catalogo.
+    for (const group of ["Operacionais", "Financeiros", "Retenção"]) {
+      await expect(page.getByRole("heading", { level: 2, name: group })).toBeVisible();
+    }
+    await expect(catalog(page).getByRole("button", { name: /^Abrir / })).toHaveCount(6);
+    await expect(catalog(page).getByRole("button", { name: /^Ver no Plano Profissional: / })).toHaveCount(2);
+    await expect(page.getByPlaceholder("Buscar relatório")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Escolher mês/ })).toHaveCount(0);
     await expect(main(page).getByText("DRE gerencial", { exact: true })).toBeVisible();
-    await expect(main(page).getByText("Aniversariantes do mês")).toHaveCount(0);
-    await page.getByRole("button", { name: "Todos (8)" }).click();
-    await page.getByPlaceholder("Buscar relatório").fill("aniver");
-    await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(1);
 
     // Pro travado: abre o convite e volta.
-    await page.getByPlaceholder("Buscar relatório").fill("retenção");
-    await page.getByRole("button", { name: "Disponível no Plano Profissional" }).click();
+    await page.getByRole("button", { name: "Ver no Plano Profissional: Retenção de alunos" }).click();
     await expect(page.getByText("Relatórios Gerenciais Avançados")).toBeVisible();
     await expect(page.getByRole("link", { name: "Ver Plano Profissional" })).toHaveAttribute("href", /\/settings\?tab=plano/);
-    await page.getByRole("button", { name: "← Voltar ao Catálogo de Relatórios" }).click();
+    await page.getByRole("button", { name: "Voltar", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
   });
 
   test("Pro libera todos e abre o relatório escolhido no catálogo", async ({ page }) => {
     await seedReports(page, { pro: true });
     await page.goto("/reports");
-    await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(8);
-    await expect(page.getByRole("button", { name: "Disponível no Plano Profissional" })).toHaveCount(0);
-    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
+    await expect(catalog(page).getByRole("button", { name: /^Abrir / })).toHaveCount(8);
+    await expect(catalog(page).getByRole("button", { name: /^Ver no Plano Profissional: / })).toHaveCount(0);
+    await page.getByRole("button", { name: "Abrir Aniversariantes do mês" }).click();
     await expect(main(page)).toContainText("Aniversariantes de setembro");
-    await page.getByRole("button", { name: "Voltar aos relatórios" }).click();
+    // O mes se escolhe dentro do relatorio aberto.
+    await expect(page.getByRole("button", { name: /Escolher mês/ })).toBeVisible();
+    await page.getByRole("button", { name: "Voltar", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
   });
 
@@ -311,13 +312,14 @@ test.describe("relatórios operacionais", () => {
     await expect(main(page).getByText("Vendidos", { exact: true }).first().locator("..")).toContainText("0");
   });
 
-  test("trocar o mês no catálogo vale para o relatório aberto", async ({ page }) => {
+  test("trocar o mês dentro do relatório aberto", async ({ page }) => {
     await seedReports(page);
     await page.goto("/reports");
-    // Setembro -> novembro pelo seletor de mes do catalogo.
+    await main(page).getByRole("button", { name: "Abrir Aniversariantes do mês" }).click();
+    await expect(main(page)).toContainText("Aniversariantes de setembro");
+    // Setembro -> novembro pelo seletor de mes do relatorio (01/11/2026: nao ha mais mes no catalogo).
     await page.getByRole("button", { name: "Próximo mês" }).click();
     await page.getByRole("button", { name: "Próximo mês" }).click();
-    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
     await expect(main(page)).toContainText("Aniversariantes de novembro");
     await expect(main(page)).toContainText("Competência 11/2026");
   });
