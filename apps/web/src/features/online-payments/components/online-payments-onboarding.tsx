@@ -138,7 +138,7 @@ export function OnlinePaymentsOnboarding({
                 <p className="text-lg font-bold text-foreground">
                   até 2,99% + {formatCents(ASAAS_FEES.creditCard.fixedCents)} + {platformFee}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{feeNote} · em 30 dias</p>
+                <p className="text-[11px] text-muted-foreground">{feeNote} · em 32 dias</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">

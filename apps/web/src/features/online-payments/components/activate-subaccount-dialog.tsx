@@ -570,7 +570,7 @@ function FeeTable() {
       method: "Cartão de crédito",
       detail: "Pelo link de pagamento",
       partner: `até ${percentLabel(ASAAS_FEES.creditCard.percent)} + ${formatCents(ASAAS_FEES.creditCard.fixedCents)}`,
-      when: "Em 30 dias",
+      when: "Em 32 dias",
     },
   ];
   return (
