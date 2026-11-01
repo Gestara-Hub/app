@@ -19,7 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ActivateSubaccountDialog } from "./activate-subaccount-dialog";
-import { ASAAS_FEES, PIX_WITHDRAWAL, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
+import { ASAAS_FEES, PIX_WITHDRAWAL, PLATFORM_SPLIT_CENTS, platformSplitCents } from "@gestarahub/core/payment-fees";
+import { useSubscriptionTier } from "@/features/auth";
 import { formatCents } from "@gestarahub/core/format";
 
 interface OnlinePaymentsOnboardingProps {
@@ -27,11 +28,21 @@ interface OnlinePaymentsOnboardingProps {
   canManage: boolean;
 }
 
+/** "Parceiro + GestaraHub (seu plano)" no Pro; no Gratis, com o valor dos planos pagos. */
+function feeNoteFor(tier: ReturnType<typeof useSubscriptionTier>): string {
+  return tier === "free"
+    ? `Parceiro + GestaraHub (${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos planos pagos).`
+    : "Parceiro + GestaraHub do seu plano.";
+}
+
 export function OnlinePaymentsOnboarding({
   organization,
   canManage,
 }: OnlinePaymentsOnboardingProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const tier = useSubscriptionTier();
+  const platformFee = formatCents(platformSplitCents(tier));
+  const feeNote = feeNoteFor(tier);
 
   return (
     <>
@@ -127,24 +138,21 @@ export function OnlinePaymentsOnboarding({
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {/* A taxa do GestaraHub e a do plano atual (01/11/2026), como na tabela do dialogo de ativar. */}
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
-                <span className="text-xs text-muted-foreground">Pix Dinâmico</span>
+                <span className="text-xs text-muted-foreground">Pix</span>
                 <p className="text-lg font-bold text-foreground">
-                  até {formatCents(ASAAS_FEES.pix.fixedCents)} + {formatCents(PLATFORM_SPLIT_CENTS.free)}
+                  até {formatCents(ASAAS_FEES.pix.fixedCents)} + {platformFee}
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Tarifa do parceiro + taxa do GestaraHub ({formatCents(PLATFORM_SPLIT_CENTS.pro)} no Plano Profissional)
-                </p>
+                <p className="text-[11px] text-muted-foreground">{feeNote} Cai na hora.</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
-                <span className="text-xs text-muted-foreground">Cartão de Crédito</span>
+                <span className="text-xs text-muted-foreground">Cartão de crédito</span>
                 <p className="text-lg font-bold text-foreground">
-                  até 2,99% + {formatCents(ASAAS_FEES.creditCard.fixedCents)} + {formatCents(PLATFORM_SPLIT_CENTS.free)}
+                  até 2,99% + {formatCents(ASAAS_FEES.creditCard.fixedCents)} + {platformFee}
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Recebimento em 30 dias (D+30)
-                </p>
+                <p className="text-[11px] text-muted-foreground">{feeNote} Cai em 30 dias.</p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
