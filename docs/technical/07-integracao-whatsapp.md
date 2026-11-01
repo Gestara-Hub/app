@@ -16,6 +16,8 @@ Data: 2026-10-14.
 | Situação dos modelos na Meta (Comunicação → Mensagens) | Só aparece quando pede atenção (`metaStatusNotice`, `message-meta.ts`): "Em análise no WhatsApp", "Recusado pelo WhatsApp: ajuste o texto" e "Pausado pelo WhatsApp: revise o texto", como texto curto na linha do prazo; recusado e pausado abrem a edição. Aprovado (o normal) não mostra nada. Na tela é "WhatsApp", não "Meta" (30/10/2026). |
 | Mensagem de teste ("Testar envio real") | Ferramenta de desenvolvimento: só fora de produção e para quem gerencia a comunicação (`whatsappTestActions.ts`). Usa o número da plataforma. |
 
+**Boas-vindas automáticas (01/11/2026, decisão do dono).** Ao cadastrar um aluno com WhatsApp válido, no modo oficial e com o modelo "Boas-vindas" ligado, a mensagem sai sozinha, sem o diálogo de confirmação (`client-form.tsx`, `useWhatsAppSend` com `reviewed: true`; `enabled(trigger)` do hook respeita o modelo desligado). No assistido continua o botão "Enviar boas-vindas" do aviso de cadastro, porque quem envia é a própria pessoa. Falhou (janela de 24 h fechada, número fora da lista de testes): o aviso mostra o erro, o registro fica "Falhou" no Histórico e o lembrete "aluno novo sem boas-vindas" segue no Painel.
+
 ### 1.1 O que falta para cada espaço usar o próprio número (antes de produção)
 A doc 13 §5 decidiu que as mensagens saem do número do próprio espaço. Hoje o código do cadastro guiado, o id do número e o id da conta que a Meta devolve não são guardados. Falta:
 1. trocar, no servidor, o código do cadastro guiado pelo token do espaço (com o segredo do app da Meta);

@@ -27,7 +27,7 @@ Data: 2026-10-23. Status: fases 1 a 5 feitas (seção 8); o resumo por e-mail fi
 | Pacote | Última aula, aulas acabaram ou pacote vencendo | `package_ending` |
 | Relacionamento | Aniversário (no dia e na semana) | `birthday_greeting` |
 | Relacionamento | Três faltas seguidas | `absence_alert` |
-| Relacionamento | Aluno novo sem boas-vindas (até 7 dias) | `welcome_student` |
+| Relacionamento | Aluno novo sem boas-vindas (até 7 dias). Com o WhatsApp oficial conectado e o modelo ligado, as boas-vindas saem sozinhas no cadastro (01/11/2026); o lembrete cobre o assistido e o envio que falhou | `welcome_student` |
 | Relacionamento | Avançou de nível (até 14 dias) | `level_up` |
 | Relacionamento | Pagamento recebido (agradecer, até 7 dias) | `payment_received` |
 | Turma | Troca de nível pela idade (graduar) | sem mensagem; abre a graduação |

@@ -1180,13 +1180,24 @@ export function ClientForm({
           }
         }
         const canWelcome = isClasses && whatsapp.ready && Boolean(whatsappNumber(created.phone));
+        // WhatsApp oficial conectado (01/11/2026, decisao do dono): as boas-vindas
+        // saem sozinhas, sem confirmar, se o modelo esta ligado. No assistido
+        // continua o botao do aviso (quem envia e a propria pessoa).
+        const autoWelcome = canWelcome && whatsapp.mode === "official" && whatsapp.enabled("welcome_student");
+        if (autoWelcome) {
+          whatsapp.send({
+            trigger: "welcome_student",
+            recipient: { name: created.name, phone: created.phone, clientId: created.id },
+            reviewed: true,
+          });
+        }
         toast.success(
           packageSold
             ? "Aluno criado e pacote vendido."
             : isClasses
               ? "Aluno criado com sucesso."
               : "Cliente criado com sucesso.",
-          canWelcome
+          canWelcome && !autoWelcome
             ? {
                 duration: 10_000,
                 action: {

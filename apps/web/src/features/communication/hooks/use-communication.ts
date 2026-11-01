@@ -239,6 +239,8 @@ export function useWhatsAppSend() {
     mode,
     /** Modelos carregados: os botoes podem montar a mensagem. */
     ready: Boolean(templates && organization),
+    /** O modelo esta ligado em Comunicacao (os envios automaticos respeitam o desligado). */
+    enabled: (trigger: MessageTrigger) => templates?.find((t) => t.trigger === trigger)?.enabled !== false,
     isSending: send.isPending,
     compose,
     send: sendMessage,
