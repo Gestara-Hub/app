@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm, useWatch, FormProvider, Controller } from "react-hook-form";
+import { useForm, useWatch, FormProvider, Controller, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
@@ -129,6 +129,24 @@ interface ActivateSubaccountDialogProps {
   organization: Organization;
 }
 
+/**
+ * O parceiro devolve o erro como frase ("O email x já está em uso.", "CPF/CNPJ
+ * inválido."); pelo que a frase cita, o erro vai para o campo certo.
+ */
+function fieldOfActivationError(message: string): FieldPath<FormValues> | null {
+  const text = message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (/\be-?mail\b/.test(text)) return "email";
+  if (/\b(cpf|cnpj)\b/.test(text)) return "cpfCnpj";
+  if (/\b(telefone|celular|phone)\b/.test(text)) return "mobilePhone";
+  if (/\bcep\b|postal/.test(text)) return "address.postalCode";
+  if (/\bnascimento\b|birth/.test(text)) return "birthDate";
+  if (/\b(renda|faturamento|income)\b/.test(text)) return "incomeValueCents";
+  return null;
+}
+
 export function ActivateSubaccountDialog({
   open,
   onOpenChange,
@@ -203,7 +221,11 @@ export function ActivateSubaccountDialog({
       });
 
       if (!res.success) {
-        toast.error(res.error || "Não foi possível ativar a conta.");
+        const message = res.error || "Não foi possível ativar a conta.";
+        // Erro que fala de um campo (e-mail em uso, CPF invalido...) vai para o campo, com foco (01/11/2026).
+        const field = fieldOfActivationError(message);
+        if (field) form.setError(field, { type: "server", message }, { shouldFocus: true });
+        else toast.error(message);
         return;
       }
 
