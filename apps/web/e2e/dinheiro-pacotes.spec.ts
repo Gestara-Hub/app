@@ -90,7 +90,15 @@ test.describe("catálogo", () => {
     await dialog.getByLabel("Nome").fill("10 aulas de Jiu-Jitsu");
     await dialog.getByLabel("Quantidade de aulas").fill("10");
     await dialog.getByLabel("Valor").fill("50000");
-    await pickField(page, dialog, "Validade", "30 dias");
+    // Validade e campo aberto com atalhos (31/10/2026): o atalho preenche; o campo aceita qualquer valor.
+    await dialog.getByLabel("Validade").fill("731");
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialog.getByText("A validade vai de 1 a 730 dias.")).toBeVisible();
+    await dialog.getByLabel("Validade").fill("45");
+    await expect(dialog.getByRole("button", { name: "30 dias" })).toHaveAttribute("aria-pressed", "false");
+    await dialog.getByRole("button", { name: "30 dias" }).click();
+    await expect(dialog.getByLabel("Validade")).toHaveValue("30");
+    await expect(dialog.getByRole("button", { name: "30 dias" })).toHaveAttribute("aria-pressed", "true");
     await dialog.getByRole("combobox", { name: "Turmas" }).click();
     await page.getByRole("option", { name: "Jiu-Jitsu Adulto" }).click();
     await page.keyboard.press("Escape");

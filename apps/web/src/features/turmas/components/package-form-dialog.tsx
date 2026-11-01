@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
@@ -14,7 +14,6 @@ import {
   InputNumber,
   InputText,
   MultiSelectField,
-  SelectField,
   SwitchField,
   type MultiSelectOption,
 } from "@/components/form";
@@ -32,14 +31,14 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { useCreateLessonPackage, useUpdateLessonPackage } from "../hooks/use-packages";
 import { useClassGroups } from "../hooks/use-turmas";
 
-/** Validade em dias ("none" = sem validade). */
-export const VALIDITY_OPTIONS = [
-  { value: "none", label: "Sem validade" },
-  { value: "30", label: "30 dias" },
-  { value: "60", label: "60 dias" },
-  { value: "90", label: "90 dias" },
-  { value: "180", label: "180 dias" },
-  { value: "365", label: "1 ano" },
+/** Validade em dias: campo aberto (1 a 730) com atalhos; vazio = sem validade (decisao de 31/10/2026). */
+export const MAX_VALIDITY_DAYS = 730;
+export const VALIDITY_SHORTCUTS = [
+  { days: 30, label: "30 dias" },
+  { days: 60, label: "60 dias" },
+  { days: 90, label: "90 dias" },
+  { days: 180, label: "180 dias" },
+  { days: 365, label: "1 ano" },
 ];
 
 const schema = z.object({
@@ -53,17 +52,16 @@ const schema = z.object({
     .number({ error: "Informe um valor válido." })
     .int("Informe um valor válido.")
     .min(1, "Informe um valor maior que zero."),
-  validity: z.string(),
+  validityDays: z
+    .number()
+    .int(`A validade vai de 1 a ${MAX_VALIDITY_DAYS} dias.`)
+    .min(1, `A validade vai de 1 a ${MAX_VALIDITY_DAYS} dias.`)
+    .max(MAX_VALIDITY_DAYS, `A validade vai de 1 a ${MAX_VALIDITY_DAYS} dias.`)
+    .nullable(),
   classGroupIds: z.array(z.string()),
   absenceConsumes: z.boolean(),
 });
 type PackageFormValues = z.infer<typeof schema>;
-
-/** Validade guardada que nao esta na lista (dado antigo) aparece como opcao propria. */
-function validityOptions(current?: number) {
-  if (!current || VALIDITY_OPTIONS.some((o) => o.value === String(current))) return VALIDITY_OPTIONS;
-  return [...VALIDITY_OPTIONS, { value: String(current), label: `${current} dias` }];
-}
 
 /** Turmas que aceitam pacote: de pacote ou de mensalidade (curso e sem cobranca, nunca). */
 function acceptsPackages(g: ClassGroupView): boolean {
@@ -108,7 +106,7 @@ function PackageForm({
           name: pkg.name,
           lessons: pkg.lessons,
           priceCents: pkg.priceCents,
-          validity: pkg.validityDays ? String(pkg.validityDays) : "none",
+          validityDays: pkg.validityDays ?? null,
           classGroupIds: initialClassIds(pkg, classes),
           absenceConsumes: pkg.absenceConsumes,
         }
@@ -116,18 +114,20 @@ function PackageForm({
           name: "",
           lessons: 10,
           priceCents: 0,
-          validity: "none",
+          validityDays: null,
           classGroupIds: [],
           absenceConsumes: true,
         },
   });
+
+  const validityDays = useWatch({ control: form.control, name: "validityDays" });
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateLessonPackage = {
       name: values.name.trim(),
       lessons: values.lessons,
       priceCents: values.priceCents,
-      validityDays: values.validity === "none" ? undefined : Number(values.validity),
+      validityDays: values.validityDays ?? undefined,
       classGroupIds: values.classGroupIds,
       // A escolha agora e por turma; modalidade fica so no dado antigo.
       modalityIds: [],
@@ -170,14 +170,33 @@ function PackageForm({
             />
             <InputCurrency<PackageFormValues> name="priceCents" label="Valor" required disabled={pending} />
           </div>
-          <SelectField<PackageFormValues>
-            name="validity"
-            label="Validade"
-            options={validityOptions(pkg?.validityDays)}
-            clearable={false}
-            hint="Vencido, o saldo é perdido."
-            disabled={pending}
-          />
+          <div className="space-y-1.5">
+            <InputNumber<PackageFormValues>
+              name="validityDays"
+              label="Validade"
+              placeholder="Sem validade"
+              min={1}
+              max={MAX_VALIDITY_DAYS}
+              suffix="dias"
+              hint={`Vazio = sem validade. De 1 a ${MAX_VALIDITY_DAYS} dias. Vencido, o saldo é perdido.`}
+              disabled={pending}
+            />
+            {/* Atalhos para o caso comum; o campo aberto resolve o resto (45 dias, 2 meses...). */}
+            <div className="flex flex-wrap gap-1" aria-label="Atalhos">
+              {VALIDITY_SHORTCUTS.map((shortcut) => (
+                <button
+                  key={shortcut.days}
+                  type="button"
+                  disabled={pending}
+                  aria-pressed={validityDays === shortcut.days}
+                  onClick={() => form.setValue("validityDays", shortcut.days, { shouldDirty: true, shouldValidate: form.formState.isSubmitted })}
+                  className="inline-flex cursor-pointer items-center rounded-md border bg-muted/60 px-2 py-1 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {shortcut.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <MultiSelectField<PackageFormValues>
             name="classGroupIds"
             label="Turmas"
