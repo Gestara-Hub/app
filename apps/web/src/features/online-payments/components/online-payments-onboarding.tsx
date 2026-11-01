@@ -60,9 +60,11 @@ export function OnlinePaymentsOnboarding({
         <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-card p-6 md:p-8">
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {/* O nome da tela vive aqui ate a conta ser ativada (sem cabecalho repetido). */}
+              <p className="text-xs font-semibold tracking-wider text-primary uppercase">Recebimentos online</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Pix e cartão com baixa automática
-              </h2>
+              </h1>
               <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
                 O aluno paga pelo celular; a cobrança baixa sozinha. Sem conferir extrato, sem marcar pago.
               </p>

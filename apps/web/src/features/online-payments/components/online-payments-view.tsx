@@ -125,7 +125,8 @@ export function OnlinePaymentsView() {
 
   return (
     <>
-      {/* A linha de saldos, historico e saques so faz sentido com a conta ativa; antes, o hero apresenta a tela. */}
+      {/* Antes de ativar, o titulo mora no hero (01/11/2026); o cabecalho so entra com a conta ativa ou em analise (traz a etiqueta). */}
+      {isSubaccountActive || showPendingBadge(onlineSettings?.gatewayStatus) ? (
       <PageHeader
         title="Recebimentos online"
         description={isSubaccountActive ? "Saldos das mensalidades, histórico de cobranças e saques via Pix." : undefined}
@@ -164,6 +165,7 @@ export function OnlinePaymentsView() {
           ) : null}
         </div>
       </PageHeader>
+      ) : null}
 
       {!isSubaccountActive ? (
         <OnlinePaymentsOnboarding
