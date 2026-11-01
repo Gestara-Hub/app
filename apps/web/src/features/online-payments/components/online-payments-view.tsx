@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   ArrowUpRight,
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { SubaccountPanel } from "./subaccount-panel";
 import { OnlinePaymentsOnboarding } from "./online-payments-onboarding";
 import { OnlinePaymentsSettingsTab } from "./online-payments-settings-tab";
+import { ProductTour, type TourStep } from "@/components/shared/product-tour";
 import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
 import { OnlinePaymentsRefresh } from "./online-payments-refresh";
 import { useSubaccountBalance } from "../hooks/use-online-payments";
@@ -46,6 +47,68 @@ type OnlinePaymentsTab = "carteira" | "configuracoes";
 /** O selo "Ativação pendente" só depois de o dono ter começado a ativação (achado 5). */
 function showPendingBadge(status: string | undefined): boolean {
   return status === "pending";
+}
+
+/** Tour da tela logo depois de ativar a conta (01/11/2026): uma vez por navegador. */
+const TOUR_SEEN_KEY = "gestarahub_tour_online_payments";
+const noopSubscribe = () => () => {};
+function readTourSeen(): boolean {
+  try {
+    return window.localStorage.getItem(TOUR_SEEN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+/** Um passo por aba e por funcao da tela, uma frase cada. */
+function tourSteps(options: { canWithdraw: boolean; canStatement: boolean }): TourStep[] {
+  const steps: TourStep[] = [
+    {
+      target: '[data-tour="op-tab-wallet"]',
+      title: "Carteira & Extrato",
+      body: "Saldo, pagamentos recebidos e saques, tudo nesta aba.",
+    },
+    {
+      target: '[data-tour="op-available"]',
+      title: "Disponível para saque",
+      body: "Dinheiro já liberado. Pix e boleto liberam na hora.",
+    },
+    {
+      target: '[data-tour="op-pending"]',
+      title: "A liberar",
+      body: "Cartão de crédito espera cerca de 32 dias e cai aqui antes.",
+    },
+    {
+      target: '[data-tour="op-received"]',
+      title: "Recebido no mês",
+      body: "Líquido do período, já sem as taxas.",
+    },
+    {
+      target: '[data-tour="op-history"]',
+      title: "Histórico",
+      body: "Cada Pix e link pago, com taxas e líquido. Em Saques, as transferências.",
+    },
+  ];
+  if (options.canWithdraw) {
+    steps.push({
+      target: '[data-tour="op-withdraw"]',
+      title: "Sacar via Pix",
+      body: "Leva o saldo disponível para a sua conta. 30 saques grátis por mês.",
+    });
+  }
+  if (options.canStatement) {
+    steps.push({
+      target: '[data-tour="op-statement"]',
+      title: "Extrato em PDF",
+      body: "Extrato mensal da conta, pronto para a contabilidade.",
+    });
+  }
+  steps.push({
+    target: '[data-tour="op-tab-settings"]',
+    title: "Configurações",
+    body: "Chave Pix do saque, validade do Pix, formas aceitas e repasse das taxas ao aluno.",
+  });
+  return steps;
 }
 
 export function OnlinePaymentsView() {
@@ -67,6 +130,17 @@ export function OnlinePaymentsView() {
   const canManage = can("finance:manage");
   const orgQuery = useOrganization();
   const [quickTransferOpen, setQuickTransferOpen] = useState(false);
+  // Tour: lido so no navegador (no servidor conta como visto, sem diferenca de hidratacao).
+  const tourSeen = useSyncExternalStore(noopSubscribe, readTourSeen, () => true);
+  const [tourClosed, setTourClosed] = useState(false);
+  const closeTour = () => {
+    try {
+      window.localStorage.setItem(TOUR_SEEN_KEY, "1");
+    } catch {
+      // sem localStorage: o tour pode voltar, sem prejuizo
+    }
+    setTourClosed(true);
+  };
 
   const org = orgQuery.data;
   const balanceQuery = useSubaccountBalance(org?.id);
@@ -146,6 +220,7 @@ export function OnlinePaymentsView() {
 
               {canManage ? (
                 <Button
+                  data-tour="op-withdraw"
                   onClick={() => setQuickTransferOpen(true)}
                   disabled={availableCents <= 0}
                   className="gap-1.5 shadow-xs"
@@ -184,6 +259,7 @@ export function OnlinePaymentsView() {
               <button
                 type="button"
                 role="tab"
+                data-tour="op-tab-wallet"
                 aria-selected={tab === "carteira"}
                 onClick={() => setTab("carteira")}
                 className={cn(
@@ -200,6 +276,7 @@ export function OnlinePaymentsView() {
               <button
                 type="button"
                 role="tab"
+                data-tour="op-tab-settings"
                 aria-selected={tab === "configuracoes"}
                 onClick={() => setTab("configuracoes")}
                 className={cn(
@@ -226,6 +303,15 @@ export function OnlinePaymentsView() {
               canManage={canManage}
             />
           )}
+
+          {/* Logo depois de ativar: um passo por aba e por funcao, uma vez por navegador. */}
+          {tab === "carteira" && !tourSeen && !tourClosed ? (
+            <ProductTour
+              steps={tourSteps({ canWithdraw: canManage, canStatement: can("finance:view") })}
+              onClose={closeTour}
+              mobileMenuStep={false}
+            />
+          ) : null}
 
           {/* Quick Transfer Dialog from header */}
           <SubaccountTransferDialog
@@ -255,7 +341,7 @@ function StatementMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-1.5">
+        <Button variant="outline" className="gap-1.5" data-tour="op-statement">
           <FileText className="size-4" />
           Extrato em PDF
           {/* A seta mostra que ha escolha de mes (achado 63). */}

@@ -84,6 +84,8 @@ export const test = base.extend<{
             for (const key of keys) localStorage.setItem(`gestarahub_coachmark_view_mode_${key}`, "1");
             // Tour das abas de Planos e pacotes (primeiro acesso pela configuracao inicial).
             localStorage.setItem("gestarahub_tour_plans_tabs", "1");
+            // Tour de Recebimentos online (logo depois de ativar a conta).
+            localStorage.setItem("gestarahub_tour_online_payments", "1");
           } catch {
             // about:blank e afins nao tem localStorage
           }

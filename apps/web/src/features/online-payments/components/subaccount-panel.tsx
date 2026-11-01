@@ -145,7 +145,7 @@ export function SubaccountPanel({
       {/* Métricas Principais (Cards limpos) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* Saldo Disponível */}
-        <div className="flex flex-col justify-between rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+        <div data-tour="op-available" className="flex flex-col justify-between rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-emerald-800 dark:text-emerald-300">
               <span>Disponível para saque</span>
@@ -167,7 +167,7 @@ export function SubaccountPanel({
         </div>
 
         {/* Saldo a Compensar */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
+        <div data-tour="op-pending" className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
               <span>A liberar (cartão)</span>
@@ -190,7 +190,7 @@ export function SubaccountPanel({
         </div>
 
         {/* Total Recebido Líquido */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
+        <div data-tour="op-received" className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
               <span>{period.preset === "this_month" ? "Recebido no mês" : "Recebido no período"}</span>
@@ -214,7 +214,7 @@ export function SubaccountPanel({
 
       {/* Extrato e Movimentações */}
       <Card className="border-border/70 shadow-xs">
-        <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader data-tour="op-history" className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base font-semibold">
             Histórico de Movimentações
           </CardTitle>
