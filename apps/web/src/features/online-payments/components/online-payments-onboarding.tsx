@@ -137,30 +137,39 @@ export function OnlinePaymentsOnboarding({
   );
 }
 
-/** O fluxo em tres cartoes leves: a mensalidade, o Pix pago, a baixa. */
+/** O fluxo em tres cartoes alinhados, ligados por uma linha vertical: a mensalidade, o Pix pago, a baixa. */
 function FlowIllustration() {
   return (
     <div aria-hidden className="hidden lg:block">
-      <div className="mx-auto max-w-xs space-y-2">
-        <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3 shadow-sm">
-          <p className="text-[11px] text-muted-foreground">Mensalidade de novembro</p>
-          <p className="text-base font-semibold text-foreground">R$ 150,00</p>
-        </div>
-        <div className="ml-6 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 shadow-sm">
-          <QrCode className="size-5 text-emerald-600 dark:text-emerald-400" />
-          <div>
+      <ol className="relative mx-auto max-w-xs space-y-3 before:absolute before:top-5 before:bottom-5 before:left-[1.35rem] before:w-px before:bg-border">
+        <li className="relative flex items-center gap-3 rounded-xl border border-border/70 bg-background/80 px-4 py-3 shadow-sm">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+            <Receipt className="size-3.5 text-muted-foreground" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted-foreground">Mensalidade de novembro</p>
+            <p className="text-sm font-semibold text-foreground">R$ 150,00</p>
+          </div>
+        </li>
+        <li className="relative flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 shadow-sm">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-background">
+            <QrCode className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          </span>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Aluno pagou pelo Pix</p>
             <p className="text-[11px] text-muted-foreground">hoje, 19:42</p>
           </div>
-        </div>
-        <div className="ml-12 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm">
-          <CheckCircle2 className="size-5 text-primary" />
-          <div>
+        </li>
+        <li className="relative flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-background">
+            <CheckCircle2 className="size-3.5 text-primary" />
+          </span>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Cobrança baixada</p>
             <p className="text-[11px] text-muted-foreground">sem você fazer nada</p>
           </div>
-        </div>
-      </div>
+        </li>
+      </ol>
     </div>
   );
 }
