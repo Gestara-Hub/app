@@ -1,7 +1,7 @@
 import { deletePayment, getPayment } from "@/lib/asaas";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { settleAsaasPayment } from "./asaasSettlement";
-import { auditOnlinePaymentConflict } from "./onlinePaymentAudit";
+import { auditOnlinePaymentConflict, auditOnlinePaymentPaid } from "./onlinePaymentAudit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { realSubaccountKey } from "./gatewaySetup";
 import { logError, logWarn } from "@/lib/log";
@@ -205,7 +205,10 @@ async function settlePaidAtGateway(gatewayPaymentId: string, apiKey: string): Pr
     if (result?.conflict) {
       logWarn(`[gatewayAccount] Pagamento ${gatewayPaymentId} recebido de cobrança que não estava em aberto (${result.conflict}).`);
       await auditOnlinePaymentConflict(createSupabaseAdminClient(), result.payment, result.conflict);
+      return;
     }
+    // A baixa feita aqui (antes de o webhook chegar) tambem entra na Auditoria, como a do webhook (01/11/2026).
+    if (result?.newlyPaid) await auditOnlinePaymentPaid(createSupabaseAdminClient(), result.payment);
   } catch (error) {
     logError("[gatewayAccount] Não foi possível dar baixa no pagamento já pago no Asaas:", error);
   }
