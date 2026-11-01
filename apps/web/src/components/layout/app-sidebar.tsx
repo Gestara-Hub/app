@@ -289,8 +289,9 @@ export function AppSidebar() {
               <SidebarSeparator className="hidden group-data-[collapsible=icon]:block opacity-40" />
             ) : null}
             <SidebarGroup className="py-1" data-tour={section.tourId}>
+              {/* Recolhida, a etiqueta some de verdade: invisivel (opacity-0) ela ficava sobre o primeiro item, com cursor de texto, roubando o clique. */}
               {section.label ? (
-                <SidebarGroupLabel className="h-6 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/50">
+                <SidebarGroupLabel className="h-6 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
                   {section.label}
                 </SidebarGroupLabel>
               ) : null}
