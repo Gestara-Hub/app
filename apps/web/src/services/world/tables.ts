@@ -91,6 +91,7 @@ const DB_ONLY: Record<string, string[]> = {
     "gateway_fees_synced_at",
     "gateway_webhook_url",
     "certificate_template",
+    "graduation_certificate_template",
   ],
 };
 

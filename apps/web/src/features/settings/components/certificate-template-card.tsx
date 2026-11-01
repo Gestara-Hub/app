@@ -4,11 +4,11 @@ import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
-import { Award, Check, CircleHelp, FileText, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Award, Check, CircleHelp, FileText, GraduationCap, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { isSupabaseOrganization } from "@/lib/session";
 import { logError } from "@/lib/log";
 import { useCallback, useState, type ReactNode } from "react";
-import type { CertificateBlock, CertificateLogoSize, CertificatePart, CertificateQrSize, CertificateTemplate, Id } from "@gestarahub/contracts";
+import type { CertificateBlock, CertificateKind, CertificateLogoSize, CertificatePart, CertificateQrSize, CertificateTemplate, Id } from "@gestarahub/contracts";
 import type { FieldErrors } from "react-hook-form";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import {
@@ -21,11 +21,12 @@ import {
   CERTIFICATE_LIMITS,
   CERTIFICATE_PARTS,
   CERTIFICATE_TEXT_POSITIONS,
-  CERTIFICATE_VARIABLES,
   certificateTemplateFromPreset,
+  certificateVariablesFor,
   defaultCertificateTemplate,
+  defaultGraduationCertificateTemplate,
   validateCertificateTemplate,
-  type CertificateVariable,
+  type CertificateVariableName,
 } from "@gestarahub/core/certificate";
 import { todayISO } from "@gestarahub/core/date";
 import {
@@ -50,18 +51,22 @@ import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useCompletedEnrollments, usePreviewCourseCertificate } from "@/features/turmas";
+import { useGraduations, usePreviewGraduationCertificate } from "@/features/clients";
+import { PageTabs } from "@/components/shared/page-tabs";
 import { openHelp } from "@/features/support";
 import {
   ACCENT_COLORS,
+  CERTIFICATE_KIND_OPTIONS,
   CertificatePresetGallery,
   CertificateSheet,
   INK_OPTIONS,
   LAYOUT_OPTIONS,
   PART_LABELS,
   TEXT_POSITION_OPTIONS,
-  VARIABLE_LABELS,
   matchingCertificatePreset,
   sampleCertificate,
+  sampleGraduationCertificate,
+  variableLabel,
   type CertificatePresetOption,
   useCertificateTemplate,
   useLocalFileUrl,
@@ -88,8 +93,8 @@ const SIGNER_NAMES: Record<Exclude<Signer, "custom">, string> = {
   teacher: "{professor}",
   space: "{empresa}",
 };
-const SIGNER_OPTIONS: { value: Signer; label: string }[] = [
-  { value: "teacher", label: "Professor da turma" },
+const signerOptions = (kind: CertificateKind): { value: Signer; label: string }[] => [
+  { value: "teacher", label: kind === "graduation" ? "Examinador ou professor" : "Professor da turma" },
   { value: "space", label: "Nome do espaço" },
   { value: "custom", label: "Outro nome" },
 ];
@@ -101,7 +106,7 @@ function signerOf(name: string): Signer {
   return "custom";
 }
 
-const schema = z
+const schemaFor = (kind: CertificateKind) => z
   .object({
     layout: z.enum(CERTIFICATE_LAYOUTS),
     accentColor: z.enum(CERTIFICATE_ACCENT_COLORS),
@@ -131,10 +136,13 @@ const schema = z
   // Mesmas regras do servico (titulo, texto, assinaturas, variaveis e arte), numa fonte so.
   .superRefine((values, ctx) => {
     const hasArtwork = values.keepArtwork || values.artwork.length > 0;
-    const issues = validateCertificateTemplate({
-      ...values,
-      artwork: artworkOf(values, hasArtwork ? "pending" : ""),
-    });
+    const issues = validateCertificateTemplate(
+      {
+        ...values,
+        artwork: artworkOf(values, hasArtwork ? "pending" : ""),
+      },
+      kind,
+    );
     for (const issue of issues) {
       // Os ajustes da arte sao campos soltos no formulario (`artwork.hidden` -> `hidden`);
       // "artwork" sozinho e o campo do arquivo.
@@ -146,7 +154,7 @@ const schema = z
       });
     }
   });
-type Values = z.infer<typeof schema>;
+type Values = z.infer<ReturnType<typeof schemaFor>>;
 
 function toValues(template: CertificateTemplate): Values {
   return {
@@ -219,11 +227,13 @@ export function CertificateTemplateCard({
 }) {
   const hasFeature = useHasFeature();
   const can = useCan();
+  // Curso ou graduacao (doc 21 §1.6): cada tipo tem modelo, "Vale para" e modelos prontos proprios.
+  const [kind, setKind] = useState<CertificateKind>("course");
   const [modalityId, setModalityId] = useState<Id | undefined>(undefined);
-  const query = useCertificateTemplate(modalityId);
+  const query = useCertificateTemplate(modalityId, kind);
   const modalities = useCategories({ status: "active" });
-  const own = useModalitiesWithOwnTemplate();
-  const removeOwn = useRemoveModalityTemplate();
+  const own = useModalitiesWithOwnTemplate(kind);
+  const removeOwn = useRemoveModalityTemplate(kind);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Trocar de modalidade com alteracao nao salva pergunta antes (o formulario recomeca).
   // Memorizado: o formulario reage a troca do callback (uma funcao nova a cada
@@ -253,6 +263,21 @@ export function CertificateTemplateCard({
     setModalityId(next);
   }
 
+  async function changeKind(next: CertificateKind) {
+    if (next === kind) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: "Alterações não salvas",
+        description: "Trocar o tipo de certificado descarta o que você mudou aqui.",
+        confirmLabel: "Trocar mesmo assim",
+        cancelLabel: "Continuar editando",
+        highlightAction: "cancel",
+      });
+      if (!ok) return;
+    }
+    setKind(next);
+  }
+
   async function backToSpaceTemplate() {
     if (!modalityId) return;
     const name = modalities.data?.find((c) => c.id === modalityId)?.name ?? "a modalidade";
@@ -270,6 +295,15 @@ export function CertificateTemplateCard({
   }
 
   const ownIds = new Set(own.data ?? []);
+  const kindTabs = (
+    <PageTabs
+      tabs={CERTIFICATE_KIND_OPTIONS.map((o) => ({ value: o.value, label: o.label, icon: o.value === "graduation" ? GraduationCap : Award }))}
+      value={kind}
+      onChange={(value) => void changeKind(value)}
+      label="Tipo de certificado"
+      idPrefix="certificate-kind"
+    />
+  );
   const scopePicker = (
     <div className="flex flex-wrap items-end gap-3">
       <div className="min-w-56 space-y-1.5">
@@ -330,6 +364,7 @@ export function CertificateTemplateCard({
     // Mesma forma da tela carregada: "Vale para", coluna estreita de cartoes e a previa grande.
     return (
       <div className="space-y-4" aria-busy>
+        {kindTabs}
         <div className="space-y-1.5">
           <p className="text-sm font-medium leading-none">Vale para</p>
           <Skeleton className="h-9 w-56 rounded-md" />
@@ -366,10 +401,12 @@ export function CertificateTemplateCard({
 
   return (
     <div className="space-y-4">
+      {kindTabs}
       {scopePicker}
       {confirmDialog}
       <CertificateTemplateForm
-        key={`${modalityId ?? SPACE}:${query.data.updatedAt ?? "default"}:${ownIds.has(modalityId ?? "") ? "own" : "space"}`}
+        key={`${kind}:${modalityId ?? SPACE}:${query.data.updatedAt ?? "default"}:${ownIds.has(modalityId ?? "") ? "own" : "space"}`}
+        kind={kind}
         template={query.data}
         modalityId={modalityId}
         onDirtyChange={reportDirty}
@@ -378,8 +415,8 @@ export function CertificateTemplateCard({
   );
 }
 
-/** Variaveis do texto, para o campo destacar e sugerir ao digitar "{". */
-const VARIABLE_TOKENS = CERTIFICATE_VARIABLES.map((key) => ({ key, label: VARIABLE_LABELS[key] }));
+/** Variaveis do texto do tipo, para o campo destacar e sugerir ao digitar "{". */
+const variableTokens = (kind: CertificateKind) => certificateVariablesFor(kind).map((key) => ({ key, label: variableLabel(key, kind) }));
 
 /** Bloco do editor: cartao que abre e fecha pelo titulo (os ajustes ficam recolhidos). */
 function EditorBlock({ value, title, hint, children }: { value: string; title: string; hint: string; children: ReactNode }) {
@@ -438,15 +475,19 @@ function AccentColorPicker({
 }
 
 function CertificateTemplateForm({
+  kind,
   template,
   modalityId,
   onDirtyChange,
 }: {
+  /** Curso ou graduacao: muda variaveis, dados de exemplo e modelos prontos. */
+  kind: CertificateKind;
   template: CertificateTemplate;
   /** Modelo so desta modalidade; sem ele, o do espaco. */
   modalityId?: Id;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const graduation = kind === "graduation";
   const save = useSaveCertificateTemplate();
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const { data: organization } = useOrganization();
@@ -454,6 +495,7 @@ function CertificateTemplateForm({
   // "Ver em PDF": so na conta real (o PDF sai do servidor); na demonstracao fica a previa da tela.
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const [previewing, setPreviewing] = useState(false);
+  const [schema] = useState(() => schemaFor(kind));
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
@@ -498,19 +540,21 @@ function CertificateTemplateForm({
     });
 
   const address = unit?.address;
-  // "Previa com": dados de exemplo ou um aluno concluido de verdade (nome e curso compridos aparecem aqui).
-  const [previewEnrollmentId, setPreviewEnrollmentId] = useState<string | undefined>(undefined);
-  const completed = useCompletedEnrollments();
-  const realPreview = usePreviewCourseCertificate(previewEnrollmentId);
-  const sample =
-    (previewEnrollmentId ? realPreview.data : undefined) ??
-    sampleCertificate({
-      organizationName: organization?.name,
-      city: typeof address === "object" ? address?.city : undefined,
-      today: todayISO(),
-    });
+  // "Previa com": dados de exemplo ou um aluno de verdade (matricula concluida no curso; graduacao registrada na graduacao).
+  const [previewId, setPreviewId] = useState<string | undefined>(undefined);
+  const completed = useCompletedEnrollments(!graduation);
+  const graduations = useGraduations(graduation);
+  const previewGraduation = graduation ? graduations.data?.find((g) => g.promotionId === previewId) : undefined;
+  const realPreview = usePreviewCourseCertificate(graduation ? undefined : previewId);
+  const realGraduationPreview = usePreviewGraduationCertificate(previewGraduation?.studentId, previewGraduation?.promotionId);
+  const sampleInput = { organizationName: organization?.name, city: typeof address === "object" ? address?.city : undefined, today: todayISO() };
+  const realData = graduation ? realGraduationPreview.data : realPreview.data;
+  const sample = (previewId ? realData : undefined) ?? (graduation ? sampleGraduationCertificate(sampleInput) : sampleCertificate(sampleInput));
+  const previewOptions: { value: string; label: string }[] = graduation
+    ? (graduations.data ?? []).map((g) => ({ value: g.promotionId, label: `${g.studentName} · ${g.levelName}` }))
+    : (completed.data ?? []).map((o) => ({ value: o.enrollmentId, label: `${o.studentName} · ${o.courseName}` }));
 
-  const selectedPreset = matchingCertificatePreset(values)?.id;
+  const selectedPreset = matchingCertificatePreset(values, kind)?.id;
   /** Galeria: preenche layout, cor, titulo, texto e cargos; logo e arte ficam. */
   function applyPreset(option: CertificatePresetOption) {
     const next = certificateTemplateFromPreset(option.preset, teacherTitle);
@@ -524,7 +568,7 @@ function CertificateTemplateForm({
   }
 
   // Insere a variavel onde esta o cursor do texto (ou no fim).
-  function insertVariable(variable: CertificateVariable) {
+  function insertVariable(variable: CertificateVariableName) {
     const token = `{${variable}}`;
     const el = document.getElementById(BODY_ID) as HTMLTextAreaElement | null;
     const body = form.getValues("body");
@@ -559,6 +603,7 @@ function CertificateTemplateForm({
         logoFile: v.logo[0],
         artworkFile: v.layout === "custom" ? v.artwork[0] : undefined,
         modalityId,
+        kind,
       });
       toast.success("Modelo de certificado salvo.");
       form.reset(toValues(saved));
@@ -568,7 +613,9 @@ function CertificateTemplateForm({
   }, openErrorBlocks);
 
   // Volta o titulo e o texto padrao da area no rascunho; quem grava e o "Salvar" da barra.
-  const areaDefault = defaultCertificateTemplate(teacherTitle, organization?.classSegment);
+  const areaDefault = graduation
+    ? defaultGraduationCertificateTemplate(teacherTitle, organization?.classSegment)
+    : defaultCertificateTemplate(teacherTitle, organization?.classSegment);
   async function restoreDefaultText() {
     const ok = await confirm({
       title: "Voltar ao texto padrão?",
@@ -598,7 +645,10 @@ function CertificateTemplateForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          enrollmentId: previewEnrollmentId,
+          kind,
+          ...(graduation
+            ? { studentId: previewGraduation?.studentId, promotionId: previewGraduation?.promotionId }
+            : { enrollmentId: previewId }),
           template: {
             layout: v.layout,
             accentColor: v.accentColor,
@@ -643,6 +693,7 @@ function CertificateTemplateForm({
             >
               <CertificatePresetGallery
                 sample={sample}
+                kind={kind}
                 segment={organization?.classSegment}
                 teacherTitle={teacherTitle}
                 logoUrl={logoUrl}
@@ -870,12 +921,12 @@ function CertificateTemplateForm({
                     placeholder="Escreva o texto do certificado"
                     hint={`Digite { para escolher um dado do aluno. Trecho sem informação sai do texto. Até ${CERTIFICATE_LIMITS.body} caracteres.`}
                     disabled={pending}
-                    tokens={VARIABLE_TOKENS}
+                    tokens={variableTokens(kind)}
                   />
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Inserir no texto</p>
                     <div className="flex flex-wrap gap-1" aria-label="Inserir no texto">
-                      {CERTIFICATE_VARIABLES.map((variable) => (
+                      {certificateVariablesFor(kind).map((variable) => (
                         <button
                           key={variable}
                           type="button"
@@ -884,22 +935,28 @@ function CertificateTemplateForm({
                           className="inline-flex cursor-pointer items-center gap-0.5 rounded-md border bg-muted/60 px-2 py-1 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Plus className="size-3" aria-hidden />
-                          {VARIABLE_LABELS[variable]}
+                          {variableLabel(variable, kind)}
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
-                <SwitchField<Values>
-                  name="showAttendance"
-                  label="Mostrar frequência"
-                  hint="Inclui a frequência no texto."
-                  disabled={pending}
-                />
+                {!graduation ? (
+                  <SwitchField<Values>
+                    name="showAttendance"
+                    label="Mostrar frequência"
+                    hint="Inclui a frequência no texto."
+                    disabled={pending}
+                  />
+                ) : null}
             </EditorBlock>
 
             <EditorBlock value="signatures" title="Assinaturas" hint="Quem assina e com qual cargo.">
-                <p className="text-xs text-muted-foreground">O professor da turma e o nome do espaço saem de cada curso.</p>
+                <p className="text-xs text-muted-foreground">
+                  {graduation
+                    ? "O examinador da graduação (ou o professor da turma) e o nome do espaço saem de cada registro."
+                    : "O professor da turma e o nome do espaço saem de cada curso."}
+                </p>
                 {signatures.fields.map((field, index) => {
                   const signer = signerOf(values.signatures?.[index]?.name ?? "");
                   return (
@@ -923,7 +980,7 @@ function CertificateTemplateForm({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {SIGNER_OPTIONS.map((option) => (
+                            {signerOptions(kind).map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                               </SelectItem>
@@ -984,16 +1041,16 @@ function CertificateTemplateForm({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-foreground">Prévia</p>
-                {(completed.data?.length ?? 0) > 0 ? (
-                  <Select value={previewEnrollmentId ?? SAMPLE} onValueChange={(v) => setPreviewEnrollmentId(v === SAMPLE ? undefined : v)}>
+                {previewOptions.length > 0 ? (
+                  <Select value={previewId ?? SAMPLE} onValueChange={(v) => setPreviewId(v === SAMPLE ? undefined : v)}>
                     <SelectTrigger aria-label="Prévia com" className="h-8 w-auto min-w-44 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SAMPLE}>Dados de exemplo</SelectItem>
-                      {completed.data!.map((option) => (
-                        <SelectItem key={option.enrollmentId} value={option.enrollmentId}>
-                          {option.studentName} · {option.courseName}
+                      {previewOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1021,7 +1078,7 @@ function CertificateTemplateForm({
             />
             </div>
             <p className="text-xs text-muted-foreground">
-              {previewEnrollmentId && realPreview.data ? "Dados de verdade, como sairiam agora." : "Dados de exemplo."}
+              {previewId && realData ? "Dados de verdade, como sairiam agora." : "Dados de exemplo."}
             </p>
           </div>
         </div>

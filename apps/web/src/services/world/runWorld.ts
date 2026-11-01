@@ -239,6 +239,7 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     store[loaded.collection.key] = loaded.collection.kind === "single" ? objects[0] : objects;
   }
   store.certificateTemplate = (entry.organizationRow.certificate_template as CertificateTemplate | null) ?? undefined;
+  store.graduationCertificateTemplate = (entry.organizationRow.graduation_certificate_template as CertificateTemplate | null) ?? undefined;
   return {
     store: store as unknown as TenantWorld,
     version,
@@ -357,6 +358,7 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
   }
   const store = sliceWorld(objects, {
     certificateTemplate: (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined,
+    graduationCertificateTemplate: (organizationRow.graduation_certificate_template as CertificateTemplate | null) ?? undefined,
   });
   const rows = collections.reduce((total, loaded) => total + loaded.raw.size, 0);
   return { store, version, unitId, collections, organizationRow, readBuckets: [...readBuckets], source: "recorte", rows };
@@ -394,6 +396,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges & { buc
       const row = toRow(table, object, { organizationId: ctx.organizationId, unitId: world.unitId, loaded: loadedRow });
       if (table === "organizations") {
         row.certificate_template = world.store.certificateTemplate ?? null;
+        row.graduation_certificate_template = world.store.graduationCertificateTemplate ?? null;
       }
       if (table === "online_payments" && row.client_id == null) {
         row.client_id = world.store.charges.find((c) => c.id === object.chargeId)?.studentId ?? null;
@@ -407,7 +410,8 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges & { buc
       const before = loaded.normalized.get(id!)!;
       const certificateChanged =
         table === "organizations" &&
-        canonical(world.organizationRow.certificate_template ?? null) !== canonical(row.certificate_template);
+        (canonical(world.organizationRow.certificate_template ?? null) !== canonical(row.certificate_template) ||
+          canonical(world.organizationRow.graduation_certificate_template ?? null) !== canonical(row.graduation_certificate_template));
       if (!sameRow(table, before, row) || certificateChanged) {
         rowBuckets(collection, loadedRow, buckets);
         rowBuckets(collection, row, buckets);

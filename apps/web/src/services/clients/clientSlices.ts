@@ -30,9 +30,22 @@ export async function oneStudent(studentId: Id, load: SliceLoader): Promise<void
   load.none("auditLog");
 }
 
+/** Certificado de graduacao (doc 21 §1.6): o aluno inteiro e o certificado ja emitido do registro. */
+async function graduationCertificate([studentId, promotionId]: unknown[], load: SliceLoader): Promise<void> {
+  await oneStudent(studentId as Id, load);
+  await load.where("issuedCertificates", "promotionId", [promotionId as Id]);
+}
+
 export const clientSlices: Record<string, MethodSlice> = {
   list: clientsOnly,
   listPaginated: clientsOnly,
+  // Previa do editor com uma graduacao real: todos os alunos (historico), turmas e matriculas (recorte do professor).
+  listGraduations: async (_args, load) => {
+    await Promise.all([load.all("clients"), load.all("categories"), load.all("classGroups"), load.all("enrollments")]);
+  },
+  previewGraduationCertificate: graduationCertificate,
+  getGraduationCertificate: graduationCertificate,
+  cancelGraduationCertificate: graduationCertificate,
 };
 
 export const studentSummarySlices: Record<string, MethodSlice> = {

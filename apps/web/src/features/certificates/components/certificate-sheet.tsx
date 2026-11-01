@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import type { CertificateArtwork, CertificateBlock, CertificatePart, CertificateTemplate, CourseCertificate } from "@gestarahub/contracts";
+import type { AnyCertificate, CertificateArtwork, CertificateBlock, CertificatePart, CertificateTemplate } from "@gestarahub/contracts";
 import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/certificate";
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
@@ -371,7 +371,7 @@ export function CertificateSheet({
   className,
   onBlockMove,
 }: {
-  certificate: CourseCertificate;
+  certificate: AnyCertificate;
   template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures" | "showAttendance"> & {
     artwork?: Omit<CertificateArtwork, "fileId"> & { fileId?: string };
   };

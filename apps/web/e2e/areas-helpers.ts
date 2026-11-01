@@ -308,6 +308,7 @@ const COLLECTIONS = [
 function emptyTenant(t: Tenant) {
   for (const key of COLLECTIONS) t[key] = [];
   delete t.certificateTemplate;
+  delete t.graduationCertificateTemplate;
   delete t.organization.classSegment;
   delete t.organization.customSegmentName;
   delete t.organization.customSegmentProgression;

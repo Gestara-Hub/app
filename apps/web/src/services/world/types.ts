@@ -95,6 +95,8 @@ export interface TenantWorld {
   messageLogs: MessageLog[];
   // Modelo de certificado do espaco (Plano Profissional). Ausente = modelo padrao.
   certificateTemplate?: CertificateTemplate;
+  // Modelo do certificado de graduacao (doc 21 §1.6). Ausente = modelo padrao da area.
+  graduationCertificateTemplate?: CertificateTemplate;
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];
   reservas?: ClassReservation[];

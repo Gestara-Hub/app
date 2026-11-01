@@ -2,34 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
+import type { CertificateKind, CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
 import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { certificatesService } from "@/services/settings/certificatesService";
 
-/** Modelo do espaco, ou o de uma modalidade (o do espaco quando ela nao tem o proprio). */
-export function useCertificateTemplate(modalityId?: Id) {
+/** Modelo do espaco, ou o de uma modalidade (o do espaco quando ela nao tem o proprio), do tipo (curso ou graduacao). */
+export function useCertificateTemplate(modalityId?: Id, kind: CertificateKind = "course") {
   return useQuery({
-    queryKey: queryKeys.certificates.template(modalityId),
-    queryFn: () => certificatesService.getTemplate(modalityId),
+    queryKey: queryKeys.certificates.template(modalityId, kind),
+    queryFn: () => certificatesService.getTemplate(modalityId, kind),
   });
 }
 
-/** Ids das modalidades com modelo proprio (seletor "Vale para"). */
-export function useModalitiesWithOwnTemplate() {
+/** Ids das modalidades com modelo proprio do tipo (seletor "Vale para"). */
+export function useModalitiesWithOwnTemplate(kind: CertificateKind = "course") {
   return useQuery({
-    queryKey: queryKeys.certificates.ownTemplates,
-    queryFn: () => certificatesService.listModalitiesWithOwnTemplate(),
+    queryKey: queryKeys.certificates.ownTemplates(kind),
+    queryFn: () => certificatesService.listModalitiesWithOwnTemplate(kind),
   });
 }
 
 /** Salvar ou restaurar muda os certificados abertos e as modalidades com modelo proprio. */
 function useInvalidateCertificates() {
   const qc = useQueryClient();
-  return (saved: CertificateTemplate, modalityId?: Id) => {
-    qc.setQueryData(queryKeys.certificates.template(modalityId), saved);
-    qc.invalidateQueries({ queryKey: queryKeys.certificates.ownTemplates });
-    qc.invalidateQueries({ queryKey: queryKeys.classes.certificates });
+  return (saved: CertificateTemplate, modalityId?: Id, kind: CertificateKind = "course") => {
+    qc.setQueryData(queryKeys.certificates.template(modalityId, kind), saved);
+    qc.invalidateQueries({ queryKey: queryKeys.certificates.ownTemplates(kind) });
+    qc.invalidateQueries({ queryKey: kind === "graduation" ? queryKeys.clients.graduationCertificates : queryKeys.classes.certificates });
   };
 }
 
@@ -44,12 +44,14 @@ export interface SaveCertificateTemplateInput {
   artworkFile?: File;
   /** Modelo so desta modalidade; sem ele, o do espaco. */
   modalityId?: Id;
+  /** Curso (padrao) ou graduacao. */
+  kind?: CertificateKind;
 }
 
 export function useSaveCertificateTemplate() {
   const invalidate = useInvalidateCertificates();
   return useMutation({
-    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile, modalityId }: SaveCertificateTemplateInput) => {
+    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile, modalityId, kind }: SaveCertificateTemplateInput) => {
       const logoFileId = logoFile ? (await certificatesService.uploadLogo(logoFile)).id : keepLogoFileId;
       const artwork =
         template.layout === "custom" && template.artwork
@@ -62,18 +64,19 @@ export function useSaveCertificateTemplate() {
           ...(artwork ? { artwork } : {}),
         },
         modalityId,
+        kind ?? "course",
       );
     },
-    onSuccess: (saved, { modalityId }) => invalidate(saved, modalityId),
+    onSuccess: (saved, { modalityId, kind }) => invalidate(saved, modalityId, kind ?? "course"),
   });
 }
 
-/** A modalidade volta ao modelo do espaco. */
-export function useRemoveModalityTemplate() {
+/** A modalidade volta ao modelo do espaco (do tipo). */
+export function useRemoveModalityTemplate(kind: CertificateKind = "course") {
   const invalidate = useInvalidateCertificates();
   return useMutation({
-    mutationFn: (modalityId: Id) => certificatesService.removeModalityTemplate(modalityId),
-    onSuccess: (saved, modalityId) => invalidate(saved, modalityId),
+    mutationFn: (modalityId: Id) => certificatesService.removeModalityTemplate(modalityId, kind),
+    onSuccess: (saved, modalityId) => invalidate(saved, modalityId, kind),
   });
 }
 

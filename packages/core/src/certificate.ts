@@ -1,7 +1,10 @@
 import { eachDayOfInterval, format, getDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type {
+  AnyCertificate,
   CertificateAccentColor,
+  CertificateKind,
+  GraduationCertificate,
   CertificateArtwork,
   CertificateBlock,
   CertificateInk,
@@ -126,6 +129,47 @@ export function buildCourseCertificate(input: CourseCertificateInput): CourseCer
   };
 }
 
+export interface GraduationCertificateInput {
+  promotionId: Id;
+  studentId: Id;
+  modalityId: Id;
+  organizationName: string;
+  studentName: string;
+  modalityName: string;
+  levelName: string;
+  previousLevelName?: string;
+  /** Grau dentro da etapa (0 = nenhum). */
+  subLevel?: number;
+  /** Trilha de faixas: o grau entra no certificado ("2º grau"); nas outras, nao. */
+  beltStyle?: boolean;
+  graduatedOn: DateISO;
+  instructorName: string;
+  city?: string;
+  issuedOn: DateISO;
+}
+
+/** Dados do certificado de graduacao (doc 21 §1.6), a partir do registro do historico. */
+export function buildGraduationCertificate(input: GraduationCertificateInput): GraduationCertificate {
+  const city = input.city?.trim();
+  const previous = input.previousLevelName?.trim();
+  const degree = input.beltStyle && input.subLevel && input.subLevel > 0 ? `${input.subLevel}º grau` : undefined;
+  return {
+    promotionId: input.promotionId,
+    studentId: input.studentId,
+    modalityId: input.modalityId,
+    organizationName: input.organizationName.trim(),
+    studentName: input.studentName.trim(),
+    modalityName: input.modalityName.trim(),
+    levelName: input.levelName.trim(),
+    ...(previous ? { previousLevelName: previous } : {}),
+    ...(degree ? { degree } : {}),
+    graduatedOn: input.graduatedOn,
+    instructorName: input.instructorName.trim(),
+    ...(city ? { city } : {}),
+    issuedOn: input.issuedOn,
+  };
+}
+
 // --- Modelo do certificado (variaveis e texto) -----------------------------
 
 export const CERTIFICATE_LAYOUTS = ["classic", "modern", "minimal", "custom"] as const satisfies readonly CertificateLayout[];
@@ -192,6 +236,31 @@ export const CERTIFICATE_VARIABLES = [
 ] as const;
 
 export type CertificateVariable = (typeof CERTIFICATE_VARIABLES)[number];
+
+/** Variaveis do certificado de graduacao (doc 21 §1.6): sem curso, aulas, frequencia e carga horaria. */
+export const GRADUATION_CERTIFICATE_VARIABLES = [
+  "aluno",
+  "modalidade",
+  "etapa",
+  "etapa_anterior",
+  "grau",
+  "data",
+  "professor",
+  "empresa",
+  "cidade",
+] as const;
+
+export type GraduationCertificateVariable = (typeof GRADUATION_CERTIFICATE_VARIABLES)[number];
+export type CertificateVariableName = CertificateVariable | GraduationCertificateVariable;
+
+/** As variaveis que o modelo de cada tipo aceita. */
+export function certificateVariablesFor(kind: CertificateKind = "course"): readonly CertificateVariableName[] {
+  return kind === "graduation" ? GRADUATION_CERTIFICATE_VARIABLES : CERTIFICATE_VARIABLES;
+}
+
+export function isGraduationCertificate(cert: AnyCertificate): cert is GraduationCertificate {
+  return "promotionId" in cert;
+}
 
 export const CERTIFICATE_LIMITS = {
   title: 60,
@@ -353,19 +422,147 @@ export function defaultCertificateTemplate(teacherTitle = "Instrutor", segment?:
   return certificateTemplateFromPreset(CERTIFICATE_PRESETS[segment ?? "custom"], teacherTitle);
 }
 
-const VARIABLE_RE = /\{(\w+)\}/g;
-const KNOWN = new Set<string>(CERTIFICATE_VARIABLES);
+export const DEFAULT_GRADUATION_CERTIFICATE_TITLE = "Certificado de graduação";
+export const DEFAULT_GRADUATION_CERTIFICATE_BODY =
+  "Certificamos que {aluno} alcançou {etapa} em {modalidade}, em {data}, por avaliação de {professor}.";
 
-/** Variaveis do texto que nao existem (sem repetir, na ordem em que aparecem). */
-export function unknownCertificateVariables(text: string): string[] {
+/**
+ * Modelos prontos do certificado de graduacao (doc 21 §1.6), um por area: a
+ * palavra da trilha ja vem no nome da etapa ("Faixa Azul", "Nível 2"), entao o
+ * texto fala em "{etapa}" e cada area poe o tom (faixa, nivel, modulo ou fase).
+ */
+export const GRADUATION_CERTIFICATE_PRESETS: Record<ClassesBusinessSegment, CertificatePreset> = {
+  martial_arts: {
+    layout: "classic",
+    accentColor: "wine",
+    title: "Certificado de graduação",
+    body: "Certificamos que {aluno} conquistou a {etapa} de {modalidade}, {grau}, em {data}, sob avaliação de {professor}, por mérito, disciplina e dedicação aos treinos.",
+    spaceRole: "Responsável",
+    description: "Moldura clássica, vinho, mérito e disciplina",
+  },
+  pilates_yoga: {
+    layout: "minimal",
+    accentColor: "green",
+    title: "Certificado de nível",
+    body: "Certificamos que {aluno} alcançou {etapa} em {modalidade}, em {data}, com consciência corporal e presença em cada prática.",
+    spaceRole: "Responsável",
+    description: "Limpo, verde, consciência corporal",
+  },
+  functional_training: {
+    layout: "modern",
+    accentColor: "graphite",
+    title: "Certificado",
+    body: "{aluno} alcançou {etapa} em {modalidade} em {data}. Nível conquistado com constância e superação.",
+    spaceRole: "Responsável",
+    description: "Moderno, grafite, direto e motivador",
+  },
+  dance: {
+    layout: "modern",
+    accentColor: "purple",
+    title: "Certificado de nível",
+    body: "Certificamos que {aluno} alcançou {etapa} em {modalidade}, em {data}, com ritmo, presença e expressão em cada ensaio.",
+    spaceRole: "Direção",
+    description: "Moderno, roxo, ritmo e expressão",
+  },
+  music: {
+    layout: "classic",
+    accentColor: "navy",
+    title: "Certificado de conclusão de módulo",
+    body: "Certificamos que {aluno} concluiu {etapa} de {modalidade} em {data}, com aproveitamento nas aulas e nas apresentações, sob orientação de {professor}.",
+    spaceRole: "Direção",
+    description: "Clássico, azul, aulas e apresentações",
+  },
+  languages: {
+    layout: "classic",
+    accentColor: "navy",
+    title: "Certificado de conclusão de nível",
+    body: "Certificamos que {aluno} concluiu com aproveitamento {etapa} de {modalidade} em {data}, sob orientação de {professor}.",
+    spaceRole: "Direção",
+    description: "Clássico, azul, formal e com aproveitamento",
+  },
+  swimming_sports: {
+    layout: "modern",
+    accentColor: "navy",
+    title: "Certificado de fase",
+    body: "Certificamos que {aluno} concluiu {etapa} de {modalidade} em {data}, cumprindo as etapas previstas, sob orientação de {professor}.",
+    spaceRole: "Direção",
+    description: "Moderno, azul, etapas cumpridas",
+  },
+  gastronomy: {
+    layout: "classic",
+    accentColor: "gold",
+    title: "Certificado de conclusão de módulo",
+    body: "Certificamos que {aluno} concluiu {etapa} de {modalidade} em {data}, dominando as técnicas e as receitas do módulo, sob orientação de {professor}.",
+    spaceRole: "Responsável",
+    description: "Clássico, dourado, técnicas e receitas",
+  },
+  arts_crafts: {
+    layout: "minimal",
+    accentColor: "wine",
+    title: "Certificado de conclusão de módulo",
+    body: "Certificamos que {aluno} concluiu {etapa} de {modalidade} em {data}, desenvolvendo as técnicas trabalhadas no ateliê.",
+    spaceRole: "Responsável",
+    description: "Limpo, vinho, técnicas do ateliê",
+  },
+  beauty_courses: {
+    layout: "minimal",
+    accentColor: "gold",
+    title: "Certificado de conclusão de módulo",
+    body: "Certificamos que {aluno} concluiu {etapa} de {modalidade} em {data}, com aproveitamento nas atividades práticas, sob orientação de {professor}.",
+    spaceRole: "Responsável",
+    description: "Limpo, dourado, prática e aproveitamento",
+  },
+  custom: {
+    layout: "classic",
+    accentColor: "graphite",
+    title: DEFAULT_GRADUATION_CERTIFICATE_TITLE,
+    body: DEFAULT_GRADUATION_CERTIFICATE_BODY,
+    spaceRole: "Responsável",
+    description: "Clássico, grafite, texto padrão",
+  },
+};
+
+/** Modelo padrao do certificado de graduacao: o da area do espaco, ou o generico. */
+export function defaultGraduationCertificateTemplate(teacherTitle = "Instrutor", segment?: ClassesBusinessSegment): CertificateTemplate {
+  return certificateTemplateFromPreset(GRADUATION_CERTIFICATE_PRESETS[segment ?? "custom"], teacherTitle);
+}
+
+/** Os modelos prontos de cada tipo. */
+export function certificatePresetsFor(kind: CertificateKind): Record<ClassesBusinessSegment, CertificatePreset> {
+  return kind === "graduation" ? GRADUATION_CERTIFICATE_PRESETS : CERTIFICATE_PRESETS;
+}
+
+const VARIABLE_RE = /\{(\w+)\}/g;
+
+/** Variaveis do texto que nao existem no tipo (sem repetir, na ordem em que aparecem). */
+export function unknownCertificateVariables(text: string, kind: CertificateKind = "course"): string[] {
+  const known = new Set<string>(certificateVariablesFor(kind));
   const unknown: string[] = [];
   for (const [, key] of text.matchAll(VARIABLE_RE)) {
-    if (!KNOWN.has(key) && !unknown.includes(key)) unknown.push(key);
+    if (!known.has(key) && !unknown.includes(key)) unknown.push(key);
   }
   return unknown;
 }
 
-export type CertificateValues = Partial<Record<CertificateVariable, string>>;
+export type CertificateValues = Partial<Record<CertificateVariableName, string>>;
+
+const longDate = (iso: DateISO) => format(parseISO(iso), "d 'de' MMMM 'de' yyyy", { locale: ptBR });
+
+/** Valores das variaveis do certificado de graduacao. `{data}` e o dia da graduacao. */
+export function graduationCertificateVariableValues(cert: GraduationCertificate): CertificateValues {
+  const or = (value?: string) => value?.trim() || undefined;
+  return {
+    aluno: or(cert.studentName),
+    modalidade: or(cert.modalityName),
+    etapa: or(cert.levelName),
+    etapa_anterior: or(cert.previousLevelName),
+    grau: or(cert.degree),
+    data: longDate(cert.graduatedOn),
+    professor: or(cert.instructorName),
+    empresa: or(cert.organizationName),
+    cidade: or(cert.city),
+  };
+}
 
 /** Valores das variaveis para um certificado. Sem valor = `undefined`. */
 export function certificateVariableValues(
@@ -444,7 +641,7 @@ export function fillCertificateText(
     ? sameDayText.replace(/\b[Cc]urso\s+\{curso\}/g, "{curso}")
     : sameDayText;
   const filled = source.replace(VARIABLE_RE, (_match, key: string) => {
-    const value = KNOWN.has(key) ? values[key as CertificateVariable] : undefined;
+    const value = values[key as CertificateVariableName];
     return value === undefined || value === "" ? MISSING : value;
   });
   return filled
@@ -477,11 +674,14 @@ export interface RenderedCertificate extends CertificateText {
 
 /** Texto final do certificado com o modelo do espaco (titulo, corpo, local e data, assinaturas). */
 export function renderCertificate(
-  cert: CourseCertificate,
+  cert: AnyCertificate,
   template: Pick<CertificateTemplate, "title" | "body" | "signatures" | "showAttendance">,
 ): RenderedCertificate {
-  const values = certificateVariableValues(cert, { showAttendance: template.showAttendance });
-  const options = { sameDay: cert.startDate === cert.endDate };
+  const graduation = isGraduationCertificate(cert);
+  const values = graduation
+    ? graduationCertificateVariableValues(cert)
+    : certificateVariableValues(cert, { showAttendance: template.showAttendance });
+  const options = { sameDay: !graduation && cert.startDate === cert.endDate };
   const date = values.data ?? "";
   return {
     title: fillCertificateText(template.title, values, options),
@@ -528,15 +728,14 @@ export interface CertificateTemplateIssue {
   message: string;
 }
 
-const VARIABLE_LIST = CERTIFICATE_VARIABLES.map((v) => `{${v}}`).join(", ");
-
-function variableIssue(field: string, text: string): CertificateTemplateIssue | null {
-  const unknown = unknownCertificateVariables(text);
+function variableIssue(field: string, text: string, kind: CertificateKind): CertificateTemplateIssue | null {
+  const unknown = unknownCertificateVariables(text, kind);
   if (unknown.length === 0) return null;
   const names = unknown.map((v) => `{${v}}`).join(", ");
+  const list = certificateVariablesFor(kind).map((v) => `{${v}}`).join(", ");
   return {
     field,
-    message: `${unknown.length === 1 ? "Variável desconhecida" : "Variáveis desconhecidas"}: ${names}. Use: ${VARIABLE_LIST}.`,
+    message: `${unknown.length === 1 ? "Variável desconhecida" : "Variáveis desconhecidas"}: ${names}. Use: ${list}.`,
   };
 }
 
@@ -545,6 +744,8 @@ export function validateCertificateTemplate(
   template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body" | "signatures"> & {
     artwork?: Partial<CertificateArtwork>;
   },
+  /** Tipo do modelo: decide as variaveis aceitas. */
+  kind: CertificateKind = "course",
 ): CertificateTemplateIssue[] {
   const issues: CertificateTemplateIssue[] = [];
   const push = (issue: CertificateTemplateIssue | null) => {
@@ -591,12 +792,12 @@ export function validateCertificateTemplate(
   if (!title) push({ field: "title", message: "Informe o título." });
   else if (title.length > CERTIFICATE_LIMITS.title) {
     push({ field: "title", message: `O título tem no máximo ${CERTIFICATE_LIMITS.title} caracteres.` });
-  } else push(variableIssue("title", title));
+  } else push(variableIssue("title", title, kind));
   const body = template.body.trim();
   if (!body) push({ field: "body", message: "Escreva o texto do certificado." });
   else if (body.length > CERTIFICATE_LIMITS.body) {
     push({ field: "body", message: `O texto tem no máximo ${CERTIFICATE_LIMITS.body} caracteres.` });
-  } else push(variableIssue("body", body));
+  } else push(variableIssue("body", body, kind));
   const signatures = template.signatures;
   if (signatures.length < 1 || signatures.length > CERTIFICATE_LIMITS.maxSignatures) {
     push({ field: "signatures", message: "Use 1 ou 2 assinaturas." });
@@ -606,7 +807,7 @@ export function validateCertificateTemplate(
     if (!name) push({ field: `signatures.${i}.name`, message: "Informe o nome." });
     else if (name.length > CERTIFICATE_LIMITS.signatureText) {
       push({ field: `signatures.${i}.name`, message: `Máximo de ${CERTIFICATE_LIMITS.signatureText} caracteres.` });
-    } else push(variableIssue(`signatures.${i}.name`, name));
+    } else push(variableIssue(`signatures.${i}.name`, name, kind));
     if (s.role.trim().length > CERTIFICATE_LIMITS.signatureText) {
       push({ field: `signatures.${i}.role`, message: `Máximo de ${CERTIFICATE_LIMITS.signatureText} caracteres.` });
     }

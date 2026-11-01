@@ -56,6 +56,20 @@ Guia: /classes
 + botão "Mais ações da turma": Abra o menu e escolha "Emitir certificados".
 Sai um PDF com um certificado por aluno, cada um com o próprio código de verificação. Quem já tinha certificado continua com o mesmo código; os cancelados ficam de fora. Também dá para imprimir pela tela, com uma folha por aluno.
 
+## Certificado de graduação
+Resumo: Faixa, nível, módulo ou fase: cada graduação registrada pode virar certificado.
+Guia: /clients
++ texto "Alunos": Abra a ficha do aluno, na seção Evolução, e clique em "Graduação" (ou "Níveis", "Módulos", "Fases").
++ texto "Certificado": Ao lado de cada etapa alcançada, "Certificado" abre o certificado daquela graduação.
+Faz parte do plano Profissional. O certificado nasce do registro de graduação do aluno, não da turma: ao abrir pela primeira vez, ele é emitido com o código de verificação; depois, o código é o mesmo. Logo depois de Graduar, o aviso oferece "Ver certificado". Quem assina como professor é o examinador informado na graduação; sem ele, o professor da turma do aluno na modalidade. Dá para baixar em PDF, imprimir e cancelar, como no de curso.
+
+## Modelo do certificado de graduação
+Resumo: O certificado de graduação tem modelo, texto e modelos prontos próprios.
+Guia: /settings?tab=certificado
++ aba "Graduação": Escolha "Graduação" para editar o modelo desse tipo; "Conclusão de curso" é o outro.
++ texto "Comece por um modelo": Um modelo pronto por área, no tom de cada uma (faixa, nível, módulo ou fase).
+Em Configurações, aba Certificado, a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio "Vale para" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.
+
 ## Código de verificação
 Resumo: Quem recebe o certificado confere se ele é verdadeiro.
 Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) lê o QR, ou abre o endereço curto do rodapé e digita o código, e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.

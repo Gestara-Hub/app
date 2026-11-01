@@ -1,6 +1,7 @@
 import type {
   CertificateArtwork,
   CertificateBlock,
+  CertificateKind,
   CertificateTemplate,
   FileAttachment,
   Id,
@@ -9,6 +10,7 @@ import type {
 import {
   CERTIFICATE_BLOCKS,
   defaultCertificateTemplate,
+  defaultGraduationCertificateTemplate,
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES } from "@/lib/files";
@@ -32,8 +34,11 @@ import { teamWords } from "../world/nouns";
  * 31/10/2026): vale nos cursos dela; sem ele, o do espaco.
  */
 
-/** Modelo do espaco (salvo, ou o modelo pronto da area do espaco). */
-function spaceTemplate(): CertificateTemplate {
+/** Modelo do espaco de um tipo (salvo, ou o modelo pronto da area do espaco). */
+function spaceTemplate(kind: CertificateKind = "course"): CertificateTemplate {
+  if (kind === "graduation") {
+    return store.graduationCertificateTemplate ?? defaultGraduationCertificateTemplate(teamWords().title, store.organization.classSegment);
+  }
   return store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title, store.organization.classSegment);
 }
 
@@ -43,13 +48,26 @@ function modalityOf(modalityId: Id) {
   return category;
 }
 
+/** O modelo proprio da modalidade, do tipo pedido (doc 21 §1.2 e §1.6). */
+function ownTemplateOf(category: (typeof store.categories)[number], kind: CertificateKind): CertificateTemplate | undefined {
+  return kind === "graduation" ? category.graduationCertificateTemplate : category.certificateTemplate;
+}
+
+function setOwnTemplate(category: (typeof store.categories)[number], kind: CertificateKind, template: CertificateTemplate | undefined) {
+  if (kind === "graduation") category.graduationCertificateTemplate = template;
+  else category.certificateTemplate = template;
+}
+
+const KIND_LABEL: Record<CertificateKind, string> = { course: "certificado", graduation: "certificado de graduação" };
+
 /**
  * Modelo em vigor para quem monta o certificado: o da modalidade, se ela tem o
- * proprio; senao o do espaco.
+ * proprio; senao o do espaco. `kind` escolhe o modelo de curso ou de graduacao.
  */
-export function currentCertificateTemplate(modalityId?: Id): CertificateTemplate {
-  const own = modalityId ? store.categories.find((c) => c.id === modalityId)?.certificateTemplate : undefined;
-  return structuredClone(own ?? spaceTemplate());
+export function currentCertificateTemplate(modalityId?: Id, kind: CertificateKind = "course"): CertificateTemplate {
+  const category = modalityId ? store.categories.find((c) => c.id === modalityId) : undefined;
+  const own = category ? ownTemplateOf(category, kind) : undefined;
+  return structuredClone(own ?? spaceTemplate(kind));
 }
 
 /** Ajustes da arte, so no layout "Minha arte" (nos outros a arte e esquecida). */
@@ -100,62 +118,65 @@ export const certificatesServiceImpl = {
    * O modelo que a tela edita: o do espaco, ou o de uma modalidade. Modalidade
    * sem modelo proprio devolve o do espaco (`own: false`) como ponto de partida.
    */
-  getTemplate(modalityId?: Id): Promise<CertificateTemplate & { own?: boolean }> {
+  getTemplate(modalityId?: Id, kind: CertificateKind = "course"): Promise<CertificateTemplate & { own?: boolean }> {
     return readOp(async () => {
-      if (!modalityId) return currentCertificateTemplate();
+      if (!modalityId) return currentCertificateTemplate(undefined, kind);
       const category = modalityOf(modalityId);
-      return { ...structuredClone(category.certificateTemplate ?? spaceTemplate()), own: Boolean(category.certificateTemplate) };
+      const own = ownTemplateOf(category, kind);
+      return { ...structuredClone(own ?? spaceTemplate(kind)), own: Boolean(own) };
     });
   },
 
-  /** Modalidades com modelo proprio (a tela marca no seletor). */
-  listModalitiesWithOwnTemplate(): Promise<Id[]> {
-    return readOp(async () => store.categories.filter((c) => c.certificateTemplate).map((c) => c.id));
+  /** Modalidades com modelo proprio do tipo (a tela marca no seletor). */
+  listModalitiesWithOwnTemplate(kind: CertificateKind = "course"): Promise<Id[]> {
+    return readOp(async () => store.categories.filter((c) => ownTemplateOf(c, kind)).map((c) => c.id));
   },
 
-  saveTemplate(payload: SaveCertificateTemplate, modalityId?: Id): Promise<CertificateTemplate> {
+  saveTemplate(payload: SaveCertificateTemplate, modalityId?: Id, kind: CertificateKind = "course"): Promise<CertificateTemplate> {
     return writeOp(async () => {
       assertFeature("certificates");
       const next = normalize(payload);
-      const issues = validateCertificateTemplate(next);
+      const issues = validateCertificateTemplate(next, kind);
       if (issues.length > 0) throw validationError(issues);
       const template: CertificateTemplate = { ...next, updatedAt: nowIso() };
+      const label = KIND_LABEL[kind];
       if (modalityId) {
         const category = modalityOf(modalityId);
-        category.certificateTemplate = template;
+        setOwnTemplate(category, kind, template);
         category.updatedAt = template.updatedAt ?? nowIso();
         auditLogService.record({
           action: "updated",
-          target: { type: "settings", label: `Modelo de certificado de ${category.name}` },
-          predicate: `atualizou o modelo de certificado de ${category.name}`,
+          target: { type: "settings", label: `Modelo de ${label} de ${category.name}` },
+          predicate: `atualizou o modelo de ${label} de ${category.name}`,
         });
-        return currentCertificateTemplate(modalityId);
+        return currentCertificateTemplate(modalityId, kind);
       }
-      store.certificateTemplate = template;
+      if (kind === "graduation") store.graduationCertificateTemplate = template;
+      else store.certificateTemplate = template;
       auditLogService.record({
         action: "updated",
-        target: { type: "settings", label: "Modelo de certificado" },
-        predicate: "atualizou o modelo de certificado",
+        target: { type: "settings", label: `Modelo de ${label}` },
+        predicate: `atualizou o modelo de ${label}`,
       });
-      return currentCertificateTemplate();
+      return currentCertificateTemplate(undefined, kind);
     });
   },
 
-  /** A modalidade volta a usar o modelo do espaco. */
-  removeModalityTemplate(modalityId: Id): Promise<CertificateTemplate> {
+  /** A modalidade volta a usar o modelo do espaco (do tipo). */
+  removeModalityTemplate(modalityId: Id, kind: CertificateKind = "course"): Promise<CertificateTemplate> {
     return writeOp(async () => {
       assertFeature("certificates");
       const category = modalityOf(modalityId);
-      if (category.certificateTemplate) {
-        category.certificateTemplate = undefined;
+      if (ownTemplateOf(category, kind)) {
+        setOwnTemplate(category, kind, undefined);
         category.updatedAt = nowIso();
         auditLogService.record({
           action: "updated",
-          target: { type: "settings", label: `Modelo de certificado de ${category.name}` },
-          predicate: `voltou ${category.name} ao modelo de certificado do espaço`,
+          target: { type: "settings", label: `Modelo de ${KIND_LABEL[kind]} de ${category.name}` },
+          predicate: `voltou ${category.name} ao modelo de ${KIND_LABEL[kind]} do espaço`,
         });
       }
-      return currentCertificateTemplate(modalityId);
+      return currentCertificateTemplate(modalityId, kind);
     });
   },
 

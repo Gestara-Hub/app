@@ -516,6 +516,52 @@
     }
   },
   {
+    "id": "certificados#certificado-de-graduacao",
+    "article": "Certificados de conclusão",
+    "title": "Certificado de graduação",
+    "route": "/settings?tab=certificado",
+    "text": "Faz parte do plano Profissional. O certificado nasce do registro de graduação do aluno, não da turma: ao abrir pela primeira vez, ele é emitido com o código de verificação; depois, o código é o mesmo. Logo depois de Graduar, o aviso oferece \"Ver certificado\". Quem assina como professor é o examinador informado na graduação; sem ele, o professor da turma do aluno na modalidade. Dá para baixar em PDF, imprimir e cancelar, como no de curso.",
+    "summary": "Faixa, nível, módulo ou fase: cada graduação registrada pode virar certificado.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Alunos",
+          "text": "Abra a ficha do aluno, na seção Evolução, e clique em \"Graduação\" (ou \"Níveis\", \"Módulos\", \"Fases\")."
+        },
+        {
+          "kind": "texto",
+          "label": "Certificado",
+          "text": "Ao lado de cada etapa alcançada, \"Certificado\" abre o certificado daquela graduação."
+        }
+      ]
+    }
+  },
+  {
+    "id": "certificados#modelo-do-certificado-de-graduacao",
+    "article": "Certificados de conclusão",
+    "title": "Modelo do certificado de graduação",
+    "route": "/settings?tab=certificado",
+    "text": "Em Configurações, aba Certificado, a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio \"Vale para\" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.",
+    "summary": "O certificado de graduação tem modelo, texto e modelos prontos próprios.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Graduação",
+          "text": "Escolha \"Graduação\" para editar o modelo desse tipo; \"Conclusão de curso\" é o outro."
+        },
+        {
+          "kind": "texto",
+          "label": "Comece por um modelo",
+          "text": "Um modelo pronto por área, no tom de cada uma (faixa, nível, módulo ou fase)."
+        }
+      ]
+    }
+  },
+  {
     "id": "certificados#codigo-de-verificacao",
     "article": "Certificados de conclusão",
     "title": "Código de verificação",

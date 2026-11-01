@@ -209,3 +209,44 @@ export function useConfirmPaperMinorConsent() {
   });
 }
 
+
+// --- Certificado de graduacao (doc 21 §1.6) ---------------------------------
+
+/** Graduacoes registradas (as mais recentes primeiro), para a previa do editor de modelos. */
+export function useGraduations(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clients.graduations,
+    queryFn: () => clientsService.listGraduations(),
+    enabled,
+  });
+}
+
+/** Os dados de uma graduacao como sairiam agora (sem emitir), para a previa do editor. */
+export function usePreviewGraduationCertificate(studentId?: Id, promotionId?: Id) {
+  return useQuery({
+    queryKey: queryKeys.clients.graduationPreview(promotionId ?? ""),
+    queryFn: () => clientsService.previewGraduationCertificate(studentId!, promotionId!),
+    enabled: Boolean(studentId && promotionId),
+  });
+}
+
+/** Abrir emite (1a vez) e devolve o certificado de graduacao com o modelo. */
+export function useGraduationCertificate(studentId: Id, promotionId: Id) {
+  return useQuery({
+    queryKey: queryKeys.clients.graduationCertificate(promotionId),
+    queryFn: () => clientsService.getGraduationCertificate(studentId, promotionId),
+    enabled: Boolean(studentId && promotionId),
+    retry: false,
+  });
+}
+
+export function useCancelGraduationCertificate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, promotionId }: { studentId: Id; promotionId: Id }) =>
+      clientsService.cancelGraduationCertificate(studentId, promotionId),
+    onSuccess: (_issued, { promotionId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.graduationCertificate(promotionId) });
+    },
+  });
+}

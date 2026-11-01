@@ -364,6 +364,7 @@ export async function readTenant(tenant: E2ETenant): Promise<TenantWorld> {
       copy[key] = (store as unknown as Record<string, unknown>)[key];
     }
     copy.certificateTemplate = store.certificateTemplate;
+    copy.graduationCertificateTemplate = store.graduationCertificateTemplate;
     return structuredClone(copy) as unknown as TenantWorld;
   }).then(async (world) => {
     // O log de auditoria nao vem no espaco carregado (so cresce): le do banco.

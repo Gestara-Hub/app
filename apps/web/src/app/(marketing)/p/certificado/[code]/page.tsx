@@ -44,13 +44,24 @@ export default async function CertificateVerificationPage({ params }: { params: 
               <Status tone="good" title="Certificado válido" text={`Emitido por ${view.organizationName}.`} />
               <dl className="mt-5 divide-y text-sm">
                 <Row label="Aluno" value={view.studentName} />
-                <Row label="Curso" value={view.modalityName ? `${view.courseName} · ${view.modalityName}` : view.courseName} />
-                <Row
-                  label="Período"
-                  value={view.startDate === view.endDate ? formatDate(view.startDate) : `${formatDate(view.startDate)} a ${formatDate(view.endDate)}`}
-                />
-                <Row label="Carga horária" value={`${formatWorkload(view.workloadMinutes)} · ${view.lessonsCount} ${view.lessonsCount === 1 ? "aula" : "aulas"}`} />
-                {view.attendancePercent !== null ? <Row label="Frequência" value={`${view.attendancePercent}%`} /> : null}
+                {view.kind === "graduation" ? (
+                  // Graduacao (doc 21 §1.6): a etapa alcancada e a data, no lugar do curso e do periodo.
+                  <>
+                    <Row label="Graduação" value={view.modalityName ? `${view.levelName} · ${view.modalityName}` : view.levelName} />
+                    {view.previousLevelName ? <Row label="Vinha de" value={view.previousLevelName} /> : null}
+                    <Row label="Graduado em" value={formatDate(view.graduatedOn)} />
+                  </>
+                ) : (
+                  <>
+                    <Row label="Curso" value={view.modalityName ? `${view.courseName} · ${view.modalityName}` : view.courseName} />
+                    <Row
+                      label="Período"
+                      value={view.startDate === view.endDate ? formatDate(view.startDate) : `${formatDate(view.startDate)} a ${formatDate(view.endDate)}`}
+                    />
+                    <Row label="Carga horária" value={`${formatWorkload(view.workloadMinutes)} · ${view.lessonsCount} ${view.lessonsCount === 1 ? "aula" : "aulas"}`} />
+                    {view.attendancePercent !== null ? <Row label="Frequência" value={`${view.attendancePercent}%`} /> : null}
+                  </>
+                )}
                 <Row label="Emitido em" value={formatDate(view.issuedOn)} />
                 <Row label="Código" value={view.code} />
               </dl>

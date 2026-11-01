@@ -1,5 +1,5 @@
-import type { CertificateTemplate, ClassesBusinessSegment } from "@gestarahub/contracts";
-import { CERTIFICATE_PRESETS, type CertificatePreset } from "@gestarahub/core/certificate";
+import type { CertificateKind, CertificateTemplate, ClassesBusinessSegment } from "@gestarahub/contracts";
+import { certificatePresetsFor, type CertificatePreset } from "@gestarahub/core/certificate";
 import { CLASSES_SEGMENT_PRESETS } from "@/lib/business-segment-presets";
 
 export interface CertificatePresetOption {
@@ -9,25 +9,33 @@ export interface CertificatePresetOption {
   preset: CertificatePreset;
 }
 
-/** Modelos prontos na ordem das areas (a do espaco vai primeiro na galeria); "Padrão" por ultimo. */
-export const CERTIFICATE_PRESET_OPTIONS: readonly CertificatePresetOption[] = [
-  ...(Object.keys(CLASSES_SEGMENT_PRESETS) as ClassesBusinessSegment[])
-    .filter((id) => id !== "custom")
-    .map((id): CertificatePresetOption => ({ id, label: CLASSES_SEGMENT_PRESETS[id].label, preset: CERTIFICATE_PRESETS[id] })),
-  { id: "custom", label: "Padrão", preset: CERTIFICATE_PRESETS.custom },
-];
+/** Modelos prontos de um tipo na ordem das areas; "Padrão" por ultimo. */
+export function certificatePresetOptions(kind: CertificateKind = "course"): CertificatePresetOption[] {
+  const presets = certificatePresetsFor(kind);
+  return [
+    ...(Object.keys(CLASSES_SEGMENT_PRESETS) as ClassesBusinessSegment[])
+      .filter((id) => id !== "custom")
+      .map((id): CertificatePresetOption => ({ id, label: CLASSES_SEGMENT_PRESETS[id].label, preset: presets[id] })),
+    { id: "custom", label: "Padrão", preset: presets.custom },
+  ];
+}
+
+/** Os de curso, na ordem das areas (os testes e a galeria antiga usam). */
+export const CERTIFICATE_PRESET_OPTIONS: readonly CertificatePresetOption[] = certificatePresetOptions("course");
 
 /** A area do espaco primeiro, para o modelo dela ser o primeiro cartao. */
-export function certificatePresetOptionsFor(segment?: ClassesBusinessSegment): CertificatePresetOption[] {
-  const own = CERTIFICATE_PRESET_OPTIONS.find((o) => o.id === segment);
-  return own ? [own, ...CERTIFICATE_PRESET_OPTIONS.filter((o) => o !== own)] : [...CERTIFICATE_PRESET_OPTIONS];
+export function certificatePresetOptionsFor(segment?: ClassesBusinessSegment, kind: CertificateKind = "course"): CertificatePresetOption[] {
+  const options = certificatePresetOptions(kind);
+  const own = options.find((o) => o.id === segment);
+  return own ? [own, ...options.filter((o) => o !== own)] : options;
 }
 
 /** O modelo pronto que o modelo atual reproduz (layout, cor, titulo e texto iguais), se algum. */
 export function matchingCertificatePreset(
   template: Pick<CertificateTemplate, "layout" | "accentColor" | "title" | "body">,
+  kind: CertificateKind = "course",
 ): CertificatePresetOption | undefined {
-  return CERTIFICATE_PRESET_OPTIONS.find(
+  return certificatePresetOptions(kind).find(
     (o) =>
       o.preset.layout === template.layout &&
       o.preset.accentColor === template.accentColor &&

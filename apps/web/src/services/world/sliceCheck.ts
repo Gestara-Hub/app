@@ -23,6 +23,7 @@ const WORLD_KEYS = [
   "series",
   "recurringAuthorizations",
   "certificateTemplate",
+  "graduationCertificateTemplate",
 ];
 
 const FALLBACK_ACTOR: AuditActor = { userId: "usr-slice-check", name: "Conferência", profile: "owner" };
@@ -135,7 +136,7 @@ export async function checkSlice(name: string, slice: MethodSlice, args: unknown
   const sliceBefore = new Map([...loaded].map(([key, value]) => [key, structuredClone(value)]));
   // Colecoes so do mock (agenda, Pix Automatico): iguais as do espaco inteiro (no servidor sao vazias).
   const mockOnly = Object.fromEntries(
-    ["services", "appointments", "timeBlocks", "series", "recurringAuthorizations", "certificateTemplate"].map((key) => [key, structuredClone(base[key])]),
+    ["services", "appointments", "timeBlocks", "series", "recurringAuthorizations", "certificateTemplate", "graduationCertificateTemplate"].map((key) => [key, structuredClone(base[key])]),
   );
   const slicedWorld = sliceWorld(loaded, mockOnly) as unknown as Record<string, unknown>;
   const sliceOutcome = await run(slicedWorld, call);

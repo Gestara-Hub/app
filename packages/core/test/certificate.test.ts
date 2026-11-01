@@ -5,7 +5,13 @@ import {
   buildCourseCertificate,
   CERTIFICATE_PRESETS,
   CERTIFICATE_VARIABLES,
+  GRADUATION_CERTIFICATE_PRESETS,
+  GRADUATION_CERTIFICATE_VARIABLES,
+  buildGraduationCertificate,
   certificateTemplateFromPreset,
+  certificateVariablesFor,
+  defaultGraduationCertificateTemplate,
+  graduationCertificateVariableValues,
   countCourseLessons,
   countCourseWorkloadMinutes,
   DEFAULT_CERTIFICATE_BODY,
@@ -327,5 +333,72 @@ describe("certificado: modelos prontos por área", () => {
       assert.ok(text.body.includes("Ana Souza"), preset.description);
       assert.ok(!text.body.includes("{"), preset.description);
     }
+  });
+});
+
+describe("certificado de graduação (doc 21 §1.6)", () => {
+  const graduation = () =>
+    buildGraduationCertificate({
+      promotionId: "ph-1",
+      studentId: "c-1",
+      modalityId: "m-jj",
+      organizationName: " Academia X ",
+      studentName: "Ana Souza",
+      modalityName: "Jiu-Jitsu",
+      levelName: "Faixa Azul",
+      previousLevelName: "Faixa Branca",
+      subLevel: 2,
+      beltStyle: true,
+      graduatedOn: "2026-09-12",
+      instructorName: "Mestre Léo",
+      city: "Curitiba",
+      issuedOn: "2026-09-22",
+    });
+
+  it("monta os dados: grau só na trilha de faixas e acima de zero", () => {
+    const cert = graduation();
+    assert.equal(cert.degree, "2º grau");
+    assert.equal(cert.organizationName, "Academia X");
+    assert.equal(buildGraduationCertificate({ ...cert, subLevel: 0, beltStyle: true }).degree, undefined);
+    assert.equal(buildGraduationCertificate({ ...cert, subLevel: 2, beltStyle: false }).degree, undefined);
+  });
+
+  it("as variáveis são as da graduação; {data} é o dia da graduação", () => {
+    const values = graduationCertificateVariableValues(graduation());
+    assert.equal(values.etapa, "Faixa Azul");
+    assert.equal(values.etapa_anterior, "Faixa Branca");
+    assert.equal(values.grau, "2º grau");
+    assert.equal(values.data, "12 de setembro de 2026");
+    assert.equal(values.curso, undefined);
+    assert.deepEqual([...certificateVariablesFor("graduation")], [...GRADUATION_CERTIFICATE_VARIABLES]);
+  });
+
+  it("rende o texto de graduação e tira o grau quando não há", () => {
+    const template = defaultGraduationCertificateTemplate("Professor", "martial_arts");
+    const withDegree = renderCertificate(graduation(), template);
+    assert.ok(withDegree.body.includes("conquistou a Faixa Azul de Jiu-Jitsu, 2º grau, em 12 de setembro de 2026"), withDegree.body);
+    assert.equal(withDegree.placeAndDate, "Curitiba, 12 de setembro de 2026");
+    const noDegree = renderCertificate({ ...graduation(), degree: undefined }, template);
+    assert.ok(noDegree.body.includes("conquistou a Faixa Azul de Jiu-Jitsu, em 12 de setembro de 2026"), noDegree.body);
+    assert.equal(renderCertificate(graduation(), template).signatures[0].name, "Mestre Léo");
+  });
+
+  it("toda área tem um modelo de graduação válido, só com variáveis de graduação", () => {
+    for (const [segment, preset] of Object.entries(GRADUATION_CERTIFICATE_PRESETS)) {
+      const template = certificateTemplateFromPreset(preset, "Professor");
+      assert.deepEqual(validateCertificateTemplate(template, "graduation"), [], segment);
+      assert.ok(template.body.includes("{etapa}"), segment);
+      const text = renderCertificate(graduation(), template);
+      assert.ok(text.body.includes("Faixa Azul") && !text.body.includes("{"), `${segment}: ${text.body}`);
+    }
+  });
+
+  it("a validação segue o tipo: {curso} não vale na graduação, {etapa} não vale no curso", () => {
+    const base = defaultGraduationCertificateTemplate();
+    const [issue] = validateCertificateTemplate({ ...base, body: "Parabéns, {aluno}, pelo curso {curso}." }, "graduation");
+    assert.equal(issue.field, "body");
+    assert.ok(issue.message.startsWith("Variável desconhecida: {curso}. Use: {aluno}, {modalidade}, {etapa}"), issue.message);
+    const [course] = validateCertificateTemplate({ ...defaultCertificateTemplate(), body: "{aluno} alcançou {etapa}." });
+    assert.ok(course.message.startsWith("Variável desconhecida: {etapa}."), course.message);
   });
 });

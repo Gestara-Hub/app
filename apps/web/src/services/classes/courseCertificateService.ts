@@ -25,7 +25,13 @@ function issuedStore(): IssuedCertificate[] {
 }
 
 export function issuedCertificateOf(enrollmentId: Id): IssuedCertificate | undefined {
-  return (store.issuedCertificates ?? []).find((c) => c.enrollmentId === enrollmentId);
+  return (store.issuedCertificates ?? []).find((c) => (c.kind ?? "course") === "course" && c.enrollmentId === enrollmentId);
+}
+
+/** "Ana Souza · Confeitaria" ou "Ana Souza · Faixa Azul" (para a auditoria). */
+export function issuedCertificateLabel(issued: IssuedCertificate): string {
+  const snapshot = issued.snapshot;
+  return `${snapshot.studentName} · ${"promotionId" in snapshot ? snapshot.levelName : snapshot.courseName}`;
 }
 
 type Enrollment = (typeof store.enrollments)[number];
@@ -84,7 +90,7 @@ function issueFor(e: Enrollment, g: ClassGroup & { endDate: string }): IssuedCer
 
 function documentOf(issued: IssuedCertificate): Omit<CourseCertificateDocument, "template"> {
   return {
-    certificate: { ...issued.snapshot, verificationCode: issued.code },
+    certificate: { ...(issued.snapshot as CourseCertificate), verificationCode: issued.code },
     issued: { code: issued.code, status: issued.status, issuedAt: issued.issuedAt, canceledAt: issued.canceledAt },
   };
 }
@@ -185,8 +191,8 @@ export const courseCertificateService = {
         issued.updatedAt = now;
         auditLogService.record({
           action: "cancelled",
-          target: { type: "certificate", id: issued.id, label: `${issued.snapshot.studentName} · ${issued.snapshot.courseName}` },
-          predicate: `cancelou o certificado de ${issued.snapshot.studentName} em ${issued.snapshot.courseName} (código ${issued.code})`,
+          target: { type: "certificate", id: issued.id, label: issuedCertificateLabel(issued) },
+          predicate: `cancelou o certificado de ${issuedCertificateLabel(issued).replace(" · ", " em ")} (código ${issued.code})`,
         });
       }
       return clone({ code: issued.code, status: issued.status, issuedAt: issued.issuedAt, canceledAt: issued.canceledAt });

@@ -1,5 +1,6 @@
 import type {
   AppointmentFilter,
+  CertificateKind,
   MessageLogFilter,
   AuditLogFilter,
   CategoryFilter,
@@ -37,6 +38,11 @@ export const queryKeys = {
     // Resumo do aluno (ficha): cobrancas, pacotes, chamada e mensagens tambem o invalidam.
     summaries: ["clients", "summary"] as const,
     summary: (id: Id) => ["clients", "summary", id] as const,
+    // Certificado de graduacao (doc 21 §1.6) e as graduacoes para a previa do editor.
+    graduationCertificates: ["clients", "graduation-certificate"] as const,
+    graduationCertificate: (promotionId: Id) => ["clients", "graduation-certificate", promotionId] as const,
+    graduations: ["clients", "graduations"] as const,
+    graduationPreview: (promotionId: Id) => ["clients", "graduation-certificate", "preview", promotionId] as const,
   },
   professionals: {
     all: ["professionals"] as const,
@@ -169,8 +175,8 @@ export const queryKeys = {
   // Modelo de certificado do espaco (Plano Profissional).
   certificates: {
     /** Modelo do espaco (sem modalidade) ou de uma modalidade. */
-    template: (modalityId?: Id) => ["certificates", "template", modalityId ?? "space"] as const,
-    ownTemplates: ["certificates", "own-templates"] as const,
+    template: (modalityId?: Id, kind: CertificateKind = "course") => ["certificates", "template", kind, modalityId ?? "space"] as const,
+    ownTemplates: (kind: CertificateKind = "course") => ["certificates", "own-templates", kind] as const,
   },
   unit: {
     detail: ["unit"] as const,

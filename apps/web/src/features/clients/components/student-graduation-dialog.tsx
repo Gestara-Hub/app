@@ -3,6 +3,8 @@
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Award, Check, GraduationCap, History, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type {
@@ -42,6 +44,7 @@ import {
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useModalityVocabulary } from "@/features/settings";
+import { useHasFeature } from "@/features/auth";
 import { usePromoteStudent, useSaveModalityProgression } from "../hooks/use-clients";
 import { GraduatePanel, type GraduateResult } from "./graduate-panel";
 import { ModalityPicker, levelOf, monthsSince, useStudentModalities } from "./progression-ui";
@@ -205,6 +208,7 @@ function Journey({
   vocabulary,
   item,
   age,
+  studentId,
   onGraduate,
 }: {
   track: ModalityProgressionTrack;
@@ -212,6 +216,8 @@ function Journey({
   vocabulary: SegmentVocabulary;
   item: StudentModalityOverviewItem;
   age: number | null;
+  /** Com o aluno, cada graduacao registrada ganha o atalho para o certificado (doc 21 §1.6). */
+  studentId?: string;
   onGraduate: () => void;
 }) {
   const progression = item.progression;
@@ -288,9 +294,20 @@ function Journey({
                   size="sm"
                 />
                 {caption ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    {caption}
-                    {examiner && (isPast || isCurrent) ? ` · ${examiner}` : ""}
+                  <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                    <span>
+                      {caption}
+                      {examiner && (isPast || isCurrent) ? ` · ${examiner}` : ""}
+                    </span>
+                    {studentId && first && (isPast || isCurrent) ? (
+                      <Link
+                        href={`/clients/${studentId}/graduation-certificate/${first.id}`}
+                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      >
+                        <Award className="size-3" aria-hidden />
+                        Certificado
+                      </Link>
+                    ) : null}
                   </span>
                 ) : null}
               </div>
@@ -330,6 +347,9 @@ function GraduationContent({
   const { isPending, items, active, select } = useStudentModalities(client.id, initialModalityId);
   const saveMut = useSaveModalityProgression();
   const promoteMut = usePromoteStudent();
+  const router = useRouter();
+  // Certificado de graduacao (doc 21 §1.6): so no plano com o recurso.
+  const hasCertificates = useHasFeature()("certificates");
   const [panel, setPanel] = useState<"graduate" | "start" | null>(null);
 
   const track = active ? resolveModalityTrack(active.modality) : null;
@@ -347,7 +367,7 @@ function GraduationContent({
   async function handleGraduate(result: GraduateResult) {
     if (!active) return;
     try {
-      await promoteMut.mutateAsync({
+      const saved = await promoteMut.mutateAsync({
         studentId: client.id,
         modalityId: active.modality.id,
         modalityName: active.modality.name,
@@ -363,7 +383,16 @@ function GraduationContent({
         notes: result.notes,
         examiner: result.examiner,
       });
-      toast.success(`Registrado: ${result.level.name}${result.subLevel > 0 ? ` · ${result.subLevel}º grau` : ""}.`);
+      const message = `Registrado: ${result.level.name}${result.subLevel > 0 ? ` · ${result.subLevel}º grau` : ""}.`;
+      // O registro novo entra no inicio do historico da modalidade: o aviso leva ao certificado dele.
+      const latest = saved.progressions?.[active.modality.id]?.promotionHistory?.[0];
+      if (hasCertificates && latest) {
+        toast.success(message, {
+          action: { label: "Ver certificado", onClick: () => router.push(`/clients/${client.id}/graduation-certificate/${latest.id}`) },
+        });
+      } else {
+        toast.success(message);
+      }
       setPanel(null);
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível registrar. Tente novamente."));
@@ -508,6 +537,7 @@ function GraduationContent({
                 vocabulary={vocabulary}
                 item={active}
                 age={age}
+                studentId={hasCertificates ? client.id : undefined}
                 onGraduate={() => setPanel("graduate")}
               />
               <button

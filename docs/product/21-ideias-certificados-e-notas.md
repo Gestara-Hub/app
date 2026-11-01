@@ -74,7 +74,7 @@ Decisão com o usuário (31/10/2026), a partir de dois problemas: as variáveis 
 - **"Como funciona?"** ao lado de "Vale para" abre a ajuda, que já traz os artigos desta tela com "Me mostre na tela".
 - "Voltar ao texto padrão" volta ao texto da área do espaço.
 
-### 1.6 Certificado de graduação (definido em 31/10/2026, a fazer)
+### 1.6 Certificado de graduação (entregue em 31/10/2026)
 
 Problema: o certificado só existe para turma de curso (início, fim, aulas, frequência). Lutas, dança, música e natação vivem de mensalidade e graduação por faixa, nível, módulo ou fase, e para a graduação o sistema não emite nada: o "Graduar/Avançar" grava o registro na evolução do aluno (`promotionHistory`: etapa anterior e nova, grau, data, exame, examinador, observações) e para por aí.
 
@@ -90,6 +90,8 @@ Decisões (31/10/2026, com o usuário):
 - **Lote por exame** (todos que graduaram no mesmo dia num PDF só): segunda etapa, depois do individual rodar (anotado em `docs/pendencias.md`).
 
 Fora desta etapa: certificado no acesso do aluno (portal), assinatura em imagem, kids.
+
+**Como ficou (31/10/2026):** `CertificateKind` (`course` | `graduation`) nos contratos; `GraduationCertificate` (dados), `GRADUATION_CERTIFICATE_VARIABLES`, `buildGraduationCertificate`, `GRADUATION_CERTIFICATE_PRESETS` e `validateCertificateTemplate(template, kind)` no core (`renderCertificate` aceita os dois tipos). Migração 81: `organizations.graduation_certificate_template`, `categories.graduation_certificate_template`, e em `issued_certificates` as colunas `kind`, `promotion_id` e `modality_id` (matrícula e turma viram opcionais; um certificado por registro). Serviço `graduationCertificateService` (namespace `clients`: `listGraduations`, `previewGraduationCertificate`, `getGraduationCertificate`, `cancelGraduationCertificate`), `certificatesService` com o `kind` em `getTemplate`, `saveTemplate`, `removeModalityTemplate` e `listModalitiesWithOwnTemplate`. Tela `/clients/<id>/graduation-certificate/<promotionId>`, PDF em `/api/documents/certificates/graduation/<aluno>/<registro>`, "Ver em PDF" com `kind`. Na graduação do aluno (diálogo Graduação), cada registro ganha o link "Certificado" e o aviso do Graduar oferece "Ver certificado". Em Configurações, a aba Certificado abre com "Conclusão de curso | Graduação"; "Vale para", galeria, "Prévia com" (graduações registradas) e variáveis seguem o tipo. Página pública mostra "Graduação", "Vinha de" e "Graduado em".
 
 ## 2. Notas dos alunos (avaliações)
 

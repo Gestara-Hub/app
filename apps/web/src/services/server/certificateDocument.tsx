@@ -1,19 +1,20 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
-import type { CertificateTemplate, CourseCertificate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
+import type { AnyCertificate, CertificateKind, CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
 import { CERTIFICATE_ACCENT_HEX, renderCertificate, validateCertificateTemplate } from "@gestarahub/core/certificate";
 import { apiError, validationError } from "@gestarahub/core/api-error";
 import { todayISO } from "@gestarahub/core/date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
-import { sampleCertificate } from "@/features/certificates/certificate-meta";
+import { sampleCertificate, sampleGraduationCertificate } from "@/features/certificates/certificate-meta";
 import type { DocumentLogo } from "@/lib/documents/document-pdf";
 import { CertificatePdf, CertificatesPdf, type CertificatePageProps } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
+import { graduationCertificateService } from "../clients/graduationCertificateService";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
 import { certificateLookupAddress, certificateVerifyUrl } from "@/features/certificates/certificate-verify";
-import { loadSpaceImage, loadSpaceLogo } from "./documents";
+import { loadSpaceImage } from "./documents";
 import type { TenantContext } from "./tenant";
 
 /**
@@ -23,7 +24,8 @@ import type { TenantContext } from "./tenant";
  */
 /** Logo e arte do modelo, em data URL, uma vez por PDF (o lote repete o mesmo modelo). */
 async function loadTemplateImages(organizationId: string, template: CertificateTemplate) {
-  const logo = template.logoFileId ? await loadSpaceLogo(organizationId) : null;
+  // A logo do proprio modelo (o de graduacao pode ter outra), sempre da pasta do espaco.
+  const logo = template.logoFileId ? await loadSpaceImage(organizationId, template.logoFileId) : null;
   const artwork =
     template.layout === "custom" && template.artwork ? await loadSpaceImage(organizationId, template.artwork.fileId) : null;
   return { logo, artwork };
@@ -31,7 +33,7 @@ async function loadTemplateImages(organizationId: string, template: CertificateT
 
 /** Uma folha: texto do modelo, imagens e o rodape de verificacao (doc 21 §1.3). */
 async function certificatePage(
-  certificate: CourseCertificate,
+  certificate: AnyCertificate,
   template: CertificateTemplate,
   images: { logo: DocumentLogo | null; artwork: DocumentLogo | null },
 ): Promise<CertificatePageProps> {
@@ -87,6 +89,22 @@ export async function renderClassCertificatesPdf(
   return { pdf, fileName: `certificados-${slugOf(batch.className, batch.classGroupId.slice(0, 8))}` };
 }
 
+/** Certificado de graduacao em PDF (doc 21 §1.6): emite na 1a vez, como a tela. */
+export async function renderGraduationCertificatePdf(
+  ctx: TenantContext,
+  studentId: Id,
+  promotionId: Id,
+): Promise<{ pdf: Buffer; fileName: string }> {
+  const sheet = await runInWorld(ctx, () => graduationCertificateService.getGraduationCertificate(studentId, promotionId), {
+    fn: documentSlices.graduationCertificate,
+    args: [studentId, promotionId],
+  });
+  const { certificate, template } = sheet;
+  const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
+  const pdf = await renderToBuffer(<CertificatePdf {...page} />);
+  return { pdf, fileName: `certificado-graduacao-${slugOf(certificate.studentName, promotionId.slice(0, 8))}` };
+}
+
 export async function renderCertificatePdf(
   ctx: TenantContext,
   enrollmentId: Id,
@@ -110,9 +128,10 @@ export async function renderCertificatePdf(
 export async function renderCertificatePreviewPdf(
   ctx: TenantContext,
   input: SaveCertificateTemplate,
-  /** Um aluno concluido no lugar dos dados de exemplo ("Previa com"). */
-  enrollmentId?: Id,
+  /** Um aluno de verdade no lugar dos dados de exemplo ("Previa com"): matricula concluida ou graduacao. */
+  real: { kind?: CertificateKind; enrollmentId?: Id; studentId?: Id; promotionId?: Id } = {},
 ): Promise<{ pdf: Buffer; fileName: string }> {
+  const kind: CertificateKind = real.kind === "graduation" ? "graduation" : "course";
   const admin = createSupabaseAdminClient();
   const [{ data: org }, { data: units }] = await Promise.all([
     admin.from("organizations").select("name, subscription").eq("id", ctx.organizationId).maybeSingle(),
@@ -131,19 +150,25 @@ export async function renderCertificatePreviewPdf(
     ...(typeof input.logoFileId === "string" && input.logoFileId ? { logoFileId: input.logoFileId } : {}),
     ...(input.layout === "custom" && input.artwork ? { artwork: input.artwork } : {}),
   };
-  const issues = validateCertificateTemplate(template);
+  const issues = validateCertificateTemplate(template, kind);
   if (issues.length > 0) throw validationError(issues);
   const address = units?.[0]?.address as { city?: string } | string | null | undefined;
-  const certificate = enrollmentId
-    ? await runInWorld(ctx, () => courseCertificateService.previewCourseCertificate(enrollmentId), {
-        fn: documentSlices.certificatePreview,
-        args: [enrollmentId],
-      })
-    : sampleCertificate({
-        organizationName: String(org?.name ?? ""),
-        city: typeof address === "object" ? address?.city : undefined,
-        today: todayISO(),
-      });
+  const sample = { organizationName: String(org?.name ?? ""), city: typeof address === "object" ? address?.city : undefined, today: todayISO() };
+  const { enrollmentId, studentId, promotionId } = real;
+  const certificate: AnyCertificate =
+    kind === "graduation"
+      ? studentId && promotionId
+        ? await runInWorld(ctx, () => graduationCertificateService.previewGraduationCertificate(studentId, promotionId), {
+            fn: documentSlices.graduationCertificatePreview,
+            args: [studentId, promotionId],
+          })
+        : sampleGraduationCertificate(sample)
+      : enrollmentId
+        ? await runInWorld(ctx, () => courseCertificateService.previewCourseCertificate(enrollmentId), {
+            fn: documentSlices.certificatePreview,
+            args: [enrollmentId],
+          })
+        : sampleCertificate(sample);
   const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
   const pdf = await renderToBuffer(<CertificatePdf {...page} />);
   return { pdf, fileName: "certificado-previa" };

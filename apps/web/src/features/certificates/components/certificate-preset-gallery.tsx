@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClassesBusinessSegment, CourseCertificate } from "@gestarahub/contracts";
+import type { AnyCertificate, CertificateKind, ClassesBusinessSegment } from "@gestarahub/contracts";
 import { certificateTemplateFromPreset } from "@gestarahub/core/certificate";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import { CertificateSheet } from "./certificate-sheet";
  */
 export function CertificatePresetGallery({
   sample,
+  kind = "course",
   segment,
   teacherTitle,
   logoUrl,
@@ -21,7 +22,9 @@ export function CertificatePresetGallery({
   disabled,
   onPick,
 }: {
-  sample: CourseCertificate;
+  sample: AnyCertificate;
+  /** Curso ou graduacao: cada tipo tem os proprios modelos prontos. */
+  kind?: CertificateKind;
   segment?: ClassesBusinessSegment;
   teacherTitle: string;
   logoUrl?: string | null;
@@ -32,7 +35,7 @@ export function CertificatePresetGallery({
 }) {
   return (
     <div role="radiogroup" aria-label="Modelos prontos" className="grid grid-cols-2 gap-2">
-      {certificatePresetOptionsFor(segment).map((option) => {
+      {certificatePresetOptionsFor(segment, kind).map((option) => {
         const selected = option.id === selectedId;
         return (
           <button

@@ -259,6 +259,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "jsonb",
         "nullable": true,
         "hasDefault": false
+      },
+      "graduation_certificate_template": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1072,12 +1077,12 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "enrollment_id": {
         "type": "text",
-        "nullable": false,
+        "nullable": true,
         "hasDefault": false
       },
       "class_group_id": {
         "type": "text",
-        "nullable": false,
+        "nullable": true,
         "hasDefault": false
       },
       "student_id": {
@@ -1129,6 +1134,21 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "kind": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "promotion_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "modality_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1596,6 +1616,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "hasDefault": false
       },
       "certificate_template": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "graduation_certificate_template": {
         "type": "jsonb",
         "nullable": true,
         "hasDefault": false

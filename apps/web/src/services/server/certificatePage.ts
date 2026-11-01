@@ -1,4 +1,4 @@
-import type { CertificateVerification, CourseCertificate } from "@gestarahub/contracts";
+import type { CertificateVerification, CourseCertificate, GraduationCertificate } from "@gestarahub/contracts";
 import { normalizeCertificateCode } from "@gestarahub/core/certificate";
 import { maskPersonName } from "@gestarahub/core/privacy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -17,14 +17,31 @@ export async function loadCertificatePage(input: string): Promise<CertificateVer
     const admin = createSupabaseAdminClient();
     const { data } = await admin
       .from("issued_certificates")
-      .select("code, status, snapshot")
+      .select("code, status, kind, snapshot")
       .eq("code", code)
       .maybeSingle();
     if (!data) return null;
+    const status = data.status === "canceled" ? "canceled" : "valid";
+    if (data.kind === "graduation") {
+      const snapshot = data.snapshot as GraduationCertificate;
+      return {
+        kind: "graduation",
+        code: String(data.code),
+        status,
+        studentName: maskPersonName(snapshot.studentName),
+        modalityName: snapshot.modalityName,
+        organizationName: snapshot.organizationName,
+        levelName: snapshot.levelName,
+        ...(snapshot.previousLevelName ? { previousLevelName: snapshot.previousLevelName } : {}),
+        graduatedOn: snapshot.graduatedOn,
+        issuedOn: snapshot.issuedOn,
+      };
+    }
     const snapshot = data.snapshot as CourseCertificate;
     return {
+      kind: "course",
       code: String(data.code),
-      status: data.status === "canceled" ? "canceled" : "valid",
+      status,
       studentName: maskPersonName(snapshot.studentName),
       courseName: snapshot.courseName,
       ...(snapshot.modalityName ? { modalityName: snapshot.modalityName } : {}),

@@ -1,5 +1,48 @@
-import type { DateTimeISO, Id } from "./common";
+import type { DateISO, DateTimeISO, Id } from "./common";
 import type { CourseCertificate } from "./class";
+
+/**
+ * Tipo de certificado (doc 21 §1.6): de conclusao de curso (turma com inicio e
+ * fim) ou de graduacao (faixa, nivel, modulo ou fase, pelo registro na evolucao
+ * do aluno). Cada tipo tem o proprio modelo e as proprias variaveis.
+ */
+export type CertificateKind = "course" | "graduation";
+
+/** Dados do certificado de graduacao (doc 21 §1.6): o registro do historico do aluno. */
+export interface GraduationCertificate {
+  /** Id do registro no historico de graduacoes do aluno (`StudentPromotionHistoryEntry`). */
+  promotionId: Id;
+  studentId: Id;
+  modalityId: Id;
+  organizationName: string;
+  studentName: string;
+  modalityName: string;
+  /** Etapa alcancada, com a palavra da trilha ("Faixa Azul", "Nível 2"). */
+  levelName: string;
+  previousLevelName?: string;
+  /** Grau dentro da etapa ("2º grau"), so na trilha de faixas e acima de zero. */
+  degree?: string;
+  /** Dia da graduacao. */
+  graduatedOn: DateISO;
+  /** Examinador do registro ou o professor da turma do aluno na modalidade. */
+  instructorName: string;
+  city?: string;
+  issuedOn: DateISO;
+  verificationCode?: string;
+}
+
+/** Um certificado de qualquer tipo (a folha e o PDF desenham os dois). */
+export type AnyCertificate = CourseCertificate | GraduationCertificate;
+
+/** Graduacao registrada, para a previa do editor de modelos ("Previa com"). */
+export interface GraduationOption {
+  promotionId: Id;
+  studentId: Id;
+  studentName: string;
+  modalityName: string;
+  levelName: string;
+  graduatedOn: DateISO;
+}
 
 /**
  * Modelo de certificado do espaco (doc 21, secao 1; recurso pago
@@ -97,15 +140,24 @@ export interface CourseCertificatesBatch {
 /** Salvar troca o modelo inteiro (sem `logoFileId` = sem logo; sem `artwork` = sem arte). */
 export type SaveCertificateTemplate = Omit<CertificateTemplate, "updatedAt">;
 
+/** Registro da emissao (doc 21 §1.3). */
+export interface IssuedCertificateInfo {
+  code: string;
+  status: "valid" | "canceled";
+  issuedAt: DateTimeISO;
+  canceledAt?: DateTimeISO;
+}
+
 /** O que a tela do certificado recebe: os dados do aluno, o modelo e a emissao. */
 export interface CourseCertificateDocument {
   certificate: CourseCertificate;
-  /** Registro da emissao (doc 21 §1.3). */
-  issued: {
-    code: string;
-    status: "valid" | "canceled";
-    issuedAt: DateTimeISO;
-    canceledAt?: DateTimeISO;
-  };
+  issued: IssuedCertificateInfo;
+  template: CertificateTemplate;
+}
+
+/** O certificado de graduacao na tela: dados, emissao e o modelo de graduacao. */
+export interface GraduationCertificateDocument {
+  certificate: GraduationCertificate;
+  issued: IssuedCertificateInfo;
   template: CertificateTemplate;
 }

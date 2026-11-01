@@ -3,8 +3,9 @@ import { clientBaseService } from "./clientBaseService";
 import { clientLifecycleService } from "./clientLifecycleService";
 import { clientProgressionService } from "./clientProgressionService";
 import { clientRecordsService } from "./clientRecordsService";
+import { graduationCertificateService } from "./graduationCertificateService";
 
-export { clientBaseService, clientLifecycleService, clientProgressionService, clientRecordsService };
+export { clientBaseService, clientLifecycleService, clientProgressionService, clientRecordsService, graduationCertificateService };
 
 /** Os sub-servicos de alunos numa unica API (a regra, sem delegar). */
 export const clientsServiceImpl = {
@@ -12,6 +13,7 @@ export const clientsServiceImpl = {
   ...clientLifecycleService,
   ...clientProgressionService,
   ...clientRecordsService,
+  ...graduationCertificateService,
 };
 
 /**

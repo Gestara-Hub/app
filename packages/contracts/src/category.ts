@@ -85,6 +85,8 @@ export interface Category {
   measurements?: ModalityMeasurementSettings;
   /** Modelo de certificado so desta modalidade (doc 21 §1). Ausente = o do espaco. */
   certificateTemplate?: CertificateTemplate;
+  /** Modelo do certificado de graduacao so desta modalidade (doc 21 §1.6); ausente = o do espaco. */
+  graduationCertificateTemplate?: CertificateTemplate;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
