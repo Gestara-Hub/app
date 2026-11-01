@@ -247,6 +247,7 @@ export function ActivateSubaccountDialog({
                 <InputText<FormValues>
                   name="name"
                   label="Razão Social ou Nome do Titular"
+                  required
                   disabled={setup.isPending}
                 />
 
@@ -315,12 +316,14 @@ export function ActivateSubaccountDialog({
                     name="email"
                     type="email"
                     label="E-mail financeiro"
+                    required
                     disabled={setup.isPending}
                   />
                   <InputPhone<FormValues>
                     name="mobilePhone"
                     label="Celular / WhatsApp de contato"
                     placeholder=""
+                    required
                     disabled={setup.isPending}
                   />
                 </div>
