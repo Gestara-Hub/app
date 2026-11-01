@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
-import { ChevronLeft, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
+import { BackLink } from "@/components/shared/back-link";
 import { isApiError } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
@@ -38,12 +38,7 @@ export function ClassCertificatesView({ classGroupId }: { classGroupId: string }
     <div className="space-y-4">
       <style>{"@media print { @page { size: A4 landscape; margin: 10mm; } .certificate-page { break-after: page; } }"}</style>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <Button variant="ghost" className="-ml-2 gap-1" asChild>
-          <Link href={`/classes/${classGroupId}`}>
-            <ChevronLeft className="size-4" />
-            Voltar à turma
-          </Link>
-        </Button>
+        <BackLink fallbackHref={`/classes/${classGroupId}`} className="mb-0" />
         {valid.length > 0 ? (
           <Button type="button" className="gap-1.5" onClick={() => window.print()}>
             <Printer className="size-4" />

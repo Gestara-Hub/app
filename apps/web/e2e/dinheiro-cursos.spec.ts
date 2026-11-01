@@ -223,7 +223,7 @@ test("curso terminado no grátis: Concluído, sem matrícula nova e certificado 
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
   await expect(page.getByText("Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Voltar à turma" }).click();
+  await page.getByRole("link", { name: "Voltar" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old$/);
 });
 
