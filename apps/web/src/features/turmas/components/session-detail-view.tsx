@@ -27,17 +27,11 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogFormFooter } from "@/components/form";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogBody } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
 import { ListContainer, ListRow } from "@/components/shared/list";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import {
@@ -904,20 +898,31 @@ function KindOption({
   title: string;
   description: string;
 }) {
+  // Uma opcao por linha (o drawer e estreito): marcador a esquerda, titulo e a linha de explicacao.
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
-        selected
-          ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
-          : "border-border/60 hover:bg-muted/50 text-muted-foreground",
+        "flex w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border/70 bg-background hover:border-border hover:bg-muted/40",
       )}
     >
-      <span className="text-sm font-medium">{title}</span>
-      <span className="text-xs text-muted-foreground mt-0.5">{description}</span>
+      <span
+        aria-hidden
+        className={cn(
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+          selected ? "border-primary" : "border-border",
+        )}
+      >
+        {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{title}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </span>
     </button>
   );
 }
@@ -963,7 +968,6 @@ function AddStudentSessionDialog({
           label: `${c.studentName} · ${c.remaining === 1 ? "1 aula" : `${c.remaining} aulas`} no pacote`,
         }))
       : availableClients.map((c) => ({ value: c.id, label: c.name }));
-  const kindCount = 1 + (session.allowDropin ? 1 : 0) + (hasPackages ? 1 : 0);
 
   // Aluno com pacote para esta aula entra pelo pacote (sem cobranca avulsa).
   const chooseStudent = (id: string) => {
@@ -989,107 +993,95 @@ function AddStudentSessionDialog({
     });
   };
 
+  const kinds = [
+    session.allowDropin ? "aula avulsa" : null,
+    hasPackages ? "pelo pacote" : null,
+    "experimental",
+  ].filter(Boolean) as string[];
+  const kindsText = kinds.length === 1 ? kinds[0] : `${kinds.slice(0, -1).join(", ")} ou ${kinds[kinds.length - 1]}`;
+
+  // Drawer a direita, como os outros formularios (doc 07 §2.7; pedido de 31/10/2026).
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="session-add-student"
       >
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>Adicionar aluno nesta aula</DialogTitle>
-          <DialogDescription>
-            {session.allowDropin ? "" : "Esta turma não aceita aula avulsa. "}
-            {`Inscreva um aluno ${
-              session.allowDropin && hasPackages
-                ? "como aula avulsa, pelo pacote ou experimental"
-                : session.allowDropin
-                  ? "como aula avulsa ou experimental"
-                  : hasPackages
-                    ? "pelo pacote ou como experimental"
-                    : "como experimental"
-            } para o dia `}
-            {format(parseISO(session.date), "dd/MM/yyyy")}.
-          </DialogDescription>
-        </DialogHeader>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Adicionar aluno nesta aula</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Aula de {format(parseISO(session.date), "EEEE, dd/MM", { locale: ptBR })}. Entra como {kindsText}.
+          </SheetDescription>
+        </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DialogBody className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              Aluno<span className="ml-0.5 text-destructive">*</span>
-            </label>
-            <Combobox
-              value={studentId}
-              onChange={chooseStudent}
-              options={options}
-              placeholder="Selecione o aluno"
-              searchPlaceholder="Buscar aluno..."
-              emptyMessage="Nenhum aluno encontrado."
-              ariaLabel="Aluno"
-            />
-            {studentError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {studentError}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              Tipo de inscrição<span className="ml-0.5 text-destructive">*</span>
-            </label>
-            <div
-              className={cn(
-                "grid gap-3",
-                kindCount === 3 ? "grid-cols-1 sm:grid-cols-3" : kindCount === 2 ? "grid-cols-2" : "grid-cols-1",
-              )}
-            >
-              {session.allowDropin ? (
-                <KindOption
-                  selected={kind === "dropin"}
-                  onSelect={() => chooseKind("dropin")}
-                  title="Aula avulsa"
-                  description={defaultPrice > 0 ? "Gera cobrança avulsa" : "Sem valor configurado"}
-                />
-              ) : null}
-              {hasPackages ? (
-                <KindOption
-                  selected={kind === "package"}
-                  onSelect={() => chooseKind("package")}
-                  title="Pacote"
-                  description="Usa 1 aula do pacote"
-                />
-              ) : null}
-              <KindOption
-                selected={kind === "trial"}
-                onSelect={() => chooseKind("trial")}
-                title="Experimental"
-                description="Cortesia (R$ 0,00)"
-              />
-            </div>
-          </div>
-
-          {kind === "dropin" ? (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Valor da cobrança</label>
-              <Input
-                type="text"
-                value={formatCents(defaultPrice)}
-                readOnly
-                className="bg-muted text-muted-foreground cursor-not-allowed"
+              <Label htmlFor="session-add-student">
+                Aluno<span className="ml-0.5 text-destructive">*</span>
+              </Label>
+              <Combobox
+                id="session-add-student"
+                value={studentId}
+                onChange={chooseStudent}
+                options={options}
+                placeholder="Selecione o aluno"
+                searchPlaceholder="Buscar aluno..."
+                emptyMessage="Nenhum aluno encontrado."
+                ariaLabel="Aluno"
               />
-              <p className="text-[11px] text-muted-foreground">
-                Valor configurado para aulas avulsas desta turma.
-              </p>
+              {studentError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {studentError}
+                </p>
+              ) : null}
             </div>
-          ) : null}
 
+            <div className="space-y-1.5">
+              <Label>
+                Tipo de inscrição<span className="ml-0.5 text-destructive">*</span>
+              </Label>
+              <div className="space-y-2">
+                {session.allowDropin ? (
+                  <KindOption
+                    selected={kind === "dropin"}
+                    onSelect={() => chooseKind("dropin")}
+                    title="Aula avulsa"
+                    description={defaultPrice > 0 ? `Gera cobrança de ${formatCents(defaultPrice)}` : "Sem valor configurado na turma"}
+                  />
+                ) : null}
+                {hasPackages ? (
+                  <KindOption
+                    selected={kind === "package"}
+                    onSelect={() => chooseKind("package")}
+                    title="Pacote"
+                    description="Usa 1 aula do pacote do aluno"
+                  />
+                ) : null}
+                <KindOption
+                  selected={kind === "trial"}
+                  onSelect={() => chooseKind("trial")}
+                  title="Experimental"
+                  description="Cortesia, sem cobrança"
+                />
+              </div>
+            </div>
+
+            {kind === "dropin" ? (
+              // So leitura: o valor vem da turma (muda em Turmas, editar).
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Valor da cobrança</p>
+                  <p className="text-xs text-muted-foreground">Configurado na turma, para aulas avulsas.</p>
+                </div>
+                <p className="shrink-0 text-base font-semibold tabular-nums">{formatCents(defaultPrice)}</p>
+              </div>
+            ) : null}
           </DialogBody>
-          <DialogFormFooter isPending={isPending} className="shrink-0 border-t border-border/40 px-6 py-4" />
+          <DialogFormFooter isPending={isPending} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4" />
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
