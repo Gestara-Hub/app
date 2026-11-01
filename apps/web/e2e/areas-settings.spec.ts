@@ -704,7 +704,7 @@ test.describe("Configurações: Certificado", () => {
     await expect(save).toHaveCount(0);
 
     // Remover a logo so vale ao salvar.
-    await panel.getByRole("button", { name: "Remover", exact: true }).click();
+    await panel.getByRole("button", { name: "Remover logo" }).click();
     await expect(panel.getByText("Logo atual")).toHaveCount(0);
     await expect(panel.locator("article.certificate-sheet img")).toHaveCount(0);
     await expect(panel.getByText("Alterações não salvas")).toBeVisible();

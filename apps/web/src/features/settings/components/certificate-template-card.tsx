@@ -609,12 +609,13 @@ function CertificateTemplateForm({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="gap-1.5"
+                      size="icon"
+                      aria-label="Remover logo"
+                      title="Remover logo"
                       disabled={pending}
                       onClick={() => form.setValue("keepLogo", false, { shouldDirty: true })}
                     >
                       <Trash2 className="size-4" />
-                      Remover
                     </Button>
                   </div>
                 ) : (
@@ -658,12 +659,13 @@ function CertificateTemplateForm({
                       <Button
                         type="button"
                         variant="ghost"
-                        className="gap-1.5"
+                        size="icon"
+                        aria-label="Remover arte"
+                        title="Remover arte"
                         disabled={pending}
                         onClick={() => form.setValue("keepArtwork", false, { shouldDirty: true })}
                       >
                         <Trash2 className="size-4" />
-                        Remover
                       </Button>
                     </div>
                   ) : (
