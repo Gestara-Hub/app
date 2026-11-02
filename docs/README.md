@@ -55,6 +55,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 12. [product/23-area-do-aluno-e-professor.md](product/23-area-do-aluno-e-professor.md) — **Área do Aluno e do Professor:** Mapeamento completo de funcionalidades e matriz de distribuição por plano (Grátis, Profissional e Expansão).
 13. [product/24-diretrizes-exclusao-e-lgpd.md](product/24-diretrizes-exclusao-e-lgpd.md) — **Diretrizes de Exclusão e LGPD:** Enquadramento legal (BACEN, CTN, CLT, Marco Civil), travas de subconta, esteira de 3 fases, anonimização por papel (Dono, Aluno, Professor, Staff) e rotas públicas só com dados mascarados (§6).
 14. [product/25-lembretes-e-seguranca.md](product/25-lembretes-e-seguranca.md) — **Lembretes inteligentes e aviso de segurança:** um motor de lembretes a partir dos modelos de mensagem (cobrança, pacote, faltas, aniversário, relacionamento, avisos), prioridade, sem repetir, adiar, envio em sequência, sino no topo; janela da verificação em duas etapas em quatro momentos.
+15. [product/27-juridico-termos-e-identificacao.md](product/27-juridico-termos-e-identificacao.md) — **Jurídico (02/11/2026):** o que o site mostra de Termos, Privacidade, contrato de ativação e consentimento; identificação obrigatória da empresa (CNPJ, endereço, encarregado) e onde entra; lacunas dos textos; o que a Meta (opt-in, exclusão de dados) e o Asaas (conta PJ, homologação, confirmação anual) exigem.
 
 ---
 
