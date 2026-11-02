@@ -48,6 +48,7 @@ import { Combobox } from "@/components/shared/combobox";
 import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useModalityVocabulary } from "@/features/settings";
+import { useAudioFeedback } from "@/features/preferences";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
 import {
@@ -123,6 +124,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const cancelReservationMut = useCancelReservation();
   const restoreMut = useRestorePrimaryInstructor();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+  const { playChime } = useAudioFeedback();
   const router = useRouter();
 
   // Avulso/experimental sai da aula (cobranca avulsa em aberto e cancelada);
@@ -324,8 +326,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       });
     writeQueues.set(studentId, queue);
   };
-  const setAttendance = (r: SessionRosterEntry, status?: AttendanceStatus) =>
+  const setAttendance = (r: SessionRosterEntry, status?: AttendanceStatus) => {
+    if (status === "present") playChime("checkin");
     writeAttendance(r.studentId, status ?? null);
+  };
   // Toque na linha = veio. Com a chamada aberta, tocar de novo desmarca; com
   // ela concluida (ninguem a marcar), vira falta. Falta e justificada voltam a presente.
   const tapRow = (r: SessionRosterEntry) => {
@@ -355,6 +359,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
   const markAllPresent = async () => {
     try {
+      playChime("checkin");
       await markPending("present");
       toast.success("Presença marcada para todos os alunos pendentes.");
     } catch (err) {
@@ -701,7 +706,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
               <ListRow
                 key={r.studentId}
                 onClick={marking ? () => tapRow(r) : undefined}
-                aria-label={marking ? `${r.studentName}: ${r.attendance ? ATTENDANCE_LABEL[r.attendance] : "sem marcação"}` : undefined}
                 actions={
                   absentLike || rowActions.length > 0 ? (
                     <>
@@ -745,9 +749,19 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                     </span>
                   )}
                   <div className="min-w-0 space-y-0.5">
-                    <p className="text-sm font-medium text-foreground">{r.studentName}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {r.studentName}
+                      {marking ? (
+                        <span className="sr-only">
+                          : {r.attendance ? ATTENDANCE_LABEL[r.attendance] : "sem marcação"}
+                        </span>
+                      ) : null}
+                    </p>
                     {/* Nivel em texto (faixa mantem a cor) e so o que foge do padrao */}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <div
+                      aria-hidden="true"
+                      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+                    >
                       {currentLvl ? (
                         isBelt ? (
                           <BeltBadge
@@ -778,7 +792,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                       <LevelChangeBadge level={currentLvl} birthDate={student?.birthDate} levelWord={vocabulary.level} />
                     </div>
                     {reminder ? (
-                      <p className="flex items-start gap-1 pt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                      <p
+                        aria-hidden="true"
+                        className="flex items-start gap-1 pt-0.5 text-xs text-amber-800 dark:text-amber-300"
+                      >
                         <NotebookPen className="mt-0.5 size-3 shrink-0" aria-hidden />
                         Para hoje: {reminder}
                       </p>
