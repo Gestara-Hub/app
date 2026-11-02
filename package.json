@@ -9,6 +9,7 @@
     "tunnel": "node apps/web/scripts/dev-tunnel.mjs",
     "setup:local": "node apps/web/scripts/local-setup.mjs",
     "setup:local:reset": "node apps/web/scripts/local-setup.mjs --reset",
+    "reset:all": "node apps/web/scripts/reset-all.mjs",
     "cron:local": "node apps/web/scripts/dev-cron-secrets.mjs",
     "demo:local": "node apps/web/scripts/dev-demo.mjs",
     "build": "pnpm --filter @gestarahub/web build",

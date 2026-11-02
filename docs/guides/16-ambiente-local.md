@@ -36,6 +36,12 @@ Se o app já estava rodando e o comando criou alguma variável, reinicie o `pnpm
 ## Começar do zero
 
 ```bash
+pnpm reset:all
+```
+
+Num comando só (02/11/2026): `setup:local:reset`, `cron:local` e `demo:local`, nessa ordem (`--no-demo` pula a demonstração). No fim, lembra a ordem do que fica no ar: `pnpm tunnel` num terminal e, depois de o túnel subir, `pnpm dev` em outro. Script: `apps/web/scripts/reset-all.mjs`. Os passos separados continuam valendo:
+
+```bash
 pnpm setup:local:reset
 ```
 
