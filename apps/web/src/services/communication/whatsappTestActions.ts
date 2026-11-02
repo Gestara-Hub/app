@@ -4,6 +4,7 @@ import { apiError, forbiddenError, validationError } from "@gestarahub/core/api-
 import { runAction, type ActionResult } from "../server/action";
 import { requireTenant } from "../server/tenant";
 import { whatsappClient, WhatsAppApiError } from "./whatsappClient";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export interface SendTestWhatsAppMessagePayload {
   to: string;
@@ -48,15 +49,40 @@ export async function sendTestWhatsAppMessageAction(
 
     try {
       if (payload.type === "template") {
-        // O template 'hello_world' vem pré-aprovado por padrão em todas as contas de teste da Meta
-        const res = await whatsappClient.sendTemplateMessage(cleanTo, "hello_world", {
-          languageCode: "en_US",
+        // Modelo aprovado da propria conta (01/11/2026): "hello_world" so existe
+        // na conta de sandbox da Meta; numa conta real a Meta recusa com 132001.
+        // Prefere as boas-vindas (2 parametros: nome e espaco); cai no hello_world
+        // quando a conta e a de sandbox.
+        const approved = (await whatsappClient.listTemplates()).filter((t) => t.status === "APPROVED");
+        const welcome = approved.find((t) => t.name === "welcome_student");
+        const hello = approved.find((t) => t.name === "hello_world");
+        if (welcome) {
+          const { data: org } = await createSupabaseAdminClient()
+            .from("organizations")
+            .select("name")
+            .eq("id", ctx.organizationId)
+            .maybeSingle();
+          const res = await whatsappClient.sendTemplateMessage(cleanTo, "welcome_student", {
+            languageCode: "pt_BR",
+            bodyParameters: ["você", String(org?.name ?? "GestaraHub")],
+          });
+          return {
+            success: true,
+            messageId: res.messages?.[0]?.id,
+            details: "Modelo aprovado 'welcome_student' enviado pela Meta Cloud API.",
+          };
+        }
+        if (hello) {
+          const res = await whatsappClient.sendTemplateMessage(cleanTo, "hello_world", { languageCode: "en_US" });
+          return {
+            success: true,
+            messageId: res.messages?.[0]?.id,
+            details: "Modelo 'hello_world' enviado pela Meta Cloud API.",
+          };
+        }
+        throw apiError("CONFLICT", "A conta da Meta não tem um modelo aprovado para o teste (boas-vindas ou hello_world).", {
+          httpStatus: 409,
         });
-        return {
-          success: true,
-          messageId: res.messages?.[0]?.id,
-          details: "Modelo 'hello_world' enviado com sucesso pela Meta Cloud API!",
-        };
       }
 
       const text =

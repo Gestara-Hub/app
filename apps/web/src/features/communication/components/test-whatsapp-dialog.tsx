@@ -87,7 +87,7 @@ export function TestWhatsAppDialog({ defaultPhone }: TestWhatsAppDialogProps) {
               disabled={isSending}
             />
             <p className="text-[11px] text-muted-foreground">
-              Em modo Sandbox, o número precisa estar cadastrado na lista de teste do Meta for Developers.
+              Na conta de sandbox da Meta, o número precisa estar na lista de destinatários de teste.
             </p>
           </div>
 
@@ -112,10 +112,10 @@ export function TestWhatsAppDialog({ defaultPhone }: TestWhatsAppDialogProps) {
                 />
                 <div className="space-y-0.5">
                   <div className="text-xs font-semibold text-foreground">
-                    Modelo de teste padrão (hello_world)
+                    Modelo aprovado da conta
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    Recomendado na Sandbox: entrega imediata mesmo fora da janela de 24 horas.
+                    Boas-vindas aprovadas na Meta (ou hello_world na sandbox): chega mesmo fora da janela de 24 horas.
                   </div>
                 </div>
               </label>
