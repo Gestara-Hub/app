@@ -2,13 +2,13 @@
 /**
  * Comeca do zero num comando so (02/11/2026):
  *
- *   pnpm reset:all            zera o banco local, segredos do cron e demonstracao
- *   pnpm reset:all --no-demo  o mesmo, sem recriar o espaco de demonstracao
+ *   pnpm reset:all          zera o banco local e os segredos do cron
+ *   pnpm reset:all --demo   o mesmo, e recria o espaco de demonstracao
  *
  * Roda, em ordem, os scripts que ja existem:
  * 1. setup:local:reset  (supabase db reset: APAGA OS DADOS LOCAIS, migra, seed)
  * 2. cron:local         (CRON_SECRET e Vault, zerado junto com o banco)
- * 3. demo:local         (espaco de demonstracao), a menos que --no-demo
+ * 3. demo:local         (espaco de demonstracao), so com --demo
  *
  * O tunel e o pnpm dev ficam de fora: sao processos que ficam no ar, cada um
  * no seu terminal. O script lembra a ordem no fim.
@@ -18,12 +18,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const noDemo = process.argv.includes("--no-demo");
+const withDemo = process.argv.includes("--demo");
 
 const steps = [
   ["Banco local do zero", ["setup:local:reset"]],
   ["Segredos do cron", ["cron:local"]],
-  ...(noDemo ? [] : [["Espaço de demonstração", ["demo:local"]]]),
+  ...(withDemo ? [["Espaço de demonstração", ["demo:local"]]] : []),
 ];
 
 for (const [label, args] of steps) {
