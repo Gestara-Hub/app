@@ -236,18 +236,29 @@ export function buildSignupEmailText({
 }
 
 /**
- * Sem MAILERSEND_API_KEY: em desenvolvimento e nos e2e o link vai para o log e
- * o fluxo segue. Em producao e falha: nunca dizer que enviou sem enviar.
+ * Em desenvolvimento e nos e2e, se o envio falhar (ex.: MAILERSEND_API_KEY ausente,
+ * ou conta trial do MailerSend que só entrega para um único destinatário), o link
+ * ou código sai no terminal para não travar o fluxo nem revogar convites.
+ * Em produção é falha real: nunca dizer que enviou sem enviar.
  */
-function withoutApiKey(link: string, what = "Link gerado"): { ok: true } | { ok: false; error: string } {
+function devDeliveryFallback(
+  linkOrCode: string,
+  what = "Link gerado",
+  reason = "MAILERSEND_API_KEY ausente",
+  prodErrorMessage = "O envio de e-mails está fora do ar. Tente novamente mais tarde.",
+): { ok: true } | { ok: false; error: string } {
   // E2E_NOW so existe no servidor dos e2e (tambem no modo producao, doc 20).
   if (process.env.NODE_ENV === "production" && !process.env.E2E_NOW) {
-    logError("[mailersend] MAILERSEND_API_KEY ausente em producao: e-mail nao enviado.");
-    return { ok: false, error: "O envio de e-mails está fora do ar. Tente novamente mais tarde." };
+    logError(`[mailersend] Falha de envio em produção (${reason}): e-mail não enviado.`);
+    return { ok: false, error: prodErrorMessage };
   }
   // Saida de proposito (em desenvolvimento o link e lido daqui): nao e erro, nao vai ao registro.
-  console.warn(`[mailersend] MAILERSEND_API_KEY ausente. ${what} (so desenvolvimento):`, link);
+  console.warn(`[mailersend] ${reason}. ${what} (só desenvolvimento):`, linkOrCode);
   return { ok: true };
+}
+
+function withoutApiKey(link: string, what = "Link gerado"): { ok: true } | { ok: false; error: string } {
+  return devDeliveryFallback(link, what, "MAILERSEND_API_KEY ausente");
 }
 
 export async function sendSignupLinkEmail(
@@ -307,20 +318,31 @@ export async function sendSignupLinkEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar e-mail:", response.status, errorBody);
-      return {
-        ok: false,
-        error: "Não foi possível enviar o e-mail de confirmação. Tente novamente em instantes.",
-      };
+      return devDeliveryFallback(
+        input.signupUrl,
+        `Link de cadastro para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o e-mail de confirmação. Tente novamente em instantes.",
+      );
     }
-    if (await wasSuppressed(response, "cadastro")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "cadastro")) {
+      return devDeliveryFallback(
+        input.signupUrl,
+        `Link de cadastro para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
 
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar e-mail:", err);
-    return {
-      ok: false,
-      error: "Não foi possível enviar o e-mail de confirmação. Verifique sua conexão e tente novamente.",
-    };
+    return devDeliveryFallback(
+      input.signupUrl,
+      `Link de cadastro para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o e-mail de confirmação. Verifique sua conexão e tente novamente.",
+    );
   }
 }
 
@@ -458,20 +480,31 @@ export async function sendOrganizationInvitationEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar convite:", response.status, errorBody);
-      return {
-        ok: false,
-        error: "Não foi possível enviar o e-mail de convite. Tente novamente em instantes.",
-      };
+      return devDeliveryFallback(
+        input.inviteUrl,
+        `Link de convite para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o e-mail de convite. Tente novamente em instantes.",
+      );
     }
-    if (await wasSuppressed(response, "convite")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "convite")) {
+      return devDeliveryFallback(
+        input.inviteUrl,
+        `Link de convite para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
 
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar convite:", err);
-    return {
-      ok: false,
-      error: "Falha ao conectar com o serviço de e-mail. Verifique a conexão.",
-    };
+    return devDeliveryFallback(
+      input.inviteUrl,
+      `Link de convite para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Falha ao conectar com o serviço de e-mail. Verifique a conexão.",
+    );
   }
 }
 
@@ -558,13 +591,30 @@ export async function sendPasswordResetEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar e-mail de nova senha:", response.status, errorBody);
-      return { ok: false, error: "Não foi possível enviar o e-mail. Tente novamente em instantes." };
+      return devDeliveryFallback(
+        input.resetUrl,
+        `Link de nova senha para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o e-mail. Tente novamente em instantes.",
+      );
     }
-    if (await wasSuppressed(response, "nova senha")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "nova senha")) {
+      return devDeliveryFallback(
+        input.resetUrl,
+        `Link de nova senha para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar e-mail de nova senha:", err);
-    return { ok: false, error: "Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente." };
+    return devDeliveryFallback(
+      input.resetUrl,
+      `Link de nova senha para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente.",
+    );
   }
 }
 
@@ -645,13 +695,30 @@ export async function sendTwoFactorCodeEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar o código de acesso:", response.status, errorBody);
-      return { ok: false, error: "Não foi possível enviar o código. Tente novamente em instantes." };
+      return devDeliveryFallback(
+        input.code,
+        `Código 2FA para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o código. Tente novamente em instantes.",
+      );
     }
-    if (await wasSuppressed(response, "código de acesso")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "código de acesso")) {
+      return devDeliveryFallback(
+        input.code,
+        `Código 2FA para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar o código de acesso:", err);
-    return { ok: false, error: "Não foi possível enviar o código. Verifique sua conexão e tente novamente." };
+    return devDeliveryFallback(
+      input.code,
+      `Código 2FA para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o código. Verifique sua conexão e tente novamente.",
+    );
   }
 }
 
@@ -820,13 +887,30 @@ export async function sendWelcomeEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar boas-vindas:", response.status, errorBody);
-      return { ok: false, error: "Não foi possível enviar o e-mail de boas-vindas." };
+      return devDeliveryFallback(
+        input.appUrl,
+        `Boas-vindas para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o e-mail de boas-vindas.",
+      );
     }
-    if (await wasSuppressed(response, "boas-vindas")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "boas-vindas")) {
+      return devDeliveryFallback(
+        input.appUrl,
+        `Boas-vindas para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar boas-vindas:", err);
-    return { ok: false, error: "Não foi possível enviar o e-mail de boas-vindas." };
+    return devDeliveryFallback(
+      input.appUrl,
+      `Boas-vindas para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o e-mail de boas-vindas.",
+    );
   }
 }
 
@@ -956,12 +1040,29 @@ export async function sendPlanNoticeEmail(
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       logError("[mailersend] Erro ao enviar o aviso do plano:", response.status, errorBody);
-      return { ok: false, error: "Não foi possível enviar o aviso do plano." };
+      return devDeliveryFallback(
+        input.actionUrl,
+        `Aviso do plano para ${input.toEmail}`,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o aviso do plano.",
+      );
     }
-    if (await wasSuppressed(response, "aviso do plano")) return { ok: false, error: SUPPRESSED_ERROR };
+    if (await wasSuppressed(response, "aviso do plano")) {
+      return devDeliveryFallback(
+        input.actionUrl,
+        `Aviso do plano para ${input.toEmail}`,
+        "Destinatário suprimido pelo MailerSend",
+        SUPPRESSED_ERROR,
+      );
+    }
     return { ok: true };
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar o aviso do plano:", err);
-    return { ok: false, error: "Não foi possível enviar o aviso do plano." };
+    return devDeliveryFallback(
+      input.actionUrl,
+      `Aviso do plano para ${input.toEmail}`,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o aviso do plano.",
+    );
   }
 }
