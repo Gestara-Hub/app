@@ -304,4 +304,4 @@ Os quatro últimos existem para a lista passar de 20 alunos (padrão da página)
 
 | # | Etapa | Gravidade | O que aconteceu | Correção |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 1 | 1 | baixa | Política de Privacidade (§4 e §9) e Termos (§7) citam nichos específicos ("turmas infantis de artes marciais, dança, natação ou música", "sua academia", "espaço educacional/academia") em vez de linguagem genérica voltada a turmas e espaços | `12c7643` |
