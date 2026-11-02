@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { INSTAGRAM_HANDLE, INSTAGRAM_URL, SUPPORT_EMAIL } from "@/config/site";
+import { COMPANY_ADDRESS, COMPANY_CNPJ, COMPANY_NAME, INSTAGRAM_HANDLE, INSTAGRAM_URL, SUPPORT_EMAIL } from "@/config/site";
 import { logError, logWarn } from "@/lib/log";
 
 const MAILERSEND_API_URL = "https://api.mailersend.com/v1/email";
@@ -145,6 +145,7 @@ function renderEmailLayout({
           <tr>
             <td style="background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;font-size:12px;line-height:1.6;color:#94a3b8;">
               ${footer}
+              <p style="margin:12px 0 0 0;color:#94a3b8;">${COMPANY_NAME} · CNPJ ${COMPANY_CNPJ}<br />${COMPANY_ADDRESS}</p>
             </td>
           </tr>
         </table>

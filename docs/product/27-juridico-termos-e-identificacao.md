@@ -76,7 +76,11 @@
 - **MailerSend:** domínio verificado (SPF, DKIM, DMARC) e aprovação da conta (hoje entrega a um destinatário só).
 - **Registro.br / DNS:** o domínio no CNPJ da MHMJ.
 
-## 7. Ordem sugerida
+## 7. Ordem sugerida e andamento
+
+**Feito em 02/11/2026** (passos 1 a 3, menos as decisões em aberto): dados da empresa em `config/site.ts` (`COMPANY_NAME`, `COMPANY_CNPJ`, `COMPANY_ADDRESS`, `LEGAL_FORUM`); Termos v1.1 (partes, canal de atendimento, arrependimento de 7 dias, cancelamento do mensal e do anual, instruções do controlador à operadora, autorização de WhatsApp, propriedade da MHMJ, prazo de resposta do encerramento, foro de São Paulo com ressalva do consumidor, histórico de versões); Privacidade v1.1 (controladora, entrada com Google, suboperadores nomeados com aviso de transferência internacional, incidentes em até 72 h, seção "Como pedir a exclusão dos seus dados" em `/privacy#exclusao` para o cadastro da Meta, encarregado); contrato de ativação cláusula 1 com a MHMJ; rodapés da landing, dos e-mails e das páginas públicas (`components/shared/public-legal-footer.tsx`: fatura, certificado e termo do menor); `CURRENT_PLATFORM_TERMS_VERSION` = `v1.1-2026-11` (todo usuário aceita de novo ao entrar). **Encarregado:** a própria MHMJ com o e-mail de contato (decisão do dono; nomear uma pessoa é opcional). **Fica para confirmar:** região dos projetos Supabase e PostHog (hoje o texto diz que pode haver processamento fora do Brasil).
+
+
 
 1. Dono passa o bloco de dados (razão social, CNPJ, endereço, cidade do foro, e-mail do encarregado e nome do encarregado).
 2. Agente aplica o bloco em Termos, Privacidade, contrato de ativação, rodapés (landing, públicas, e-mails), com a data da nova versão e o aceite de novo no app (T1, T10, T11, §2).

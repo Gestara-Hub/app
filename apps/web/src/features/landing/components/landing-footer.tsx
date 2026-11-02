@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
-import { SUPPORT_EMAIL } from "@/config/site";
+import { COMPANY_ADDRESS, COMPANY_CNPJ, COMPANY_NAME, SUPPORT_EMAIL } from "@/config/site";
 import { LANDING_NAV_LINKS } from "./landing-header";
 
 export function LandingFooter() {
@@ -26,6 +26,10 @@ export function LandingFooter() {
           />
           <span className="text-xs text-muted-foreground">
             © {currentYear} GestaraHub. Todos os direitos reservados.
+            <span className="block">
+              Um produto da {COMPANY_NAME} · CNPJ {COMPANY_CNPJ}
+            </span>
+            <span className="block">{COMPANY_ADDRESS}</span>
           </span>
         </div>
 

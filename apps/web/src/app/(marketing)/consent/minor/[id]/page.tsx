@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import { getPublicMinorConsentDetailsAction } from "@/services/legalConsent/actions";
 import { MinorConsentForm } from "./minor-consent-form";
 
@@ -32,6 +33,7 @@ export default async function MinorConsentPage({
             </p>
           </div>
         )}
+        <PublicLegalFooter className="mt-8" />
       </div>
     </div>
   );

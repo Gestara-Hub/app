@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AlertCircle, Clock } from "lucide-react";
@@ -77,8 +78,9 @@ export default async function ChargeInvoicePage({
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Pagamento seguro processado pela plataforma GestaraHub.
+          Pagamento seguro processado pela plataforma GestaraHub, com a Asaas Gestão Financeira IP S.A. como instituição de pagamento.
         </p>
+        <PublicLegalFooter />
       </div>
     </div>
   );

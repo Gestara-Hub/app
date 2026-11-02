@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import Image from "next/image";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
@@ -26,6 +27,7 @@ export default function CertificateLookupPage() {
           <p className="mt-1 text-sm text-muted-foreground">Digite o código que está no rodapé do certificado, embaixo do QR Code.</p>
           <CertificateCodeForm />
         </div>
+        <PublicLegalFooter />
       </div>
     </div>
   );

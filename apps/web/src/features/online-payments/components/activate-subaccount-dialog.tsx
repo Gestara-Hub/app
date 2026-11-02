@@ -1,5 +1,7 @@
 "use client";
 
+import { COMPANY_CNPJ, COMPANY_NAME } from "@/config/site";
+
 import { useEffect, useState } from "react";
 import { useForm, useWatch, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -449,7 +451,7 @@ export function ActivateSubaccountDialog({
                 1. Mandato e Abertura de Conta de Recebimento
               </p>
               <p className="mt-0.5">
-                O CONTRATANTE nomeia o GestaraHub como procurador tecnológico exclusivo para solicitar a abertura, configuração e integração da conta de recebimento em seu nome perante a instituição parceira (Asaas I.P. S.A.), com o propósito restrito de processar os pagamentos e mensalidades de seus alunos.
+                O CONTRATANTE nomeia a {COMPANY_NAME}, inscrita no CNPJ {COMPANY_CNPJ}, titular da plataforma GestaraHub (&ldquo;GestaraHub&rdquo;), como procuradora tecnológica exclusiva para solicitar a abertura, configuração e integração da conta de recebimento em seu nome perante a instituição parceira (Asaas I.P. S.A.), com o propósito restrito de processar os pagamentos e mensalidades de seus alunos.
               </p>
             </div>
 

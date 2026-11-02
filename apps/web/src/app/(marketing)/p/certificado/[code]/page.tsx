@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import Image from "next/image";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { formatWorkload } from "@gestarahub/core/certificate";
@@ -71,6 +72,7 @@ export default async function CertificateVerificationPage({ params }: { params: 
         <p className="text-center text-xs text-muted-foreground">
           O nome aparece abreviado para proteger os dados do aluno.
         </p>
+        <PublicLegalFooter />
       </div>
     </div>
   );

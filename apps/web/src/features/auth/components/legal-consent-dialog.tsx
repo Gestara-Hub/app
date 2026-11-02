@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { declineTermsAndSignOut } from "@/app/(auth)/actions";
 import { cn } from "@/lib/utils";
 import { useLegalConsent } from "../hooks/use-legal-consent";
+import { CURRENT_PLATFORM_TERMS_VERSION } from "@gestarahub/contracts";
 import { useCurrentUser } from "../session-provider";
 import { logError } from "@/lib/log";
 
@@ -114,7 +115,7 @@ export function LegalConsentDialog() {
               Conformidade LGPD & Marco Civil
             </Badge>
             <span className="text-xs text-muted-foreground">
-              Versão v1.0-2026-10
+              Versão {CURRENT_PLATFORM_TERMS_VERSION}
             </span>
           </div>
           <DialogTitle className="text-lg font-bold leading-snug tracking-tight text-foreground sm:text-xl">

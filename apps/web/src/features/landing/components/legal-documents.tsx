@@ -2,21 +2,49 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SUPPORT_EMAIL } from "@/config/site";
+import {
+  COMPANY_ADDRESS,
+  COMPANY_CNPJ,
+  COMPANY_NAME,
+  LEGAL_FORUM,
+  LEGAL_UPDATED_AT,
+  SUPPORT_EMAIL,
+} from "@/config/site";
 import { isAnalyticsConfigured, reviewAnalyticsConsent } from "@/lib/analytics";
 import { LandingLegalPage, LegalSection } from "./landing-legal-page";
+
+/** Historico das versoes dos dois textos (T9 da revisao juridica, doc product/27). */
+function LegalChangelog() {
+  return (
+    <LegalSection title="Histórico de versões">
+      <ul>
+        <li>
+          <strong>v1.1 ({LEGAL_UPDATED_AT}):</strong> identificação da empresa titular (razão social,
+          CNPJ, endereço e foro), direito de arrependimento e regras do plano anual, comunicação de
+          incidentes de segurança, entrada com Google, lista dos fornecedores que tratam dados, como
+          pedir a exclusão de dados e o encarregado.
+        </li>
+        <li>
+          <strong>v1.0 (22/10/2026):</strong> primeira versão publicada.
+        </li>
+      </ul>
+    </LegalSection>
+  );
+}
 
 export function TermsOfUse() {
   return (
     <LandingLegalPage title="Termos de Uso e Condições Gerais">
-      <LegalSection title="1. Apresentação e Objeto">
+      <LegalSection title="1. Apresentação, Partes e Objeto">
         <p>
           Estes Termos de Uso e Condições Gerais regulam o acesso e a utilização
-          da plataforma <strong>GestaraHub</strong>, disponibilizada na modalidade
-          Software como Serviço (SaaS), destinada à gestão operacional, acadêmica
-          e financeira de escolas, estúdios, academias, centros de treinamento,
-          espaços de ensino e instrutores autônomos (&ldquo;Contratante&rdquo; ou
-          &ldquo;Você&rdquo;).
+          da plataforma <strong>GestaraHub</strong>, de titularidade de{" "}
+          <strong>{COMPANY_NAME}</strong>, inscrita no CNPJ sob o nº{" "}
+          {COMPANY_CNPJ}, com sede em {COMPANY_ADDRESS} (&ldquo;GestaraHub&rdquo; ou
+          &ldquo;Nós&rdquo;), disponibilizada na modalidade Software como Serviço
+          (SaaS) e destinada à gestão operacional, acadêmica e financeira de
+          escolas, estúdios, academias, centros de treinamento, espaços de ensino
+          e instrutores autônomos (&ldquo;Contratante&rdquo; ou &ldquo;Você&rdquo;).
         </p>
         <p>
           A plataforma disponibiliza ferramentas para organização de turmas,
@@ -31,6 +59,9 @@ export function TermsOfUse() {
           ministra aulas, não aufere receitas pedagógicas e não é responsável
           pelo cumprimento dos acordos comerciais ou de prestação de serviços
           firmados entre Você e seus clientes finais.
+        </p>
+        <p>
+          <strong>Canal de atendimento:</strong> {SUPPORT_EMAIL}.
         </p>
       </LegalSection>
 
@@ -74,6 +105,20 @@ export function TermsOfUse() {
             informados antes da contratação.
           </li>
           <li>
+            <strong>Direito de Arrependimento:</strong> Nos termos do artigo 49
+            do Código de Defesa do Consumidor, Você pode desistir da contratação
+            de um plano pago em até 7 (sete) dias corridos a partir do primeiro
+            pagamento, com devolução integral do valor pago, bastando solicitar
+            pelo canal de atendimento ou pela própria plataforma.
+          </li>
+          <li>
+            <strong>Cancelamento depois dos 7 dias:</strong> O plano mensal pode
+            ser cancelado a qualquer momento, sem multa, e os recursos pagos
+            permanecem disponíveis até o fim do período já pago, sem devolução
+            proporcional. O plano anual permanece ativo até o fim do ano pago e
+            não é devolvido proporcionalmente; ao fim do período, não é renovado.
+          </li>
+          <li>
             <strong>Atualizações de Recursos:</strong> A GestaraHub poderá
             aprimorar, modificar, adicionar ou descontinuar funcionalidades da
             plataforma, sempre buscando a evolução do sistema e avisando os
@@ -99,7 +144,9 @@ export function TermsOfUse() {
             criação e operacionalização de uma subconta vinculada à sua
             organização, outorgando poderes à plataforma para emitir cobranças,
             gerar QR Codes Pix e registrar liquidações estritamente conforme as
-            suas instruções.
+            suas instruções. A conta é aberta em seu nome junto à instituição
+            parceira, que lhe envia a comunicação de ativação, colhe o aceite dos
+            termos dela e a documentação exigida pela regulação.
           </li>
           <li>
             <strong>Tarifas e Retenções:</strong> O Contratante está ciente de
@@ -154,10 +201,26 @@ export function TermsOfUse() {
           nome do Contratante e para a execução dos serviços contratados.
         </p>
         <p>
+          <strong>Instruções do Controlador à Operadora:</strong> a GestaraHub
+          trata os dados dos seus alunos somente para as finalidades das
+          funcionalidades contratadas (turmas, chamada, cobrança, comunicação,
+          certificados e relatórios), com sigilo, usando apenas os fornecedores
+          listados na Política de Privacidade, sem compartilhá-los com terceiros
+          para outros fins, e os exclui ou anonimiza ao encerramento da conta,
+          ressalvadas as guardas legais. A GestaraHub presta o apoio técnico
+          necessário para Você atender aos pedidos dos titulares.
+        </p>
+        <p>
           <strong>Dados de Menores de Idade:</strong> O Contratante assume a
           obrigação de colher a autorização prévia de ao menos um dos pais ou
           responsável legal dos alunos menores de 18 anos cadastrados no sistema,
           em observância ao Artigo 14 da LGPD.
+        </p>
+        <p>
+          <strong>Mensagens de WhatsApp:</strong> O envio de mensagens aos
+          alunos e responsáveis pelo WhatsApp depende de autorização prévia deles
+          ao Contratante, que responde pela coleta e pela guarda dessa autorização
+          e por interromper o envio quando o destinatário pedir.
         </p>
       </LegalSection>
 
@@ -189,9 +252,9 @@ export function TermsOfUse() {
         <p>
           Todos os direitos de propriedade intelectual relativos ao software
           GestaraHub, marcas, logotipos, telas, bancos de dados, algoritmos e
-          documentação pertencem exclusivamente aos desenvolvedores e mantenedores
-          da GestaraHub. A contratação confere apenas uma licença de uso revogável,
-          não exclusiva e intransferível durante o período de vigência da conta.
+          documentação pertencem exclusivamente à {COMPANY_NAME}. A contratação
+          confere apenas uma licença de uso revogável, não exclusiva e
+          intransferível durante o período de vigência da conta.
         </p>
         <p>
           Por outro lado, todo o conteúdo e acervo de dados inserido pelo
@@ -224,7 +287,8 @@ export function TermsOfUse() {
         </p>
         <p>
           <strong>Como Encerrar:</strong> O encerramento pode ser solicitado
-          pelo e-mail de suporte oficial ({SUPPORT_EMAIL}).
+          pelo e-mail de suporte oficial ({SUPPORT_EMAIL}). Respondemos em até 15
+          dias úteis com a confirmação e os prazos de exclusão.
         </p>
         <p>
           <strong>Exportação de Dados:</strong> Recomenda-se que o Contratante
@@ -247,7 +311,7 @@ export function TermsOfUse() {
           evoluções tecnológicas ou adequações regulatórias. Quando houver
           alterações relevantes, Você será notificado por meio de aviso na
           plataforma ou por e-mail, exigindo-se a ciência ou aceite antes do
-          prosseguimento do uso.
+          prosseguimento do uso. O histórico das versões fica no fim desta página.
         </p>
       </LegalSection>
 
@@ -255,11 +319,14 @@ export function TermsOfUse() {
         <p>
           Estes Termos são regidos e interpretados de acordo com a legislação da
           República Federativa do Brasil. Para dirimir quaisquer litígios
-          decorrentes da utilização da plataforma, fica eleito o Foro da Comarca
-          de domicílio da sede da plataforma GestaraHub, com renúncia expressa a
-          qualquer outro, por mais privilegiado que seja.
+          decorrentes da utilização da plataforma, fica eleito o Foro da{" "}
+          {LEGAL_FORUM}, com renúncia expressa a qualquer outro, por mais
+          privilegiado que seja, ressalvadas as hipóteses em que a lei garanta
+          ao consumidor o foro do seu domicílio.
         </p>
       </LegalSection>
+
+      <LegalChangelog />
     </LandingLegalPage>
   );
 }
@@ -270,10 +337,12 @@ export function PrivacyPolicy() {
       <LegalSection title="1. Compromisso com a Privacidade">
         <p>
           Esta Política de Privacidade descreve como a plataforma{" "}
-          <strong>GestaraHub</strong> coleta, utiliza, armazena, protege e
-          compartilha dados pessoais, em estrita conformidade com a Lei Geral de
-          Proteção de Dados Pessoais (Lei nº 13.709/2018 - LGPD) e com o Marco
-          Civil da Internet (Lei nº 12.965/2014).
+          <strong>GestaraHub</strong>, de titularidade de{" "}
+          <strong>{COMPANY_NAME}</strong> (CNPJ {COMPANY_CNPJ}, {COMPANY_ADDRESS}),
+          coleta, utiliza, armazena, protege e compartilha dados pessoais, em
+          estrita conformidade com a Lei Geral de Proteção de Dados Pessoais
+          (Lei nº 13.709/2018 - LGPD) e com o Marco Civil da Internet (Lei nº
+          12.965/2014).
         </p>
       </LegalSection>
 
@@ -293,10 +362,10 @@ export function PrivacyPolicy() {
             (gestão de turmas, chamadas, cobranças e mensagens).
           </li>
           <li>
-            <strong>Controlador dos Dados da Conta do Gestor:</strong> A
-            GestaraHub atua como Controladora exclusivamente dos dados cadastrais
-            do titular da conta (nome, e-mail de acesso e dados corporativos da
-            empresa contratante).
+            <strong>Controlador dos Dados da Conta do Gestor:</strong> A{" "}
+            {COMPANY_NAME} atua como Controladora exclusivamente dos dados
+            cadastrais do titular da conta (nome, e-mail de acesso e dados
+            corporativos da empresa contratante).
           </li>
         </ul>
       </LegalSection>
@@ -309,6 +378,12 @@ export function PrivacyPolicy() {
             endereço de e-mail profissional, telefone e senha em formato com hash
             criptográfico seguro. <em>Finalidade:</em> autenticação na conta,
             segurança, suporte e envio de avisos operacionais da plataforma.
+          </li>
+          <li>
+            <strong>Entrada com Google:</strong> Se Você escolher entrar com a
+            sua conta Google, recebemos do Google apenas nome, e-mail e foto do
+            perfil, usados só para criar e autenticar a sua conta. Não acessamos
+            seus contatos, arquivos ou agenda.
           </li>
           <li>
             <strong>Dados do Estabelecimento / Espaço:</strong> Nome comercial,
@@ -358,30 +433,36 @@ export function PrivacyPolicy() {
           marketing direto, publicidade direcionada ou enriquecimento de bases.
         </p>
         <p>
-          O compartilhamento ocorre unicamente com prestadores de serviços
-          essenciais para o funcionamento da plataforma:
+          O compartilhamento ocorre unicamente com os fornecedores a seguir,
+          essenciais para o funcionamento da plataforma (suboperadores):
         </p>
         <ul>
           <li>
-            <strong>Instituições Financeiras e Gateways:</strong> Compartilhamento
-            com a Asaas Gestão Financeira IP S.A. para processamento, validação e
-            liquidação de transações Pix, boletos e cartões de crédito. Somente
-            quando o espaço gera uma cobrança online, seguem os dados de quem paga
-            (nome, CPF, e-mail, telefone e endereço), exigidos pela instituição para
-            emitir a cobrança e prevenir fraudes.
+            <strong>Instituição de pagamento:</strong> Asaas Gestão Financeira IP
+            S.A., para processamento, validação e liquidação de transações Pix,
+            boletos e cartões de crédito. Somente quando o espaço gera uma
+            cobrança online, seguem os dados de quem paga (nome, CPF, e-mail,
+            telefone e endereço), exigidos pela instituição para emitir a
+            cobrança e prevenir fraudes.
           </li>
           <li>
-            <strong>Infraestrutura em Nuvem:</strong> Servidores em nuvem de alta
-            segurança para hospedagem da aplicação e banco de dados, protegidos
-            por padrões internacionais de segurança da informação (ISO 27001 e
-            SOC 2).
+            <strong>Banco de dados e arquivos:</strong> Supabase, que hospeda o
+            banco de dados e os anexos da plataforma, com criptografia em
+            repouso e em trânsito.
           </li>
           <li>
-            <strong>Serviços de Comunicação:</strong> Provedores homologados de
-            mensageria (Meta/WhatsApp Cloud API) para disparo de notificações e
-            lembretes autorizados pelo usuário, e provedor de e-mail transacional
-            (MailerSend) para o envio de links de cadastro, convites, troca de senha
-            e boas-vindas, com nome e e-mail do destinatário.
+            <strong>Aplicação:</strong> Vercel, que hospeda e entrega o sistema
+            no navegador.
+          </li>
+          <li>
+            <strong>Mensagens:</strong> Meta Platforms (WhatsApp Cloud API) para
+            as notificações e lembretes autorizados pelo destinatário, e
+            MailerSend para o e-mail transacional (links de cadastro, convites,
+            troca de senha e boas-vindas), com nome e e-mail do destinatário.
+          </li>
+          <li>
+            <strong>Análise de uso:</strong> PostHog, somente quando autorizado
+            no aviso de cookies (seção 6).
           </li>
           <li>
             <strong>Determinação Judicial ou Fiscal:</strong> Em caso de ordem
@@ -389,6 +470,13 @@ export function PrivacyPolicy() {
             competente, nos termos da legislação aplicável.
           </li>
         </ul>
+        <p>
+          <strong>Transferência internacional:</strong> alguns desses fornecedores
+          podem processar dados em servidores fora do Brasil (Estados Unidos ou
+          União Europeia). Nesses casos a transferência segue o artigo 33 da
+          LGPD, com as cláusulas contratuais e certificações de segurança dos
+          próprios fornecedores.
+        </p>
       </LegalSection>
 
       <LegalSection title="6. Análise de Uso e Telemetria">
@@ -437,7 +525,7 @@ export function PrivacyPolicy() {
         ) : null}
       </LegalSection>
 
-      <LegalSection title="8. Segurança da Informação">
+      <LegalSection title="8. Segurança da Informação e Incidentes">
         <p>
           Adotamos medidas técnicas, administrativas e organizacionais para
           proteger seus dados contra acessos não autorizados, perda, destruição
@@ -447,8 +535,17 @@ export function PrivacyPolicy() {
           <li>Tráfego 100% criptografado de ponta a ponta mediante HTTPS/TLS.</li>
           <li>Senhas armazenadas com algoritmos de hash criptográfico de última geração.</li>
           <li>Isolamento lógico rigoroso multi-tenant entre diferentes organizações.</li>
-          <li>Controles de permissões baseados em papéis (RBAC).</li>
+          <li>Controles de permissões baseados em papéis (RBAC) e verificação em duas etapas.</li>
         </ul>
+        <p>
+          <strong>Comunicação de incidentes (Art. 48 da LGPD):</strong> se um
+          incidente de segurança puder causar risco ou dano relevante aos
+          titulares, comunicamos o espaço contratante (Controlador) sem demora
+          injustificada, em regra em até 72 horas após tomarmos conhecimento,
+          com a descrição dos dados afetados, as medidas adotadas e as
+          recomendações, para que ele possa avisar os titulares e a Autoridade
+          Nacional de Proteção de Dados quando for o caso.
+        </p>
       </LegalSection>
 
       <LegalSection title="9. Direitos dos Titulares de Dados (Artigo 18 da LGPD)">
@@ -475,7 +572,33 @@ export function PrivacyPolicy() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Prazos de Retenção e Descarte">
+      <section id="exclusao" className="space-y-3 scroll-mt-24">
+        <h2 className="text-lg font-bold text-foreground">10. Como pedir a exclusão dos seus dados</h2>
+        <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5">
+          <ul>
+            <li>
+              <strong>Titular da conta (gestor):</strong> envie um e-mail para{" "}
+              {SUPPORT_EMAIL} a partir do e-mail cadastrado, com o assunto
+              &ldquo;Exclusão de conta&rdquo;. Confirmamos em até 15 dias úteis e
+              excluímos ou anonimizamos os dados, ressalvadas as guardas legais da
+              seção 11. O mesmo vale para quem entrou com Google: a exclusão da
+              conta no GestaraHub apaga os dados recebidos do Google.
+            </li>
+            <li>
+              <strong>Aluno ou responsável:</strong> peça ao espaço em que está
+              matriculado (o Controlador), que usa as ferramentas da plataforma
+              para inativar ou excluir o cadastro. Se não conseguir contato com o
+              espaço, escreva para {SUPPORT_EMAIL} e encaminhamos o pedido.
+            </li>
+            <li>
+              <strong>Mensagens de WhatsApp:</strong> responda &ldquo;SAIR&rdquo; a
+              qualquer mensagem ou peça ao espaço para parar o envio.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <LegalSection title="11. Prazos de Retenção e Descarte">
         <p>
           Os dados permanecem armazenados enquanto durar a sua conta na
           plataforma. Após o encerramento da conta, os dados serão excluídos ou
@@ -494,20 +617,22 @@ export function PrivacyPolicy() {
         </ul>
       </LegalSection>
 
-      <LegalSection title="11. Canal de Contato do Encarregado (DPO)">
+      <LegalSection title="12. Encarregado pelo Tratamento de Dados (DPO)">
         <p>
-          Para exercer seus direitos de privacidade, tirar dúvidas ou apresentar
-          requisições sobre o tratamento de dados pessoais, entre em contato com
-          nosso Encarregado pelo e-mail{" "}
+          A {COMPANY_NAME} é a encarregada pelo tratamento de dados pessoais da
+          plataforma. Para exercer seus direitos, tirar dúvidas ou apresentar
+          requisições sobre o tratamento de dados pessoais, escreva para{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="font-medium text-foreground underline underline-offset-4"
           >
             {SUPPORT_EMAIL}
-          </a>
-          .
+          </a>{" "}
+          ou para o endereço {COMPANY_ADDRESS}.
         </p>
       </LegalSection>
+
+      <LegalChangelog />
     </LandingLegalPage>
   );
 }
