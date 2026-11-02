@@ -259,7 +259,7 @@ export function TermsOfUse() {
         <p>
           Por outro lado, todo o conteúdo e acervo de dados inserido pelo
           Contratante na plataforma (cadastros de alunos, turmas, valores e
-          marcas da sua academia) permanece como propriedade exclusiva do
+          marcas do seu espaço) permanece como propriedade exclusiva do
           Contratante.
         </p>
       </LegalSection>
@@ -412,10 +412,9 @@ export function PrivacyPolicy() {
       <LegalSection title="4. Dados de Crianças e Adolescentes (Art. 14 da LGPD)">
         <p>
           Nos casos em que o estabelecimento contratante atenda alunos menores de
-          18 anos (como turmas infantis de artes marciais, dança, natação ou
-          música), o estabelecimento compromete-se a coletar o consentimento
-          específico e em destaque dado por pelo menos um dos pais ou pelo
-          responsável legal.
+          18 anos (matriculados em turmas, cursos ou atividades regulares), o
+          estabelecimento compromete-se a coletar o consentimento específico e
+          em destaque dado por pelo menos um dos pais ou pelo responsável legal.
         </p>
         <p>
           A GestaraHub trata esses dados estritamente para viabilizar o plano de
@@ -567,8 +566,8 @@ export function PrivacyPolicy() {
         <p>
           Como a GestaraHub atua como Operadora no tocante aos alunos, pedidos de
           alunos devem ser direcionados prioritariamente ao próprio espaço
-          educacional/academia (Controlador), prestando a GestaraHub o suporte
-          técnico necessário para viabilizar a requisição.
+          contratante (Controlador), prestando a GestaraHub o suporte técnico
+          necessário para viabilizar a requisição.
         </p>
       </LegalSection>
 
