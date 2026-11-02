@@ -10,7 +10,8 @@ import type {
 import { paginateArray } from "@gestarahub/contracts";
 import { isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
-import { store } from "@/services/world/store";
+import { inServerWorld, store } from "@/services/world/store";
+import { afterWorldCommit } from "@/services/world/effects";
 import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
 import {
@@ -21,6 +22,8 @@ import {
   isBillingReminder,
   validateMessage,
   newLog,
+  getQueuedMessageDeliverer,
+  type QueuedMessageJob,
 } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
 import { whatsappClient } from "./whatsappClient";
@@ -108,16 +111,26 @@ export const messagesService = {
       let messageId: string | undefined;
       let status: MessageLog["status"] = "sent";
       let errorReason: string | undefined;
+      let queuedJob: Omit<QueuedMessageJob, "logId"> | null = null;
 
       if (whatsappClient.isConfigured()) {
-        try {
-          const res = await whatsappClient.sendTextMessage(payload.recipientPhone, payload.content);
-          messageId = res.messages?.[0]?.id;
-          status = "sent";
-        } catch (err: unknown) {
-          const errorMsg = err instanceof Error ? err.message : "Erro desconhecido ao enviar mensagem.";
-          status = "failed";
-          errorReason = errorMsg;
+        // No servidor, a Meta e chamada depois da gravacao e da resposta
+        // (01/11/2026): a tela nao espera os segundos da API, e o registro
+        // nasce "Na fila" ate a Meta responder (`messageDelivery.ts`).
+        const deliver = getQueuedMessageDeliverer();
+        if (deliver && inServerWorld()) {
+          status = "queued";
+          queuedJob = { organizationId: store.organization.id, phone: payload.recipientPhone, content: payload.content };
+        } else {
+          try {
+            const res = await whatsappClient.sendTextMessage(payload.recipientPhone, payload.content);
+            messageId = res.messages?.[0]?.id;
+            status = "sent";
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : "Erro desconhecido ao enviar mensagem.";
+            status = "failed";
+            errorReason = errorMsg;
+          }
         }
       } else {
         status = "delivered";
@@ -126,6 +139,15 @@ export const messagesService = {
       const log = newLog(payload, status, messageId);
       if (errorReason) {
         log.errorReason = errorReason;
+      }
+      if (queuedJob) {
+        const job: QueuedMessageJob = { ...queuedJob, logId: log.id };
+        const deliver = getQueuedMessageDeliverer()!;
+        if (!afterWorldCommit(() => deliver(job))) {
+          // Sem efeito depois da gravacao (nao deveria acontecer no servidor): envia agora.
+          log.status = "sent";
+          await deliver(job);
+        }
       }
       ensureLogs().unshift(log);
       connection.monthlyQuota.used += 1;

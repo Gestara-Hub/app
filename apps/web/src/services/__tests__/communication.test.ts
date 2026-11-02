@@ -1,7 +1,14 @@
 import { tierWhatsAppQuota, type SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { runBillingReminders, runBirthdayGreetings } from "@/services/communication/communicationRules";
+import {
+  runBillingReminders,
+  runBirthdayGreetings,
+  setQueuedMessageDeliverer,
+  type QueuedMessageJob,
+} from "@/services/communication/communicationRules";
+import { whatsappClient } from "@/services/communication/whatsappClient";
+import { setEffectsResolver, type WorldEffect } from "@/services/world/effects";
 import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
 import { checkSlice } from "@/services/world/sliceCheck";
 import { billingService } from "@/services/billing";
@@ -11,6 +18,13 @@ import { defaultMessageTemplates } from "@/mocks/seed";
 import { fillMessage } from "@/lib/whatsapp";
 import { chargeReminder, packageRemainingText } from "@/features/communication/message-values";
 import { ACADEMY_ORG, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
+
+// "No servidor" so no teste da fila de envio: o resto do arquivo roda como no navegador.
+const serverWorld = vi.hoisted(() => ({ on: false }));
+vi.mock("@/services/world/store", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/services/world/store")>();
+  return { ...original, inServerWorld: () => serverWorld.on || original.inServerWorld() };
+});
 const TODAY = "2026-09-22";
 
 // WhatsApp com o numero do proprio espaco (docs/product/13, secao 5):
@@ -418,6 +432,33 @@ describe("envio automatico (oficial)", () => {
       httpStatus: 409,
     });
     expect(store.messageLogs).toHaveLength(0);
+  });
+
+  it("no servidor com a Meta configurada, o registro nasce 'Na fila' e a entrega fica para depois da gravação (01/11/2026)", async () => {
+    await connectOfficial();
+    const configured = vi.spyOn(whatsappClient, "isConfigured").mockReturnValue(true);
+    const jobs: QueuedMessageJob[] = [];
+    setQueuedMessageDeliverer(async (job) => {
+      jobs.push(job);
+    });
+    const effects: WorldEffect[] = [];
+    setEffectsResolver(() => effects);
+    serverWorld.on = true;
+    try {
+      const log = await communicationService.sendMessage(message({ clientId: "cli-1" }));
+      expect(log.status).toBe("queued");
+      expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
+      // A Meta ainda nao foi chamada: so no efeito, depois da gravacao e da resposta.
+      expect(effects).toHaveLength(1);
+      expect(jobs).toHaveLength(0);
+      await effects[0]();
+      expect(jobs).toEqual([{ logId: log.id, organizationId: ACADEMY_ORG, phone: "(11) 97777-0000", content: "Oi, Maria!" }]);
+    } finally {
+      serverWorld.on = false;
+      setEffectsResolver(() => undefined);
+      setQueuedMessageDeliverer(null);
+      configured.mockRestore();
+    }
   });
 
   it("Pro conectado envia, conta na franquia e audita", async () => {

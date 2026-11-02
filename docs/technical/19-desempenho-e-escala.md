@@ -42,7 +42,7 @@ Em produção soma-se a latência entre Vercel e Supabase (cada carga faz 30 ou 
 
 ### 3.4 Navegador: chamadas demais para o servidor
 
-As chamadas de uma aba ao servidor rodam uma por vez (Next). Cada consulta a mais é uma carga do espaço inteiro na fila.
+As chamadas de uma aba ao servidor rodam uma por vez (Next). Cada consulta a mais é uma carga do espaço inteiro na fila. Por isso chamada externa demorada (Meta, Asaas) não pode ficar dentro da ação: desde 01/11/2026 os efeitos de `afterWorldCommit` rodam depois da resposta (`after()` do Next em `runWorld.ts`), e o envio oficial de WhatsApp usa isso (doc 07, "Envio oficial em segundo plano").
 
 - **Casca do app em toda página:** `OnboardingTopBanner` e `DiscoveryNextStepBar` (`app/(app)/layout.tsx`) usam `useOnboardingSteps`, que busca unidade, organização, serviços, profissionais, **todos os alunos**, **todos os agendamentos**, modalidades, turmas, planos e pacotes. Roda mesmo depois de a configuração inicial acabar. São cerca de 11 cargas ao abrir qualquer página.
 - **Invalidação global** (`lib/providers.tsx`): toda gravação relê auditoria e "Próximo passo" se estiverem na tela e marca o cache todo como velho.

@@ -226,7 +226,13 @@ export function useWhatsAppSend() {
         if (!ok) return;
         send
           .mutateAsync(payload)
-          .then(() => toast.success(`Mensagem enviada para ${input.recipient.name}.`))
+          .then((log) =>
+            toast.success(
+              log.status === "queued"
+                ? `Mensagem para ${input.recipient.name} na fila de envio.`
+                : `Mensagem enviada para ${input.recipient.name}.`,
+            ),
+          )
           .catch((err: unknown) => toast.error(getErrorMessage(err, "Não foi possível enviar a mensagem.")));
       });
       return;

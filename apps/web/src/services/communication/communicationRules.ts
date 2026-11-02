@@ -299,3 +299,24 @@ export function runBillingReminders(): number {
   }
   return sent;
 }
+
+// --- Fila de envio (oficial) -------------------------------------------------
+
+/** O que o efeito depois da gravacao precisa para entregar uma mensagem "Na fila". */
+export interface QueuedMessageJob {
+  logId: string;
+  organizationId: string;
+  phone: string;
+  content: string;
+}
+
+let queuedMessageDeliverer: ((job: QueuedMessageJob) => Promise<void>) | null = null;
+
+/** Registrado pelo servidor (`messageDelivery.ts`); no navegador e nos testes fica vazio. */
+export function setQueuedMessageDeliverer(fn: ((job: QueuedMessageJob) => Promise<void>) | null): void {
+  queuedMessageDeliverer = fn;
+}
+
+export function getQueuedMessageDeliverer(): ((job: QueuedMessageJob) => Promise<void>) | null {
+  return queuedMessageDeliverer;
+}

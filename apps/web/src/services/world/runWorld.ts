@@ -3,7 +3,10 @@ import { apiError } from "@gestarahub/core/api-error";
 import type { TenantWorld } from "./types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { TenantContext } from "../server/tenant";
+import { after } from "next/server";
 import type { WorldEffect } from "./effects";
+// Registra quem entrega as mensagens "Na fila" (efeito depois da gravacao).
+import "@/services/communication/messageDelivery";
 import { runScoped } from "./scope";
 import { presentValues, SINGLE_KEYS, SliceMissError, sliceWorld, type MethodSlice } from "./slices";
 import { assertScopeField, bucketOf, rowBuckets, wholeBucket, wholeReadBucket } from "./scopes";
@@ -627,9 +630,21 @@ async function runLoaded<T>(
   }
   const changed = changes.upserts.length + changes.deletes.length;
   logTiming(label, world, { load: loaded - started, run: ran - loaded, write: performance.now() - ran }, changed);
-  // Efeitos externos so depois de gravar; falha neles nao desfaz a gravacao.
-  for (const effect of effects) {
-    await effect().catch((err) => logError("[world] Efeito depois da gravação falhou:", err));
+  // Efeitos externos so depois de gravar, e depois da resposta (01/11/2026):
+  // as chamadas de uma aba rodam uma por vez, entao segundos na Meta ou no
+  // Asaas travariam a tela. Falha neles nao desfaz a gravacao.
+  if (effects.length > 0) {
+    const runEffects = async () => {
+      for (const effect of effects) {
+        await effect().catch((err) => logError("[world] Efeito depois da gravação falhou:", err));
+      }
+    };
+    try {
+      after(runEffects);
+    } catch {
+      // Fora de uma requisicao (testes): roda agora.
+      await runEffects();
+    }
   }
   // Resultado sai como objeto simples (sem referencia ao mundo da requisicao).
   return result === undefined ? result : structuredClone(result);
