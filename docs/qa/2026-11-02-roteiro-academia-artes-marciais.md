@@ -2,6 +2,8 @@
 
 Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em etapas curtas. Ao terminar cada etapa, avise "Etapa N feita" (e o que estranhou); o agente confere no banco local o que a etapa deveria ter gravado e responde item a item. Achados vão para uma seção "Achados" no fim deste arquivo, com número, gravidade e commit da correção, no formato de [2026-10-23-teste-geral.md](2026-10-23-teste-geral.md).
 
+> **Versão em slides:** [2026-11-02-roteiro-academia-artes-marciais.html](2026-11-02-roteiro-academia-artes-marciais.html), um passo por tela, com "Feito", anotações e o botão "Copiar aviso" da conferência (tudo guardado no navegador). É gerada deste arquivo por `pnpm --filter @gestarahub/web qa:roteiro`: edite o .md e rode de novo. Abra com `open docs/qa/2026-11-02-roteiro-academia-artes-marciais.html`.
+>
 > Regras de negócio citadas: turmas [product/11](../product/11-modelo-3-turmas.md), cobrança [product/15](../product/15-regras-de-cobranca.md), lembretes [product/25](../product/25-lembretes-e-seguranca.md), certificados e notas [product/21](../product/21-ideias-certificados-e-notas.md), financeiro [technical/05](../technical/05-modulo-financeiro.md), pagamento online [technical/25](../technical/25-pagamento-online.md), WhatsApp [technical/07](../technical/07-integracao-whatsapp.md), perfis [product/06](../product/06-perfis-permissoes.md).
 
 ## Como usar

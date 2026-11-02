@@ -22,7 +22,8 @@
     "e2e:smoke": "playwright test --project=desktop --grep @smoke",
     "e2e:area": "node scripts/e2e-area.mjs",
     "e2e:prod": "E2E_SERVER=prod playwright test",
-    "help:build": "node scripts/build-help-kb.mjs"
+    "help:build": "node scripts/build-help-kb.mjs",
+    "qa:roteiro": "node scripts/build-qa-roteiro.mjs"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
