@@ -99,6 +99,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [handoff/2026-10-24-execucao-noturna.md](handoff/2026-10-24-execucao-noturna.md) — **Execução noturna de 24/10/2026:** plano dos achados em aberto, organização das docs e rodada final de testes; o andamento está em [handoff/2026-10-24-diario-noturno.md](handoff/2026-10-24-diario-noturno.md).
 - [handoff/2026-10-31-diario-noturno.md](handoff/2026-10-31-diario-noturno.md) — **Execução noturna de 30 para 31/10/2026:** revisão de dinheiro, auditoria de segurança e revisão do celular, com o e2e completo duas vezes; as 5 decisões já validadas.
 - [handoff/2026-10-31-revisao-geral.md](handoff/2026-10-31-revisao-geral.md) — **Revisão geral do web (31/10/2026):** segurança (S1 a S13), valores e cálculos (V1 a V14), usabilidade e refatoração, cada um com commit; decisões para validar e o que ficou para depois.
+- [handoff/2026-11-02-contexto-para-antigravity.md](handoff/2026-11-02-contexto-para-antigravity.md) — **Passagem de 02/11/2026:** o que foi feito em 01 e 02/11 (recebimentos online, taxas como saída, WhatsApp em segundo plano, jurídico v1.1, roteiro de teste), o diagnóstico da Meta, o que está em aberto e como continuar o teste manual conferindo o banco.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
