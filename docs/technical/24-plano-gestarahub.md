@@ -74,3 +74,19 @@ Ainda em aberto: os recursos pagos são conferidos na tela e nos serviços do na
 | `subscription:manage` (trocar o plano GestaraHub) | ✅ | — | — | — |
 
 Atendente continua vendo as Mensalidades (`billing:view`), como hoje. Cobrar um aluno online a partir das Mensalidades exige `billing:manage` **e** o recurso `online_payments`.
+
+## 7. Nota fiscal (decisão de 02/11/2026)
+
+Três dinheiros passam pelo Asaas e cada um tem uma resposta própria. Nada disto está implementado ainda (ver `pendencias.md`, "Decidido, falta implementar").
+
+| Dinheiro | Quem emite para quem | Como |
+| --- | --- | --- |
+| Assinatura do plano (Pro, Scale) | GestaraHub → espaço | Automática por assinatura no Asaas: ao criar a assinatura (`createSubscription`), criar também `POST /v3/subscriptions/{id}/invoiceSettings` com `effectiveDatePeriod: ON_PAYMENT_CONFIRMATION`. Cada cobrança da recorrência (mensal, ou a anual no pagamento do ano) gera a NFS-e sozinha. |
+| Taxa do GestaraHub por transação (split retido) | GestaraHub → espaço | **Uma nota avulsa por espaço e por mês**, somando as taxas retidas no período (`POST /v3/invoices` com `customer` = o espaço como cliente da conta principal; o Asaas aceita nota sem cobrança vinculada). Descrição "Taxa de intermediação de N recebimentos de {mês}". Emitida pela rotina diária no primeiro dia do mês seguinte. Vale para o Grátis também. |
+| Tarifa do Asaas (Pix, cartão) | Asaas → espaço | Receita do Asaas, cobrada da subconta: não é nota nossa. |
+| Mensalidade do aluno | espaço → aluno | Receita do espaço: responsabilidade dele (o contrato da ativação, item 9, já diz isso; NFS-e para alunos é item do Scale, doc 13 §7). |
+
+**Pré-requisitos fora do código (com o contador):** configurar a parte fiscal da conta principal do Asaas (inscrição municipal, prefeitura ou Portal Nacional: `GET /v3/fiscalInfo/municipalOptions`, `POST /v3/fiscalInfo`), escolher o código do serviço municipal (licenciamento de software ou intermediação: alíquotas de ISS diferentes) e o bloco `taxes` conforme o regime (Simples Nacional: só ISS; fora dele, PIS/COFINS pelas regras da NT-007 do Portal Nacional). Confirmar com o contador que a assinatura sai nota a nota e a taxa sai mensal (prestação continuada).
+
+**Código previsto:** `invoiceSettings` junto da assinatura; rotina mensal das notas avulsas das taxas (uma por espaço, idempotente, com `externalReference` = `fees:<org>:<competência>`); webhooks `INVOICE_AUTHORIZED` e `INVOICE_ERROR` na rota do Asaas (`webhook_events`); tabela própria com número, status, PDF e XML; a nota na fatura do plano (Configurações → Plano) e um "Notas fiscais" em Recebimentos online. O sandbox do Asaas simula a emissão, então o fluxo inteiro é testável antes da produção.
+
