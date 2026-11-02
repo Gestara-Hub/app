@@ -11,6 +11,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 - **Ambiente:** `pnpm dev` (sem HTTPS), túnel do Asaas na aba [túnel Asaas](#terminal/c2), Asaas sandbox, Meta com o número real (envios por modelo só depois de arrumar a forma de pagamento na Meta; texto livre dentro da janela de 24 h).
 - **E-mail:** a conta do MailerSend só entrega para um destinatário. Links de confirmação, convite e nova senha saem no terminal do `pnpm dev` quando o e-mail não é entregue.
 - **Não corrija no meio.** Anote e siga; a correção entra depois, com commit e teste, uma por achado.
+- **Paginação.** Têm paginação: Alunos, Cobranças, Histórico de Comunicação e Lançamentos do Financeiro (barra com "por página" 10, 20 ou 50; o padrão fica salvo nas preferências), Recebimentos online (10 por página), Registros de aula do aluno (10 por vez) e Auditoria ("Carregar mais"). O roteiro garante mais de 10 itens em cada uma; em cada lista, teste com "por página: 10": primeira, anterior, próxima e última página, trocar o tamanho e conferir que filtro e busca voltam à página 1.
 
 ## O espaço de teste
 
@@ -25,7 +26,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 | Modalidades | Jiu-Jitsu, Jiu-Jitsu Kids, Muay Thai, Judô |
 | Turmas | 5 (tabela na etapa 5) |
 | Equipe | 6 professores (etapa 3) |
-| Alunos | 18 (etapas 6 e 7) |
+| Alunos | 22 (etapas 6 e 7) |
 
 ## Etapa 1: cadastro do espaço e configuração inicial
 
@@ -125,7 +126,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 
 ## Etapa 6: alunos adultos (10)
 
-**Objetivo:** cada forma de pagar, desconto, bolsa, pacote e aluno antigo. Telefone 4219 só no primeiro (recebe WhatsApp).
+**Objetivo:** cada forma de pagar, desconto, bolsa, pacote e aluno antigo; 14 adultos (10 com regra própria e 4 simples). Telefone 4219 só no primeiro (recebe WhatsApp).
 
 | # | Aluno | Nasc. | Paga como | Detalhe |
 | --- | --- | --- | --- | --- |
@@ -139,11 +140,18 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 | 8 | Larissa Moreira | 2000 | Não paga mensalidade | vai entrar só no curso de Judô |
 | 9 | Gustavo Pires | 1979 | Quinzenal Muay Thai | entrada no meio do período, "Proporcional" |
 | 10 | Beatriz Lopes | 1996 | Mensal Jiu-Jitsu | "Momento do pagamento": pós-pago |
+| 19 | Rodrigo Azevedo | 1991 | Mensal Jiu-Jitsu | simples |
+| 20 | Patrícia Lemos | 1987 | Mensal Livre | simples |
+| 21 | André Vasconcelos | 1994 | Mensal Jiu-Jitsu | simples |
+| 22 | Juliana Freitas | 1999 | Quinzenal Muay Thai | simples |
+
+Os quatro últimos existem para a lista passar de 20 alunos (padrão da página) e as mensalidades do mês passarem de 20 cobranças.
 
 1. Alunos → "+ Novo aluno". Preencha telefone, nascimento, e-mail em alguns, endereço em um, observações em um ("alergia a látex"). Anexe um arquivo em um cadastro.
 2. No Pedro, ao salvar, as boas-vindas: no oficial saem sozinhas; no assistido, o botão "Enviar boas-vindas" no aviso.
 3. Tente cadastrar o Pedro de novo com o mesmo telefone: aviso de duplicado.
 4. Edite a Mariana e troque o plano: regra de troca (período em aberto é substituído).
+5. **Paginação de Alunos:** com 22 alunos (depois da etapa 7), "por página: 10" dá 3 páginas; navegue, troque para 20 e 50, busque "Jiu" e veja a lista voltar à página 1; o filtro "Ativos" é o padrão.
 
 **Você deve ver:** 1ª cobrança criada com o valor certo (proporcional, desconto, bolsa, "Isento"), Thiago com 4 mensalidades vencidas e a do mês; aviso de "Termo pendente" não aparece (adultos).
 
@@ -176,7 +184,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 
 **Objetivo:** matrícula em lote, turma lotada, conflito de horário, curso com parcelas, pacote na turma de pacote.
 
-1. **Jiu-Jitsu Manhã:** "Matricular alunos" → Pedro, Mariana, Lucas, Fernanda, Thiago, Beatriz, Arthur (menor: aviso de idade).
+1. **Jiu-Jitsu Manhã:** "Matricular alunos" → Pedro, Mariana, Lucas, Fernanda, Thiago, Beatriz, Arthur (menor: aviso de idade), Rodrigo, Patrícia, André (11 na turma: a lista da turma ganha busca a partir de 9 alunos).
 2. **Jiu-Jitsu Noite (4 vagas):** Pedro, Mariana, Lucas, Isabela. Depois tente Beatriz: "Turma lotada (0 vagas)" → **"Pôr na lista de espera"**. Depois Thiago: **"Matricular mesmo assim (5)"**. Cancele a matrícula do Lucas na Noite e promova a Beatriz da espera.
 3. **Conflito:** tente matricular o Pedro numa turma no mesmo dia e horário de outra dele: "já possui aula ...".
 4. **Kids Tarde:** Enzo, Valentina, Miguel, Sophia, Helena.
@@ -196,7 +204,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 4. **Muay Thai (próxima aula):** chamada com Camila (gasta 1 de 10), Diego (gasta 1 de 4), Gustavo (**"Sem pacote"**, âmbar). Falta sem justificativa da Camila na aula seguinte: gasta (regra do pacote); justificada do Diego: não gasta.
 5. **Trocar instrutor** (drawer): Bruno substitui Carlos numa aula, motivo "viagem"; restaure o titular em outra.
 6. **Cancelar uma aula** e **mudar o horário** de outra: aparece "Avisar os alunos?" (mensagem para a turma).
-7. **Registrar a aula** (turma inteira) com uma anotação e um destaque; no Pedro, abra "Registros de aula", crie meta "Raspagem 0/30", avance +5, pontos fortes, "Para a próxima aula".
+7. **Registrar a aula** (turma inteira) com uma anotação e um destaque; no Pedro, abra "Registros de aula", crie meta "Raspagem 0/30", avance +5, pontos fortes, "Para a próxima aula". Repita o registro da turma em 6 aulas da Manhã e faça 5 registros individuais do Pedro: a linha do tempo dele passa de 10 e mostra "Carregar mais".
 8. Volte 5 dias no calendário e faça a chamada de aulas passadas para ter histórico (presença baixa em alguém: alerta "Presença baixa").
 
 **No banco:** `attendances` (present/absent/justified por aula), `class_reservations` (avulso, experimental, pacote), `class_session_overrides` (substituto, cancelada, horário), `student_packages.usages`, `charges` kind `dropin` (Gustavo), registros e metas em `clients` (progressions/records), `message_logs` (aviso à turma), `audit_logs`.
@@ -213,6 +221,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 6. **Pausar assinatura** do Gustavo (cadastro → situação); gere o próximo mês (abra Cobranças no mês seguinte): sem mensalidade dele.
 7. **Inativar** o Thiago com mensalidades em aberto: "Manter para receber"; inative a Mariana: "Cancelar a cobrança". Reative o Thiago.
 8. Mês seguinte em Cobranças: mensalidades geradas sozinhas, com o desconto da Mariana ainda válido e a bolsa.
+9. **Paginação de Cobranças:** o mês atual tem mais de 20 linhas (mensalidades de 22 alunos, 4 atrasadas do Thiago, avulsas, parcelas do curso, aula avulsa). "Por página: 10", navegue até a última, troque de página e mude o filtro de tipo: volta à página 1; os cartões do mês não mudam com a página.
 
 **No banco:** `charges` (status, `paid_at`, `method`, `paid_via`, `cancel_reason`, `replaced`, parcelas da avulsa), `attachments` (comprovante), `clients` (`membership_status` paused, status inactive), `message_logs` (lembretes), `audit_logs`.
 
@@ -226,6 +235,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 4. **Fatura pública** `/p/c/<código>`: abra em janela anônima (dados mascarados), escolha a forma; menor sem responsável financeiro pede cadastro.
 5. Gere um novo código para a mesma cobrança: o anterior é cancelado no Asaas. Pague uma cobrança à mão com Pix em aberto: o código é cancelado.
 6. Extrato em PDF do mês; "Sacar via Pix" (janela, sem transferir); Configurações da aba (validade do Pix, formas aceitas, repasse).
+7. **Paginação de Recebimentos:** gere Pix para 11 alunos (Cobrar online em cada mensalidade) e simule a liquidação de 5: o histórico passa de 10 linhas; teste as setas, o "por página" e o filtro "Pagas e aguardando" versus "Aguardando".
 
 **No banco:** `organizations` (gateway_status, `gateway_fees`, `gateway_webhook_url`), `online_payments` (status, `split_amount_cents`, `gateway_fee_cents`, `net_amount_cents`, `fee_passed_to_customer`, `public_code`, cancelados com motivo), `webhook_events` (asaas, processed), `charges` (`paid_via` online), `financial` (linha de taxas), `audit_logs` (inclusive o ator de sistema do webhook).
 
@@ -247,9 +257,9 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 
 1. Mensagens: edite o modelo de boas-vindas (variáveis), desligue "Pacote acabando" e religue; sugestões por área.
 2. Conexão: no espaço novo, **assistido** por padrão. Teste "Lembrar no WhatsApp" em dois alunos (abre o WhatsApp com o texto; registra "Aberto no WhatsApp"). Conecte o oficial (atalho) e repita com o Pedro (texto livre dentro da janela; fora, a Meta descarta; por modelo depende da forma de pagamento na Meta). Horário de envio 08:00 a 20:00.
-3. "+ Nova mensagem" para vários alunos (turma inteira) e avulsa para um.
+3. "+ Nova mensagem" para vários alunos (a turma Jiu-Jitsu Manhã inteira, 11 alunos) e avulsa para um: o Histórico passa de 10 linhas.
 4. Painel: card de lembretes (atrasados, pacote acabando, três faltas, aniversário, boas-vindas pendentes, avanço de nível); adiar um; o sino com os avisos do espaço.
-5. Histórico: filtros por tipo e status; ao clicar, o aluno; aba no cadastro do aluno com as mensagens dele.
+5. Histórico: filtros por tipo e status; ao clicar, o aluno; aba no cadastro do aluno com as mensagens dele. **Paginação:** "por página: 10", navegue e confira que mudar o filtro de status volta à página 1.
 
 **No banco:** `message_templates` (enabled, content), `whatsapp_connections` (status, franquia), `message_logs` (opened/queued/sent, trigger, client_id), `audit_logs`.
 
@@ -257,7 +267,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 
 **Objetivo:** lançamentos, recorrência, categorias, pagamento dos professores, DRE e os 8 relatórios.
 
-1. Financeiro → Lançamentos: despesa "Aluguel" R$ 2.000,00 recorrente (todo mês, dia 5), "Material" avulsa paga hoje com anexo, receita "Venda de kimono" R$ 350,00. Marcar pago, desfazer, cancelar; encerrar a recorrência. Categorias: criar "Água" e inativar.
+1. Financeiro → Lançamentos: despesa "Aluguel" R$ 2.000,00 recorrente (todo mês, dia 5), "Material" avulsa paga hoje com anexo, receita "Venda de kimono" R$ 350,00, e mais 6 lançamentos simples (luz, água, internet, marketing, evento, outras receitas). Marcar pago, desfazer, cancelar; encerrar a recorrência. Categorias: criar "Água" e inativar. **Paginação de Lançamentos:** com as linhas agregadas das cobranças, os pagamentos dos professores (etapa 14.3) e os 9 lançamentos, a lista passa de 10: "por página: 10", setas e filtro por categoria voltando à página 1.
 2. Resumo: Entrou, Saiu (popover das taxas online), Saldo, Em atraso, Contas a pagar; visão Avançada com o gráfico; Bolsas concedidas.
 3. **Professores:** regras: Carlos fixo R$ 1.500 + R$ 20 por aula; Ana R$ 30 por aula; Rafael 60% do que os alunos pagaram (pacote); Juliana por aluno R$ 15; Bruno por aula (substituição conta para ele). Prévia do mês, ajustes, **fechar** e **pagar**; o pagamento vira saída no Resumo e no Lançamentos.
 4. Relatórios: os 8 do catálogo (lista por categoria, mês dentro do relatório), PDF e CSV de cada; DRE com "Deduções" das taxas online.
@@ -271,7 +281,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 1. Entre como **Carlos (profissional)** em janela anônima: só as próprias turmas no Calendário e em Turmas; chamada da própria aula; "Registrar aula" e graduação (se tiver `progression:manage`); não vê Cobranças nem Financeiro; tenta abrir `/finance` pela URL (recusa). Substituição: a aula em que Bruno substituiu Carlos aparece para Bruno (crie acesso para ele) e não para Carlos.
 2. **Marcos (atendente):** alunos, matrícula, chamada, cobranças (ver, não gerenciar?), sem Financeiro, sem Usuários.
 3. **Juliana (gerente):** tudo menos usuários dono/gerente; Auditoria só com os eventos permitidos.
-4. **Auditoria** (dono): filtros O quê, Ação, Quem, Período; grupos por dia; drawer com "Abrir aluno/turma"; eventos sensíveis; ator de sistema (webhook, rotinas).
+4. **Auditoria** (dono): filtros O quê, Ação, Quem, Período; grupos por dia; drawer com "Abrir aluno/turma"; eventos sensíveis; ator de sistema (webhook, rotinas). "Carregar mais eventos" até o fim (a esta altura há centenas), e o contador "N de total".
 5. **Segurança:** troque a senha; ligue o 2FA por aplicativo (TOTP), códigos de recuperação, dispositivo lembrado; "Esqueci minha senha" por e-mail; os 4 momentos do aviso de 2FA.
 
 **No banco:** `users` (profile, `professional_id`), `audit_logs` (`security`, `source`), `two_factor_*`, `trusted_devices`, `password_reset_tokens`.
