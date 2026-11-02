@@ -149,12 +149,16 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     await flushToServer();
   }, [flushToServer]);
 
-  // O tema escolhido nas preferencias (salvo na conta) vale no app: sem isso,
-  // um tema guardado antes no navegador (ex.: o botao da landing) ganhava do
-  // "Sistema" que o painel mostra.
+  // O tema salvo na conta vale no app quando chega ou muda (carga, outro
+  // aparelho, Preferencias). So nesses momentos: reaplicar a cada diferenca
+  // desfazia o botao da landing, inclusive em outra aba, porque o next-themes
+  // sincroniza as abas pelo armazenamento (02/11/2026).
   const { theme: activeTheme, setTheme } = useTheme();
+  const appliedThemeRef = useRef<string | null>(null);
   useEffect(() => {
-    if (preferences.theme && preferences.theme !== activeTheme) setTheme(preferences.theme);
+    if (!preferences.theme || appliedThemeRef.current === preferences.theme) return;
+    appliedThemeRef.current = preferences.theme;
+    if (preferences.theme !== activeTheme) setTheme(preferences.theme);
   }, [preferences.theme, activeTheme, setTheme]);
 
   // Carga inicial remota (hidratação silenciosa)

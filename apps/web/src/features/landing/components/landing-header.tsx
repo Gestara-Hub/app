@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 import { trackEvent } from "@/lib/analytics";
+import { saveThemePreference } from "@/features/preferences";
 
 // Com "/" na frente, os links tambem funcionam nas paginas de Termos e Privacidade.
 export const LANDING_NAV_LINKS = [
@@ -24,6 +25,13 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const { resolvedTheme, setTheme } = useTheme();
+  // Tema: muda na hora e fica guardado nas preferencias (na conta, com sessao),
+  // senao o app voltava para o "Sistema" salvo (02/11/2026).
+  const toggleTheme = () => {
+    const next = resolvedTheme === "dark" ? "light" : "dark";
+    setTheme(next);
+    void saveThemePreference(next, { remote: signedIn });
+  };
   const headerRef = useRef<HTMLElement>(null);
 
   // Menu do celular fecha com Esc e com toque fora do cabecalho.
@@ -99,7 +107,7 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
             variant="ghost"
             size="icon"
             className="rounded-full text-muted-foreground hover:text-foreground"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            onClick={toggleTheme}
             aria-label="Alternar tema"
           >
             <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -185,7 +193,7 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
             <Button
               variant="ghost"
               className="w-full justify-center gap-2 text-muted-foreground"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              onClick={toggleTheme}
             >
               {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
               {resolvedTheme === "dark" ? "Tema claro" : "Tema escuro"}
