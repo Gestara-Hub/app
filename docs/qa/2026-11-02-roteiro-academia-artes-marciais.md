@@ -309,3 +309,4 @@ Os quatro últimos existem para a lista passar de 20 alunos (padrão da página)
 | 3 | 9 | média | Som ao marcar presença (bipe) estava configurado nas preferências, mas não era disparado na tela de chamada ao marcar presença | `e54f0da` |
 | 4 | 3 | média | Edição de usuário permitia alterar o e-mail mesmo após a conta ser ativada, sem validação no backend | `eeb6f67` |
 | 5 | 3 | baixa | Ao vincular um instrutor da equipe no formulário de usuário, o e-mail cadastrado do instrutor não era carregado automaticamente | `0795944` |
+| 6 | 3 | baixa | Seletor de contexto ("Dia a dia" vs "Gestão") aparecia na barra lateral para perfis sem permissões de gestão (como instrutor/professor), exibindo uma aba de gestão vazia | `8f62682` |
