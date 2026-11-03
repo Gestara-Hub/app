@@ -72,19 +72,36 @@ export function SelectField<T extends FieldValues>({
             required={required}
           >
             <div className="relative">
-              <DropdownMenu open={open} onOpenChange={setOpen}>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenu
+                open={disabled ? false : open}
+                onOpenChange={(next) => {
+                  if (!disabled) setOpen(next);
+                }}
+              >
+                <DropdownMenuTrigger asChild disabled={disabled}>
                   <button
                     id={fieldId}
                     type="button"
                     aria-label={label}
                     ref={field.ref}
                     role="combobox"
-                    aria-expanded={open}
+                    aria-expanded={disabled ? false : open}
                     aria-haspopup="menu"
                     aria-controls={menuId}
                     onBlur={field.onBlur}
                     disabled={disabled}
+                    onPointerDown={(event) => {
+                      if (disabled) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    }}
+                    onClick={(event) => {
+                      if (disabled) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    }}
                     {...fieldAria(fieldId, fieldState.error?.message, hint)}
                     className={cn(
                       "flex min-h-9 w-full items-center rounded-md border border-input bg-transparent py-1.5 pl-3 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",

@@ -178,6 +178,7 @@ function PhoneControl({
   };
 
   const handleCountryOpenChange = (nextOpen: boolean) => {
+    if (disabled) return;
     setCountryOpen(nextOpen);
     if (!nextOpen) {
       setCountrySearch("");
@@ -186,15 +187,27 @@ function PhoneControl({
 
   return (
     <div className="flex gap-1.5">
-      <Popover modal={true} open={countryOpen} onOpenChange={handleCountryOpenChange}>
-        <PopoverTrigger asChild>
+      <Popover modal={true} open={disabled ? false : countryOpen} onOpenChange={handleCountryOpenChange}>
+        <PopoverTrigger asChild disabled={disabled}>
           <button
             type="button"
             role="combobox"
-            aria-expanded={countryOpen}
+            aria-expanded={disabled ? false : countryOpen}
             aria-controls={countryListId}
             aria-label={`País: ${phoneCountryName(current.country)} (+${callingCodeOf(current.country)})`}
             disabled={disabled}
+            onPointerDown={(event) => {
+              if (disabled) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            onClick={(event) => {
+              if (disabled) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
             className={cn(
               "flex h-9 shrink-0 items-center justify-between gap-1 rounded-md border border-input bg-transparent px-2.5 py-1.5 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
               "focus:border-ring focus:ring-[3px] focus:ring-ring/50",

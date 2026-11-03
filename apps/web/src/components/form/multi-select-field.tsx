@@ -127,6 +127,7 @@ export function MultiSelectField<T extends FieldValues>({
   const groups = groupOptions(options);
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (disabled) return;
     setOpen(nextOpen);
     if (!nextOpen) {
       setSearch("");
@@ -160,18 +161,34 @@ export function MultiSelectField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <Popover modal={true} open={open} onOpenChange={handleOpenChange}>
-              <PopoverTrigger asChild>
+            <Popover
+              modal={true}
+              open={disabled ? false : open}
+              onOpenChange={handleOpenChange}
+            >
+              <PopoverTrigger asChild disabled={disabled}>
                 <button
                   type="button"
                   aria-label={label}
                   ref={field.ref}
                   role="combobox"
-                  aria-expanded={open}
+                  aria-expanded={disabled ? false : open}
                   aria-haspopup="listbox"
                   aria-controls={listId}
                   onBlur={field.onBlur}
                   disabled={disabled}
+                  onPointerDown={(event) => {
+                    if (disabled) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }
+                  }}
+                  onClick={(event) => {
+                    if (disabled) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }
+                  }}
                   {...fieldAria(fieldId, fieldState.error?.message, hint)}
                   className={cn(
                     "flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",

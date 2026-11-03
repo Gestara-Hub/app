@@ -105,6 +105,7 @@ export function Combobox({
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (disabled) return;
     setOpen(nextOpen);
     if (!nextOpen) {
       setSearch("");
@@ -112,20 +113,32 @@ export function Combobox({
   };
 
   return (
-    <Popover modal={true} open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
+    <Popover modal={true} open={disabled ? false : open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild disabled={disabled}>
         <button
           id={id}
           ref={triggerRef}
           type="button"
           role="combobox"
-          aria-expanded={open}
+          aria-expanded={disabled ? false : open}
           aria-controls={listId}
           aria-label={ariaLabel}
           aria-invalid={invalid || undefined}
           aria-describedby={ariaDescribedBy}
           disabled={disabled}
           onBlur={onBlur}
+          onPointerDown={(event) => {
+            if (disabled) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
+          onClick={(event) => {
+            if (disabled) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
           className={cn(
             "flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
             "focus:border-ring focus:ring-[3px] focus:ring-ring/50",

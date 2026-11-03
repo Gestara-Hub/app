@@ -436,7 +436,7 @@ function DialogContent({
                   type="button"
                   data-slot="dialog-expand"
                   onClick={() => handleToggle()}
-                  className="hidden sm:inline-flex rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
+                  className="hidden sm:inline-flex rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
                   title={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
                   aria-label={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
                 >
@@ -446,7 +446,7 @@ function DialogContent({
               {showCloseButton && (
                 <DialogPrimitive.Close
                   data-slot="dialog-close"
-                  className="rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
+                  className="rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
                 >
                   <XIcon />
                   <span className="sr-only">Fechar</span>
@@ -634,8 +634,9 @@ function DialogBody({
       <div
         ref={containerRef}
         onScroll={checkScroll}
+        tabIndex={canScrollUp || canScrollDown ? 0 : undefined}
         data-slot="dialog-body"
-        className={cn("flex-1 overflow-y-auto min-h-0 p-6", className)}
+        className={cn("flex-1 overflow-y-auto min-h-0 p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", className)}
         {...props}
       >
         <div ref={contentRef} className={cn("space-y-4", contentClassName)}>

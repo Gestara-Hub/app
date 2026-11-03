@@ -8,6 +8,7 @@ import {
 } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { fieldHintId } from "./field-shell";
 
 interface SwitchFieldProps<T extends FieldValues> {
@@ -34,9 +35,20 @@ export function SwitchField<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div className="space-y-0.5">
-            <Label htmlFor={fieldId}>{label}</Label>
+        <div
+          data-disabled={disabled ? "true" : undefined}
+          className={cn(
+            "flex items-center justify-between rounded-md border p-3",
+            disabled && "cursor-not-allowed opacity-60",
+          )}
+        >
+          <div className={cn("space-y-0.5", disabled && "cursor-not-allowed")}>
+            <Label
+              htmlFor={fieldId}
+              className={disabled ? "cursor-not-allowed text-muted-foreground" : undefined}
+            >
+              {label}
+            </Label>
             {hint ? (
               <p id={fieldHintId(fieldId)} className="text-xs text-muted-foreground">
                 {hint}

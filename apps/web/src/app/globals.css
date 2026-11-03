@@ -245,7 +245,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.51 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -632,6 +632,33 @@ html[data-vm-modalities="list"] [data-vm-skeleton="modalities:list"],
 html[data-vm-plans="list"] [data-vm-skeleton="plans:list"],
 html[data-vm-packages="list"] [data-vm-skeleton="packages:list"] {
   display: block !important;
+}
+
+/* ==========================================================================
+   Estado Desativado Padrão (Cursor Bloqueado / Not-Allowed)
+   Garante que campos, botões e controles desativados em todo o sistema
+   exibam de forma consistente o cursor de bloqueado (not-allowed).
+   ========================================================================== */
+
+:disabled,
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[disabled],
+[aria-disabled="true"],
+[data-disabled="true"],
+[data-disabled]:not([data-disabled="false"]) {
+  cursor: not-allowed !important;
+}
+
+/* Garante que o hover em botões ou controles nativos desativados capture o mouse
+   para renderizar o cursor not-allowed (sem liberar ações de clique nativo). */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  pointer-events: auto;
 }
 
 /* ==========================================================================
