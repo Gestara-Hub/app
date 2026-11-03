@@ -75,3 +75,39 @@ describe("um usuário ativo por profissional (ACE-08)", () => {
     });
   });
 });
+
+describe("bloqueio de alteração de e-mail de usuário confirmado", () => {
+  beforeEach(() => resetAcademy());
+
+  it("recusa alterar e-mail de usuário já ativo/confirmado", async () => {
+    // usr-ac-ana é usuário confirmado sem convite pendente
+    await expect(
+      usersService.update("usr-ac-ana", { email: "novo@academiax.com" }),
+    ).rejects.toMatchObject({
+      fields: [
+        {
+          field: "email",
+          message: "O e-mail de acesso não pode ser alterado após a ativação da conta.",
+        },
+      ],
+    });
+  });
+
+  it("permite alterar e-mail de usuário com convite pendente", async () => {
+    const created = await usersService.create(
+      {
+        name: "Pendente",
+        email: "pendente@academiax.com",
+        profile: "attendant",
+        status: "active",
+      },
+      true, // sendInvite = true cria convite pendente
+    );
+
+    const updated = await usersService.update(created.id, {
+      email: "novo.pendente@academiax.com",
+    });
+
+    expect(updated.email).toBe("novo.pendente@academiax.com");
+  });
+});

@@ -40,6 +40,8 @@ import {
 } from "./userRules";
 import type { UserSwitchOption } from "./userRules";
 
+const mockPendingInviteUserIds = new Set<string>();
+
 export const usersService = {
   list(filter?: UserFilter): Promise<UserView[]> {
     return readOp(async () => {
@@ -188,6 +190,7 @@ export const usersService = {
         updatedAt: ts,
       };
       store.users.push(user);
+      if (sendInvite) mockPendingInviteUserIds.add(user.id);
       auditLogService.record({
         action: "created",
         target: { type: "user", id: user.id, label: user.name, profile: user.profile },
@@ -222,8 +225,18 @@ export const usersService = {
 
       const idx = store.users.findIndex((u) => u.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      if (payload.email !== undefined) ensureEmailUnique(payload.email, id);
       const current = store.users[idx];
+
+      if (payload.email !== undefined && payload.email.trim().toLowerCase() !== current.email.toLowerCase()) {
+        const hasPending = mockPendingInviteUserIds.has(id);
+        if (!hasPending) {
+          throw validationError([
+            { field: "email", message: "O e-mail de acesso não pode ser alterado após a ativação da conta." },
+          ]);
+        }
+        ensureEmailUnique(payload.email, id);
+      }
+
       ensureNotSelfPrivilegeChange(current, payload);
       ensureNotLastOwner(current, payload);
       const updated: User = {

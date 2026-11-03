@@ -73,6 +73,7 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
   // que fora do conjunto, para nao perde-lo no select.
   const currentUser = useCurrentUser();
   const isSelf = Boolean(user && user.id === currentUser.id);
+  const isEmailReadOnly = Boolean(isEdit && user && !user.pendingInvite);
   const allowedProfiles = new Set<UserProfile>(manageableProfiles(currentUser));
   if (user) allowedProfiles.add(user.profile);
   const profileOptions = PROFILE_ORDER.filter((p) => allowedProfiles.has(p)).map(
@@ -186,7 +187,14 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
           label="E-mail"
           placeholder="email@dominio.com"
           required
-          disabled={pending}
+          disabled={pending || isEmailReadOnly}
+          hint={
+            isEmailReadOnly
+              ? "O e-mail de acesso não pode ser alterado após a ativação da conta."
+              : isEdit
+                ? "Caso altere o e-mail antes da ativação, um novo convite será gerado."
+                : undefined
+          }
         />
 
         <SelectField<UserFormValues>
