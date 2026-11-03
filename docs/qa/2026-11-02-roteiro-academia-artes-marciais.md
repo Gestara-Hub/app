@@ -165,7 +165,7 @@ Os quatro últimos existem para a lista passar de 20 alunos (padrão da página)
 
 | # | Aluno | Idade | Turma alvo | Responsável |
 | --- | --- | --- | --- | --- |
-| 11 | Enzo Gabriel Silva | 8 | Kids Tarde | mãe Patrícia (financeira, com CPF) |
+| 11 | Enzo Gabriel Silva | 8 | Kids Tarde | mãe Patrícia (financeira, CPF e seu WhatsApp 4219 para receber termo e cobrança) |
 | 12 | Valentina Souza | 10 | Kids Tarde | pai Roberto |
 | 13 | Miguel Santos | 12 | Kids Tarde e Judô | avó Dona Helena (financeira) |
 | 14 | Sophia Oliveira | 7 | Kids Tarde | mãe, sem e-mail |
