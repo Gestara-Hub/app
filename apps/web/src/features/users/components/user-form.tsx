@@ -89,10 +89,11 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
 
   // Opcoes do vinculo: profissionais ativos + o vinculado atual (mesmo inativo),
   // para nao sumir do combobox ao editar.
-  const professionalOptions: { id: string; name: string; roleName?: string }[] =
+  const professionalOptions: { id: string; name: string; email?: string; roleName?: string }[] =
     (professionals ?? []).filter((p) => !takenIds.has(p.id)).map((p) => ({
       id: p.id,
       name: p.name,
+      email: p.email,
       roleName: p.role?.name,
     }));
   if (
@@ -102,6 +103,7 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
     professionalOptions.push({
       id: user.professional.id,
       name: user.professional.name,
+      email: (professionals ?? []).find((p) => p.id === user.professional?.id)?.email,
     });
   }
 
@@ -233,15 +235,26 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
                   value={field.value ?? ""}
                   onChange={(id) => {
                     field.onChange(id);
-                    // Preenche o nome com o do profissional quando o campo esta
-                    // vazio ou ainda tem o nome do vinculo anterior.
+                    // Preenche nome e e-mail com os do profissional quando o campo esta
+                    // vazio ou ainda tem os dados do vinculo anterior.
                     const picked = professionalOptions.find((p) => p.id === id);
                     const currentName = form.getValues("name").trim();
+                    const currentEmail = form.getValues("email").trim();
                     const previous = professionalOptions.find(
                       (p) => p.id === linkedId,
                     );
                     if (picked && (!currentName || currentName === previous?.name)) {
                       form.setValue("name", picked.name, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }
+                    if (
+                      picked?.email &&
+                      !isEmailReadOnly &&
+                      (!currentEmail || currentEmail === previous?.email)
+                    ) {
+                      form.setValue("email", picked.email, {
                         shouldValidate: true,
                         shouldDirty: true,
                       });
@@ -271,7 +284,7 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
         {linked ? (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Check className="size-3.5 text-emerald-600" />
-            Vinculado a <strong>{linked.name}</strong>, da equipe.
+            Vinculado a <strong className="font-semibold text-foreground">{linked.name.trim()}</strong>, da equipe.
           </p>
         ) : null}
 
