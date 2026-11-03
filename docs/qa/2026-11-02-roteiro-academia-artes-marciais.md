@@ -308,3 +308,4 @@ Os quatro últimos existem para a lista passar de 20 alunos (padrão da página)
 | 2 | 3 | alta | Conta trial do MailerSend recusava e-mails para terceiros (422) e revogava o convite no banco sem imprimir o link no terminal, impedindo testar convites de equipe, redefinição de senha e 2FA | `600f2b0` |
 | 3 | 9 | média | Som ao marcar presença (bipe) estava configurado nas preferências, mas não era disparado na tela de chamada ao marcar presença | `e54f0da` |
 | 4 | 3 | média | Edição de usuário permitia alterar o e-mail mesmo após a conta ser ativada, sem validação no backend | `eeb6f67` |
+| 5 | 3 | baixa | Ao vincular um instrutor da equipe no formulário de usuário, o e-mail cadastrado do instrutor não era carregado automaticamente | `0795944` |
