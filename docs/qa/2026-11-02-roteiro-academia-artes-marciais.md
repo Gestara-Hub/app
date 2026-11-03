@@ -115,7 +115,7 @@ Teste de ponta a ponta do modelo de turmas, feito por você no navegador, em eta
 | Jiu-Jitsu Manhã | Jiu-Jitsu | Carlos | seg/qua/sex 07:00-08:00 | 12 | Mensalidade; aceita avulso R$ 40,00 |
 | Jiu-Jitsu Noite | Jiu-Jitsu | Carlos | ter/qui 19:30-21:00 | 4 | Mensalidade (para lotar) |
 | Kids Tarde | Jiu-Jitsu Kids | Ana | seg/qua 17:00-18:00 | 10 | Mensalidade |
-| Muay Thai Pacote | Muay Thai | Rafael | ter/qui/sáb 18:00-19:00 | 15 | Pacote de aulas |
+| Muay Thai Pacote | Muay Thai | Rafael | ter/qui/sex 18:00-19:00 | 15 | Pacote de aulas |
 | Judô Curso de Férias | Judô | Juliana | seg a sex 09:00-10:00, começa segunda que vem, termina em 30 dias | 8 | Curso R$ 400,00 em até 4x |
 
 1. Turmas → "+ Nova turma". Nas lutas o formulário sugere "Mensalidade"; mude nas duas últimas.
