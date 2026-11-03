@@ -113,7 +113,10 @@ function UserTags({ user }: { user: UserView }) {
         {userProfileLabel(user.profile, team.title)}
       </span>
       {user.professional ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+        <span
+          title={`Vinculado a ${user.professional.name}`}
+          className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400"
+        >
           <Contact className="size-3" />
           Equipe
         </span>
@@ -164,8 +167,10 @@ function UserRow(props: UserItemProps) {
               <Mail className="size-3 text-muted-foreground/60" />
               <span className="break-all">{user.email}</span>
             </span>
-            {user.professional ? (
-              <span className="inline-flex items-center gap-1.5">
+            {user.professional &&
+            user.professional.name.trim().toLowerCase() !==
+              user.name.trim().toLowerCase() ? (
+              <span className="inline-flex items-center gap-1.5" title={`Profissional: ${user.professional.name}`}>
                 <User className="size-3 text-muted-foreground/60" />
                 <span>{user.professional.name}</span>
               </span>
@@ -218,8 +223,10 @@ function UserCard(props: UserItemProps) {
           <Mail className="size-3.5 text-muted-foreground/60" />
           <span className="break-all">{user.email}</span>
         </span>
-        {user.professional ? (
-          <span className="inline-flex items-center gap-1.5">
+        {user.professional &&
+        user.professional.name.trim().toLowerCase() !==
+          user.name.trim().toLowerCase() ? (
+          <span className="inline-flex items-center gap-1.5" title={`Profissional: ${user.professional.name}`}>
             <User className="size-3.5 text-muted-foreground/60" />
             <span>{user.professional.name}</span>
           </span>
