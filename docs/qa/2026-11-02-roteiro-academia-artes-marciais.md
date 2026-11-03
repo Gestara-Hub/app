@@ -312,3 +312,4 @@ Os quatro últimos existem para a lista passar de 20 alunos (padrão da página)
 | 6 | 3 | baixa | Seletor de contexto ("Dia a dia" vs "Gestão") aparecia na barra lateral para perfis sem permissões de gestão (como instrutor/professor), exibindo uma aba de gestão vazia | `8f62682` |
 | 7 | 3 | média | Campo select com `disabled` abria o menu de opções ao clicar e botões/campos desativados não exibiam o cursor de bloqueado (`not-allowed`) por padrão | `581c6e2` |
 | 8 | 3 | baixa | Lista de usuários exibia o nome do profissional vinculado abaixo do e-mail mesmo quando idêntico ao nome do próprio usuário, gerando redundância visual | `9f6786e` |
+| 9 | 5 | baixa | Campo "Capacidade (vagas)" no formulário de turma é obrigatório pelo schema mas estava sem a marcação de asterisco (`*`) na label | `2630be4` |
