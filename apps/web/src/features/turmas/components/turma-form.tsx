@@ -574,14 +574,14 @@ function MeetingSlotsEditor({
                           on
                             ? "border-primary bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/20"
                             : isClosed
-                              ? "border-dashed border-muted-foreground/30 bg-muted/20 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                              ? "border-dashed border-muted-foreground/40 bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground"
                               : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
                         )}
                       >
                         <div className="flex flex-col items-center justify-center leading-tight">
                           <span>{d.short}</span>
                           {isClosed && (
-                            <span className="text-[8px] font-normal tracking-tight opacity-75">
+                            <span className="text-[9px] font-normal tracking-tight">
                               fechado
                             </span>
                           )}
@@ -1069,6 +1069,7 @@ export function TurmaForm({
             label="Capacidade (vagas)"
             min={1}
             hint={overCapacityHint}
+            required
             disabled={pending}
           />
           <DateField<TurmaFormValues>
