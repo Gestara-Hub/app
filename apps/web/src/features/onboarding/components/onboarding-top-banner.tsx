@@ -152,7 +152,7 @@ export function OnboardingTopBanner() {
   }
   const closeSpotlight = () => setSpotlightFor(null);
   const activeStepOnPage =
-    user.profile === "owner" &&
+    (user.profile === "owner" || user.profile === "manager") &&
     !isDashboard &&
     isReady &&
     !isComplete &&
@@ -228,7 +228,10 @@ export function OnboardingTopBanner() {
   const markReviewed = useMarkModalitiesReviewed();
   const reviewAttention = useAttentionUntilInteraction(reviewOnPage, "modalities-review");
   // Com o botao aqui, o aviso amarelo da tela nao repete o dele.
-  const reviewButtonShown = isHydrated && user.profile === "owner" && reviewOnPage;
+  const reviewButtonShown =
+    isHydrated &&
+    (user.profile === "owner" || user.profile === "manager") &&
+    reviewOnPage;
   useEffect(() => {
     setModalitiesReviewOnBanner(reviewButtonShown);
     return () => setModalitiesReviewOnBanner(false);
@@ -259,8 +262,8 @@ export function OnboardingTopBanner() {
 
   if (!isHydrated) return null;
 
-  // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
-  if (user.profile !== "owner" || isDashboard) return null;
+  // Exibe para Proprietário e Gerente enquanto houver passos pendentes (exceto no Painel)
+  if ((user.profile !== "owner" && user.profile !== "manager") || isDashboard) return null;
 
   if (isComplete) return null;
 

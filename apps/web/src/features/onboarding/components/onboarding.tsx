@@ -15,7 +15,7 @@ import { TOUR_STEPS_DEFAULT, tourStepsForClasses } from "./tour-steps";
 
 /**
  * Orquestra o checklist e tour guiado no Dashboard após a conclusão do setup inicial.
- * Só aparece para o Proprietário enquanto as etapas recomendadas não foram concluídas.
+ * Exibido para Proprietário e Gerente enquanto as etapas recomendadas não foram concluídas.
  * Concluídas (turmas), o lugar passa ao "Descubra o dia a dia" (dono e gerente).
  */
 export function Onboarding() {
@@ -58,7 +58,7 @@ export function Onboarding() {
       />
     ) : null;
 
-  if (user.profile !== "owner") return discovery;
+  if (user.profile !== "owner" && user.profile !== "manager") return discovery;
 
   const welcomeOpen = !state.seen && !isComplete;
   const showChecklist = !isComplete;
