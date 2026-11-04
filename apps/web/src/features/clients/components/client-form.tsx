@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   FileText,
   MapPin,
+  MessageCircle,
   Percent,
   Plus,
   ShieldCheck,
@@ -467,6 +468,7 @@ export function ClientForm({
   );
   const [notesOpen, setNotesOpen] = useState(Boolean(client?.notes?.trim()));
   const [guardiansUserToggled, setGuardiansUserToggled] = useState<boolean | null>(null);
+  const [sendWelcome, setSendWelcome] = useState(false);
 
   const selectedPlan = useMemo(
     () => plans?.find((p) => p.id === selectedPlanId),
@@ -1180,10 +1182,10 @@ export function ClientForm({
           }
         }
         const canWelcome = isClasses && whatsapp.ready && Boolean(whatsappNumber(created.phone));
-        // WhatsApp oficial conectado (01/11/2026, decisao do dono): as boas-vindas
-        // saem sozinhas, sem confirmar, se o modelo esta ligado. No assistido
-        // continua o botao do aviso (quem envia e a propria pessoa).
-        const autoWelcome = canWelcome && whatsapp.mode === "official" && whatsapp.enabled("welcome_student");
+        // WhatsApp conectado: se o switch de boas-vindas estiver marcado (sendWelcome),
+        // no modo oficial saem sozinhas (reviewed: true). No modo assistido continua
+        // a ação do toast. Se desmarcado, nada é enviado nem sugerido.
+        const autoWelcome = canWelcome && sendWelcome && whatsapp.mode === "official" && whatsapp.enabled("welcome_student");
         if (autoWelcome) {
           whatsapp.send({
             trigger: "welcome_student",
@@ -1197,7 +1199,7 @@ export function ClientForm({
             : isClasses
               ? "Aluno criado com sucesso."
               : "Cliente criado com sucesso.",
-          canWelcome && !autoWelcome
+          canWelcome && !autoWelcome && sendWelcome
             ? {
                 duration: 10_000,
                 action: {
@@ -1269,6 +1271,31 @@ export function ClientForm({
         )}
       >
         <FormBodyWrapper className={isPage ? "space-y-6 p-6" : "space-y-4"}>
+          {/* Notificação de boas-vindas pelo WhatsApp (visível no topo para decisão imediata) */}
+          {!isEdit && isClasses && whatsapp.ready && whatsapp.enabled("welcome_student") ? (
+            <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-colors">
+              <div className="flex items-start gap-3 pr-4">
+                <MessageCircle className="mt-0.5 size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="space-y-0.5">
+                  <label htmlFor="send-welcome-switch" className="text-sm font-medium text-foreground cursor-pointer">
+                    Enviar boas-vindas no WhatsApp
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {whatsapp.mode === "official"
+                      ? "Dispara a mensagem automática de boas-vindas da Meta ao criar o aluno."
+                      : "Oferece o envio de boas-vindas no WhatsApp após o cadastro."}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="send-welcome-switch"
+                checked={sendWelcome}
+                onCheckedChange={setSendWelcome}
+                disabled={pending}
+              />
+            </div>
+          ) : null}
+
           {/* Bloco 1: Dados de Identificação */}
         <div className="space-y-4">
           <InputText<ClientFormValues>

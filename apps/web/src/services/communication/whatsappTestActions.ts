@@ -47,6 +47,24 @@ export async function sendTestWhatsAppMessageAction(
       throw validationError([{ field: "to", message: "Informe o número de telefone de destino com DDD." }]);
     }
 
+    const { data: conn } = await createSupabaseAdminClient()
+      .from("whatsapp_connections")
+      .select("phone_number")
+      .eq("organization_id", ctx.organizationId)
+      .maybeSingle();
+
+    const digitsTo = cleanTo.replace(/\D/g, "");
+    const digitsSender = String(conn?.phone_number ?? "").replace(/\D/g, "");
+    if (digitsSender && (digitsTo === digitsSender || (digitsSender.length >= 8 && digitsTo.endsWith(digitsSender.slice(-8))))) {
+      throw validationError([
+        {
+          field: "to",
+          message:
+            "O número de destino não pode ser o mesmo número do espaço conectado. Digite o número do seu celular pessoal ou de outro aparelho para receber o teste.",
+        },
+      ]);
+    }
+
     try {
       if (payload.type === "template") {
         // Modelo aprovado da propria conta (01/11/2026): "hello_world" so existe
@@ -99,6 +117,11 @@ export async function sendTestWhatsAppMessageAction(
       // ApiError: a mensagem chega a tela (erro comum vira "erro inesperado" com codigo).
       const metaError = (message: string) => apiError("CONFLICT", message, { httpStatus: 409 });
       if (err instanceof WhatsAppApiError) {
+        if (err.code === 100) {
+          throw metaError(
+            "A Meta recusou o envio (parâmetro inválido). Certifique-se de que o número de destino possui DDD, é uma conta de WhatsApp ativa e não é o mesmo número do espaço conectado.",
+          );
+        }
         if (err.code === 131047) {
           throw metaError(
             "A Meta bloqueou o texto livre porque a janela de 24 horas não está aberta com esse número. Use a opção 'Modelo oficial (hello_world)' para enviar a qualquer momento.",

@@ -20,10 +20,11 @@ import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 
 interface TestWhatsAppDialogProps {
+  connectedPhone?: string;
   defaultPhone?: string;
 }
 
-export function TestWhatsAppDialog({ defaultPhone }: TestWhatsAppDialogProps) {
+export function TestWhatsAppDialog({ connectedPhone, defaultPhone }: TestWhatsAppDialogProps) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(defaultPhone || "");
   const [type, setType] = useState<"template" | "text">("template");
@@ -31,8 +32,16 @@ export function TestWhatsAppDialog({ defaultPhone }: TestWhatsAppDialogProps) {
   const [isSending, setIsSending] = useState(false);
 
   async function handleSend() {
-    if (!phone.trim()) {
+    const rawTo = phone.trim();
+    if (!rawTo) {
       toast.error("Informe o número de telefone com DDD.");
+      return;
+    }
+
+    const digitsTo = rawTo.replace(/\D/g, "");
+    const digitsConnected = (connectedPhone ?? "").replace(/\D/g, "");
+    if (digitsConnected && (digitsTo === digitsConnected || (digitsConnected.length >= 8 && digitsTo.endsWith(digitsConnected.slice(-8))))) {
+      toast.error("O número de destino não pode ser o mesmo do espaço conectado. Digite o número de outro celular para receber o teste.");
       return;
     }
 
@@ -80,14 +89,14 @@ export function TestWhatsAppDialog({ defaultPhone }: TestWhatsAppDialogProps) {
             </Label>
             <Input
               id="test-phone"
-              placeholder="Ex: 92991844219 ou (92) 99184-4219"
+              placeholder="Ex: (92) 99184-4219 (celular pessoal)"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="text-sm"
               disabled={isSending}
             />
             <p className="text-[11px] text-muted-foreground">
-              Na conta de sandbox da Meta, o número precisa estar na lista de destinatários de teste.
+              Informe outro aparelho (seu celular pessoal com DDD). O WhatsApp não permite que o mesmo número envie mensagem para si mesmo.
             </p>
           </div>
 

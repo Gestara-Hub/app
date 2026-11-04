@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Info, Loader2, MessageCircle, Unplug } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Info, Loader2, MessageCircle, Unplug } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { WhatsAppConnectionView } from "@gestarahub/contracts";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -124,7 +124,9 @@ function SendHoursForm({ connection, disabled }: { connection: WhatsAppConnectio
 export function ConnectionSettingsTab() {
   const { data: connection, isPending } = useWhatsAppConnection();
   const { data: unit } = useUnit();
-  const canManage = useCan()("communication:manage");
+  const can = useCan();
+  const canManage = can("communication:manage");
+  const canManagePlan = can("subscription:manage");
   const connectMut = useConnectOfficialWhatsApp();
   const disconnectMut = useDisconnectOfficialWhatsApp();
   const { confirm, dialog } = useConfirmAction();
@@ -172,6 +174,7 @@ export function ConnectionSettingsTab() {
         <FeatureLocked
           title="Envio automático pelo WhatsApp oficial"
           description="Conecte o número do seu espaço à API oficial do WhatsApp e deixe lembretes, boas-vindas e parabéns saírem sozinhos."
+          canManagePlan={canManagePlan}
           benefits={[
             "Mensagens saem com o nome e o número do seu espaço",
             "Lembretes antes, no dia e depois do vencimento",
@@ -231,9 +234,17 @@ export function ConnectionSettingsTab() {
               </Link>
             </div>
           ) : (
-            <div className="flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
-              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <span>Cadastre o telefone do espaço em Configurações antes de conectar.</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <Info className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Cadastre o telefone do espaço em Configurações antes de conectar.</span>
+              </div>
+              <Button asChild size="sm" variant="outline" className="h-7 text-xs shrink-0 font-medium gap-1 border-amber-500/40 bg-background/60 hover:bg-background">
+                <Link href="/settings">
+                  Cadastrar telefone agora
+                  <ArrowUpRight className="size-3.5" />
+                </Link>
+              </Button>
             </div>
           )}
 
@@ -293,7 +304,9 @@ export function ConnectionSettingsTab() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {/* Ferramenta de desenvolvimento: fora do build de producao (a acao tambem recusa). */}
-            {process.env.NODE_ENV !== "production" && canManage ? <TestWhatsAppDialog defaultPhone={phone} /> : null}
+            {process.env.NODE_ENV !== "production" && canManage ? (
+              <TestWhatsAppDialog connectedPhone={connection.phoneNumber || phone} />
+            ) : null}
             <Button
               type="button"
               variant="outline"
