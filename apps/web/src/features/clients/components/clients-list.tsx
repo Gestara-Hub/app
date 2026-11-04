@@ -374,7 +374,7 @@ function ClientRow({
   const content = (
     <ListRow
       onClick={openProfile}
-      canClick={false}
+      mouseOnly
       actions={
         canManage ? (
           <ListItemActionsMenu

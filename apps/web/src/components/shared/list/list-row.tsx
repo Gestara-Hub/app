@@ -8,6 +8,12 @@ export interface ListRowProps extends HTMLAttributes<HTMLDivElement> {
   actions?: ReactNode;
   onClick?: () => void;
   canClick?: boolean;
+  /**
+   * A linha ja tem um link para o mesmo destino (o nome): o clique do mouse na
+   * linha inteira abre, mas sem virar botao para o teclado e o leitor de tela,
+   * que usam o link (botao com link dentro e "elemento interativo aninhado").
+   */
+  mouseOnly?: boolean;
   className?: string;
   "aria-label"?: string;
 }
@@ -18,6 +24,7 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
     actions,
     onClick,
     canClick = Boolean(onClick),
+    mouseOnly = false,
     className,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
@@ -36,7 +43,7 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
     }
   };
 
-  const buttonProps = isClickable
+  const buttonProps = isClickable && !mouseOnly
     ? {
         role: "button" as const,
         tabIndex: 0,
@@ -64,7 +71,7 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
         {...(isClickable && actions ? buttonProps : {})}
         className={cn(
           "min-w-0 flex-1",
-          isClickable && actions && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md",
+          isClickable && !mouseOnly && actions && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md",
         )}
       >
         {children}
