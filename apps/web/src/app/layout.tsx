@@ -68,6 +68,22 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Instalar o app (PWA): o navegador avisa uma vez so, logo ao carregar,
+            antes do codigo do cartao chegar. Guarda o aviso aqui; o cartao
+            (components/layout/install-app-prompt) le depois. */}
+        <Script
+          id="gh-install-capture"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener("beforeinstallprompt", function (e) {
+                e.preventDefault();
+                window.__ghInstallPrompt = e;
+                window.dispatchEvent(new Event("gh-install-available"));
+              });
+            `,
+          }}
+        />
         {/* Lista vs cards antes da pintura (skeleton certo, sem flicker). */}
         <Script
           id="gh-view-mode-pre-paint"

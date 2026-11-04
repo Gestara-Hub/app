@@ -25,19 +25,22 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-// A janela de instalacao do navegador avisa cedo, as vezes antes da tela
-// montar: guarda o aviso ja ao carregar este arquivo.
+// O navegador avisa uma vez so, logo ao carregar a pagina, muitas vezes antes
+// deste arquivo: o script `gh-install-capture` do layout raiz guarda o aviso em
+// `window.__ghInstallPrompt` (e tira a faixa automatica do Chrome).
+type InstallWindow = Window & { __ghInstallPrompt?: BeforeInstallPromptEvent | null };
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 const promptListeners = new Set<() => void>();
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (event) => {
-    // Sem a faixa automatica do Chrome: quem oferece e o cartao abaixo.
-    event.preventDefault();
-    deferredPrompt = event as BeforeInstallPromptEvent;
+  const take = () => {
+    deferredPrompt = (window as InstallWindow).__ghInstallPrompt ?? null;
     promptListeners.forEach((listener) => listener());
-  });
+  };
+  take();
+  window.addEventListener("gh-install-available", take);
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
+    (window as InstallWindow).__ghInstallPrompt = null;
     trackEvent("app_installed");
     promptListeners.forEach((listener) => listener());
   });
@@ -156,6 +159,8 @@ export function InstallAppPrompt() {
     }
     const event = deferredPrompt;
     deferredPrompt = null;
+    // O aviso vale uma vez: usado, some ate a proxima pagina carregada.
+    (window as InstallWindow).__ghInstallPrompt = null;
     await event.prompt();
     const { outcome } = await event.userChoice;
     trackEvent("install_prompt_answered", { platform, outcome });
