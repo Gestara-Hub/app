@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,15 @@ export function GoogleSignInButton({
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
+
+  // Ao voltar da tela do Google pelo botao "Voltar" do navegador, o bfcache restaura
+  // o estado em memoria; o evento pageshow reseta o loading do botao.
+  useEffect(() => {
+    const reset = () => setPending(false);
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+
   if (!googleSignInAvailable) return null;
 
   const start = async () => {
