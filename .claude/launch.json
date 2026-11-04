@@ -10,6 +10,18 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "capturas",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8787",
+        "--directory",
+        "docs/qa/capturas"
+      ],
+      "port": 8787
     }
   ]
 }

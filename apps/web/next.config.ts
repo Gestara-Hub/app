@@ -21,7 +21,15 @@ const nextConfig: NextConfig = {
   },
   // Esconde o indicador flutuante do Next em dev.
   devIndicators: false,
-  allowedDevOrigins: ["192.168.1.2"],
+  allowedDevOrigins: [
+    "192.168.1.2",
+    "*.trycloudflare.com",
+    "pontiac-permission-silicon-namespace.trycloudflare.com",
+    "*.loca.lt",
+    "*.ngrok-free.app",
+    "*.ngrok.app",
+    "*.ngrok.io",
+  ],
   async headers() {
     return [
       {
