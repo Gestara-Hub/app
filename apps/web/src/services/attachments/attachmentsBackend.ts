@@ -4,6 +4,8 @@ import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { logError } from "@/lib/log";
+import { MAX_UPLOAD_BYTES } from "@/lib/files";
+import { apiError } from "@gestarahub/core/api-error";
 import { requireSameOrganization } from "../server/tenant";
 
 /** Quem anexa arquivos (o mesmo que o banco aceitava antes da migracao 78). */
@@ -31,6 +33,9 @@ export async function saveAttachmentInStorage(
   // Espaco e perfil da sessao no banco; a linha do anexo e gravada pelo servidor,
   // porque o banco nao aceita escrita direta do usuario (migracao 78).
   const ctx = await requireSameOrganization(organizationId, { profiles: [...UPLOADERS] });
+  if (file.size > MAX_UPLOAD_BYTES || file.buffer.length > MAX_UPLOAD_BYTES) {
+    throw apiError("VALIDATION", "Arquivo maior que 4 MB.", { httpStatus: 413 });
+  }
   const client = ctx.client;
   const id = crypto.randomUUID();
   const safeFilename = encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g, "_"));

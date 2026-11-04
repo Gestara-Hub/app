@@ -5,6 +5,7 @@ import { decodeSession } from "@/lib/session-cookie";
 import { saveAttachmentInStorage } from "@/services/attachments/attachmentsBackend";
 import { isApiError, type FileAttachment } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";
+import { MAX_UPLOAD_BYTES, formatBytes } from "@/lib/files";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,12 +17,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
     }
 
+    // Um arquivo por requisicao, ate 4 MB (o navegador ja manda assim). Corpo
+    // maior que isso nem e lido.
+    const tooBig = () =>
+      NextResponse.json(
+        { message: `Arquivo maior que ${formatBytes(MAX_UPLOAD_BYTES)}. Envie um arquivo menor.` },
+        { status: 413 },
+      );
+    const declaredLength = Number(req.headers.get("content-length") ?? 0);
+    if (declaredLength > MAX_UPLOAD_BYTES + 64 * 1024) return tooBig();
+
     const formData = await req.formData();
     const files = formData.getAll("files") as File[];
 
     if (!files || files.length === 0) {
       return NextResponse.json({ message: "Nenhum arquivo enviado." }, { status: 400 });
     }
+    if (files.length > 1) {
+      return NextResponse.json({ message: "Envie um arquivo por vez." }, { status: 400 });
+    }
+    if (files.some((file) => file.size > MAX_UPLOAD_BYTES)) return tooBig();
 
     const results: FileAttachment[] = [];
 

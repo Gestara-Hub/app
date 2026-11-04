@@ -18,10 +18,17 @@ export interface FileRules {
 
 const MB = 1024 * 1024;
 
-/** Comprovante de pagamento: imagem ou PDF, ate 10 MB cada, no maximo 5. */
+/**
+ * Teto de todo envio de arquivo (04/11/2026): 4 MB por arquivo. Na Vercel a
+ * requisicao aceita ate 4,5 MB de corpo; cada arquivo vai numa requisicao
+ * propria. Vale tambem na rota de envio e no armazenamento (migracao 84).
+ */
+export const MAX_UPLOAD_BYTES = 4 * MB;
+
+/** Comprovante de pagamento: imagem ou PDF, ate 4 MB cada, no maximo 5. */
 export const RECEIPT_FILE_RULES = {
   accept: ["image/*", "application/pdf"],
-  maxSizeBytes: 10 * MB,
+  maxSizeBytes: MAX_UPLOAD_BYTES,
   maxFiles: 5,
   acceptLabel: "imagem ou PDF",
 } as const satisfies FileRules;
@@ -32,7 +39,7 @@ export const ENTRY_ATTACHMENT_RULES = {
   maxFiles: 10,
 } as const satisfies FileRules;
 
-/** Documento da ficha (atestado, termo, CREF): um arquivo, imagem ou PDF, ate 10 MB (doc product/28). */
+/** Documento da ficha (atestado, termo, CREF): um arquivo, imagem ou PDF, ate 4 MB (doc product/28). */
 export const PERSON_DOCUMENT_FILE_RULES = {
   ...RECEIPT_FILE_RULES,
   maxFiles: 1,

@@ -20,7 +20,7 @@ Decidido e feito em 04/11/2026. Guarda na ficha os documentos que o espaço pede
 - **Instrutor:** registro profissional (CREF), certificado de formação, contrato, antecedentes criminais e outro.
 - **Outro:** ao escolher, aparece o campo "Nome do documento", obrigatório. Nos demais tipos o campo não aparece e a ficha mostra o nome do tipo; trocar de "Outro" para outro tipo limpa o nome.
 - **Validade:** é opcional em todos. Atestado, CREF e antecedentes mostram o campo "Válido até" como esperado, com a frase "Avisamos antes de vencer".
-- **Arquivo:** um por documento, foto ou PDF, até 10 MB.
+- **Arquivo:** um por documento, foto ou PDF, até 4 MB (teto de todo envio do sistema).
 
 ## 3. Quem vê e quem mexe
 

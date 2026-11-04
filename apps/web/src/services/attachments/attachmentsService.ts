@@ -1,5 +1,5 @@
 import type { FileAttachment, Id } from "@gestarahub/contracts";
-import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
+import { MAX_UPLOAD_BYTES, RECEIPT_FILE_RULES, fileIssue, formatBytes, type FileRules } from "@/lib/files";
 import { realAccountInBrowser } from "../world/delegate";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
 import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
@@ -23,31 +23,36 @@ export const attachmentsService = {
     }
 
     if (typeof window !== "undefined" && realAccountInBrowser()) {
-      try {
+      // Um arquivo por requisicao (04/11/2026): cada um cabe no limite de corpo
+      // da Vercel (4,5 MB) e o erro aponta o arquivo certo. Conta real nao cai
+      // no armazenamento do navegador: o erro aparece no campo.
+      const attachments: FileAttachment[] = [];
+      for (const file of files) {
         const formData = new FormData();
-        for (const file of files) {
-          formData.append("files", file);
+        formData.append("files", file);
+        let res: Response;
+        try {
+          res = await fetch("/api/attachments", { method: "POST", body: formData });
+        } catch (err) {
+          logError("[attachmentsService] Falha de rede no envio:", err);
+          throw validationError([{ field, message: `“${file.name}”: não foi possível enviar. Confira a internet e tente de novo.` }]);
         }
-
-        const res = await fetch("/api/attachments", {
-          method: "POST",
-          body: formData,
-        });
-
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || "Falha no upload para o storage.");
+          const errData = (await res.json().catch(() => ({}))) as { message?: string };
+          const reason =
+            res.status === 413
+              ? `maior que ${formatBytes(MAX_UPLOAD_BYTES)}.`
+              : errData.message || "não foi possível enviar.";
+          if (res.status >= 500) logError("[attachmentsService] Erro no envio do arquivo:", errData.message ?? res.status);
+          throw validationError([{ field, message: `“${file.name}”: ${reason}` }]);
         }
-
         const data = (await res.json()) as { attachments: FileAttachment[] };
-        // Cache local no IndexedDB por conveniência
-        await Promise.all(
-          data.attachments.map((a, i) => putFileBlob(a.id, files[i]).catch(() => {})),
-        );
-        return data.attachments;
-      } catch (err) {
-        logError("[attachmentsService] Erro no upload via storage, caindo no fallback local:", err);
+        const [saved] = data.attachments;
+        // Copia local no navegador por conveniencia (abrir sem baixar de novo).
+        await putFileBlob(saved.id, file).catch(() => {});
+        attachments.push(saved);
       }
+      return attachments;
     }
 
     const uploadedAt = nowIso();

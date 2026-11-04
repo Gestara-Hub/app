@@ -99,7 +99,7 @@ describe("fileIssue", () => {
     );
     expect(
       fileIssue(makeFile("foto.png", "image/png", RECEIPT_FILE_RULES.maxSizeBytes + 1), RECEIPT_FILE_RULES),
-    ).toBe("Arquivo maior que 10 MB.");
+    ).toBe("Arquivo maior que 4 MB.");
   });
 
   it("no limite exato ainda passa", () => {

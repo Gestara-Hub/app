@@ -170,7 +170,7 @@ Todos os modais de cadastro e edição usam **exclusivamente** este trio de labe
 ### 2.5. Anexo de Arquivos (`FileDropField`)
 - Use `FileDropField` (`@/components/form`) para anexar um ou mais arquivos: área de arrastar e soltar (ou clicar; no celular, "Toque para escolher"), lista com miniatura da imagem, tipo (`PDF`, `PNG`), tamanho e botão de remover. O valor no RHF é `File[]` (padrão `[]`), com `name`, `type` (MIME) e `size` de cada arquivo.
 - As regras (`accept` com MIME exato, curinga `image/*` ou extensão `.pdf`; `maxSizeBytes`; `maxFiles`; `acceptLabel`) vão no campo **e** no schema: `filesSchema(regras)` de `@/lib/files`, para a lista marcar em vermelho o mesmo arquivo que o Zod recusa. Arquivo repetido (mesmo nome, tamanho e data) não duplica. Fora de formulário, use `FileDropzone` (controlado por `value`/`onChange`).
-- Comprovante de pagamento: `RECEIPT_FILE_RULES` (imagem ou PDF, até 10 MB cada, no máximo 5), já aplicado no `PaymentDialog`. Por enquanto os arquivos não são enviados (ver `docs/technical/05-modulo-financeiro.md`, seção 10).
+- Comprovante de pagamento: `RECEIPT_FILE_RULES` (imagem ou PDF, até 4 MB cada, no máximo 5; teto de 4 MB para todo envio, `MAX_UPLOAD_BYTES`, com um arquivo por requisição, desde 04/11/2026), já aplicado no `PaymentDialog`. Por enquanto os arquivos não são enviados (ver `docs/technical/05-modulo-financeiro.md`, seção 10).
 
 ---
 

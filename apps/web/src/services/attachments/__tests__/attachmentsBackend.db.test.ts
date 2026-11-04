@@ -32,6 +32,18 @@ describe("anexo gravado pelo servidor", () => {
     expect(String(data?.storage_path).startsWith(`${tenant.organizationId}/`)).toBe(true);
   });
 
+  it("acima de 4 MB é recusado (teto de 04/11/2026)", async () => {
+    const big = Buffer.alloc(4 * 1024 * 1024 + 1, 1);
+    await expect(
+      saveAttachmentInStorage({ name: "foto.jpg", type: "image/jpeg", size: big.length, buffer: big }, tenant.organizationId),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    const { count } = await admin
+      .from("attachments")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", tenant.organizationId);
+    expect(count).toBe(0);
+  });
+
   it("outro espaço no pedido é recusado", async () => {
     await expect(saveAttachmentInStorage(file(), randomUUID())).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
