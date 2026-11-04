@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { competenceLongLabel } from "@/lib/documents/format";
 import { FeatureLocked } from "@/components/shared/feature-locked";
-import { useCan, useHasFeature } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import { SubaccountPanel } from "./subaccount-panel";
@@ -128,6 +128,8 @@ export function OnlinePaymentsView() {
   const hasFeature = useHasFeature();
   const can = useCan();
   const canManage = can("finance:manage");
+  const user = useCurrentUser();
+  const isOwner = user.profile === "owner";
   const orgQuery = useOrganization();
   const [quickTransferOpen, setQuickTransferOpen] = useState(false);
   // Tour: lido so no navegador (no servidor conta como visto, sem diferenca de hidratacao).
@@ -218,7 +220,7 @@ export function OnlinePaymentsView() {
 
               {can("finance:view") ? <StatementMenu /> : null}
 
-              {canManage ? (
+              {isOwner ? (
                 <Button
                   data-tour="op-withdraw"
                   onClick={() => setQuickTransferOpen(true)}
@@ -245,7 +247,7 @@ export function OnlinePaymentsView() {
       {!isSubaccountActive ? (
         <OnlinePaymentsOnboarding
           organization={org}
-          canManage={canManage}
+          canManage={isOwner}
         />
       ) : (
         <div className="space-y-5">
@@ -307,7 +309,7 @@ export function OnlinePaymentsView() {
           {/* Logo depois de ativar: um passo por aba e por funcao, uma vez por navegador. */}
           {tab === "carteira" && !tourSeen && !tourClosed ? (
             <ProductTour
-              steps={tourSteps({ canWithdraw: canManage, canStatement: can("finance:view") })}
+              steps={tourSteps({ canWithdraw: isOwner, canStatement: can("finance:view") })}
               onClose={closeTour}
               mobileMenuStep={false}
             />

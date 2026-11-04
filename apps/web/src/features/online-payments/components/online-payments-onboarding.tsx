@@ -74,7 +74,7 @@ export function OnlinePaymentsOnboarding({
                   <ArrowRight className="size-4" />
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  {canManage ? "Sem mensalidade. Só paga quando recebe." : "Só o dono ou o gerente ativa a conta."}
+                  {canManage ? "Sem mensalidade. Só paga quando recebe." : "Apenas o proprietário pode ativar a conta de recebimento."}
                 </p>
               </div>
             </div>
@@ -84,7 +84,7 @@ export function OnlinePaymentsOnboarding({
 
         {/* Como funciona, em 3 passos */}
         <section className="space-y-3" aria-labelledby="online-how">
-          <h3 id="online-how" className="text-base font-semibold text-foreground">Como funciona</h3>
+          <h2 id="online-how" className="text-base font-semibold text-foreground">Como funciona</h2>
           <ol className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Step n={1} title="Ative em 2 minutos" text="CPF ou CNPJ, e-mail e endereço. Sem papelada." />
             <Step n={2} title="Cobre pelo link ou QR" text="Mande pelo WhatsApp. O aluno paga no celular." />
@@ -98,10 +98,10 @@ export function OnlinePaymentsOnboarding({
         {/* Taxas compactas e garantias */}
         <section className="space-y-3 rounded-xl border border-border/80 bg-card p-5" aria-labelledby="online-fees">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 id="online-fees" className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <h2 id="online-fees" className="flex items-center gap-2 text-base font-semibold text-foreground">
               <Receipt className="size-5 text-primary" />
               Taxas
-            </h3>
+            </h2>
             <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
               Seu plano: {TIER_LABEL[tier]} · {formatCents(split)} por cobrança
             </span>
@@ -193,7 +193,7 @@ function FeeLine({ label, value, hint, accent }: { label: string; value: string;
     <div className="flex items-baseline justify-between gap-3 border-b border-border/40 py-2">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right">
-        <span className={cn("font-semibold tabular-nums", accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>{value}</span>
+        <span className={cn("font-semibold tabular-nums", accent ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>{value}</span>
         <span className="block text-[11px] text-muted-foreground">{hint}</span>
       </dd>
     </div>
@@ -203,7 +203,7 @@ function FeeLine({ label, value, hint, accent }: { label: string; value: string;
 function Guarantee({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <li className="flex items-center gap-2">
-      <span className="text-emerald-600 dark:text-emerald-400">{icon}</span>
+      <span className="text-emerald-700 dark:text-emerald-400">{icon}</span>
       <span>{text}</span>
     </li>
   );
@@ -226,7 +226,7 @@ function Simulation({ split, tier }: { split: number; tier: "free" | "pro" | "sc
     <section className="space-y-4 rounded-xl border border-border/80 bg-card p-5" aria-labelledby="online-simulation">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 id="online-simulation" className="text-base font-semibold text-foreground">Quanto você recebe</h3>
+          <h2 id="online-simulation" className="text-base font-semibold text-foreground">Quanto você recebe</h2>
           <p className="text-xs text-muted-foreground">Com a taxa do seu plano ({TIER_LABEL[tier]}). A prévia de cada cobrança mostra o mesmo.</p>
         </div>
         <div className="flex items-center gap-2">
