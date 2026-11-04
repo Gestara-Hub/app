@@ -37,9 +37,14 @@ export function ProfessionalsView() {
   const canManage = useCan()("team:manage");
   const isClasses = useModel() === "classes";
 
-  const openCreate = () => setFormState({ open: true });
-  const openEdit = (professional: ProfessionalView) =>
+  const openCreate = () => {
+    if (!canManage) return;
+    setFormState({ open: true });
+  };
+  const openEdit = (professional: ProfessionalView) => {
+    if (!canManage) return;
     setFormState({ open: true, professional });
+  };
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(professional: ProfessionalView) {

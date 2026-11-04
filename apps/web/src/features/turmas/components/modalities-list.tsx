@@ -90,7 +90,7 @@ function ModalityRow({
 
   const content = (
     <ListRow
-      onClick={() => onEdit(modality)}
+      onClick={canManage ? () => onEdit(modality) : undefined}
       canClick={canManage}
       actions={
         canManage ? (

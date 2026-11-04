@@ -92,7 +92,7 @@ function ServiceRow({
 
   const content = (
     <ListRow
-      onClick={() => onEdit(service)}
+      onClick={canManage ? () => onEdit(service) : undefined}
       canClick={canManage}
       actions={
         canManage ? (

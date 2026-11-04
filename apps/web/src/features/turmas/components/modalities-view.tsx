@@ -31,9 +31,14 @@ export function ModalitiesView() {
   const { data: modalities } = useCategories();
   const hasModalities = (modalities?.length ?? 0) > 0;
 
-  const openCreate = () => setDrawerState({ open: true });
-  const openEdit = (modality: Category) =>
+  const openCreate = () => {
+    if (!canManage) return;
+    setDrawerState({ open: true });
+  };
+  const openEdit = (modality: Category) => {
+    if (!canManage) return;
     setDrawerState({ open: true, modality });
+  };
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(modality: Category) {

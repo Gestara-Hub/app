@@ -31,8 +31,14 @@ export function ServicesView() {
   const updateMut = useUpdateService();
   const canManage = useCan()("services:manage");
 
-  const openCreate = () => setFormState({ open: true });
-  const openEdit = (service: Service) => setFormState({ open: true, service });
+  const openCreate = () => {
+    if (!canManage) return;
+    setFormState({ open: true });
+  };
+  const openEdit = (service: Service) => {
+    if (!canManage) return;
+    setFormState({ open: true, service });
+  };
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(service: Service) {

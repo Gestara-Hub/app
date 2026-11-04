@@ -138,7 +138,7 @@ function UserRow(props: UserItemProps) {
 
   const content = (
     <ListRow
-      onClick={() => onEdit(user)}
+      onClick={canManage ? () => onEdit(user) : undefined}
       canClick={canManage}
       actions={
         canManage ? (

@@ -25,8 +25,14 @@ export function UsersView() {
   const resendInviteMut = useResendInviteUser();
   const canManage = useCan()("users:manage");
 
-  const openCreate = () => setFormState({ open: true });
-  const openEdit = (user: UserView) => setFormState({ open: true, user });
+  const openCreate = () => {
+    if (!canManage) return;
+    setFormState({ open: true });
+  };
+  const openEdit = (user: UserView) => {
+    if (!canManage) return;
+    setFormState({ open: true, user });
+  };
 
   const handleResendInvite = async (user: UserView) => {
     try {

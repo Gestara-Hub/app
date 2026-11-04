@@ -125,7 +125,7 @@ function PlanRow({
 
   const content = (
     <ListRow
-      onClick={() => onEdit(plan)}
+      onClick={canManage ? () => onEdit(plan) : undefined}
       canClick={canManage}
       actions={
         canManage ? (
@@ -410,6 +410,7 @@ function MembershipPlansTab({
     if (!open) onCreatingChange(false);
   };
   const openEdit = (p: Plan) => {
+    if (!canManage) return;
     setEditing(p);
     setDialogOpen(true);
   };

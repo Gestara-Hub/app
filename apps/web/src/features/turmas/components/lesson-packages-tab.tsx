@@ -77,7 +77,7 @@ function PackageRow({
 
   const content = (
     <ListRow
-      onClick={() => onEdit(pkg)}
+      onClick={canManage ? () => onEdit(pkg) : undefined}
       canClick={canManage}
       actions={
         canManage ? (
@@ -252,7 +252,11 @@ export function LessonPackagesTab({
   const { confirm, dialog: confirmDialog } = useConfirmAction();
 
   const [editing, setEditing] = useState<LessonPackage | null>(null);
-  const formOpen = creating || editing !== null;
+  const handleEdit = (pkg: LessonPackage) => {
+    if (!canManage) return;
+    setEditing(pkg);
+  };
+  const formOpen = (creating && canManage) || editing !== null;
   const setFormOpen = (open: boolean) => {
     if (open) return;
     setEditing(null);
@@ -330,7 +334,7 @@ export function LessonPackagesTab({
         pkg={pkg}
         modalities={modalitiesOf(pkg)}
         canManage={canManage}
-        onEdit={setEditing}
+        onEdit={handleEdit}
         onToggleStatus={(p) => void toggleStatus(p)}
       />
     ));
@@ -382,7 +386,7 @@ export function LessonPackagesTab({
                 pkg={pkg}
                 modalities={modalitiesOf(pkg)}
                 canManage={canManage}
-                onEdit={setEditing}
+                onEdit={handleEdit}
                 onToggleStatus={(p) => void toggleStatus(p)}
               />
             ))}

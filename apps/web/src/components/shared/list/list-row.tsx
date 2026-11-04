@@ -20,37 +20,55 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
     canClick = Boolean(onClick),
     className,
     "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
     onKeyDown,
     ...rest
   },
   ref,
 ) {
+  const isClickable = Boolean(canClick && onClick);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);
-    if (!event.defaultPrevented && canClick && onClick && (event.key === "Enter" || event.key === " ")) {
+    if (!event.defaultPrevented && isClickable && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();
-      onClick();
+      onClick?.();
     }
   };
+
+  const buttonProps = isClickable
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        onKeyDown: handleKeyDown,
+        "aria-label": ariaLabel,
+        "aria-labelledby": ariaLabelledBy,
+      }
+    : {};
 
   return (
     <div
       ref={ref}
-      onClick={canClick ? onClick : undefined}
-      role={canClick ? "button" : undefined}
-      tabIndex={canClick ? 0 : undefined}
-      onKeyDown={handleKeyDown}
-      aria-label={ariaLabel}
+      onClick={isClickable ? onClick : undefined}
+      {...(isClickable ? (actions ? {} : buttonProps) : { "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy })}
       className={cn(
         // Entra com fade + deslize ao substituir o skeleton; o atraso em cascata vem
         // do ListContainer (.list-stagger). Duracao da animacao separada da do hover.
-        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:fill-mode-both motion-safe:[animation-duration:280ms] motion-safe:ease-out",
-        canClick && "cursor-pointer",
+        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:fill-mode-both motion-safe:[animation-duration:280ms] motion-safe:ease-out",
+        isClickable && "hover:bg-muted/40 cursor-pointer",
         className,
       )}
       {...rest}
     >
-      <div className="min-w-0 flex-1">{children}</div>
+      <div
+        {...(isClickable && actions ? buttonProps : {})}
+        className={cn(
+          "min-w-0 flex-1",
+          isClickable && actions && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md",
+        )}
+      >
+        {children}
+      </div>
       {actions ? (
         <div
           className="flex items-center gap-1 shrink-0"

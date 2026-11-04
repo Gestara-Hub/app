@@ -102,7 +102,7 @@ function ProfessionalRow({
 
   const content = (
     <ListRow
-      onClick={() => onEdit(professional)}
+      onClick={canManage ? () => onEdit(professional) : undefined}
       canClick={canManage}
       actions={
         canManage ? (
