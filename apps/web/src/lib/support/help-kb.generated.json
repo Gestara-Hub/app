@@ -2798,24 +2798,19 @@
     "article": "Relatórios e documentos",
     "title": "Relatórios disponíveis",
     "route": "/reports",
-    "text": "Em Relatórios: lista de presença, relação de alunos, cobranças, cursos, pacotes e aniversariantes do mês. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional.",
+    "text": "Em Relatórios: lista de presença, relação de alunos e aniversariantes do mês para toda a equipe. Cobranças, cursos e pacotes ficam em Financeiros, só para o proprietário e o gerente. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional.",
     "guide": {
       "route": "/reports",
       "steps": [
         {
-          "kind": "campo",
-          "label": "Buscar relatório",
-          "text": "Digite o nome para achar o relatório."
-        },
-        {
-          "kind": "botão",
+          "kind": "texto",
           "label": "Operacionais",
-          "text": "Filtre os relatórios do dia a dia."
+          "text": "Relatórios do dia a dia: presença, alunos e aniversários."
         },
         {
-          "kind": "botão",
+          "kind": "texto",
           "label": "Financeiros",
-          "text": "Filtre os relatórios de dinheiro."
+          "text": "Cobranças, cursos e pacotes. Só proprietário e gerente veem."
         },
         {
           "kind": "botão",

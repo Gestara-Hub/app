@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
-import { useCurrentUser } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { useUserPreferences } from "@/features/preferences";
 import { CompetencePicker } from "@/features/finance";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
@@ -382,6 +382,8 @@ export function BillingView() {
   const [newChargeOpen, setNewChargeOpen] = useState(false);
   const [search, setSearch] = useState("");
   const user = useCurrentUser();
+  const can = useCan();
+  const canViewFinance = can("finance:view");
   useEffect(() => {
     if (kindFilter === "course") markDiscoveryVisit(user, "course_billing");
   }, [kindFilter, user]);
@@ -517,11 +519,12 @@ export function BillingView() {
         <Skeleton className="h-40 w-full rounded-md" />
       ) : (
         <div className="space-y-4">
-          {allOverdue ? (
-            <AllOverdueSummary charges={list} isLoading={isLoading} />
-          ) : (
-            /* KPI Summary Cards */
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {canViewFinance && (
+            allOverdue ? (
+              <AllOverdueSummary charges={list} isLoading={isLoading} />
+            ) : (
+              /* KPI Summary Cards */
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {/* Total Ativo */}
               <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
                 <div className="flex items-center justify-between gap-2">
@@ -671,7 +674,7 @@ export function BillingView() {
                 </div>
               </div>
             </div>
-          )}
+          ))}
 
           {earlierOverdue.length > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 dark:bg-red-950/10">
@@ -679,7 +682,9 @@ export function BillingView() {
                 <AlertCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
                 <span>
                   <span className="font-semibold tabular-nums text-red-600 dark:text-red-400">
-                    {formatCents(earlierOverdueCents)}
+                    {canViewFinance
+                      ? formatCents(earlierOverdueCents)
+                      : plural(earlierOverdue.length, "1 cobrança", `${earlierOverdue.length} cobranças`)}
                   </span>{" "}
                   em atraso de meses anteriores
                 </span>

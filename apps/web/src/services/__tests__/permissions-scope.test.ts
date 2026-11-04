@@ -150,8 +150,10 @@ describe("atendente", () => {
     const types = (await reportsService.getCatalog()).map((r) => r.type);
     expect(types).not.toContain("financial_income_statement");
     expect(types).not.toContain("churn_retention");
-    // Cobrancas ela ve (billing:view): o relatorio de cobrancas fica.
-    expect(types).toContain("billing_statement");
+    // Relatorios com valores ficam com quem tem finance:view (achado 13 da rodada de 02/11/2026).
+    expect(types).not.toContain("billing_statement");
+    expect(types).not.toContain("course_summary");
+    expect(types).not.toContain("package_summary");
     expect(types).toContain("attendance_sheet");
     await expect(reportsService.generateReport("financial_income_statement")).rejects.toMatchObject({
       code: "FORBIDDEN",

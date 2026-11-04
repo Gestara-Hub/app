@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { ListContainer, ListRow } from "@/components/shared/list";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useHasFeature } from "@/features/auth";
+import { useCan, useHasFeature } from "@/features/auth";
 import { useReportsCatalog } from "../hooks/use-reports";
 
 interface ReportsCatalogTabProps {
@@ -63,6 +63,7 @@ export function ReportsCatalogTab({ onSelectReport }: ReportsCatalogTabProps) {
   const { data: catalog = [], isLoading } = useReportsCatalog();
   const hasFeature = useHasFeature();
   const hasAdvancedReports = hasFeature("reports_advanced");
+  const can = useCan();
 
   if (isLoading) {
     return (
@@ -87,9 +88,13 @@ export function ReportsCatalogTab({ onSelectReport }: ReportsCatalogTabProps) {
     );
   }
 
+  const visibleCatalog = catalog.filter(
+    (r) => !r.permissionRequired || can(r.permissionRequired),
+  );
+
   const groups = CATEGORIES.map((category) => ({
     ...category,
-    reports: catalog.filter((r) => r.category === category.value),
+    reports: visibleCatalog.filter((r) => r.category === category.value),
   })).filter((g) => g.reports.length > 0);
 
   return (
@@ -119,7 +124,6 @@ function ReportRow({ report, locked, onOpen }: { report: ReportMetadata; locked:
   return (
     <ListRow
       onClick={onOpen}
-      aria-label={locked ? `Ver no Plano Profissional: ${report.title}` : `Abrir ${report.title}`}
       className={locked ? "bg-muted/15" : undefined}
     >
       <div className="flex items-center gap-3">
@@ -127,6 +131,7 @@ function ReportRow({ report, locked, onOpen }: { report: ReportMetadata; locked:
           <ReportIcon name={report.iconName} />
         </span>
         <div className="min-w-0 flex-1">
+          <span className="sr-only">{locked ? "Ver no Plano Profissional: " : "Abrir "}</span>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium text-foreground">
             <span className="min-w-0 break-words">{report.title}</span>
             {report.tierRequired === "pro" ? (

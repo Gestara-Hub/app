@@ -30,7 +30,7 @@ export const CATALOG: ReportMetadata[] = [
     type: "billing_statement",
     title: "Cobranças e inadimplência",
     description: "Cobranças geradas, recebidas, em aberto e taxa de atraso.",
-    category: "operational",
+    category: "financial",
     tierRequired: "free",
     iconName: "Wallet",
   },
@@ -38,7 +38,7 @@ export const CATALOG: ReportMetadata[] = [
     type: "course_summary",
     title: "Cursos",
     description: "Por curso: alunos, concluídos, cancelados, contratado, recebido e em aberto.",
-    category: "operational",
+    category: "financial",
     tierRequired: "free",
     iconName: "GraduationCap",
   },
@@ -46,7 +46,7 @@ export const CATALOG: ReportMetadata[] = [
     type: "package_summary",
     title: "Pacotes de aulas",
     description: "Por pacote: vendas, aulas vendidas e usadas, saldo e recebido.",
-    category: "operational",
+    category: "financial",
     tierRequired: "free",
     iconName: "Ticket",
   },
@@ -78,13 +78,13 @@ export const CATALOG: ReportMetadata[] = [
 ];
 
 /**
- * Valores de cobranca pedem `billing:view`; DRE, churn, previsao e repasse,
- * `finance:view` (a atendente nao abre o financeiro por Relatorios).
+ * Relatorios com valores e metricas financeiras pedem `finance:view` (exclusivo
+ * de proprietario e gerente; o atendente so acessa relatorios operacionais).
  */
 export const REPORT_PERMISSION: Partial<Record<ReportType, Permission>> = {
-  billing_statement: "billing:view",
-  course_summary: "billing:view",
-  package_summary: "billing:view",
+  billing_statement: "finance:view",
+  course_summary: "finance:view",
+  package_summary: "finance:view",
   financial_income_statement: "finance:view",
   churn_retention: "finance:view",
   revenue_forecast: "finance:view",

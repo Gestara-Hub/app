@@ -3,11 +3,10 @@ Onde: /reports
 
 ## Relatórios disponíveis
 Guia: /reports
-+ campo "Buscar relatório": Digite o nome para achar o relatório.
-+ botão "Operacionais": Filtre os relatórios do dia a dia.
-+ botão "Financeiros": Filtre os relatórios de dinheiro.
++ texto "Operacionais": Relatórios do dia a dia: presença, alunos e aniversários.
++ texto "Financeiros": Cobranças, cursos e pacotes. Só proprietário e gerente veem.
 + botão "Abrir": Abra o relatório que quer ver.
-Em Relatórios: lista de presença, relação de alunos, cobranças, cursos, pacotes e aniversariantes do mês. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional.
+Em Relatórios: lista de presença, relação de alunos e aniversariantes do mês para toda a equipe. Cobranças, cursos e pacotes ficam em Financeiros, só para o proprietário e o gerente. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional.
 
 ## Gerar PDF e planilha
 Guia: /reports

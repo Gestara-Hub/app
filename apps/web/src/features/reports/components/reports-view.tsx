@@ -6,8 +6,8 @@ import { FeatureLocked } from "@/components/shared/feature-locked";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useHasFeature } from "@/features/auth";
-import { useReportData } from "../hooks/use-reports";
+import { useCan, useHasFeature } from "@/features/auth";
+import { useReportData, useReportsCatalog } from "../hooks/use-reports";
 import { ReportDocumentScreen } from "./report-document-screen";
 import { ReportsCatalogTab } from "./reports-catalog-tab";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -43,15 +43,23 @@ export function ReportsView({
 
   const hasFeature = useHasFeature();
   const hasAdvancedReports = hasFeature("reports_advanced");
+  const can = useCan();
+  const { data: catalog = [] } = useReportsCatalog();
+  const selectedMeta = catalog.find((r) => r.type === selectedReport);
+  const canViewSelected = !selectedMeta?.permissionRequired || can(selectedMeta.permissionRequired);
 
   const isProReport =
     selectedReport === "financial_income_statement" || selectedReport === "churn_retention";
 
   const { data: reportResult, isLoading } = useReportData(
-    selectedReport && (!isProReport || hasAdvancedReports) ? selectedReport : null,
+    selectedReport && canViewSelected && (!isProReport || hasAdvancedReports) ? selectedReport : null,
     selectedReport === "attendance_sheet" ? { competence, ...sheet } : { competence },
   );
   const openReport = (type: ReportType | null) => {
+    if (type) {
+      const meta = catalog.find((r) => r.type === type);
+      if (meta?.permissionRequired && !can(meta.permissionRequired)) return;
+    }
     setSheet({});
     setSelectedReport(type);
   };
