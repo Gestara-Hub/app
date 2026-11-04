@@ -130,6 +130,13 @@ export function PersonDocumentsPanel({
   return (
     <div className="space-y-3">
       {confirmDialog}
+      {/* No topo: a lista cresce para baixo sem empurrar o botao. */}
+      {canManage ? (
+        <Button type="button" variant="outline" onClick={() => setForm({ open: true })}>
+          <Plus className="size-4" />
+          Adicionar documento
+        </Button>
+      ) : null}
       {isPending ? (
         <div className="space-y-2">
           <Skeleton className="h-14 w-full rounded-lg" />
@@ -191,12 +198,6 @@ export function PersonDocumentsPanel({
         </p>
       )}
 
-      {canManage ? (
-        <Button type="button" variant="outline" onClick={() => setForm({ open: true })}>
-          <Plus className="size-4" />
-          Adicionar documento
-        </Button>
-      ) : null}
 
       <PersonDocumentFormDrawer
         open={form.open}
