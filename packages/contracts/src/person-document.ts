@@ -11,17 +11,33 @@ export type PersonDocumentOwnerKind = "client" | "professional";
 
 export type ClientDocumentKind =
   | "medical_certificate"
+  | "health_questionnaire"
+  | "dermatological_exam"
+  | "medical_report"
+  | "identity_document"
+  | "guardian_document"
+  | "proof_of_address"
   | "liability_waiver"
   | "image_authorization"
-  | "medical_report"
+  | "pickup_authorization"
+  | "competition_authorization"
   | "graduation_proof"
+  | "federation_membership"
   | "contract"
+  | "discount_proof"
   | "other";
 
 export type ProfessionalDocumentKind =
+  | "identity_document"
+  | "proof_of_address"
   | "professional_registration"
+  | "degree"
   | "certification"
+  | "first_aid"
+  | "water_rescue"
+  | "federation_membership"
   | "contract"
+  | "business_registration"
   | "background_check"
   | "other";
 
@@ -36,7 +52,10 @@ export interface PersonDocument {
   /** Instrutor dono do documento (ownerKind "professional"). */
   professionalId?: Id;
   kind: PersonDocumentKind;
-  /** Nome livre: obrigatorio em "other", opcional nos demais. */
+  /**
+   * Nome livre: obrigatorio em "other"; "Qual documento" (RG, CNH) nos de
+   * identificacao, opcional; nos demais nao vale.
+   */
   title?: string;
   file: FileAttachment;
   /** Ultimo dia de validade (atestado, registro). Sem data, nao vence. */

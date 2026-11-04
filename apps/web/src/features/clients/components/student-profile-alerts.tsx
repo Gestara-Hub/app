@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 import type { ChargeView, Id, MessageTrigger, PersonDocumentView, StudentSummary } from "@gestarahub/contracts";
 import { todayISO, dateInSpace, timeInSpace } from "@gestarahub/core/date";
 import { formatCents, formatDate } from "@gestarahub/core/format";
-import { documentExpiryText } from "@gestarahub/core/person-documents";
+import { documentExpiryGroupKey, documentExpiryText } from "@gestarahub/core/person-documents";
 import { Button } from "@/components/ui/button";
 import { nextBirthdayLabel } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
@@ -238,7 +238,7 @@ export function StudentProfileAlerts({
   const latestByKind = new Map<string, PersonDocumentView>();
   for (const doc of documents ?? []) {
     if (!doc.expiresOn) continue;
-    const key = `${doc.kind}:${doc.kind === "other" ? doc.label : ""}`;
+    const key = documentExpiryGroupKey("client", doc.kind, doc.title);
     const current = latestByKind.get(key);
     if (!current || (current.expiresOn ?? "") < doc.expiresOn) latestByKind.set(key, doc);
   }

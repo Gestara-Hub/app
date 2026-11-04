@@ -109,6 +109,50 @@ describe("documentos do aluno", () => {
   });
 });
 
+describe("tipos novos (04/11/2026)", () => {
+  it("identificação leva o Qual documento no nome; tipo sem nome livre descarta o nome", async () => {
+    const { ana } = await setup();
+    const cnh = await personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "identity_document", title: " CNH ", file: file("cnh") });
+    expect(cnh.label).toBe("Documento de identificação (CNH)");
+    const exam = await personDocumentsService.create({
+      ownerKind: "client",
+      ownerId: ana.id,
+      kind: "dermatological_exam",
+      title: "ignorado",
+      file: file("derma"),
+    });
+    expect(exam).toMatchObject({ label: "Exame dermatológico" });
+    expect(exam.title).toBeUndefined();
+
+    // De "Outro" para atestado: o nome antigo sai.
+    const other = await personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "other", title: "Ficha antiga", file: file("o") });
+    const changed = await personDocumentsService.update(other.id, { kind: "medical_certificate" });
+    expect(changed).toMatchObject({ label: "Atestado médico" });
+    expect(changed.title).toBeUndefined();
+  });
+
+  it("tipo do instrutor no aluno (e o contrário) não salva", async () => {
+    const { ana, instructor } = await setup();
+    await expect(
+      personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "first_aid", file: file("x") }),
+    ).rejects.toMatchObject({ fields: [{ field: "kind" }] });
+    await expect(
+      personDocumentsService.create({ ownerKind: "professional", ownerId: instructor.id, kind: "pickup_authorization", file: file("y") }),
+    ).rejects.toMatchObject({ fields: [{ field: "kind" }] });
+    await expect(
+      personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "nao_existe" as never, file: file("z") }),
+    ).rejects.toMatchObject({ fields: [{ field: "kind" }] });
+  });
+
+  it("aviso por documento: a CNH vencida não some porque o RG está em dia", async () => {
+    const { ana } = await setup();
+    await personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "identity_document", title: "CNH", file: file("cnh"), expiresOn: "2026-09-10" });
+    await personDocumentsService.create({ ownerKind: "client", ownerId: ana.id, kind: "identity_document", title: "RG", file: file("rg"), expiresOn: "2030-01-01" });
+    const expiring = await personDocumentsService.listExpiring();
+    expect(expiring.map((d) => d.label)).toEqual(["Documento de identificação (CNH)"]);
+  });
+});
+
 describe("documentos do instrutor", () => {
   it("só proprietário e gerente veem e mexem", async () => {
     const { instructor } = await setup();

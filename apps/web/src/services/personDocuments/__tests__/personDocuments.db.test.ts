@@ -77,6 +77,21 @@ describe("documento da ficha no banco", () => {
     expect(await storedPaths()).toHaveLength(0);
   });
 
+  it("tipo novo grava sem migração; código fora do formato o banco recusa", async () => {
+    const ana = await call<Client>("clients.create", { name: "Ana Tipos", phone: "11977770002", status: "active" });
+    const file: FileAttachment = await saveAttachmentInStorage(pdf(), tenant.organizationId);
+    const doc = await call<PersonDocumentView>("personDocuments.create", {
+      ownerKind: "client",
+      ownerId: ana.id,
+      kind: "dermatological_exam",
+      file,
+      expiresOn: "2099-03-01",
+    });
+    expect(doc.label).toBe("Exame dermatológico");
+    const { error } = await admin.from("person_documents").update({ kind: "Tipo Errado!" }).eq("id", doc.id);
+    expect(error?.message).toMatch(/person_documents_kind_format/);
+  });
+
   it("o usuário logado não grava direto no banco", async () => {
     const ana = await call<Client>("clients.create", { name: "Ana RLS", phone: "11977770001", status: "active" });
     const ownerSession = await signInAs(tenant.owner);

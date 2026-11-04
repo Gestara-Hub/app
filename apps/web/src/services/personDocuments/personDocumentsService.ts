@@ -5,6 +5,7 @@ import type {
   Id,
   Permission,
   PersonDocument,
+  PersonDocumentKind,
   PersonDocumentOwnerKind,
   PersonDocumentView,
   UpdatePersonDocument,
@@ -14,8 +15,11 @@ import {
   MAX_DOCUMENT_NOTES_LENGTH,
   MAX_DOCUMENT_TITLE_LENGTH,
   documentExpiry,
+  documentExpiryGroupKey,
   documentLabel,
+  documentTitleMode,
   isDocumentKindOf,
+  isSelectableDocumentKind,
 } from "@gestarahub/core/person-documents";
 import { can } from "@/lib/permissions";
 import { apiError, newId, notFoundError, nowIso, readOp, validationError, writeOp } from "@/services/world/ops";
@@ -105,8 +109,15 @@ function validate(
   const fields: ApiErrorField[] = [];
   const kind = payload.kind ?? current?.kind;
   const title = payload.title !== undefined ? payload.title : current?.title;
-  if (!kind || !isDocumentKindOf(ownerKind, kind)) fields.push({ field: "kind", message: "Escolha o tipo do documento." });
-  if (kind === "other" && !title?.trim()) fields.push({ field: "title", message: "Dê um nome ao documento." });
+  // Tipo novo (ou trocado) so entre os da selecao; o aposentado que o documento
+  // ja tem continua valendo na edicao.
+  const kindOk =
+    Boolean(kind) &&
+    (kind === current?.kind ? isDocumentKindOf(ownerKind, kind!) : isSelectableDocumentKind(ownerKind, kind!));
+  if (!kindOk) fields.push({ field: "kind", message: "Escolha o tipo do documento." });
+  else if (documentTitleMode(ownerKind, kind as PersonDocumentKind) === "required" && !title?.trim()) {
+    fields.push({ field: "title", message: "Dê um nome ao documento." });
+  }
   if (title && title.trim().length > MAX_DOCUMENT_TITLE_LENGTH) {
     fields.push({ field: "title", message: `Use até ${MAX_DOCUMENT_TITLE_LENGTH} caracteres.` });
   }
@@ -156,7 +167,8 @@ export const personDocumentsServiceImpl = {
         throw validationError([{ field: "file", message: "Anexe o arquivo." }]);
       }
       const now = nowIso();
-      const title = payload.title?.trim();
+      // O nome so vale onde o tipo usa ("Outro" e "Qual documento").
+      const title = documentTitleMode(payload.ownerKind, payload.kind) === "none" ? undefined : payload.title?.trim();
       const notes = payload.notes?.trim();
       const doc: PersonDocument = {
         id: newId(),
@@ -194,6 +206,8 @@ export const personDocumentsServiceImpl = {
         if (title) doc.title = title;
         else delete doc.title;
       }
+      // Tipo sem nome livre: o nome antigo sai (ex.: de "Outro" para atestado).
+      if (documentTitleMode(doc.ownerKind, doc.kind) === "none") delete doc.title;
       if (payload.expiresOn !== undefined) {
         if (payload.expiresOn) doc.expiresOn = payload.expiresOn;
         else delete doc.expiresOn;
@@ -259,7 +273,7 @@ export const personDocumentsServiceImpl = {
           if (!seesTeam) continue;
           if (store.professionals.find((p) => p.id === ownerId)?.status !== "active") continue;
         }
-        const key = `${doc.ownerKind}:${ownerId}:${doc.kind}:${doc.kind === "other" ? (doc.title ?? "") : ""}`;
+        const key = `${doc.ownerKind}:${ownerId}:${documentExpiryGroupKey(doc.ownerKind, doc.kind, doc.title)}`;
         const current = latest.get(key);
         if (!current || (current.expiresOn ?? "") < doc.expiresOn) latest.set(key, doc);
       }

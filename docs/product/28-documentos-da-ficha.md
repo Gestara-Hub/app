@@ -16,11 +16,41 @@ Decidido e feito em 04/11/2026. Guarda na ficha os documentos que o espaço pede
 
 ## 2. Tipos
 
-- **Aluno:** atestado médico, termo de responsabilidade, autorização de imagem, laudo ou orientação médica, comprovante de graduação, contrato e outro.
-- **Instrutor:** registro profissional (CREF), certificado de formação, contrato, antecedentes criminais e outro.
-- **Outro:** ao escolher, aparece o campo "Nome do documento", obrigatório. Nos demais tipos o campo não aparece e a ficha mostra o nome do tipo; trocar de "Outro" para outro tipo limpa o nome.
-- **Validade:** é opcional em todos. Atestado, CREF e antecedentes mostram o campo "Válido até" como esperado, com a frase "Avisamos antes de vencer".
+Agrupados na seleção. Em negrito, os que entraram em 04/11/2026 (segunda leva).
+
+**Aluno**
+
+| Grupo | Tipos | Validade esperada |
+| --- | --- | --- |
+| Saúde | Atestado médico, **Ficha de anamnese ou PAR-Q**, **Exame dermatológico**, Laudo ou orientação médica | Atestado, anamnese e exame |
+| Identificação | **Documento de identificação**, **Documento do responsável**, **Comprovante de residência** | Não |
+| Autorizações e termos | Termo de responsabilidade, Autorização de imagem, **Autorização para buscar o aluno**, **Autorização para competição ou viagem** | Não |
+| Esporte | Comprovante de graduação, **Filiação à federação** | Filiação |
+| Contratos e financeiro | Contrato, **Comprovante para desconto** | Comprovante para desconto |
+| Outro | Outro | Não |
+
+**Instrutor**
+
+| Grupo | Tipos | Validade esperada |
+| --- | --- | --- |
+| Identificação | **Documento de identificação**, **Comprovante de residência** | Não |
+| Formação e registro | Registro profissional (CREF), **Diploma**, Certificado de formação, **Primeiros socorros**, **Salvamento aquático**, **Filiação à federação** | CREF, primeiros socorros, salvamento e filiação |
+| Contratos | Contrato, **Cartão CNPJ ou MEI**, Antecedentes criminais | Antecedentes |
+| Outro | Outro | Não |
+
+- **Nome livre:** no "Outro" é obrigatório ("Nome do documento") e vira o nome na ficha. Na identificação é o "Qual documento" (RG, CIN, CNH), opcional, e a ficha mostra "Documento de identificação (CNH)". Nos demais tipos o campo não aparece; trocar para um tipo sem nome livre apaga o nome antigo.
+- **Validade:** opcional em todos. Nos tipos com validade esperada, o campo "Válido até" vem como esperado, com "Avisamos antes de vencer".
 - **Arquivo:** um por documento, foto ou PDF, até 4 MB (teto de todo envio do sistema).
+- **Fora de propósito:** dados bancários, carteira de vacinação e um tipo para cada documento de identidade. Cópia de documento é dado pessoal: guardar só com motivo (contrato, menor); o CPF já está no cadastro.
+
+### 2.1 Acrescentar, mudar ou tirar um tipo
+
+Os tipos ficam numa lista só, no código: `packages/core/src/person-documents.ts` (`CLIENT_DOCUMENT_KINDS` e `PROFESSIONAL_DOCUMENT_KINDS`). O banco não lista os tipos (migração 85, só confere o formato do código); a gravação passa pelo servidor, que confere o tipo.
+
+- **Acrescentar:** uma linha na lista (código, nome, grupo, validade esperada, nome livre), o código no contrato (`packages/contracts/src/person-document.ts`) e o ícone em `features/person-documents/document-kind-icons.tsx` (o TypeScript acusa o ícone que falta). Sem migração.
+- **Mudar o nome ou o grupo:** só a linha da lista. Os documentos guardados passam a mostrar o nome novo.
+- **Tirar:** marcar `retired: true` na linha. O tipo sai da seleção de documento novo; os já guardados continuam com nome, ícone e aviso. Apagar a linha só depois de passar os documentos antigos para outro tipo (por exemplo "Outro", com o nome antigo no título).
+- **Tipos por espaço** (cada academia criando os seus pela tela) ficam para quando houver pedido: seria uma tabela de tipos por espaço, com os de hoje como padrão.
 
 ## 3. Quem vê e quem mexe
 
@@ -33,7 +63,7 @@ Decidido e feito em 04/11/2026. Guarda na ficha os documentos que o espaço pede
 ## 4. Validade e avisos
 
 - **Situação:** sem validade, válido, "vence em breve" (até 30 dias antes) ou vencido. O último dia ainda vale.
-- **Renovação:** por pessoa e tipo vale o documento de validade mais longa. Anexar o atestado novo tira o aviso do antigo, sem precisar apagar.
+- **Renovação:** por pessoa e tipo vale o documento de validade mais longa. Anexar o atestado novo tira o aviso do antigo, sem precisar apagar. Nos tipos com "Qual documento", o documento informado também separa: a CNH vencida não some porque o RG está em dia.
 - **Sino:** até 5 avisos, o mais urgente primeiro ("Atestado médico de Ana", "Venceu há 3 dias"). O do aluno abre a ficha na seção Documentos; o do instrutor abre a Equipe. Só de alunos e instrutores ativos.
 - **Topo da ficha do aluno:** cartão "Atestado médico vencido" (vermelho) ou "vence em breve", com "Ver documentos".
 

@@ -10,6 +10,7 @@ import {
   MAX_DOCUMENT_TITLE_LENGTH,
   documentKindExpires,
   documentKindsFor,
+  documentTitleMode,
 } from "@gestarahub/core/person-documents";
 import { DateField, DialogFormFooter, FileDropField, InputText, SelectField, TextArea } from "@/components/form";
 import { DialogBody } from "@/components/ui/dialog";
@@ -29,7 +30,7 @@ interface Values {
   notes: string;
 }
 
-function schemaFor(isEdit: boolean) {
+function schemaFor(isEdit: boolean, ownerKind: PersonDocumentOwnerKind) {
   return z
     .object({
       kind: z.string().min(1, "Escolha o tipo do documento."),
@@ -39,7 +40,7 @@ function schemaFor(isEdit: boolean) {
       notes: z.string().max(MAX_DOCUMENT_NOTES_LENGTH, `Use até ${MAX_DOCUMENT_NOTES_LENGTH} caracteres.`),
     })
     .superRefine((v, ctx) => {
-      if (v.kind === "other" && !v.title.trim()) {
+      if (v.kind && documentTitleMode(ownerKind, v.kind as PersonDocumentKind) === "required" && !v.title.trim()) {
         ctx.addIssue({ code: "custom", path: ["title"], message: "Dê um nome ao documento." });
       }
     });
@@ -61,7 +62,7 @@ function DocumentForm({
   const pending = createMut.isPending || updateMut.isPending;
   const isEdit = Boolean(document);
   const form = useForm<Values>({
-    resolver: zodResolver(schemaFor(isEdit)),
+    resolver: zodResolver(schemaFor(isEdit, ownerKind)),
     mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: {
@@ -74,13 +75,18 @@ function DocumentForm({
   });
   const kind = useWatch({ control: form.control, name: "kind" }) as PersonDocumentKind | "";
   const expires = kind ? documentKindExpires(ownerKind, kind) : false;
-  const options = documentKindsFor(ownerKind).map((k) => ({ value: k.value, label: k.label }));
+  const titleMode = kind ? documentTitleMode(ownerKind, kind) : "none";
+  // Selecao agrupada (Saude, Identificacao...). O tipo aposentado so aparece no
+  // documento que ja o tem.
+  const options = documentKindsFor(ownerKind)
+    .filter((k) => !k.retired || k.value === document?.kind)
+    .map((k) => ({ value: k.value, label: k.label, group: k.group }));
 
   const onSubmit = form.handleSubmit(async (v) => {
     const payload = {
       kind: v.kind as PersonDocumentKind,
       // Fora do "Outro" o nome nao vale (trocar de "Outro" para outro tipo limpa).
-      title: v.kind === "other" ? v.title.trim() : "",
+      title: documentTitleMode(ownerKind, v.kind as PersonDocumentKind) === "none" ? "" : v.title.trim(),
       expiresOn: v.expiresOn,
       notes: v.notes.trim(),
     };
@@ -109,13 +115,20 @@ function DocumentForm({
       <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogBody className="space-y-4">
           <SelectField<Values> name="kind" label="Tipo" required options={options} disabled={pending} placeholder="Escolha o tipo" />
-          {/* Nome so no "Outro" (obrigatorio); nos demais a ficha usa o nome do tipo. */}
-          {kind === "other" ? (
+          {/* Nome livre: obrigatorio no "Outro"; "Qual documento" na identificacao; nos demais nao aparece. */}
+          {titleMode === "required" ? (
             <InputText<Values>
               name="title"
               label="Nome do documento"
               required
               placeholder="Informe o nome do documento"
+              disabled={pending}
+            />
+          ) : titleMode === "optional" ? (
+            <InputText<Values>
+              name="title"
+              label="Qual documento (opcional)"
+              placeholder="Informe RG, CIN, CNH ou outro"
               disabled={pending}
             />
           ) : null}

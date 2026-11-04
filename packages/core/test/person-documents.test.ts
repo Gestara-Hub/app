@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  CLIENT_DOCUMENT_KINDS,
+  PROFESSIONAL_DOCUMENT_KINDS,
+  documentExpiryGroupKey,
+  documentTitleMode,
+  isSelectableDocumentKind,
+  selectableDocumentKinds,
   documentExpiry,
   documentExpiryText,
   documentKindExpires,
@@ -51,5 +57,31 @@ describe("tipos de documento", () => {
     assert.equal(documentLabel("client", "medical_certificate"), "Atestado médico");
     assert.equal(documentLabel("client", "other", "  Ficha de anamnese "), "Ficha de anamnese");
     assert.equal(documentLabel("professional", "professional_registration"), "Registro profissional (CREF)");
+  });
+
+  it("identificacao: Qual documento entra no nome; nos demais o nome nao vale", () => {
+    assert.equal(documentLabel("client", "identity_document", "CNH"), "Documento de identificação (CNH)");
+    assert.equal(documentLabel("client", "identity_document"), "Documento de identificação");
+    assert.equal(documentLabel("client", "medical_certificate", "qualquer"), "Atestado médico");
+    assert.equal(documentTitleMode("client", "other"), "required");
+    assert.equal(documentTitleMode("professional", "identity_document"), "optional");
+    assert.equal(documentTitleMode("client", "contract"), "none");
+  });
+
+  it("aviso: a CNH e o RG sao chaves diferentes; atestados repetidos, a mesma", () => {
+    assert.notEqual(documentExpiryGroupKey("client", "identity_document", "CNH"), documentExpiryGroupKey("client", "identity_document", "RG"));
+    assert.equal(documentExpiryGroupKey("client", "medical_certificate", "a"), documentExpiryGroupKey("client", "medical_certificate", "b"));
+  });
+
+  it("tipos novos e codigos sem repeticao em cada dono", () => {
+    for (const list of [CLIENT_DOCUMENT_KINDS, PROFESSIONAL_DOCUMENT_KINDS]) {
+      const values = list.map((k) => k.value);
+      assert.equal(new Set(values).size, values.length);
+      assert.equal(values.at(-1), "other");
+    }
+    assert.equal(isSelectableDocumentKind("client", "dermatological_exam"), true);
+    assert.equal(isSelectableDocumentKind("professional", "first_aid"), true);
+    assert.equal(isSelectableDocumentKind("professional", "pickup_authorization"), false);
+    assert.equal(selectableDocumentKinds("client").length, CLIENT_DOCUMENT_KINDS.filter((k) => !k.retired).length);
   });
 });

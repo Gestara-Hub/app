@@ -16,43 +16,122 @@ export const DOCUMENT_EXPIRING_DAYS = 30;
 export const MAX_DOCUMENT_TITLE_LENGTH = 80;
 export const MAX_DOCUMENT_NOTES_LENGTH = 500;
 
-export const CLIENT_DOCUMENT_KINDS: { value: ClientDocumentKind; label: string; expires: boolean }[] = [
-  { value: "medical_certificate", label: "Atestado médico", expires: true },
-  { value: "liability_waiver", label: "Termo de responsabilidade", expires: false },
-  { value: "image_authorization", label: "Autorização de imagem", expires: false },
-  { value: "medical_report", label: "Laudo ou orientação médica", expires: false },
-  { value: "graduation_proof", label: "Comprovante de graduação", expires: false },
-  { value: "contract", label: "Contrato", expires: false },
-  { value: "other", label: "Outro", expires: false },
+/**
+ * Nome livre do documento: "required" pede (Outro), "optional" e o "Qual
+ * documento" (RG, CNH) dos de identificacao, "none" nao mostra o campo.
+ */
+export type DocumentTitleMode = "none" | "optional" | "required";
+
+export interface DocumentKindInfo<K extends PersonDocumentKind = PersonDocumentKind> {
+  value: K;
+  label: string;
+  /** Titulo do grupo na selecao ("Saúde", "Identificação"); vazio = so uma linha separando (o "Outro"). */
+  group: string;
+  /** Costuma vencer: o campo "Válido até" vem como esperado. */
+  expires: boolean;
+  title: DocumentTitleMode;
+  /**
+   * Aposentado: sai da selecao de documento novo, mas os ja guardados seguem
+   * com nome e icone. Para tirar um tipo, marque aqui em vez de apagar a linha.
+   */
+  retired?: boolean;
+}
+
+/**
+ * Tipos do aluno, na ordem da selecao. Fonte unica: o banco nao lista os tipos
+ * (migracao 85); acrescentar um tipo e uma linha aqui, o contrato e o icone.
+ */
+export const CLIENT_DOCUMENT_KINDS: DocumentKindInfo<ClientDocumentKind>[] = [
+  { value: "medical_certificate", label: "Atestado médico", group: "Saúde", expires: true, title: "none" },
+  { value: "health_questionnaire", label: "Ficha de anamnese ou PAR-Q", group: "Saúde", expires: true, title: "none" },
+  { value: "dermatological_exam", label: "Exame dermatológico", group: "Saúde", expires: true, title: "none" },
+  { value: "medical_report", label: "Laudo ou orientação médica", group: "Saúde", expires: false, title: "none" },
+  { value: "identity_document", label: "Documento de identificação", group: "Identificação", expires: false, title: "optional" },
+  { value: "guardian_document", label: "Documento do responsável", group: "Identificação", expires: false, title: "optional" },
+  { value: "proof_of_address", label: "Comprovante de residência", group: "Identificação", expires: false, title: "none" },
+  { value: "liability_waiver", label: "Termo de responsabilidade", group: "Autorizações e termos", expires: false, title: "none" },
+  { value: "image_authorization", label: "Autorização de imagem", group: "Autorizações e termos", expires: false, title: "none" },
+  { value: "pickup_authorization", label: "Autorização para buscar o aluno", group: "Autorizações e termos", expires: false, title: "none" },
+  { value: "competition_authorization", label: "Autorização para competição ou viagem", group: "Autorizações e termos", expires: false, title: "none" },
+  { value: "graduation_proof", label: "Comprovante de graduação", group: "Esporte", expires: false, title: "none" },
+  { value: "federation_membership", label: "Filiação à federação", group: "Esporte", expires: true, title: "none" },
+  { value: "contract", label: "Contrato", group: "Contratos e financeiro", expires: false, title: "none" },
+  { value: "discount_proof", label: "Comprovante para desconto", group: "Contratos e financeiro", expires: true, title: "none" },
+  { value: "other", label: "Outro", group: "", expires: false, title: "required" },
 ];
 
-export const PROFESSIONAL_DOCUMENT_KINDS: { value: ProfessionalDocumentKind; label: string; expires: boolean }[] = [
-  { value: "professional_registration", label: "Registro profissional (CREF)", expires: true },
-  { value: "certification", label: "Certificado de formação", expires: false },
-  { value: "contract", label: "Contrato", expires: false },
-  { value: "background_check", label: "Antecedentes criminais", expires: true },
-  { value: "other", label: "Outro", expires: false },
+/** Tipos do instrutor, na ordem da selecao (mesma regra dos do aluno). */
+export const PROFESSIONAL_DOCUMENT_KINDS: DocumentKindInfo<ProfessionalDocumentKind>[] = [
+  { value: "identity_document", label: "Documento de identificação", group: "Identificação", expires: false, title: "optional" },
+  { value: "proof_of_address", label: "Comprovante de residência", group: "Identificação", expires: false, title: "none" },
+  { value: "professional_registration", label: "Registro profissional (CREF)", group: "Formação e registro", expires: true, title: "none" },
+  { value: "degree", label: "Diploma", group: "Formação e registro", expires: false, title: "none" },
+  { value: "certification", label: "Certificado de formação", group: "Formação e registro", expires: false, title: "none" },
+  { value: "first_aid", label: "Primeiros socorros", group: "Formação e registro", expires: true, title: "none" },
+  { value: "water_rescue", label: "Salvamento aquático", group: "Formação e registro", expires: true, title: "none" },
+  { value: "federation_membership", label: "Filiação à federação", group: "Formação e registro", expires: true, title: "none" },
+  { value: "contract", label: "Contrato", group: "Contratos", expires: false, title: "none" },
+  { value: "business_registration", label: "Cartão CNPJ ou MEI", group: "Contratos", expires: false, title: "none" },
+  { value: "background_check", label: "Antecedentes criminais", group: "Contratos", expires: true, title: "none" },
+  { value: "other", label: "Outro", group: "", expires: false, title: "required" },
 ];
 
-export function documentKindsFor(ownerKind: PersonDocumentOwnerKind) {
+/** Todos os tipos do dono, inclusive os aposentados (para mostrar o que ja existe). */
+export function documentKindsFor(ownerKind: PersonDocumentOwnerKind): DocumentKindInfo[] {
   return ownerKind === "client" ? CLIENT_DOCUMENT_KINDS : PROFESSIONAL_DOCUMENT_KINDS;
 }
 
-/** O tipo vale para este dono? (o instrutor nao tem atestado; o aluno nao tem CREF). */
+/** Tipos que aparecem na selecao de documento novo (sem os aposentados). */
+export function selectableDocumentKinds(ownerKind: PersonDocumentOwnerKind): DocumentKindInfo[] {
+  return documentKindsFor(ownerKind).filter((k) => !k.retired);
+}
+
+function kindInfo(ownerKind: PersonDocumentOwnerKind, kind: string): DocumentKindInfo | undefined {
+  return documentKindsFor(ownerKind).find((k) => k.value === kind);
+}
+
+/** O tipo e deste dono (o instrutor nao tem atestado; o aluno nao tem CREF)? Aceita aposentado. */
 export function isDocumentKindOf(ownerKind: PersonDocumentOwnerKind, kind: string): kind is PersonDocumentKind {
-  return documentKindsFor(ownerKind).some((k) => k.value === kind);
+  return Boolean(kindInfo(ownerKind, kind));
 }
 
-/** O tipo costuma ter validade (o formulario mostra a data de cara). */
+/** Pode ser escolhido agora (do dono e nao aposentado)? */
+export function isSelectableDocumentKind(ownerKind: PersonDocumentOwnerKind, kind: string): kind is PersonDocumentKind {
+  const info = kindInfo(ownerKind, kind);
+  return Boolean(info && !info.retired);
+}
+
+/** O tipo costuma ter validade (o formulario mostra a data como esperada). */
 export function documentKindExpires(ownerKind: PersonDocumentOwnerKind, kind: PersonDocumentKind): boolean {
-  return documentKindsFor(ownerKind).find((k) => k.value === kind)?.expires ?? false;
+  return kindInfo(ownerKind, kind)?.expires ?? false;
 }
 
-/** Nome do documento na tela: o titulo dado ou o nome do tipo. */
+/** Como o tipo usa o nome livre (Outro pede; identificacao tem "Qual documento"). */
+export function documentTitleMode(ownerKind: PersonDocumentOwnerKind, kind: PersonDocumentKind): DocumentTitleMode {
+  return kindInfo(ownerKind, kind)?.title ?? "none";
+}
+
+/**
+ * Nome do documento na tela: no "Outro", o nome dado; na identificacao,
+ * "Documento de identificação (CNH)"; nos demais, o nome do tipo.
+ */
 export function documentLabel(ownerKind: PersonDocumentOwnerKind, kind: PersonDocumentKind, title?: string): string {
+  const info = kindInfo(ownerKind, kind);
+  const base = info?.label ?? "Documento";
   const trimmed = title?.trim();
-  if (trimmed) return trimmed;
-  return documentKindsFor(ownerKind).find((k) => k.value === kind)?.label ?? "Documento";
+  if (!trimmed || !info || info.title === "none") return base;
+  return info.title === "required" ? trimmed : `${base} (${trimmed})`;
+}
+
+/**
+ * Chave do aviso de vencimento: por pessoa, vale o documento de validade mais
+ * longa de cada chave. O nome entra onde ele diferencia (a CNH vencida nao some
+ * porque o RG esta em dia).
+ */
+export function documentExpiryGroupKey(ownerKind: PersonDocumentOwnerKind, kind: PersonDocumentKind, title?: string): string {
+  const mode = documentTitleMode(ownerKind, kind);
+  const name = mode === "none" ? "" : (title ?? "").trim().toLowerCase();
+  return `${kind}:${name}`;
 }
 
 /** Dias de `from` ate `to` (datas AAAA-MM-DD; negativo se `to` ja passou). */
