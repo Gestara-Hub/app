@@ -53,17 +53,10 @@ export function AuthPanel({
   return (
     <div className="space-y-6">
       {showTitle ? (
-        // As abas ja dizem Entrar e Criar conta: o titulo fica so para leitor de tela (04/11/2026).
-        <div>
-          <h1 className="sr-only">
-            {mode === "login" ? "Entrar" : "Criar conta grátis"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {mode === "login"
-              ? "Acesse o painel do seu espaço."
-              : "Sem cartão e sem limite de alunos."}
-          </p>
-        </div>
+        // As abas ja dizem Entrar e Criar conta: titulo so para leitor de tela, sem subtitulo (04/11/2026).
+        <h1 className="sr-only">
+          {mode === "login" ? "Entrar" : "Criar conta grátis"}
+        </h1>
       ) : null}
 
       <div role="tablist" aria-label="Entrar ou criar conta" className="grid grid-cols-2 rounded-lg bg-muted p-1">
