@@ -84,6 +84,8 @@ O bloco `[auth.external.google]` do `apps/supabase/config.toml` lê essas duas v
 
 **Layout dos e-mails.** Todos (cadastro, convite, nova senha e boas-vindas) usam a mesma moldura, `renderEmailLayout` em `lib/email/mailersend.ts`: faixa com o gradiente da marca, topo escuro com logo, título e uma linha de introdução, corpo branco e rodapé cinza. Botão, aviso de prazo e "se o botão não abrir" também são peças comuns (`emailButton`, `emailNotice`, `emailFallbackLink`). E-mail novo entra só com o conteúdo.
 
+**Ícones dos e-mails (04/11/2026).** O ícone do topo e o do Instagram ficam em `apps/web/public` (`email-icon.png`, 96×96, e `email-instagram.png`). Com `NEXT_PUBLIC_SITE_URL` num endereço https público, o e-mail aponta para o arquivo no site (CDN), sem anexo. Em localhost ou túnel de desenvolvimento, segue anexado inline (`cid:`), para aparecer nos testes. Ao trocar um ícone, suba `EMAIL_ICON_VERSION` em `mailersend.ts`: o Gmail guarda a imagem em cache pela URL.
+
 ## Comandos avulsos
 
 | Comando | Para quê |

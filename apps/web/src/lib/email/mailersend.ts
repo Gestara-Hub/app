@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { COMPANY_ADDRESS, COMPANY_CNPJ, COMPANY_NAME, INSTAGRAM_HANDLE, INSTAGRAM_URL, SUPPORT_EMAIL } from "@/config/site";
+import { COMPANY_ADDRESS, COMPANY_CNPJ, COMPANY_NAME, INSTAGRAM_HANDLE, INSTAGRAM_URL, SITE_URL, SUPPORT_EMAIL } from "@/config/site";
 import { logError, logWarn } from "@/lib/log";
 
 const MAILERSEND_API_URL = "https://api.mailersend.com/v1/email";
@@ -39,9 +39,36 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Icone do topo dos e-mails (04/11/2026): com o site num endereco publico, vem
+ * da propria CDN do site (`public/email-icon.png`), sem anexo em cada mensagem;
+ * sem ele (localhost, tunel de desenvolvimento), segue anexado inline (cid),
+ * para aparecer nos testes. O `v` troca quando o icone muda (proxy do Gmail).
+ */
+const EMAIL_ICON_VERSION = "2";
+export function hostedEmailIconUrl(siteUrl: string = SITE_URL, file = "email-icon.png"): string | null {
+  let url: URL;
+  try {
+    url = new URL(siteUrl);
+  } catch {
+    return null;
+  }
+  const host = url.hostname;
+  const local =
+    host === "localhost" ||
+    host.startsWith("127.") ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".test") ||
+    /trycloudflare\.com$|ngrok|loca\.lt$/.test(host);
+  if (url.protocol !== "https:" || local) return null;
+  return `${url.origin}/${file}?v=${EMAIL_ICON_VERSION}`;
+}
+
 let cachedIconBase64: string | null = null;
 
 async function getEmailIconBase64(): Promise<string | null> {
+  // Icone servido pelo site: nada a anexar.
+  if (hostedEmailIconUrl()) return null;
   if (cachedIconBase64) return cachedIconBase64;
   try {
     const iconPath = path.join(process.cwd(), "public", "email-icon.png");
@@ -77,9 +104,12 @@ function renderEmailLayout({
   footer: string;
   hasInlineIcon: boolean;
 }): string {
+  const hostedIcon = hostedEmailIconUrl();
   const iconMarkup = hasInlineIcon
     ? `<img src="cid:gestarahub-icon" width="36" height="36" alt="GestaraHub" style="display:block;border:0;border-radius:9px;" />`
-    : `<div style="width:36px;height:36px;border-radius:9px;background:#2563eb;color:#ffffff;font-weight:800;font-size:17px;line-height:36px;text-align:center;">G</div>`;
+    : hostedIcon
+      ? `<img src="${escapeHtml(hostedIcon)}" width="36" height="36" alt="GestaraHub" style="display:block;border:0;border-radius:9px;" />`
+      : `<div style="width:36px;height:36px;border-radius:9px;background:#2563eb;color:#ffffff;font-weight:800;font-size:17px;line-height:36px;text-align:center;">G</div>`;
   const support = escapeHtml(replyToEmail());
   const badgeMarkup = badge
     ? `<div style="display:inline-block;padding:4px 10px;margin-bottom:14px;border:1px solid #334155;border-radius:20px;background-color:#1e293b;font-size:12px;font-weight:700;color:#93c5fd;">${badge}</div>`
@@ -737,6 +767,7 @@ function replyToEmail(): string {
 let cachedInstagramIconBase64: string | null = null;
 
 async function getInstagramIconBase64(): Promise<string | null> {
+  if (hostedEmailIconUrl(SITE_URL, "email-instagram.png")) return null;
   if (cachedInstagramIconBase64) return cachedInstagramIconBase64;
   try {
     const buffer = await readFile(path.join(process.cwd(), "public", "email-instagram.png"));
@@ -768,9 +799,12 @@ export function buildWelcomeEmailHtml({
   const instagramUrl = escapeHtml(INSTAGRAM_URL);
   const instagramHandle = escapeHtml(INSTAGRAM_HANDLE);
 
+  const hostedInstagram = hostedEmailIconUrl(SITE_URL, "email-instagram.png");
   const instagramIcon = hasInstagramIcon
     ? `<img src="cid:gestarahub-instagram" width="44" height="44" alt="Instagram" style="display:block;border:0;border-radius:12px;" />`
-    : `<div style="width:44px;height:44px;border-radius:12px;background:#d6249f;color:#ffffff;font-weight:800;font-size:13px;line-height:44px;text-align:center;">IG</div>`;
+    : hostedInstagram
+      ? `<img src="${escapeHtml(hostedInstagram)}" width="44" height="44" alt="Instagram" style="display:block;border:0;border-radius:12px;" />`
+      : `<div style="width:44px;height:44px;border-radius:12px;background:#d6249f;color:#ffffff;font-weight:800;font-size:13px;line-height:44px;text-align:center;">IG</div>`;
 
   const steps = WELCOME_STEPS.map(
     (step, index) => `
