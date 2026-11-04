@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { personDocumentUrl } from "@/services/personDocuments";
 import { usePersonDocuments, useRemovePersonDocument } from "../hooks/use-person-documents";
 import { PersonDocumentFormDrawer } from "./person-document-form-drawer";
+import { DOCUMENT_KIND_ICONS } from "../document-kind-icons";
 
 /** Resumo de uma linha para a sanfona da ficha: "2 documentos · Atestado vence em 12 dias". */
 export function documentsSummary(docs: PersonDocumentView[] | undefined): string {
@@ -43,6 +44,11 @@ async function openDocument(doc: PersonDocumentView) {
     logError("[personDocuments] Erro ao abrir o documento:", error);
     toast.error("Não foi possível abrir o documento.");
   }
+}
+
+function DocumentKindIcon({ kind }: { kind: PersonDocumentView["kind"] }) {
+  const Icon = DOCUMENT_KIND_ICONS[kind] ?? FileText;
+  return <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />;
 }
 
 function ExpiryBadge({ doc }: { doc: PersonDocumentView }) {
@@ -155,7 +161,7 @@ export function PersonDocumentsPanel({
                     onClick={() => void openDocument(doc)}
                     className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <DocumentKindIcon kind={doc.kind} />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="min-w-0 break-words text-sm font-medium text-foreground">{doc.label}</span>
