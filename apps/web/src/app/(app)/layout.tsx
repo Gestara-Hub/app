@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
+import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
@@ -69,6 +70,7 @@ export default async function AppLayout({
             <HelpHost />
             <BrowserErrorReporter />
             <SecurityPromptHost />
+            <InstallAppPrompt />
             <ScheduleNoticeHost />
             {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
             <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">

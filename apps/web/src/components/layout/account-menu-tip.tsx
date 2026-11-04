@@ -33,12 +33,15 @@ const COPY: Record<AccountMenuTipReason, { title: string; body: string }> = {
 
 // Espera a tela ficar livre e carregada: janela, painel, menu, tour, guia na
 // tela ou o topo e o conteudo ainda carregando.
-const BUSY_SELECTOR = [
+/** Tela ocupada: algo aberto que uma dica ou sugestao nao deve cobrir. */
+export const SCREEN_BUSY_SELECTOR = [
   '[data-slot="dialog-content"]',
   '[data-slot="alert-dialog-content"]',
   '[data-slot="sheet-content"]',
   "[data-product-tour]",
   "[data-guide-ui]",
+  "[data-install-prompt]",
+  '[aria-label="Aviso de cookies"]',
   '[role="menu"]',
   'header [data-slot="skeleton"]',
   'main [data-slot="skeleton"]',
@@ -82,7 +85,7 @@ export function AccountMenuTip({ supportUnread, demo }: { supportUnread: number;
     if (!reason) return;
 
     const tryShow = () => {
-      if (document.querySelector(BUSY_SELECTOR) || !document.querySelector(ACCOUNT_MENU_TARGET)) return;
+      if (document.querySelector(SCREEN_BUSY_SELECTOR) || !document.querySelector(ACCOUNT_MENU_TARGET)) return;
       markInterruption();
       updatePreferences({ accountMenuTip: { ...state, shownAt: today } });
       setShowing(reason);

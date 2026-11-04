@@ -36,6 +36,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Imagem anexada e captura de tela no relato de problema (avaliado e adiado em 24/10: complexidade e dado de aluno na imagem, LGPD); sugestões em lista/votação para priorizar | `technical/26-painel-admin-gestarahub.md`, fase 1 (problema e sugestão) | Hoje o problema leva texto, tela de origem, código do erro e contexto técnico |
 | Botões `xs` com texto (ações de linha e chips: ficam, pela regra do doc `frontend/07` §1.5). Os `sm` e `lg` de texto foram tirados em 24/10, sem captura de tela | `qa/2026-10-23-teste-geral.md`, achado 9 | Conferir com o olho (linha abaixo) |
 | **WhatsApp pelo número de cada espaço:** guardar as credenciais que o cadastro guiado da Meta devolve (token no Vault, id do número e da conta), registrar o número, inscrever os avisos e enviar com elas. Até lá, o envio automático fica bloqueado em produção (decisão de 30/10/2026) | `technical/07-integracao-whatsapp.md` §1.1, `product/13-modelo-de-negocio.md` §5 | Antes de produção |
+| **Recursos do PWA** (anotado em 04/11/2026): atalhos no ícone, push para aluno e professor, número no ícone, compartilhar recibo e relatório, chamada sem internet, QR code de presença (decisão de produto antes) | `technical/10-monolito-frontend-pwa.md`, Recursos do PWA para depois | Para depois |
 
 ## Testes deixados para o fim
 
@@ -62,6 +63,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 - **Tour de Recebimentos online depois de ativar (01/11/2026):** `ProductTour` na aba Carteira & Extrato, uma vez por navegador; a fixture do e2e já marca como visto. Cobrir num spec com `localStorage` limpo: os passos aparecem na ordem, "Sacar via Pix" só para quem gerencia, e fechar não repete.
 - **Taxas do pagamento online como saída no Financeiro (01/11/2026):** Resumo (Saiu e Saldo do mês), linha "Taxas de pagamento online de {mês}" em Lançamentos (só leitura, "Ver recebimentos") e "Deduções" do DRE; popover no valor do card "Saiu" (taxas, demais saídas, total) quando há taxa no mês. Vitest cobre a regra (`online-payments.test.ts`); falta e2e: cobrar online, simular o pagamento e conferir Saiu, a linha em Lançamentos e o DRE (`financeiro.spec.ts` ou o spec de cobrança online).
 - **Recebimentos online antes de ativar (01/11/2026):** tela nova (hero com o fluxo, "Como funciona" em 3 passos, "Quanto você recebe" com valor, atalhos e chave de repasse usando `calculateOnlineChargeAmounts`, taxas compactas com a etiqueta do plano). Nenhum spec cobre essa tela hoje: criar um teste que confere a simulação (R$ 150 no Pix e no cartão, com e sem repasse) e o botão de ativar.
+| À mão, num celular e num computador com o site em https: instalar o app | Manifest e ícones (iPhone, círculo e gota do Android) e o cartão "Instale o GestaraHub" (Instalar no Chrome/Edge, passos no iPhone e no Safari do Mac, "Agora não" voltando em 14 dias). Visto só no navegador do Claude, com o aviso do navegador simulado | Abrir o app pelo navegador, esperar o cartão, instalar e abrir pelo ícone (10 min) |
 
 ## Esperando decisão sua
 

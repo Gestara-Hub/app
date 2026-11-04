@@ -37,8 +37,38 @@ Data: 2026-10-19.
   - `icon-maskable-192/512`: quadrado cheio com o G em 56%, para caber no corte em círculo do Android (área segura de 80%).
   - `apple-touch-icon.png` (180, sem transparência): o iPhone só aceita PNG e arredonda sozinho, G em 62%.
 - **Metadados** em `app/layout.tsx`: ícone do iPhone, `appleWebApp` (abre sem a barra do Safari) e a cor da barra do sistema por tema.
-- **Ainda não feito:** service worker de cache e tela offline. O Chrome instala sem ele.
+- **Ainda não feito:** service worker de cache e tela offline. O Chrome instala sem ele. Os outros recursos estão em "Recursos do PWA para depois".
 - Ao trocar o ícone, gerar os PNGs de novo a partir do SVG e conferir nos três cortes (quadrado do iPhone, círculo e gota do Android).
+
+### Sugestão de instalação (04/11/2026)
+
+Quem usa pelo navegador, no celular ou no computador, vê o cartão "Instale o GestaraHub" no rodapé da tela (`components/layout/install-app-prompt.tsx`; regras em `lib/install-prompt.ts`, com teste).
+
+- **Chrome, Edge e Samsung:** o botão "Instalar" abre a janela de instalação do próprio navegador. A faixa automática do Chrome fica desligada.
+- **iPhone e iPad:** não existe botão de instalar. "Como instalar" mostra os dois passos: Compartilhar e "Adicionar à Tela de Início".
+- **Safari do Mac:** mostra o caminho pelo menu Arquivo, "Adicionar ao Dock".
+- **Firefox no computador ou app já instalado:** não aparece.
+- **Quando:** uns segundos depois de abrir, com a tela livre, no máximo uma interrupção por acesso (a mesma regra da dica do menu da conta). Nunca na configuração inicial nem na demonstração.
+- **"Agora não":** volta em 14 dias, e na terceira recusa para de sugerir. Fica guardado por aparelho, porque instalar é de cada celular ou computador.
+- **Uso medido:** eventos `install_prompt_shown`, `install_prompt_dismissed`, `install_prompt_answered` e `app_installed`.
+
+## Recursos do PWA para depois (anotado em 04/11/2026)
+
+| Recurso | Uso no GestaraHub | iPhone | Android |
+| --- | --- | --- | --- |
+| Notificação push | Aula amanhã, cobrança vencendo, faixa nova para o aluno; aula cancelada para o professor | Só com o app instalado (iOS 16.4+) | Sim |
+| Número no ícone | Cobranças em atraso ou lembretes pendentes | Instalado | Maioria dos aparelhos |
+| Atalhos no ícone (manifest `shortcuts`) | Segurar o ícone e ir para "Fazer chamada", "Novo aluno", "Cobranças" | Não | Sim |
+| Sem internet | Abrir o app e fazer a chamada sem sinal, enviando ao voltar a conexão | Parcial (sem sincronizar em segundo plano) | Sim |
+| Compartilhar (Web Share) | Recibo e PDF de relatório direto para o WhatsApp do aluno | Sim | Sim |
+| Câmera | QR code de presença na entrada; foto do comprovante | Sim | Sim |
+| Tela sempre acesa (Wake Lock) | Durante a chamada ou o cronômetro da aula | Sim | Sim |
+| Vibrar | Confirmar a presença marcada | Não | Sim |
+| Receber compartilhamento (`share_target`) | Aparecer no "Compartilhar com" do celular para anexar comprovante | Não | Sim |
+
+Ordem sugerida: atalhos no ícone (barato), push para aluno e professor (junto com a área do aluno; pode trocar parte dos lembretes pagos do WhatsApp), compartilhar recibo e relatório, chamada sem internet (o mais trabalhoso: guardar e reenviar sem duplicar). O check-in por QR code muda a regra de presença (hoje quem marca é o professor) e pede decisão de produto antes.
+
+Cuidados do iPhone: sem botão de instalar, push só instalado, e o sistema pode apagar dados de app pouco usado (a chamada sem internet precisa enviar assim que der).
 
 ## Alternativas Rejeitadas
 
