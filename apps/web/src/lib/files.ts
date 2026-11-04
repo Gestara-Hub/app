@@ -32,6 +32,12 @@ export const ENTRY_ATTACHMENT_RULES = {
   maxFiles: 10,
 } as const satisfies FileRules;
 
+/** Documento da ficha (atestado, termo, CREF): um arquivo, imagem ou PDF, ate 10 MB (doc product/28). */
+export const PERSON_DOCUMENT_FILE_RULES = {
+  ...RECEIPT_FILE_RULES,
+  maxFiles: 1,
+} as const satisfies FileRules;
+
 /** Logo do certificado: uma imagem de ate 1 MB (doc 21, secao 1). */
 export const CERTIFICATE_LOGO_RULES = {
   accept: ["image/*"],

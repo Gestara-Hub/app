@@ -5,6 +5,7 @@ import { decodeSession } from "@/lib/session-cookie";
 import { getAttachmentRecord } from "@/services/attachments/attachmentsBackend";
 import { downloadAttachmentFromStorage } from "@/services/attachments/attachmentsStorage";
 import { logError } from "@/lib/log";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Tipos que abrem no navegador. O resto (e qualquer tipo que a linha diga)
@@ -30,6 +31,19 @@ export async function GET(
     const record = await getAttachmentRecord(id, session.organizationId);
     // O arquivo precisa estar na pasta do proprio espaco (a linha nao escolhe outro caminho).
     if (!record || !record.storagePath.startsWith(`${session.organizationId}/`)) {
+      return NextResponse.json({ message: "Anexo não encontrado." }, { status: 404 });
+    }
+
+    // Arquivo de documento da ficha (atestado, laudo): so pela rota propria,
+    // que confere quem pode ver (doc product/28).
+    const { data: asDocument } = await createSupabaseAdminClient()
+      .from("person_documents")
+      .select("id")
+      .eq("organization_id", session.organizationId)
+      .eq("file->>id", id)
+      .limit(1)
+      .maybeSingle();
+    if (asDocument) {
       return NextResponse.json({ message: "Anexo não encontrado." }, { status: 404 });
     }
 

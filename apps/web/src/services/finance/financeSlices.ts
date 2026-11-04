@@ -15,6 +15,7 @@ const NOT_USED_BY_FINANCE = new Set([
   "messageTemplates",
   "assessments",
   "studentMeasurements",
+  "personDocuments",
   "waitlist",
 ]);
 

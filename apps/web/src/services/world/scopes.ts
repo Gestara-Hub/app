@@ -38,6 +38,7 @@ export const SCOPE_FIELDS: Record<string, readonly string[]> = {
   onlinePayments: ["chargeId"],
   assessments: ["classGroupId"],
   studentMeasurements: ["studentId"],
+  personDocuments: ["id", "clientId", "professionalId"],
   issuedCertificates: ["enrollmentId", "classGroupId", "promotionId", "studentId"],
   // Carga parcial da auditoria (`partialLoad`): so a dos lancamentos.
   auditLog: ["target.type"],

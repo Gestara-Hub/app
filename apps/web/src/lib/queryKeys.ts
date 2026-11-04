@@ -123,6 +123,11 @@ export const queryKeys = {
     reportCard: (studentId: Id) => ["grades", "reportCard", studentId] as const,
   },
   // Testes e medidas dos alunos (doc 21 §2.4).
+  personDocuments: {
+    all: ["personDocuments"] as const,
+    owner: (ownerKind: string, ownerId: Id) => ["personDocuments", ownerKind, ownerId] as const,
+    expiring: ["personDocuments", "expiring"] as const,
+  },
   measurements: {
     all: ["measurements"] as const,
     student: (studentId: Id) => ["measurements", "student", studentId] as const,

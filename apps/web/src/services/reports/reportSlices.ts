@@ -13,7 +13,7 @@ import { dateInSpace } from "@gestarahub/core/date";
  * cadastro, aniversarios e retencao). Conferido nos testes contra o espaco
  * inteiro (`WORLD_SLICE_CHECK=1`).
  */
-const NOT_USED_BY_REPORTS = new Set(["attendances", "messageLogs", "messageTemplates", "assessments", "studentMeasurements"]);
+const NOT_USED_BY_REPORTS = new Set(["attendances", "messageLogs", "messageTemplates", "assessments", "studentMeasurements", "personDocuments"]);
 
 const generateReport: MethodSlice = async ([type, filter], load) => {
   await Promise.all(

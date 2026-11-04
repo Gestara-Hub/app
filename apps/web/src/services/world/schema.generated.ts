@@ -1627,6 +1627,76 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       }
     }
   },
+  "person_documents": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "owner_kind": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "client_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "professional_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "kind": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "title": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "file": {
+        "type": "jsonb",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "expires_on": {
+        "type": "date",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "notes": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "created_by": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "created_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "updated_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
   "plans": {
     "primaryKey": "id",
     "columns": {

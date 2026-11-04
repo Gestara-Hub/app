@@ -14,6 +14,7 @@
     "./certificate": "./src/certificate.ts",
     "./grades": "./src/grades.ts",
     "./measurements": "./src/measurements.ts",
+    "./person-documents": "./src/person-documents.ts",
     "./phone": "./src/phone.ts",
     "./payer": "./src/payer.ts",
     "./support-protocol": "./src/support-protocol.ts",

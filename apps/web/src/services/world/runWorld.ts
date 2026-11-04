@@ -7,6 +7,8 @@ import { after } from "next/server";
 import type { WorldEffect } from "./effects";
 // Registra quem entrega as mensagens "Na fila" (efeito depois da gravacao).
 import "@/services/communication/messageDelivery";
+// Arquivo do documento tirado da ficha sai do armazenamento depois da gravacao.
+import "@/services/personDocuments/personDocumentFiles";
 import { runScoped } from "./scope";
 import { presentValues, SINGLE_KEYS, SliceMissError, sliceWorld, type MethodSlice } from "./slices";
 import { assertScopeField, bucketOf, rowBuckets, wholeBucket, wholeReadBucket } from "./scopes";

@@ -53,6 +53,7 @@ export const WORLD_COLLECTIONS: WorldCollection[] = [
   { key: "assessments", table: "assessments", kind: "list" },
   { key: "studentMeasurements", table: "student_measurements", kind: "list" },
   { key: "issuedCertificates", table: "issued_certificates", kind: "list" },
+  { key: "personDocuments", table: "person_documents", kind: "list" },
   { key: "financialCategories", table: "financial_categories", kind: "list" },
   { key: "financialRecurrences", table: "financial_recurrences", kind: "list" },
   { key: "teacherPayRules", table: "teacher_pay_rules", kind: "list" },

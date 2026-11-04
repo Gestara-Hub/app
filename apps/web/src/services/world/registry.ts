@@ -119,6 +119,16 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../measurements/measurementSlices")).measurementSlices,
     permissions: all(["create", "update", "remove"], MANAGE_PROGRESSION),
   },
+  // Documentos da ficha (doc product/28): a permissao depende do dono (aluno ou
+  // instrutor) e o servico confere; aqui so barra quem nao ve nenhum dos dois.
+  personDocuments: {
+    load: async () => (await import("../personDocuments")).personDocumentsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../personDocuments/personDocumentSlices")).personDocumentSlices,
+    permissions: {
+      ...all(["list", "listExpiring"], ["clients:view", "clients:view_own", "team:manage"]),
+      ...all(["create", "update", "remove"], ["clients:manage", "team:manage"]),
+    },
+  },
   communication: {
     load: async () => (await import("../communication")).communicationServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../communication/communicationSlices")).communicationSlices,

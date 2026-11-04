@@ -3,6 +3,7 @@ import type {
   Assessment,
   StudentMeasurement,
   IssuedCertificate,
+  PersonDocument,
   Attendance,
   AuditLogEntry,
   Category,
@@ -80,6 +81,8 @@ export interface TenantWorld {
   studentMeasurements?: StudentMeasurement[];
   // Certificados emitidos, com codigo de verificacao (doc 21 §1.3). Opcional como as avaliacoes.
   issuedCertificates?: IssuedCertificate[];
+  // Documentos da ficha do aluno e do instrutor (doc product/28). Opcional como as avaliacoes.
+  personDocuments?: PersonDocument[];
   // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
   // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
   financialCategories: FinancialCategory[];

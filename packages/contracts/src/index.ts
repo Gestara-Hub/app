@@ -30,3 +30,4 @@ export * from "./reminders";
 export * from "./preferences";
 export * from "./legal";
 export * from "./document";
+export * from "./person-document";
