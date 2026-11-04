@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -23,7 +23,18 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_NAME,
   description: `${SITE_TAGLINE}: turmas, chamada, mensalidades e evolução dos alunos.`,
-  icons: { icon: appIcon.src, shortcut: appIcon.src, apple: appIcon.src },
+  // O iPhone so aceita PNG na tela de inicio, em quadrado cheio (ele arredonda).
+  icons: { icon: appIcon.src, shortcut: appIcon.src, apple: "/icons/apple-touch-icon.png" },
+  // Aberto pela tela de inicio do iPhone: sem a barra do Safari (PWA, doc technical/10).
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
+};
+
+// Cor da barra do navegador e do sistema, igual ao fundo de cada tema.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
 };
 
 export default function RootLayout({
