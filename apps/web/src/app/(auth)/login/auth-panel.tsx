@@ -53,8 +53,9 @@ export function AuthPanel({
   return (
     <div className="space-y-6">
       {showTitle ? (
-        <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        // As abas ja dizem Entrar e Criar conta: o titulo fica so para leitor de tela (04/11/2026).
+        <div>
+          <h1 className="sr-only">
             {mode === "login" ? "Entrar" : "Criar conta grátis"}
           </h1>
           <p className="text-sm text-muted-foreground">
