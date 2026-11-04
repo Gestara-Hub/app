@@ -27,7 +27,7 @@ export function SettingsSection({
           {icon}
         </div>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold leading-tight text-foreground">{title}</h3>
+          <h2 className="text-sm font-semibold leading-tight text-foreground">{title}</h2>
           {description ? (
             <p className="mt-0.5 break-words text-xs text-muted-foreground">{description}</p>
           ) : null}

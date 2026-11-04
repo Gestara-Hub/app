@@ -423,7 +423,7 @@ function EditorBlock({ value, title, hint, children }: { value: string; title: s
   return (
     <Card className="gap-0 py-0">
       <AccordionItem value={value} className="border-b-0">
-        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+        <AccordionTrigger headingLevel={2} className="px-6 py-4 hover:no-underline">
           <span className="flex min-w-0 flex-col gap-1">
             <span className="text-base leading-none font-semibold">{title}</span>
             <span className="text-xs font-normal text-muted-foreground">{hint}</span>

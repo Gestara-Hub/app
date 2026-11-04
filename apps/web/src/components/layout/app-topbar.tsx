@@ -96,9 +96,11 @@ export function AppTopbar() {
               variant="ghost"
               className="size-8 rounded-full p-0"
               data-account-menu=""
-              aria-label={supportUnread > 0 ? `Menu do usuário (${supportUnread} resposta do suporte)` : "Menu do usuário"}
             >
-              <span className="relative">
+              <span className="sr-only">
+                {supportUnread > 0 ? `Menu do usuário (${supportUnread} resposta do suporte)` : "Menu do usuário"}
+              </span>
+              <span className="relative" aria-hidden="true">
                 <Avatar className="size-8">
                   <AvatarFallback className="bg-secondary text-xs font-medium">
                     {userInitials(user.name)}

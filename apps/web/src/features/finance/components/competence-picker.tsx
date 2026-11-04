@@ -71,10 +71,11 @@ export function CompetencePicker({
           <PopoverTrigger asChild>
             <button
               type="button"
-              aria-label={`Escolher mês (${competenceLabel(competence)})`}
               className="inline-flex h-9 min-w-40 cursor-pointer items-center justify-center gap-2 px-2 font-medium tabular-nums transition-colors hover:bg-accent"
             >
+              <span className="sr-only">Escolher mês (</span>
               <span aria-live="polite">{competenceLabel(competence)}</span>
+              <span className="sr-only">){isCurrent ? " " : ""}</span>
               {isCurrent ? (
                 <span className="rounded-full border border-info/25 bg-info/10 px-1.5 py-px text-[11px] font-medium leading-4 text-info">
                   Atual

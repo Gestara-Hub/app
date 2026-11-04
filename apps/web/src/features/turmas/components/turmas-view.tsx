@@ -239,20 +239,22 @@ function TurmaCard({
 
   const card = (
     <div
-      role="button"
-      tabIndex={0}
       onClick={() => router.push(`/classes/${turma.id}`)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          router.push(`/classes/${turma.id}`);
-        }
-      }}
-      className="group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all cursor-pointer hover:border-primary/40 hover:shadow-xs"
     >
       <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
+          <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                router.push(`/classes/${turma.id}`);
+              }
+            }}
+            className="min-w-0 flex-1 space-y-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <p className="min-w-0 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {turma.name}
             </p>

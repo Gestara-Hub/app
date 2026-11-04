@@ -218,7 +218,7 @@ export function ScheduleDayGrid({
           <div className="relative" style={{ height: gridHeight }}>
             {showNow ? (
               <div
-                className="absolute right-1 z-20 rounded-full bg-destructive px-1.5 py-0.5 text-[0.65rem] font-medium leading-none tabular-nums text-destructive-foreground"
+                className="absolute right-1 z-20 rounded-full bg-red-600 px-1.5 py-0.5 text-[0.65rem] font-medium leading-none tabular-nums text-white dark:bg-red-500 dark:text-zinc-950"
                 style={{ top: GRID_Y_PADDING + nowTop, transform: "translateY(-50%)" }}
               >
                 Agora

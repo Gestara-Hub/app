@@ -374,6 +374,7 @@ function ClientRow({
   const content = (
     <ListRow
       onClick={openProfile}
+      canClick={false}
       actions={
         canManage ? (
           <ListItemActionsMenu
@@ -394,7 +395,7 @@ function ClientRow({
               <Link
                 href={`/clients/${client.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors"
+                className="min-w-0 inline-flex min-h-6 items-center font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors"
               >
                 {client.name}
               </Link>
@@ -591,17 +592,8 @@ function ClientCard({
 
   const card = (
     <div
-      role="button"
-      tabIndex={0}
       onClick={openProfile}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openProfile();
-        }
-      }}
-      className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
@@ -611,7 +603,7 @@ function ClientCard({
               <Link
                 href={`/clients/${client.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="min-w-0 block break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors"
+                className="min-w-0 inline-flex min-h-6 items-center break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors"
               >
                 {client.name}
               </Link>

@@ -342,8 +342,8 @@ function SubscriptionCheckoutContent({
                     className={cn(
                       "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-tight transition-colors border",
                       isYearly
-                        ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
-                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                        ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40"
+                        : "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/20",
                     )}
                   >
                     2 meses grátis
@@ -353,7 +353,7 @@ function SubscriptionCheckoutContent({
             </div>
 
             {isYearly && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-300">
                 <Zap className="size-3.5 shrink-0" />
                 <span>{savingsNotice}</span>
               </div>

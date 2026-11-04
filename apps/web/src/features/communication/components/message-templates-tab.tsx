@@ -245,16 +245,16 @@ export function MessageTemplatesTab() {
                 value={group.category}
                 className="rounded-xl border border-border/70 bg-card px-4 sm:px-5 shadow-xs transition-colors overflow-hidden"
               >
-                <AccordionTrigger className="py-3.5 hover:no-underline cursor-pointer">
+                <AccordionTrigger headingLevel={2} className="py-3.5 hover:no-underline cursor-pointer">
                   <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <group.icon className="size-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground text-sm leading-tight">
+                        <span className="font-semibold text-foreground text-sm leading-tight">
                           {group.title}
-                        </h3>
+                        </span>
                         <span className="text-xs text-muted-foreground font-normal tabular-nums">
                           ({items.length})
                         </span>

@@ -118,21 +118,23 @@ export function StudentEnrollmentsTab({ enrollments }: { enrollments: StudentSum
               <ListItemContextMenu key={e.id} actions={actions}>
                 <ListRow
                   onClick={() => router.push(`/classes/${e.classGroupId}`)}
-                  aria-label={`Abrir turma ${e.className}`}
                   actions={
-                    <>
-                      <StatusText e={e} />
-                      <ListItemActionsMenu
-                        actions={actions}
-                        title="Ações da matrícula"
-                        ariaLabel={`Ações da matrícula em ${e.className}`}
-                        variant="ghost"
-                      />
-                    </>
+                    <ListItemActionsMenu
+                      actions={actions}
+                      title="Ações da matrícula"
+                      ariaLabel={`Ações da matrícula em ${e.className}`}
+                      variant="ghost"
+                    />
                   }
                 >
-                  <p className="text-sm font-medium text-foreground">{e.className}</p>
-                  {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="sr-only">Abrir turma </span>
+                      <p className="text-sm font-medium text-foreground">{e.className}</p>
+                      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+                    </div>
+                    <StatusText e={e} />
+                  </div>
                 </ListRow>
               </ListItemContextMenu>
             );

@@ -262,7 +262,7 @@ function VariantSimplified({
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-foreground">Equilíbrio do mês</h3>
+                <h2 className="text-base font-semibold text-foreground">Equilíbrio do mês</h2>
                 <p className="text-xs text-muted-foreground">
                   Proporção direta entre o que foi arrecadado e o que sobrou
                 </p>
@@ -335,7 +335,7 @@ function VariantSimplified({
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-foreground">Contas a pagar</h3>
+                <h2 className="text-base font-semibold text-foreground">Contas a pagar</h2>
                 <p className="text-xs text-muted-foreground">{payablesSubtitle(todayISO())}</p>
               </div>
               <Clock className="size-4 text-muted-foreground" />

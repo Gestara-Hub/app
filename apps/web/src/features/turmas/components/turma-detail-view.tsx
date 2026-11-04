@@ -870,6 +870,7 @@ export function TurmaDetailView({
                     const row = (
                       <ListRow
                         key={e.id}
+                        canClick={!selecting && canOpenProfile}
                         onClick={
                           selecting
                             ? () => toggleRow(e.id)
@@ -877,12 +878,8 @@ export function TurmaDetailView({
                               ? () => router.push(`/clients/${e.studentId}`)
                               : undefined
                         }
-                        aria-label={
-                          selecting
-                            ? `Selecionar ${e.studentName}`
-                            : canOpenProfile
-                              ? `Abrir ficha de ${e.studentName}`
-                              : undefined
+                        aria-labelledby={
+                          !selecting && canOpenProfile ? `student-row-${e.id}` : undefined
                         }
                         actions={
                           selecting || actions.length === 0 ? undefined : (
@@ -904,8 +901,11 @@ export function TurmaDetailView({
                               aria-label={`Selecionar ${e.studentName}`}
                             />
                           ) : null}
-                          <div className="min-w-0 space-y-0.5">
-                            <p className="text-sm font-medium text-foreground">{e.studentName}</p>
+                          <div id={`student-row-${e.id}`} className="min-w-0 space-y-0.5">
+                            {!selecting && canOpenProfile ? (
+                              <span className="sr-only">Abrir ficha de </span>
+                            ) : null}
+                            <p className="text-sm font-medium text-foreground">{e.studentName}</p>{" "}
                             {/* Nivel em texto (faixa mantem a cor) e o que foge do padrao */}
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                               {currentLvl ? (
@@ -924,30 +924,31 @@ export function TurmaDetailView({
                                     {currentSub > 0 ? ` · ${currentSub}ª etapa` : ""}
                                   </span>
                                 )
-                              ) : null}
+                              ) : null}{" "}
                               {isMembership && e.paysWithPackage ? (
                                 <span title="Cada presença gasta uma aula do pacote">Pacote</span>
-                              ) : null}
+                              ) : null}{" "}
                               {e.isCompleted ? (
                                 <span className="font-medium text-emerald-700 dark:text-emerald-400">Concluído</span>
-                              ) : null}
-                              <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />
-                              <MinorConsentBadge client={student} compact />
+                              ) : null}{" "}
+                              <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />{" "}
+                              <MinorConsentBadge client={student} compact />{" "}
                               <LevelChangeBadge
                                 level={currentLvl}
                                 birthDate={student?.birthDate}
                                 levelWord={vocabulary.level}
                               />
-                            </div>
+                            </div>{" "}
                             {alerts.length > 0 ? (
                               <p className="flex flex-wrap gap-x-2 pt-0.5 text-xs font-medium">
-                                {alerts.map((a) => (
+                                {alerts.map((a, idx) => (
                                   <span
                                     key={a.label}
                                     className={
                                       a.warn ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                                     }
                                   >
+                                    {idx > 0 ? " " : null}
                                     {a.label}
                                   </span>
                                 ))}

@@ -72,7 +72,7 @@ export function StudentEvolutionTab({
         <section key={level.modalityId} className="flex flex-col rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 space-y-1.5">
-              <h3 className="text-sm font-semibold text-foreground">{level.modalityName}</h3>
+              <h2 className="text-sm font-semibold text-foreground">{level.modalityName}</h2>
               <div className="flex flex-wrap items-center gap-1.5">
                 <BeltBadge
                   name={level.levelName}

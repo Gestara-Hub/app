@@ -43,7 +43,9 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
       <table className="w-full min-w-[60rem] table-fixed border-separate border-spacing-0">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 w-16 border-b border-r bg-card p-2" />
+            <th scope="col" className="sticky left-0 top-0 z-30 w-16 border-b border-r bg-card p-2">
+              <span className="sr-only">Horário</span>
+            </th>
             {days.map((day) => {
               const iso = format(day, "yyyy-MM-dd");
               const isToday = iso === today;
@@ -102,24 +104,26 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                             key={session.id}
                             href={`/classes/sessions/${encodeURIComponent(session.id)}`}
                             title={`${session.className} · ${session.start}–${session.end} · ${session.instructorName}`}
-                            aria-label={sessionLinkLabel(session)}
                             className="block rounded-md border bg-background px-2 py-1.5 transition-colors hover:border-foreground/20 hover:bg-accent"
                           >
-                            <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">
-                              {session.className}
-                            </p>
-                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
-                              {session.start}–{session.end}
-                            </p>
-                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
-                              {session.isSubstitute ? (
-                                <span className="font-medium text-amber-700 dark:text-amber-400">
-                                  {session.instructorName} (Subst.)
-                                </span>
-                              ) : (
-                                session.instructorName
-                              )}
-                            </p>
+                            <span className="sr-only">{sessionLinkLabel(session)}</span>
+                            <div aria-hidden="true">
+                              <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">
+                                {session.className}
+                              </p>
+                              <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                                {session.start}–{session.end}
+                              </p>
+                              <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                                {session.isSubstitute ? (
+                                  <span className="font-medium text-amber-700 dark:text-amber-400">
+                                    {session.instructorName} (Subst.)
+                                  </span>
+                                ) : (
+                                  session.instructorName
+                                )}
+                              </p>
+                            </div>
                           </Link>
                         );
                       })}

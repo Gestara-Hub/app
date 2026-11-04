@@ -156,10 +156,10 @@ export function LegalConsentDialog() {
           {activeTab === "lgpd" && (
             <div className="space-y-4">
               <div className="border-b border-border/50 pb-2">
-                <h4 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                   <CheckCircle2 className="size-4 text-primary" />
                   CLÁUSULA 1ª – DO TRATAMENTO DE DADOS PESSOAIS E PAPÉIS CONTRATUAIS (LEI Nº 13.709/2018 - LGPD)
-                </h4>
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Acordo de Processamento de Dados (DPA) aplicável às operações realizadas no ambiente GestaraHub.
                 </p>
@@ -191,10 +191,10 @@ export function LegalConsentDialog() {
           {activeTab === "payments" && (
             <div className="space-y-4">
               <div className="border-b border-border/50 pb-2">
-                <h4 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                   <Wallet className="size-4 text-primary" />
                   CLÁUSULA 2ª – DA INTERMEDIAÇÃO FINANCEIRA, PROCESSAMENTO E SUBCONTAS (BACEN / SPB)
-                </h4>
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Regramento operacional e de conformidade aplicável aos módulos de cobranças online, Pix e split.
                 </p>
@@ -223,10 +223,10 @@ export function LegalConsentDialog() {
           {activeTab === "audit" && (
             <div className="space-y-4">
               <div className="border-b border-border/50 pb-2">
-                <h4 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                   <Scale className="size-4 text-primary" />
                   CLÁUSULA 3ª – DA TRILHA DE AUDITORIA, REGISTROS LEGAIS, RESCISÃO E FORO
-                </h4>
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Eficácia probatória do consentimento eletrônico, prazos legais de guarda e encerramento de conta.
                 </p>
