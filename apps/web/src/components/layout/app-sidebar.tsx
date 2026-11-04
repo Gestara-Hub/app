@@ -21,9 +21,10 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
-import iconImage from "@/assets/icon.png";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+// Barra recolhida: o G solto, branco (a barra e sempre escura), igual ao do logo aberto; o icon.svg com fundo fica para o favicon e o app.
+import markImage from "@/assets/mark-dark.svg";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 import { useCan, useHasFeature, useModel } from "@/features/auth";
 import { SidebarSubscriptionCard } from "@/features/subscription";
 import {
@@ -204,26 +205,31 @@ export function AppSidebar() {
   return (
     <Sidebar variant="inset" collapsible="icon" className="print:hidden">
       <SidebarHeader>
-        <div className="flex items-center justify-center gap-2 py-1">
+        <Link
+          href="/dashboard"
+          // Logo centrado aberto e recolhido (04/11/2026): o G fica no mesmo eixo nos dois estados.
+          className="flex items-center justify-center px-2 py-2.5 transition-opacity hover:opacity-90 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1.5"
+          aria-label="GestaraHub início"
+        >
           <Image
-            src={iconImage}
+            src={markImage}
             alt="GestaraHub"
-            width={36}
-            className="hidden rounded-sm group-data-[collapsible=icon]:block"
+            className="hidden h-7 w-auto group-data-[collapsible=icon]:block"
+            priority
           />
           <Image
             src={logoLightImage}
             alt="GestaraHub"
-            className="sidebar-logo-light h-14 w-auto group-data-[collapsible=icon]:hidden dark:hidden"
+            className="sidebar-logo-light h-[29px] w-auto group-data-[collapsible=icon]:hidden dark:hidden"
             priority
           />
           <Image
             src={logoDarkImage}
             alt="GestaraHub"
-            className="sidebar-logo-dark hidden h-14 w-auto dark:group-data-[collapsible=icon]:hidden dark:block"
+            className="sidebar-logo-dark hidden h-[29px] w-auto dark:group-data-[collapsible=icon]:hidden dark:block"
             priority
           />
-        </div>
+        </Link>
 
         {/* Seletor de Contexto no Topo (Opção 2: Dia a dia vs Gestão) */}
         {showContextSwitcher ? (

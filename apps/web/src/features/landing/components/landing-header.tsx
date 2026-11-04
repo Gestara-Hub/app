@@ -6,8 +6,9 @@ import Link from "next/link";
 import { ArrowRight, Menu, Moon, Sun, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+// Topo da landing: o G solto, chumbo no claro e branco no escuro, igual ao logo do rodape (04/11/2026).
+import markLight from "@/assets/mark-light.svg";
+import markDark from "@/assets/mark-dark.svg";
 import { trackEvent } from "@/lib/analytics";
 import { saveThemePreference } from "@/features/preferences";
 
@@ -72,20 +73,14 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <header ref={headerRef} className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-colors relative">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src={logoLightImage}
-            alt="GestaraHub"
-            className="h-11 w-auto dark:hidden"
-            priority
-          />
-          <Image
-            src={logoDarkImage}
-            alt="GestaraHub"
-            className="hidden h-11 w-auto dark:block"
-            priority
-          />
+        {/* Logo (apenas icone minimalista e compacto no topo) */}
+        <Link
+          href="/"
+          className="flex items-center transition-transform hover:scale-105"
+          aria-label="GestaraHub início"
+        >
+          <Image src={markLight} alt="GestaraHub" className="h-8 w-auto dark:hidden" priority />
+          <Image src={markDark} alt="GestaraHub" className="hidden h-8 w-auto dark:block" priority />
         </Link>
 
         {/* Desktop Navigation */}

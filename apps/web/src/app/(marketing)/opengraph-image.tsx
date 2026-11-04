@@ -9,8 +9,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OpengraphImage() {
-  const logo = await readFile(join(process.cwd(), "src/assets/logo-light.png"));
-  const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
+  const logo = await readFile(join(process.cwd(), "src/assets/logo-light.svg"));
+  const logoSrc = `data:image/svg+xml;base64,${logo.toString("base64")}`;
 
   return new ImageResponse(
     (
@@ -28,7 +28,7 @@ export default async function OpengraphImage() {
           fontFamily: "sans-serif",
         }}
       >
-        <img src={logoSrc} width={213} height={176} alt="" />
+        <img src={logoSrc} width={560} height={73} alt="" />
         <div style={{ fontSize: 68, fontWeight: 800, letterSpacing: -2 }}>{SITE_TAGLINE}</div>
         <div
           style={{

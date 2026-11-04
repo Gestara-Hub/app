@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import Image from "next/image";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 import { CertificateCodeForm } from "./certificate-code-form";
 
 export const metadata: Metadata = {
@@ -16,11 +16,11 @@ export const metadata: Metadata = {
  */
 export default function CertificateLookupPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/20 px-4 py-10">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/20 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex justify-center">
-          <Image src={logoLightImage} alt="GestaraHub" className="h-10 w-auto dark:hidden" priority />
-          <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-10 w-auto dark:block" priority />
+          <Image src={logoLightImage} alt="GestaraHub" className="h-6 w-auto dark:hidden" priority />
+          <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-6 w-auto dark:block" priority />
         </div>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
           <h1 className="text-lg font-semibold">Verificar certificado</h1>
@@ -29,6 +29,6 @@ export default function CertificateLookupPage() {
         </div>
         <PublicLegalFooter />
       </div>
-    </div>
+    </main>
   );
 }

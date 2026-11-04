@@ -3,8 +3,8 @@ import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AlertCircle, Clock } from "lucide-react";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 import { loadChargeInvoice } from "@/services/server/paymentPage";
 import { ChargeInvoiceCheckout } from "./charge-invoice-checkout";
 
@@ -32,13 +32,13 @@ export default async function ChargeInvoicePage({
           <Image
             src={logoLightImage}
             alt="GestaraHub"
-            className="h-10 w-auto dark:hidden"
+            className="h-6 w-auto dark:hidden"
             priority
           />
           <Image
             src={logoDarkImage}
             alt="GestaraHub"
-            className="hidden h-10 w-auto dark:block"
+            className="hidden h-6 w-auto dark:block"
             priority
           />
         </div>

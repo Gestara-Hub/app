@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 import {
   COMPANY_ADDRESS,
   COMPANY_CNPJ,
@@ -47,10 +47,24 @@ export function LandingFooter() {
     <footer className="border-t border-border/40 bg-card/40">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
-          {/* Marca */}
+          {/* Marca (logo institucional completa no rodape) */}
           <div className="space-y-4">
-            <Image src={logoLightImage} alt="GestaraHub" className="h-9 w-auto dark:hidden" />
-            <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-9 w-auto dark:block" />
+            <Link
+              href="/"
+              className="inline-block transition-opacity hover:opacity-90"
+              aria-label="GestaraHub início"
+            >
+              <Image
+                src={logoLightImage}
+                alt="GestaraHub"
+                className="h-5 w-auto dark:hidden"
+              />
+              <Image
+                src={logoDarkImage}
+                alt="GestaraHub"
+                className="hidden h-5 w-auto dark:block"
+              />
+            </Link>
             <p className="max-w-xs text-sm text-muted-foreground">{SITE_TAGLINE}</p>
             <a
               href={INSTAGRAM_URL}

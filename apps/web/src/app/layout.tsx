@@ -5,7 +5,7 @@ import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsConsentBanner } from "@/components/shared/analytics-consent-banner";
-import appIcon from "@/assets/icon.png";
+import appIcon from "@/assets/icon.svg";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/config/site";
 import { PRE_PAINT_VIEW_MODE_SCRIPT } from "@/components/shared/list/view-mode-script";
 

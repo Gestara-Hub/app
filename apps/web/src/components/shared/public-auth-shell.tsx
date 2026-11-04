@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 import { HubGridBackground } from "@/components/shared/hub-grid-background";
 
 type PublicAuthShellProps = {
@@ -18,13 +18,13 @@ type PublicAuthShellProps = {
  */
 export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellProps) {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-muted/30 px-4 py-12">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-muted/30 px-4 py-12">
       <HubGridBackground />
       <div className="relative w-full max-w-[400px] space-y-6">
         <div className="flex justify-center">
           <Link href="/" aria-label="GestaraHub, página inicial">
-            <Image src={logoLightImage} alt="GestaraHub" className="h-14 w-auto dark:hidden" priority />
-            <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-14 w-auto dark:block" priority />
+            <Image src={logoLightImage} alt="GestaraHub" className="h-8 w-auto dark:hidden" priority />
+            <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-8 w-auto dark:block" priority />
           </Link>
         </div>
         <div
@@ -49,6 +49,6 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

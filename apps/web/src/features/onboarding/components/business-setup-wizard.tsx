@@ -45,8 +45,8 @@ import type {
   ClassesBusinessSegment,
   CustomSegmentProgression,
 } from "@gestarahub/contracts";
-import logoLightImage from "@/assets/logo-light.png";
-import logoDarkImage from "@/assets/logo-dark.png";
+import logoLightImage from "@/assets/logo-light.svg";
+import logoDarkImage from "@/assets/logo-dark.svg";
 
 /** As 10 areas do passo 2; "Outra área" fecha a lista. */
 const STANDARD_PRESETS = getAllSegmentPresets().filter((p) => p.id !== "custom");
@@ -439,8 +439,8 @@ export function BusinessSetupWizard() {
       </div>
 
       <header className="mx-auto w-full max-w-xl px-4 pt-6 sm:pt-8">
-        <Image src={logoLightImage} alt="GestaraHub" className="h-8 sm:h-9 w-auto dark:hidden" priority />
-        <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-8 sm:h-9 w-auto dark:block" priority />
+        <Image src={logoLightImage} alt="GestaraHub" className="h-5 sm:h-6 w-auto dark:hidden" priority />
+        <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-5 sm:h-6 w-auto dark:block" priority />
       </header>
 
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-10 sm:py-14">
