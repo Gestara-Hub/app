@@ -68,10 +68,11 @@ import { brDate, PERIOD_SHORT } from "./student-profile-parts";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
 import { ageLabel } from "@/lib/birthdays";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
+import { PersonDocumentsPanel, documentsSummary, usePersonDocuments } from "@/features/person-documents";
 
-type ProfileSectionId = "classes" | "plan" | "charges" | "evolution" | "messages" | "data";
+type ProfileSectionId = "classes" | "plan" | "charges" | "evolution" | "messages" | "documents" | "data";
 
-const SECTION_IDS: ProfileSectionId[] = ["classes", "plan", "charges", "evolution", "messages", "data"];
+const SECTION_IDS: ProfileSectionId[] = ["classes", "plan", "charges", "evolution", "messages", "documents", "data"];
 
 /** `?tab=packages` (link antigo) abre "Plano e pacotes", que juntou os pacotes e o plano. */
 const LEGACY_SECTION: Record<string, ProfileSectionId> = { packages: "plan" };
@@ -203,6 +204,9 @@ export function StudentProfileView({ id }: { id: Id }) {
   const canCharge = isClasses && can("billing:manage");
   const canSeeMessages = can("communication:view");
   const { data: summary, isPending, isError, error, refetch } = useStudentSummary(id);
+  // Documentos (doc product/28): quem ve o aluno ve os documentos; quem edita, mexe.
+  const canSeeDocuments = can("clients:view") || can("clients:view_own");
+  const { data: documents } = usePersonDocuments("client", id, canSeeDocuments);
 
   // `?tab=` (links antigos e de outras telas) abre aquela secao.
   const searchParams = useSearchParams();
@@ -541,6 +545,18 @@ export function StudentProfileView({ id }: { id: Id }) {
           },
         ]
       : []),
+    ...(canSeeDocuments
+      ? [
+          {
+            id: "documents" as const,
+            title: "Documentos",
+            summary: documentsSummary(documents),
+            content: (
+              <PersonDocumentsPanel ownerKind="client" ownerId={student.id} ownerName={student.name} canManage={canManage} />
+            ),
+          },
+        ]
+      : []),
     {
       id: "data",
       title: "Cadastro",
@@ -588,6 +604,8 @@ export function StudentProfileView({ id }: { id: Id }) {
         canMessage={canSeeMessages}
         onOpenCharges={() => openSection("charges")}
         onSellPackage={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
+        documents={documents}
+        onOpenDocuments={canSeeDocuments ? () => openSection("documents") : undefined}
       />
 
       <div className="divide-y rounded-xl border">

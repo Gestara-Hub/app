@@ -3,11 +3,12 @@
 import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Cake, Copy, MessageCircle } from "lucide-react";
+import { Cake, Copy, FileText, MessageCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub/contracts";
+import type { ChargeView, Id, MessageTrigger, PersonDocumentView, StudentSummary } from "@gestarahub/contracts";
 import { todayISO, dateInSpace, timeInSpace } from "@gestarahub/core/date";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, formatDate } from "@gestarahub/core/format";
+import { documentExpiryText } from "@gestarahub/core/person-documents";
 import { Button } from "@/components/ui/button";
 import { nextBirthdayLabel } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
@@ -58,6 +59,8 @@ export function StudentProfileAlerts({
   canMessage,
   onOpenCharges,
   onSellPackage,
+  documents,
+  onOpenDocuments,
 }: {
   summary: StudentSummary;
   isClasses: boolean;
@@ -67,6 +70,9 @@ export function StudentProfileAlerts({
   onOpenCharges: () => void;
   /** Ausente sem permissao de vender pacote. */
   onSellPackage?: (packageId?: Id) => void;
+  /** Documentos da ficha (doc product/28): vencido ou vencendo vira aviso. */
+  documents?: PersonDocumentView[];
+  onOpenDocuments?: () => void;
 }) {
   const today = todayISO();
   const { student } = summary;
@@ -224,6 +230,31 @@ export function StudentProfileAlerts({
           Mandar parabéns
         </Button>,
       ),
+    });
+  }
+
+  // Documento vencido ou vencendo (atestado): por tipo vale o de validade mais
+  // longa, entao o atestado renovado tira o aviso (doc product/28).
+  const latestByKind = new Map<string, PersonDocumentView>();
+  for (const doc of documents ?? []) {
+    if (!doc.expiresOn) continue;
+    const key = `${doc.kind}:${doc.kind === "other" ? doc.label : ""}`;
+    const current = latestByKind.get(key);
+    if (!current || (current.expiresOn ?? "") < doc.expiresOn) latestByKind.set(key, doc);
+  }
+  for (const doc of latestByKind.values()) {
+    if (doc.expiry !== "expired" && doc.expiry !== "expiring") continue;
+    alerts.push({
+      key: `document:${doc.id}`,
+      title: doc.expiry === "expired" ? `${doc.label} vencido` : `${doc.label} vence em breve`,
+      detail: `${documentExpiryText(doc.daysToExpire) ?? ""} (${formatDate(doc.expiresOn ?? "")}).`,
+      danger: doc.expiry === "expired",
+      actions: onOpenDocuments ? (
+        <Button variant="outline" onClick={onOpenDocuments}>
+          <FileText className="size-4" />
+          Ver documentos
+        </Button>
+      ) : null,
     });
   }
 

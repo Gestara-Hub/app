@@ -1,5 +1,6 @@
-import type { Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
-import { plural } from "@gestarahub/core/format";
+import type { ExpiringPersonDocument, Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
+import { formatDate, plural } from "@gestarahub/core/format";
+import { documentExpiryText } from "@gestarahub/core/person-documents";
 import { planNoticeFor } from "@gestarahub/core/subscription-plan";
 import { PLAN_SETTINGS_HREF } from "@/components/shared/feature-locked";
 import { subscriptionTierLabel } from "@/lib/labels";
@@ -12,7 +13,7 @@ import { isPinnedPlanNotice, planNoticeCopy } from "@/lib/plan-notice-copy";
  */
 export interface BellAlert {
   key: string;
-  kind: "plan" | "messages";
+  kind: "plan" | "messages" | "documents";
   title: string;
   text: string;
   tone: "info" | "warning" | "danger";
@@ -89,4 +90,27 @@ export function whatsappPendingConnectionBellAlert(connection: WhatsAppConnectio
     href: "/communication?tab=connection",
     action: "Conectar",
   };
+}
+
+/** Avisos de documento no sino: no maximo 5, o mais urgente primeiro. */
+export const MAX_DOCUMENT_BELL_ALERTS = 5;
+
+/**
+ * Documento da ficha vencendo (30 dias) ou vencido (doc product/28): atestado,
+ * registro profissional. Abre a ficha do aluno na secao Documentos, ou a
+ * Equipe. Some quando o documento novo e anexado.
+ */
+export function documentBellAlerts(documents: ExpiringPersonDocument[] | undefined): BellAlert[] {
+  return (documents ?? []).slice(0, MAX_DOCUMENT_BELL_ALERTS).map((doc) => {
+    const when = documentExpiryText(doc.daysToExpire) ?? "";
+    return {
+      key: `document:${doc.id}:${doc.expiry}`,
+      kind: "documents",
+      title: `${doc.label} de ${doc.ownerName}`,
+      text: `${when} (${formatDate(doc.expiresOn)}).`,
+      tone: doc.expiry === "expired" ? "danger" : "warning",
+      href: doc.ownerKind === "client" ? `/clients/${doc.ownerId}?tab=documents` : "/team",
+      action: "Ver",
+    };
+  });
 }

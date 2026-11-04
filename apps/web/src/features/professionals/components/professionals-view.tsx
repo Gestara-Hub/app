@@ -11,6 +11,7 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ProfessionalView } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
 import { RoleManagerDialog } from "@/features/roles";
+import { PersonDocumentsSheet } from "@/features/person-documents";
 import { useUpdateProfessional } from "../hooks/use-professionals";
 import { teamSubtitle } from "../team-copy";
 import { ProfessionalsList } from "./professionals-list";
@@ -35,6 +36,8 @@ export function ProfessionalsView() {
 
   const updateMut = useUpdateProfessional();
   const canManage = useCan()("team:manage");
+  // Documentos do instrutor (doc product/28): CREF, certificados, contrato.
+  const [documentsOf, setDocumentsOf] = useState<ProfessionalView | null>(null);
   const isClasses = useModel() === "classes";
 
   const openCreate = () => {
@@ -100,6 +103,16 @@ export function ProfessionalsView() {
         onEdit={openEdit}
         onInactivate={setInactivating}
         onReactivate={reactivate}
+        onDocuments={canManage ? setDocumentsOf : undefined}
+      />
+
+      <PersonDocumentsSheet
+        owner={documentsOf ? { id: documentsOf.id, name: documentsOf.name } : null}
+        ownerKind="professional"
+        canManage={canManage}
+        onOpenChange={(open) => {
+          if (!open) setDocumentsOf(null);
+        }}
       />
 
       <ProfessionalFormDrawer

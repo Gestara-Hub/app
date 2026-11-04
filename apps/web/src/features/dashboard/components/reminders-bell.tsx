@@ -8,11 +8,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { useCan, useCurrentUser, useModel } from "@/features/auth";
 import { useWhatsAppConnection } from "@/features/communication";
 import { useSubscription } from "@/features/settings";
+import { useExpiringDocuments } from "@/features/person-documents";
 import { seesPlanNotices } from "@/lib/plan-notice-copy";
 import {
   planBellAlert,
   quotaBellAlert,
   whatsappPendingConnectionBellAlert,
+  documentBellAlerts,
   type BellAlert,
 } from "../bell-alerts";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
@@ -34,14 +36,20 @@ export function RemindersBell() {
 /** Avisos do plano e da franquia, so para quem ve os avisos do plano. */
 export function useBellAlerts(today: string): BellAlert[] {
   const eligible = seesPlanNotices(useCurrentUser().profile);
+  const can = useCan();
   const { data: subscription } = useSubscription();
   const { data: connection } = useWhatsAppConnection(eligible);
-  if (!eligible) return [];
-  return [
-    planBellAlert(subscription, today),
-    whatsappPendingConnectionBellAlert(connection),
-    quotaBellAlert(connection),
-  ].filter((alert): alert is BellAlert => alert !== null);
+  // Documentos vencendo: quem ve os alunos (ou os dele) ou gerencia a equipe.
+  const seesDocuments = can("clients:view") || can("clients:view_own") || can("team:manage");
+  const { data: expiring } = useExpiringDocuments(seesDocuments);
+  const planAlerts = eligible
+    ? [
+        planBellAlert(subscription, today),
+        whatsappPendingConnectionBellAlert(connection),
+        quotaBellAlert(connection),
+      ].filter((alert): alert is BellAlert => alert !== null)
+    : [];
+  return [...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
 }
 
 function RemindersBellButton() {

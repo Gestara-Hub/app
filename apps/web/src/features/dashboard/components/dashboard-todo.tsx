@@ -14,6 +14,7 @@ import {
   Clock,
   HandCoins,
   HeartHandshake,
+  FileText,
   MessageCircle,
   Receipt,
   Ticket,
@@ -246,7 +247,15 @@ export function DashboardTodo({
       {alerts.map((alert) => (
         <TodoRow
           key={alert.key}
-          icon={alert.kind === "plan" ? <Receipt className="size-4" /> : <MessageCircle className="size-4" />}
+          icon={
+            alert.kind === "plan" ? (
+              <Receipt className="size-4" />
+            ) : alert.kind === "documents" ? (
+              <FileText className="size-4" />
+            ) : (
+              <MessageCircle className="size-4" />
+            )
+          }
           tone={ALERT_TONE[alert.tone]}
           title={alert.title}
           detail={alert.text}

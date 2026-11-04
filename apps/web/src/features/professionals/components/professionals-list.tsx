@@ -10,6 +10,7 @@ import {
   Mail,
   Pencil,
   Phone,
+  FileText,
   Power,
   PowerOff,
   RotateCw,
@@ -51,6 +52,8 @@ interface ProfessionalsListProps {
   onEdit: (professional: ProfessionalView) => void;
   onInactivate: (professional: ProfessionalView) => void;
   onReactivate: (professional: ProfessionalView) => void;
+  /** Documentos do instrutor (doc product/28): so para quem gerencia a equipe. */
+  onDocuments?: (professional: ProfessionalView) => void;
 }
 
 function ProfessionalRow({
@@ -60,6 +63,7 @@ function ProfessionalRow({
   onEdit,
   onInactivate,
   onReactivate,
+  onDocuments,
 }: {
   professional: ProfessionalView;
   canManage: boolean;
@@ -67,6 +71,7 @@ function ProfessionalRow({
   onEdit: (p: ProfessionalView) => void;
   onInactivate: (p: ProfessionalView) => void;
   onReactivate: (p: ProfessionalView) => void;
+  onDocuments?: (p: ProfessionalView) => void;
 }) {
   const team = useTeamWords();
   const isActive = professional.status === "active";
@@ -79,6 +84,16 @@ function ProfessionalRow({
           icon: <Pencil className="size-4" />,
           onSelect: () => onEdit(professional),
         },
+        ...(onDocuments
+          ? [
+              {
+                key: "documents",
+                label: "Documentos",
+                icon: <FileText className="size-4" />,
+                onSelect: () => onDocuments(professional),
+              },
+            ]
+          : []),
         isActive
           ? {
               key: "inactivate",
@@ -176,6 +191,7 @@ function ProfessionalCard({
   onEdit,
   onInactivate,
   onReactivate,
+  onDocuments,
 }: {
   professional: ProfessionalView;
   canManage: boolean;
@@ -183,6 +199,7 @@ function ProfessionalCard({
   onEdit: (p: ProfessionalView) => void;
   onInactivate: (p: ProfessionalView) => void;
   onReactivate: (p: ProfessionalView) => void;
+  onDocuments?: (p: ProfessionalView) => void;
 }) {
   const team = useTeamWords();
   const isActive = professional.status === "active";
@@ -195,6 +212,16 @@ function ProfessionalCard({
           icon: <Pencil className="size-4" />,
           onSelect: () => onEdit(professional),
         },
+        ...(onDocuments
+          ? [
+              {
+                key: "documents",
+                label: "Documentos",
+                icon: <FileText className="size-4" />,
+                onSelect: () => onDocuments(professional),
+              },
+            ]
+          : []),
         isActive
           ? {
               key: "inactivate",
@@ -355,6 +382,7 @@ export function ProfessionalsList({
   onEdit,
   onInactivate,
   onReactivate,
+  onDocuments,
 }: ProfessionalsListProps) {
   const team = useTeamWords();
   const [search, setSearch] = useState("");
@@ -436,6 +464,7 @@ export function ProfessionalsList({
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
+        onDocuments={onDocuments}
       />
     ));
   }
@@ -497,6 +526,7 @@ export function ProfessionalsList({
               onEdit={onEdit}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
+              onDocuments={onDocuments}
             />
           ))}
         </div>
