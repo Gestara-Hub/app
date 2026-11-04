@@ -12,6 +12,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,8 @@ export interface SelectOption {
   value: string;
   /** Texto do campo depois de escolhido, quando a lista usa um rotulo longo ("SP" para "SP · São Paulo"). */
   shortLabel?: string;
+  /** Titulo do grupo na lista ("Saúde"); opcoes seguidas do mesmo grupo ficam sob um titulo so. Vazio: so a linha separando. */
+  group?: string;
 }
 
 interface SelectFieldProps<T extends FieldValues> {
@@ -122,14 +126,21 @@ export function SelectField<T extends FieldValues>({
                   align="start"
                   className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
                 >
-                  {options.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onSelect={() => field.onChange(option.value)}
-                    >
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
+                  {options.map((option, index) => {
+                    // Grupo muda: linha separando; titulo so quando o grupo tem nome.
+                    const startsGroup = option.group !== undefined && option.group !== options[index - 1]?.group;
+                    return [
+                      startsGroup && index > 0 ? <DropdownMenuSeparator key={`sep-${option.value}`} /> : null,
+                      startsGroup && option.group ? (
+                        <DropdownMenuLabel key={`group-${option.value}`} className="text-xs font-medium text-muted-foreground">
+                          {option.group}
+                        </DropdownMenuLabel>
+                      ) : null,
+                      <DropdownMenuItem key={option.value} onSelect={() => field.onChange(option.value)}>
+                        {option.label}
+                      </DropdownMenuItem>,
+                    ];
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
               {clearable && selected && selected.value !== "" && !disabled ? (
