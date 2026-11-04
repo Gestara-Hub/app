@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -14,7 +14,10 @@ import {
   GraduationCap,
   Plus,
   RotateCw,
+  Smartphone,
+  Sparkles,
   Wallet,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,9 +37,12 @@ import {
   useClassSessions,
 } from "@/features/turmas";
 import { Onboarding } from "@/features/onboarding";
-import { useCurrentUser } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
+import { useSubscription } from "@/features/settings";
+import { useWhatsAppConnection } from "@/features/communication";
 import { BirthdaysCard } from "./birthdays-card";
 import { DashboardTodo } from "./dashboard-todo";
+import { useBellAlerts } from "./reminders-bell";
 
 function Kpi({
   icon,
@@ -190,6 +196,9 @@ function useAcademyDashboard() {
 type DashboardData = ReturnType<typeof useAcademyDashboard>;
 
 function DashboardKpis({ d }: { d: DashboardData }) {
+  const can = useCan();
+  const canViewFinance = can("finance:view");
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Kpi
@@ -220,21 +229,51 @@ function DashboardKpis({ d }: { d: DashboardData }) {
         }
         href="/classes"
       />
-      <Kpi
-        icon={<Wallet className="size-5" />}
-        iconColor="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-        label="Mensalidades recebidas"
-        value={formatCents(d.paidRevenue)}
-        href="/classes/billing"
-        badge={
-          d.overdueCount > 0 ? (
-            <Badge variant="destructive" className="h-4.5 px-1.5 text-[10px] font-semibold">
-              {d.overdueCount} em atraso
-            </Badge>
-          ) : null
-        }
-        hint={d.revenueHint}
-      />
+      {canViewFinance ? (
+        <Kpi
+          icon={<Wallet className="size-5" />}
+          iconColor="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          label="Mensalidades recebidas"
+          value={formatCents(d.paidRevenue)}
+          href="/classes/billing"
+          badge={
+            d.overdueCount > 0 ? (
+              <Badge variant="destructive" className="h-4.5 px-1.5 text-[10px] font-semibold">
+                {d.overdueCount} em atraso
+              </Badge>
+            ) : null
+          }
+          hint={d.revenueHint}
+        />
+      ) : (
+        <Kpi
+          icon={<Wallet className="size-5" />}
+          iconColor={
+            d.overdueCount > 0
+              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+              : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          }
+          label="Cobranças em atraso"
+          value={d.overdueCount > 0 ? String(d.overdueCount) : "Nenhuma"}
+          href="/classes/billing"
+          badge={
+            d.overdueCount > 0 ? (
+              <Badge variant="destructive" className="h-4.5 px-1.5 text-[10px] font-semibold">
+                Pendente
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="h-4.5 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                Em dia
+              </Badge>
+            )
+          }
+          hint={
+            d.overdueCount > 0
+              ? `${plural(d.overdueCount, "cobrança precisando", "cobranças precisando")} de atenção`
+              : "Todas as mensalidades do mês em dia"
+          }
+        />
+      )}
     </div>
   );
 }
@@ -447,10 +486,68 @@ function DashboardMainGrid({ d }: { d: DashboardData }) {
   );
 }
 
+/** Banner de boas-vindas ao Pro quando o WhatsApp oficial ainda não foi conectado. */
+function ProActivationBanner() {
+  const { data: subscription } = useSubscription();
+  const { data: connection } = useWhatsAppConnection();
+  const can = useCan();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+  if (!can("communication:manage")) return null;
+  if (subscription?.tier !== "pro" && subscription?.tier !== "scale") return null;
+  if (subscription?.status !== "active") return null;
+  if (connection?.officialStatus === "connected") return null;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-xs">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3.5">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <Sparkles className="size-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                Plano Profissional ativo
+              </span>
+              <h3 className="text-sm font-bold text-foreground">
+                Próximo passo: ative o envio automático pelo WhatsApp oficial
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+              Para que lembretes de aula, cobranças e mensagens de boas-vindas sejam disparados sozinhos sem precisar do botão manual no aparelho, conecte o número do seu espaço à API oficial da Meta.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <Button asChild size="sm" className="gap-1.5 font-bold text-xs shadow-xs">
+            <Link href="/communication?tab=connection">
+              <Smartphone className="size-3.5" />
+              Conectar agora
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setDismissed(true)}
+            className="size-8 text-muted-foreground hover:text-foreground"
+            title="Fechar aviso"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Corpo do dashboard (estados + KPIs + blocos). */
 function AcademyDashboardBody() {
   const d = useAcademyDashboard();
   const user = useCurrentUser();
+  const alerts = useBellAlerts(d.todayDate);
 
   if (!d.hasOperatingData) {
     return user.profile !== "owner" && !d.isPending ? (
@@ -495,7 +592,7 @@ function AcademyDashboardBody() {
       <DashboardKpis d={d} />
       {/* Pendencias do dia no topo, sem precisar rolar (some quando nao ha nada) */}
       {d.isClient ? (
-        <DashboardTodo today={d.todayDate} />
+        <DashboardTodo today={d.todayDate} alerts={alerts} />
       ) : null}
       <DashboardMainGrid d={d} />
     </div>
@@ -512,7 +609,7 @@ export function AcademyDashboardView() {
   })();
 
   return (
-    <>
+    <div className="space-y-6">
       {hasOperatingData ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PageHeader
@@ -536,9 +633,11 @@ export function AcademyDashboardView() {
         </div>
       ) : null}
 
+      <ProActivationBanner />
+
       <Onboarding />
 
       <AcademyDashboardBody />
-    </>
+    </div>
   );
 }

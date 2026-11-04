@@ -19,11 +19,13 @@ import {
   Lock,
   QrCode,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Zap,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
+import { formatDate } from "@gestarahub/core/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -302,58 +304,153 @@ export function SubscriptionCheckoutView() {
   // Se o pagamento foi concluído com sucesso, exibe a tela de confirmação
   if (step === "success") {
     return (
-      <div className="max-w-2xl mx-auto py-12 px-4">
-        <Card className="rounded-2xl border bg-card shadow-xl text-center p-8 sm:p-10 space-y-8">
-          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">
-            <Check className="size-10 stroke-[3]" />
+      <div className="max-w-2xl mx-auto py-4 sm:py-8">
+        <Card className="rounded-2xl border bg-card shadow-xl p-4 sm:p-6 md:p-8 space-y-6">
+          {/* Header de celebração */}
+          <div className="text-center space-y-3">
+            <div className="relative mx-auto flex size-16 items-center justify-center rounded-2xl bg-linear-to-b from-emerald-500/20 to-emerald-500/5 text-emerald-500 border border-emerald-500/30 ring-8 ring-emerald-500/5 shadow-inner">
+              <Sparkles className="size-8 text-emerald-500" />
+            </div>
+
+            <div className="space-y-1">
+              <Badge
+                variant="outline"
+                className="text-xs px-3 py-0.5 font-bold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              >
+                Assinatura confirmada
+              </Badge>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                Plano {planName} ativado!
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+                Tudo pronto! Seu espaço agora conta com todos os recursos e automações avançadas do GestaraHub.
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2 max-w-lg mx-auto">
-            <Badge
-              variant="outline"
-              className="text-xs px-3 py-1 font-bold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-2"
-            >
-              Assinatura confirmada
-            </Badge>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              Plano {planName} ativado
-            </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed pt-1">
-              Assinatura confirmada.
-              Os recursos do plano já estão liberados na sua conta.
-            </p>
-          </div>
-
-          {/* O que foi liberado */}
-          <div className="rounded-xl border border-border/80 bg-muted/20 p-5 text-left max-w-lg mx-auto space-y-3 text-xs">
-            <p className="font-bold text-foreground border-b border-border/60 pb-2">
-              Liberado agora:
-            </p>
-            <ul className="space-y-2.5 text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>Taxa menor no Pix</strong> a cada mensalidade paga.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>WhatsApp automático:</strong> lembretes e avisos sem clique.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>Relatório do resultado do mês</strong> e retenção de alunos.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>Certificado em PDF</strong> para cursos.</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          {/* Destaque para o Próximo Passo: WhatsApp oficial */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs mt-0.5">
+                <Smartphone className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-bold text-foreground">Próximo passo recomendado</p>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[10px] font-semibold text-primary">
+                    300 mensagens/mês
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
+                  Conecte o número do seu espaço para que cobranças, avisos de aula e boas-vindas saiam sozinhos pelo WhatsApp oficial.
+                </p>
+              </div>
+            </div>
             <Button
               type="button"
-              onClick={() => router.push("/")}
-              className="w-full sm:w-auto px-8 font-bold text-xs shadow-md"
+              onClick={() => router.push("/communication?tab=connection")}
+              size="sm"
+              className="w-full sm:w-auto shrink-0 font-bold text-xs gap-1.5 shadow-xs"
+            >
+              Conectar agora
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
+
+          {/* Grid com outros benefícios liberados */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-left">
+              Outros superpoderes liberados:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5">
+                <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Zap className="size-4" />
+                </div>
+                <p className="text-xs font-bold text-foreground">Taxa de R$ 1,29 no Pix</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Economia direta em todas as mensalidades e cobranças pagas online.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5">
+                <div className="flex size-7 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <p className="text-xs font-bold text-foreground">Relatórios Gerenciais</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Acompanhamento mensal de inadimplência, retenção de alunos e DRE.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5">
+                <div className="flex size-7 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Crown className="size-4" />
+                </div>
+                <p className="text-xs font-bold text-foreground">Certificados em PDF</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Emissão de diplomas oficiais com código de validação para cursos.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Rodapé de navegação */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 border-t border-border/60">
+            <Button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="w-full sm:w-auto px-6 font-bold text-xs"
+            >
+              Ir para o painel principal
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/plans")}
+              className="w-full sm:w-auto px-6 font-semibold text-xs"
+            >
+              Ver detalhes do plano
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentSub = organization?.subscription;
+  const isAlreadyActive =
+    currentSub?.status === "active" && currentSub.tier !== "free";
+
+  if (isAlreadyActive && step === "config") {
+    return (
+      <div className="max-w-xl mx-auto py-4 sm:py-8 text-center">
+        <Card className="rounded-2xl border bg-card p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            <CheckCircle2 className="size-7" />
+          </div>
+          <div className="space-y-1.5">
+            <Badge
+              variant="outline"
+              className="text-xs px-3 py-1 font-bold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-1"
+            >
+              Plano em uso
+            </Badge>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              Você já possui o Plano {subscriptionTierLabel(currentSub.tier)}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed pt-1">
+              Sua assinatura está ativa e com todos os recursos liberados.
+              {currentSub.renewsOn || currentSub.nextDueDate ? (
+                <> A próxima renovação está prevista para <strong>{formatDate(currentSub.renewsOn || currentSub.nextDueDate!)}</strong>.</>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+            <Button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="w-full sm:w-auto px-6 font-bold text-xs"
             >
               Ir para o painel
             </Button>
@@ -363,7 +460,7 @@ export function SubscriptionCheckoutView() {
               onClick={() => router.push("/plans")}
               className="w-full sm:w-auto px-6 font-semibold text-xs"
             >
-              Ver o plano
+              Gerenciar plano
             </Button>
           </div>
         </Card>
@@ -494,8 +591,8 @@ export function SubscriptionCheckoutView() {
                               className={cn(
                                 "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-tight transition-colors border",
                                 isYearly
-                                  ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
-                                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                                  ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40"
+                                  : "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/20",
                               )}
                             >
                               2 meses grátis
@@ -505,7 +602,7 @@ export function SubscriptionCheckoutView() {
                       </div>
 
                       {isYearly && (
-                        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-300">
                           <Zap className="size-3.5 shrink-0" />
                           <span>{savingsNotice}</span>
                         </div>

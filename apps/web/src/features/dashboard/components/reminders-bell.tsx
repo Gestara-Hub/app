@@ -9,7 +9,12 @@ import { useCan, useCurrentUser, useModel } from "@/features/auth";
 import { useWhatsAppConnection } from "@/features/communication";
 import { useSubscription } from "@/features/settings";
 import { seesPlanNotices } from "@/lib/plan-notice-copy";
-import { planBellAlert, quotaBellAlert, type BellAlert } from "../bell-alerts";
+import {
+  planBellAlert,
+  quotaBellAlert,
+  whatsappPendingConnectionBellAlert,
+  type BellAlert,
+} from "../bell-alerts";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -27,12 +32,16 @@ export function RemindersBell() {
 }
 
 /** Avisos do plano e da franquia, so para quem ve os avisos do plano. */
-function useBellAlerts(today: string): BellAlert[] {
+export function useBellAlerts(today: string): BellAlert[] {
   const eligible = seesPlanNotices(useCurrentUser().profile);
   const { data: subscription } = useSubscription();
   const { data: connection } = useWhatsAppConnection(eligible);
   if (!eligible) return [];
-  return [planBellAlert(subscription, today), quotaBellAlert(connection)].filter((alert) => alert !== null);
+  return [
+    planBellAlert(subscription, today),
+    whatsappPendingConnectionBellAlert(connection),
+    quotaBellAlert(connection),
+  ].filter((alert): alert is BellAlert => alert !== null);
 }
 
 function RemindersBellButton() {

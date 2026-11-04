@@ -73,3 +73,20 @@ export function quotaBellAlert(connection: WhatsAppConnectionView | undefined): 
     tone: "info",
   };
 }
+
+/**
+ * Alerta no sino para quem assinou o Pro ou superior mas ainda não conectou o
+ * WhatsApp oficial da Meta ao número do seu espaço.
+ */
+export function whatsappPendingConnectionBellAlert(connection: WhatsAppConnectionView | undefined): BellAlert | null {
+  if (!connection?.canUseOfficial || connection.officialStatus === "connected") return null;
+  return {
+    key: "messages:official:not_connected",
+    kind: "messages",
+    title: "Ative o WhatsApp oficial",
+    text: "Conecte o número do seu espaço para liberar o envio 100% automático de mensagens.",
+    tone: "info",
+    href: "/communication?tab=connection",
+    action: "Conectar",
+  };
+}

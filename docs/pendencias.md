@@ -85,7 +85,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | Segurança, sobras da revisão geral de 31/10/2026: estreitar a leitura direta de presenças, matrículas, reservas, espera e equipe; registro de serviços negando por padrão (permissão obrigatória em todo método); reconferir no Asaas o pagamento do webhook antes da baixa; `organizations.settings` (chave Pix) legível por todos do espaço; `/p/<código>` gravando `opened_at` | `handoff/2026-10-31-revisao-geral.md`, O que ficou para depois |
 | `ASAAS_WEBHOOK_EMAIL` (contato@gestarahub.com.br) na Vercel; webhooks de subcontas já criadas só pegam ao registrar de novo | `technical/19-desempenho-e-escala.md` |
 | Aprovar a conta do MailerSend ("Get approved"); hoje só entrega para 1 destinatário | Painel do MailerSend (ação sua, não é código) |
-| App da Meta: revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management` e virada para o modo de produção (precisa do domínio com `/privacy` e `/terms`) | `technical/07-integracao-whatsapp.md` |
+| App da Meta: configuração do Webhook em produção (`/api/webhooks/whatsapp`), segredo `META_APP_SECRET`, revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management` e virada para o modo de produção (com domínio, `/privacy` e `/terms`) | `technical/07-integracao-whatsapp.md` §3.5.1 |
 
 ## Só se você pedir
 
