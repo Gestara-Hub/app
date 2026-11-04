@@ -48,10 +48,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
+      <body className="min-h-full">
+        {/* Scripts de antes da pintura no comeco do <body>, nao no <head>
+            (04/11/2026): extensoes do navegador injetam <script> no <head> antes
+            de hidratar, e o React pareava o delas com o nosso primeiro script
+            (erro de hidratacao). No <body> rodam do mesmo jeito antes do conteudo. */}
         {/* Tema antes da pintura. next/script com beforeInteractive (e nao <script>
             cru): o React 19 avisa quando um componente renderiza <script>, que no
-            cliente nunca executa; o Next injeta este no <head> antes de hidratar. */}
+            cliente nunca executa; o Next roda este antes de hidratar. */}
         <Script
           id="gh-theme-pre-paint"
           strategy="beforeInteractive"
@@ -90,8 +94,6 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }}
         />
-      </head>
-      <body className="min-h-full">
         <Providers>
           {children}
           <AnalyticsConsentBanner />
