@@ -44,6 +44,8 @@ interface SessionContextValue {
   model: OperationalModel;
   /** Tier do plano GestaraHub resolvido no server (cookie espelho / seed). */
   initialTier: SubscriptionTier;
+  /** A conta entra so pelo Google: sem senha nem verificacao em duas etapas aqui. */
+  googleOnly: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -62,6 +64,7 @@ export function SessionProvider({
   model,
   tier = "free",
   timeZone,
+  googleOnly = false,
   children,
 }: {
   user: UserView;
@@ -70,6 +73,8 @@ export function SessionProvider({
   tier?: SubscriptionTier;
   /** Fuso do espaco (resolvido no server): o "hoje" do navegador sai dele. */
   timeZone?: string;
+  /** Conta so do Google (resolvido no server, ver getSessionGoogleOnly). */
+  googleOnly?: boolean;
   children: ReactNode;
 }) {
   // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
@@ -110,8 +115,9 @@ export function SessionProvider({
       can: (permission) => canFn(user, permission),
       model,
       initialTier: tier,
+      googleOnly,
     }),
-    [user, model, tier],
+    [user, model, tier, googleOnly],
   );
   // Publica o ator ambiente lido pela camada de services (auditoria carimba o
   // autor de cada mutacao sem receber o ator por parametro). Espelha o principal
@@ -233,6 +239,11 @@ function useSession(): SessionContextValue {
 
 export function useCurrentUser(): UserView {
   return useSession().user;
+}
+
+/** A conta entra so pelo Google (a seguranca da conta fica no Google). */
+export function useGoogleOnlyAccount(): boolean {
+  return useSession().googleOnly;
 }
 
 export function useCan(): (permission: Permission) => boolean {

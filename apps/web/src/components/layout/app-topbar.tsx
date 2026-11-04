@@ -24,7 +24,7 @@ import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
-import { TwoFactorDialog, useCurrentUser } from "@/features/auth";
+import { TwoFactorDialog, useCurrentUser, useGoogleOnlyAccount } from "@/features/auth";
 import { useOrganization, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
@@ -36,6 +36,8 @@ import { openHelp, useSupportUnread } from "@/features/support";
 export function AppTopbar() {
   const team = useTeamWords();
   const user = useCurrentUser();
+  // Conta so do Google: senha e duas etapas ficam no Google, sem Seguranca aqui.
+  const googleOnly = useGoogleOnlyAccount();
   const { data: unit } = useUnit();
   const { data: organization, isError: orgError } = useOrganization();
   const router = useRouter();
@@ -123,10 +125,12 @@ export function AppTopbar() {
               <SlidersHorizontal className="size-4" />
               <span>Preferências</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
-              <ShieldCheck className="size-4" />
-              <span>Segurança</span>
-            </DropdownMenuItem>
+            {googleOnly ? null : (
+              <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
+                <ShieldCheck className="size-4" />
+                <span>Segurança</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             {/* Ajuda e o Fale com a gente num item so: o painel de Ajuda termina
                 com falar com a gente, relatar problema e sugerir melhoria. */}
@@ -181,7 +185,7 @@ export function AppTopbar() {
       </div>
     </header>
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
-    <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />
+    {googleOnly ? null : <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />}
     </>
   );
 }

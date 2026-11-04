@@ -4,6 +4,8 @@ import { DEFAULT_SPACE_TIME_ZONE, resolveSpaceTimeZone, type SpaceTimeZone } fro
 import { SESSION_COOKIE, isSupabaseOrganization } from "@/lib/session";
 import { decodeSession } from "@/lib/session-cookie";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isGoogleOnlyAccount } from "@/lib/security/two-factor-rules";
 import { store } from "@/mocks/store";
 import type { SubscriptionTier, UserProfile, UserView } from "@gestarahub/contracts";
 
@@ -51,6 +53,31 @@ export async function getCurrentUser(): Promise<UserView | null> {
       ? { id: professional.id, name: professional.name, status: professional.status }
       : undefined,
   };
+}
+
+/**
+ * A conta entra so pelo Google (sem senha)? Le os provedores da sessao do
+ * Supabase no proprio cookie, sem ida ao servidor de autenticacao: serve so
+ * para a tela (esconder Seguranca no menu da conta, 04/11/2026). As acoes de
+ * verificacao conferem de novo no servidor.
+ */
+export async function getSessionGoogleOnly(user: Pick<UserView, "organizationId">): Promise<boolean> {
+  if (!isSupabaseOrganization(user.organizationId)) return false;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getSession();
+    // Os provedores vem no proprio token (claim app_metadata); ler `session.user`
+    // no server faria o Supabase avisar no log a cada tela.
+    const token = data.session?.access_token;
+    if (!token) return false;
+    const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as {
+      app_metadata?: { providers?: unknown };
+    };
+    const providers = payload.app_metadata?.providers;
+    return Array.isArray(providers) && isGoogleOnlyAccount(providers.map(String));
+  } catch {
+    return false;
+  }
 }
 
 /**

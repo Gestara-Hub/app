@@ -5,7 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
-import { getCurrentUser, getSessionTimeZone } from "@/features/auth/get-current-user";
+import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { BrowserErrorReporter, SecurityPromptHost } from "@/features/auth";
 import { ScheduleNoticeHost } from "@/features/turmas";
@@ -37,6 +37,8 @@ export default async function AppLayout({
   const tier = await getOrganizationTier(user);
   // Fuso do espaco: "hoje" e "agora" do navegador saem dele, nao do aparelho.
   const timeZone = await getSessionTimeZone(user);
+  // Conta so do Google: o menu da conta nao mostra Seguranca.
+  const googleOnly = await getSessionGoogleOnly(user);
 
   // Estado de colapso da sidebar persistido pelo shadcn no cookie `sidebar_state`.
   const cookieStore = await cookies();
@@ -55,7 +57,7 @@ export default async function AppLayout({
   }
 
   return (
-    <SessionProvider user={user} model={model} tier={tier} timeZone={timeZone}>
+    <SessionProvider user={user} model={model} tier={tier} timeZone={timeZone} googleOnly={googleOnly}>
       <UserPreferencesProvider>
         <ViewModeProvider initialModes={initialViewModes}>
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
