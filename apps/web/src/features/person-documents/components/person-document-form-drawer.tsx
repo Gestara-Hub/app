@@ -79,7 +79,8 @@ function DocumentForm({
   const onSubmit = form.handleSubmit(async (v) => {
     const payload = {
       kind: v.kind as PersonDocumentKind,
-      title: v.title.trim(),
+      // Fora do "Outro" o nome nao vale (trocar de "Outro" para outro tipo limpa).
+      title: v.kind === "other" ? v.title.trim() : "",
       expiresOn: v.expiresOn,
       notes: v.notes.trim(),
     };
@@ -108,13 +109,16 @@ function DocumentForm({
       <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogBody className="space-y-4">
           <SelectField<Values> name="kind" label="Tipo" required options={options} disabled={pending} placeholder="Escolha o tipo" />
-          <InputText<Values>
-            name="title"
-            label={kind === "other" ? "Nome do documento" : "Nome do documento (opcional)"}
-            required={kind === "other"}
-            placeholder="Informe como quer ver na ficha"
-            disabled={pending}
-          />
+          {/* Nome so no "Outro" (obrigatorio); nos demais a ficha usa o nome do tipo. */}
+          {kind === "other" ? (
+            <InputText<Values>
+              name="title"
+              label="Nome do documento"
+              required
+              placeholder="Informe o nome do documento"
+              disabled={pending}
+            />
+          ) : null}
           {document ? (
             <div className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
               <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

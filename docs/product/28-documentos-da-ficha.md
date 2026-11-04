@@ -18,7 +18,7 @@ Decidido e feito em 04/11/2026. Guarda na ficha os documentos que o espaço pede
 
 - **Aluno:** atestado médico, termo de responsabilidade, autorização de imagem, laudo ou orientação médica, comprovante de graduação, contrato e outro.
 - **Instrutor:** registro profissional (CREF), certificado de formação, contrato, antecedentes criminais e outro.
-- **Outro:** pede um nome. Nos demais tipos o nome é opcional e, sem ele, a ficha mostra o nome do tipo.
+- **Outro:** ao escolher, aparece o campo "Nome do documento", obrigatório. Nos demais tipos o campo não aparece e a ficha mostra o nome do tipo; trocar de "Outro" para outro tipo limpa o nome.
 - **Validade:** é opcional em todos. Atestado, CREF e antecedentes mostram o campo "Válido até" como esperado, com a frase "Avisamos antes de vencer".
 - **Arquivo:** um por documento, foto ou PDF, até 10 MB.
 
