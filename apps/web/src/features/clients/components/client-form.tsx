@@ -248,6 +248,8 @@ interface ClientFormProps {
   isPage?: boolean;
   /** Avisa o diálogo se há alterações não salvas (para confirmar o descarte). */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Abre ja nesta parte, rolada e com foco ("Trocar plano" da ficha). */
+  initialSection?: "plan";
 }
 
 export function ClientForm({
@@ -257,6 +259,7 @@ export function ClientForm({
   formId,
   isPage = false,
   onDirtyChange,
+  initialSection,
 }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
@@ -458,7 +461,30 @@ export function ClientForm({
     }
   }, [client, ownedPackages, currentPackage, form, isClasses, areaBillingMode]);
 
-  const [planOpen, setPlanOpen] = useState(() => !client);
+  const [planOpen, setPlanOpen] = useState(() => !client || initialSection === "plan");
+  // "Trocar plano" na ficha: rola ate Plano e mensalidade e foca o campo do
+  // plano (ou o primeiro campo da parte, quando o aluno nao paga por plano).
+  const planSectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (initialSection !== "plan") return;
+    const frame = requestAnimationFrame(() => {
+      const section = planSectionRef.current;
+      if (!section) return;
+      section.scrollIntoView({ block: "start", behavior: "smooth" });
+      // Em ordem de preferencia: o campo do plano, a forma de pagar marcada, o resto.
+      const target = [
+        '[data-focus-target="plan"] button',
+        '[role="radio"][aria-checked="true"]',
+        "button:not([aria-expanded]), input, [tabindex='0']",
+      ]
+        .map((selector) => section.querySelector<HTMLElement>(selector))
+        .find(Boolean);
+      // Toque: campo de texto nao recebe foco sozinho (o teclado subiria).
+      const typing = target instanceof HTMLInputElement && window.matchMedia("(pointer: coarse)").matches;
+      if (!typing) target?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialSection]);
   const [addressOpen, setAddressOpen] = useState(
     Boolean(
       client?.address?.street ||
@@ -1348,6 +1374,7 @@ export function ClientForm({
 
         {/* Bloco 2: Plano e mensalidade (específico de classes/academia) */}
         {isClasses ? (
+          <div ref={planSectionRef} className="scroll-mt-4">
           <CollapsibleSection
             title="Plano e mensalidade"
             icon={<Wallet className="h-4 w-4" />}
@@ -1489,7 +1516,7 @@ export function ClientForm({
 
               {usesPlan ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-                  <div className={showStartDate ? "sm:col-span-3" : "sm:col-span-5"}>
+                  <div className={showStartDate ? "sm:col-span-3" : "sm:col-span-5"} data-focus-target="plan">
                     <ComboboxField<ClientFormValues>
                       name="planId"
                       label={planFieldLabel}
@@ -1825,6 +1852,7 @@ export function ClientForm({
               ) : null}
             </div>
           </CollapsibleSection>
+          </div>
         ) : null}
 
         {/* Responsáveis (opcional, só turmas ou menor de idade): recolhido por padrão */}

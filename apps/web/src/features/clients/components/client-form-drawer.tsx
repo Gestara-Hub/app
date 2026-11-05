@@ -15,6 +15,8 @@ interface ClientFormDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client?: Client;
+  /** Abre ja nesta parte, com foco nela ("Trocar plano" da ficha). */
+  initialSection?: "plan";
 }
 
 /**
@@ -26,6 +28,7 @@ export function ClientFormDrawer({
   open,
   onOpenChange,
   client,
+  initialSection,
 }: ClientFormDrawerProps) {
   const isClasses = useModel() === "classes";
   const isEdit = Boolean(client);
@@ -36,6 +39,8 @@ export function ClientFormDrawer({
         side="right"
         className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
+        // Com uma parte pedida, o foco vai para ela (o formulario cuida), nao para o nome.
+        onOpenAutoFocus={initialSection ? (event) => event.preventDefault() : undefined}
       >
         <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
           <SheetTitle className="text-lg font-semibold text-foreground">
@@ -58,8 +63,9 @@ export function ClientFormDrawer({
           </SheetDescription>
         </SheetHeader>
         <ClientForm
-          key={client?.id ?? (open ? "open" : "closed")}
+          key={`${client?.id ?? (open ? "open" : "closed")}-${initialSection ?? ""}`}
           client={client}
+          initialSection={initialSection}
           formId="client-form-drawer"
           onSuccess={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}

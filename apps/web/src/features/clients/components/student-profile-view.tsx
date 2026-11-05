@@ -249,7 +249,13 @@ export function StudentProfileView({ id }: { id: Id }) {
     );
   };
 
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpenState] = useState(false);
+  // "Trocar plano" abre o cadastro ja em Plano e mensalidade; o resto abre do topo.
+  const [editSection, setEditSection] = useState<"plan" | undefined>(undefined);
+  const setEditOpen = (open: boolean, section?: "plan") => {
+    if (open) setEditSection(section);
+    setEditOpenState(open);
+  };
   const [inactivateOpen, setInactivateOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
@@ -515,7 +521,7 @@ export function StudentProfileView({ id }: { id: Id }) {
             content: (
               <StudentPlanPanel
                 summary={summary}
-                onEditPlan={canManage ? () => setEditOpen(true) : undefined}
+                onEditPlan={canManage ? () => setEditOpen(true, "plan") : undefined}
                 canManagePackages={canCharge}
                 onSellPackage={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
               />
@@ -645,8 +651,9 @@ export function StudentProfileView({ id }: { id: Id }) {
 
       <ClientFormDrawer
         open={editOpen}
-        onOpenChange={setEditOpen}
+        onOpenChange={(open) => setEditOpen(open, editSection)}
         client={student}
+        initialSection={editSection}
       />
       <InactivateClientDialog
         client={inactivateOpen ? student : null}
