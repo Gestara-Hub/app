@@ -51,8 +51,8 @@ export function StudentDataTab({
 }: {
   summary: StudentSummary;
   isClasses: boolean;
-  /** Ausente sem permissao de editar. */
-  onEdit?: () => void;
+  /** Ausente sem permissao de editar. Recebe o primeiro campo que falta. */
+  onEdit?: (field?: "phone" | "email" | "birthDate") => void;
 }) {
   const { student } = summary;
   const guardians = student.guardians ?? [];
@@ -61,11 +61,14 @@ export function StudentDataTab({
   const confirmPaperMutation = useConfirmPaperMinorConsent();
   // Termo em PDF: gerado no servidor (conta real).
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
-  const missing = [
-    student.phone ? null : "telefone",
-    student.email ? null : "e-mail",
-    student.birthDate ? null : "nascimento",
-  ].filter((item): item is string => item !== null);
+  const missingFields = (
+    [
+      ["phone", "telefone", student.phone],
+      ["email", "e-mail", student.email],
+      ["birthDate", "nascimento", student.birthDate],
+    ] as const
+  ).filter(([, , value]) => !value);
+  const missing = missingFields.map(([, label]) => label);
 
   const handleConfirmPaper = async () => {
     try {
@@ -142,7 +145,7 @@ export function StudentDataTab({
               {" · "}
               <button
                 type="button"
-                onClick={onEdit}
+                onClick={() => onEdit(missingFields[0]?.[0])}
                 className="cursor-pointer font-medium text-primary underline-offset-4 hover:underline"
               >
                 Completar cadastro

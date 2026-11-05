@@ -248,9 +248,14 @@ interface ClientFormProps {
   isPage?: boolean;
   /** Avisa o diálogo se há alterações não salvas (para confirmar o descarte). */
   onDirtyChange?: (dirty: boolean) => void;
-  /** Abre ja nesta parte, rolada e com foco ("Trocar plano" da ficha). */
-  initialSection?: "plan";
+  /**
+   * Abre ja com foco aqui: "plan" (Trocar plano da ficha) ou o campo que falta
+   * (Completar cadastro).
+   */
+  initialFocus?: ClientFormFocus;
 }
+
+export type ClientFormFocus = "plan" | "phone" | "email" | "birthDate";
 
 export function ClientForm({
   client,
@@ -259,7 +264,7 @@ export function ClientForm({
   formId,
   isPage = false,
   onDirtyChange,
-  initialSection,
+  initialFocus,
 }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
@@ -461,30 +466,43 @@ export function ClientForm({
     }
   }, [client, ownedPackages, currentPackage, form, isClasses, areaBillingMode]);
 
-  const [planOpen, setPlanOpen] = useState(() => !client || initialSection === "plan");
+  const [planOpen, setPlanOpen] = useState(() => !client || initialFocus === "plan");
   // "Trocar plano" na ficha: rola ate Plano e mensalidade e foca o campo do
   // plano (ou o primeiro campo da parte, quando o aluno nao paga por plano).
+  // "Completar cadastro": foca o campo que falta (telefone, e-mail, nascimento).
   const planSectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (initialSection !== "plan") return;
-    const frame = requestAnimationFrame(() => {
-      const section = planSectionRef.current;
-      if (!section) return;
-      section.scrollIntoView({ block: "start", behavior: "smooth" });
-      // Em ordem de preferencia: o campo do plano, a forma de pagar marcada, o resto.
-      const target = [
-        '[data-focus-target="plan"] button',
-        '[role="radio"][aria-checked="true"]',
-        "button:not([aria-expanded]), input, [tabindex='0']",
-      ]
-        .map((selector) => section.querySelector<HTMLElement>(selector))
-        .find(Boolean);
-      // Toque: campo de texto nao recebe foco sozinho (o teclado subiria).
-      const typing = target instanceof HTMLInputElement && window.matchMedia("(pointer: coarse)").matches;
-      if (!typing) target?.focus({ preventScroll: true });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [initialSection]);
+    if (!initialFocus) return;
+    // Direto na montagem: os campos ja existem e a gaveta nao puxa o foco
+    // (onOpenAutoFocus cancelado). Sem requestAnimationFrame, que nao roda
+    // com a aba em segundo plano.
+    if (initialFocus !== "plan") {
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      // Toque: so rola ate o campo (o teclado nao sobe sozinho).
+      if (touch) {
+        document
+          .querySelector(`[name="${initialFocus}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      } else {
+        form.setFocus(initialFocus);
+      }
+      return;
+    }
+    const section = planSectionRef.current;
+    if (!section) return;
+    section.scrollIntoView({ block: "start", behavior: "smooth" });
+    // Em ordem de preferencia: o campo do plano, a forma de pagar marcada, o resto.
+    const target = [
+      '[data-focus-target="plan"] button',
+      '[role="radio"][aria-checked="true"]',
+      "button:not([aria-expanded]), input, [tabindex='0']",
+    ]
+      .map((selector) => section.querySelector<HTMLElement>(selector))
+      .find(Boolean);
+    // Toque: campo de texto nao recebe foco sozinho (o teclado subiria).
+    const typing = target instanceof HTMLInputElement && window.matchMedia("(pointer: coarse)").matches;
+    if (!typing) target?.focus({ preventScroll: true });
+  }, [initialFocus, form]);
   const [addressOpen, setAddressOpen] = useState(
     Boolean(
       client?.address?.street ||

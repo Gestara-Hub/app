@@ -57,6 +57,7 @@ import {
 } from "@/features/turmas";
 import { useStudentSummary, useUpdateClient } from "../hooks/use-clients";
 import { ClientFormDrawer } from "./client-form-drawer";
+import type { ClientFormFocus } from "./client-form";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
@@ -250,10 +251,11 @@ export function StudentProfileView({ id }: { id: Id }) {
   };
 
   const [editOpen, setEditOpenState] = useState(false);
-  // "Trocar plano" abre o cadastro ja em Plano e mensalidade; o resto abre do topo.
-  const [editSection, setEditSection] = useState<"plan" | undefined>(undefined);
-  const setEditOpen = (open: boolean, section?: "plan") => {
-    if (open) setEditSection(section);
+  // "Trocar plano" abre o cadastro ja em Plano e mensalidade; "Completar
+  // cadastro", no campo que falta; o resto abre do topo.
+  const [editFocus, setEditFocus] = useState<ClientFormFocus | undefined>(undefined);
+  const setEditOpen = (open: boolean, focus?: ClientFormFocus) => {
+    if (open) setEditFocus(focus);
     setEditOpenState(open);
   };
   const [inactivateOpen, setInactivateOpen] = useState(false);
@@ -591,7 +593,7 @@ export function StudentProfileView({ id }: { id: Id }) {
         <StudentDataTab
           summary={summary}
           isClasses={isClasses}
-          onEdit={canManage ? () => setEditOpen(true) : undefined}
+          onEdit={canManage ? (field) => setEditOpen(true, field) : undefined}
         />
       ),
     },
@@ -651,9 +653,9 @@ export function StudentProfileView({ id }: { id: Id }) {
 
       <ClientFormDrawer
         open={editOpen}
-        onOpenChange={(open) => setEditOpen(open, editSection)}
+        onOpenChange={(open) => setEditOpen(open, editFocus)}
         client={student}
-        initialSection={editSection}
+        initialFocus={editFocus}
       />
       <InactivateClientDialog
         client={inactivateOpen ? student : null}
