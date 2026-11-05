@@ -7,10 +7,10 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { billingService } from "@/services/billing";
 import { onlinePaymentsService } from "@/services/onlinePayments";
 import type {
+  FileAttachment,
   ChargeFilter,
   CreateExtraCharge,
   CreatePlan,
@@ -112,12 +112,12 @@ export function useMarkChargePaid() {
       id: Id;
       method?: PaymentMethod;
       paidOn?: DateISO;
-      /** Comprovantes escolhidos no diálogo; sobem antes de registrar. */
-      receipts?: File[];
+      /** Comprovantes ja enviados no diálogo (sobem ao serem escolhidos). */
+      receipts?: FileAttachment[];
     }) =>
       billingService.markPaid(id, method, {
         paidOn,
-        receipts: receipts.length > 0 ? await attachmentsService.upload(receipts) : undefined,
+        receipts: receipts.length > 0 ? receipts : undefined,
       }),
     onSuccess: () => invalidateMoney(qc),
   });

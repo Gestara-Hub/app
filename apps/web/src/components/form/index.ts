@@ -21,6 +21,7 @@ export {
   type SegmentedChoiceOption,
 } from "./segmented-choice-field";
 export { FileDropField, FileDropzone, type FileDropzoneProps } from "./file-drop-field";
+export { FileUploaderProvider, useFileUploader, type FileUploader } from "./file-uploader-context";
 export { PaymentMethodField } from "./payment-method-field";
 export { DialogFormFooter } from "./dialog-form-footer";
 export { AddressFields } from "./address-fields";

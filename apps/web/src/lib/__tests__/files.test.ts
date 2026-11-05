@@ -8,6 +8,9 @@ import {
   formatBytes,
   matchesAccept,
   sameFile,
+  uploadedAttachments,
+  uploadsSchema,
+  type UploadItem,
 } from "@/lib/files";
 
 function makeFile(name: string, type: string, size = 10, lastModified = 1): File {
@@ -179,5 +182,38 @@ describe("filesSchema", () => {
     const result = filesSchema(RECEIPT_FILE_RULES).safeParse([{ name: "a.png", type: "image/png" }]);
     expect(result.success).toBe(false);
     expect(messages(result)).toContain("Arquivo inválido.");
+  });
+});
+
+describe("uploadsSchema (arquivo sobe ao ser escolhido)", () => {
+  const item = (status: "uploading" | "done" | "error", name = "a.png"): UploadItem => ({
+    key: name + status,
+    file: makeFile(name, "image/png", 10),
+    status,
+    ...(status === "done" ? { attachment: { id: `id-${name}`, name, contentType: "image/png", sizeBytes: 10, uploadedAt: "2026-11-04T12:00:00.000Z" } } : {}),
+  });
+
+  it("todos enviados: valida e entrega os anexos na ordem", () => {
+    const items = [item("done", "a.png"), item("done", "b.png")];
+    expect(uploadsSchema(RECEIPT_FILE_RULES).safeParse(items).success).toBe(true);
+    expect(uploadedAttachments(items).map((a) => a.id)).toEqual(["id-a.png", "id-b.png"]);
+  });
+
+  it("enviando ou com falha não salva, com a mensagem certa", () => {
+    expect(messages(uploadsSchema(RECEIPT_FILE_RULES).safeParse([item("done"), item("uploading", "b.png")]))).toEqual([
+      "Aguarde o envio dos arquivos.",
+    ]);
+    expect(messages(uploadsSchema(RECEIPT_FILE_RULES).safeParse([item("error", "b.png")]))).toEqual([
+      "Envie de novo ou tire o arquivo que falhou.",
+    ]);
+  });
+
+  it("obrigatório e regras de arquivo continuam valendo", () => {
+    expect(messages(uploadsSchema({ ...RECEIPT_FILE_RULES, required: true }).safeParse([]))).toEqual([
+      "Anexe pelo menos um arquivo.",
+    ]);
+    const big: UploadItem = { key: "x", file: makeFile("x.png", "image/png", RECEIPT_FILE_RULES.maxSizeBytes + 1), status: "error" };
+    expect(messages(uploadsSchema(RECEIPT_FILE_RULES).safeParse([big]))[0]).toMatch(/^Remova “x.png”/);
+    expect(uploadedAttachments([item("error"), item("uploading")])).toEqual([]);
   });
 });

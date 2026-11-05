@@ -8,8 +8,6 @@ import type {
   UpdatePersonDocument,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { PERSON_DOCUMENT_FILE_RULES } from "@/lib/files";
-import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { personDocumentsService } from "@/services/personDocuments";
 
 /** Documentos mudam a ficha, o sino (vencimentos) e a auditoria. */
@@ -36,14 +34,11 @@ export function useExpiringDocuments(enabled = true) {
   });
 }
 
-/** Sobe o arquivo (armazenamento privado) e depois grava o documento. */
+/** Grava o documento; o arquivo ja subiu no formulario, ao ser escolhido. */
 export function useCreatePersonDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ file, ...payload }: Omit<CreatePersonDocument, "file"> & { file: File }) => {
-      const [uploaded] = await attachmentsService.upload([file], PERSON_DOCUMENT_FILE_RULES, "file");
-      return personDocumentsService.create({ ...payload, file: uploaded });
-    },
+    mutationFn: (payload: CreatePersonDocument) => personDocumentsService.create(payload),
     onSuccess: () => invalidateDocuments(qc),
   });
 }

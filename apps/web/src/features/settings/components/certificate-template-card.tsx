@@ -45,7 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES, filesSchema, fileIssue } from "@/lib/files";
+import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES, fileIssue, uploadedAttachments, uploadsSchema } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
@@ -116,10 +116,10 @@ const schemaFor = (kind: CertificateKind) => z
     showAttendance: z.boolean(),
     /** A logo salva continua (o usuario nao clicou em "Remover"). */
     keepLogo: z.boolean(),
-    logo: filesSchema(CERTIFICATE_LOGO_RULES),
+    logo: uploadsSchema(CERTIFICATE_LOGO_RULES),
     /** "Minha arte": a arte salva continua; `artwork` e o arquivo novo. */
     keepArtwork: z.boolean(),
-    artwork: filesSchema(CERTIFICATE_ARTWORK_RULES),
+    artwork: uploadsSchema(CERTIFICATE_ARTWORK_RULES),
     textPosition: z.enum(CERTIFICATE_TEXT_POSITIONS),
     ink: z.enum(CERTIFICATE_INKS),
     hidden: z.array(z.enum(CERTIFICATE_PARTS)),
@@ -521,13 +521,13 @@ function CertificateTemplateForm({
   const teacherTitle = template.signatures.find((s) => s.name.trim() === SIGNER_NAMES.teacher)?.role || "Instrutor";
 
   const values = useWatch({ control: form.control }) as Values;
-  const newLogo = values.logo?.[0];
+  const newLogo = values.logo?.[0]?.file;
   const newLogoOk = newLogo && !fileIssue(newLogo, CERTIFICATE_LOGO_RULES) ? newLogo : undefined;
   const newLogoUrl = useLocalFileUrl(newLogoOk);
   const savedLogoUrl = useStoredFileUrl(template.logoFileId);
   const logoUrl = newLogoUrl ?? (values.keepLogo ? savedLogoUrl : null);
   const isCustom = values.layout === "custom";
-  const newArtwork = values.artwork?.[0];
+  const newArtwork = values.artwork?.[0]?.file;
   const newArtworkOk = newArtwork && !fileIssue(newArtwork, CERTIFICATE_ARTWORK_RULES) ? newArtwork : undefined;
   const newArtworkUrl = useLocalFileUrl(newArtworkOk);
   const savedArtworkUrl = useStoredFileUrl(template.artwork?.fileId);
@@ -600,8 +600,8 @@ function CertificateTemplateForm({
           ...(v.layout === "custom" ? { artwork: artworkOf(v, v.keepArtwork ? template.artwork?.fileId : "") } : {}),
         },
         keepLogoFileId: v.keepLogo ? template.logoFileId : undefined,
-        logoFile: v.logo[0],
-        artworkFile: v.layout === "custom" ? v.artwork[0] : undefined,
+        newLogo: uploadedAttachments(v.logo)[0],
+        newArtwork: v.layout === "custom" ? uploadedAttachments(v.artwork)[0] : undefined,
         modalityId,
         kind,
       });

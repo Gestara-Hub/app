@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FileAttachment } from "@gestarahub/contracts";
 
 /**
  * Regras de arquivo compartilhadas pelo `FileDropField` (marca o arquivo
@@ -143,6 +144,77 @@ export function filesSchema(rules: FileRules & { required?: boolean }) {
             ? `Remova “${invalid[0].name}”: ${issue.charAt(0).toLowerCase()}${issue.slice(1)}`
             : `Remova os ${invalid.length} arquivos marcados em vermelho.`,
       });
+    }
+  });
+}
+
+/**
+ * Arquivo do campo de anexar (04/11/2026): sobe assim que e escolhido, um por
+ * vez, e cada um tem a sua situacao. O formulario so salva com todos
+ * enviados; quem falhou pode ser enviado de novo ou tirado da lista.
+ */
+export type UploadStatus = "uploading" | "done" | "error";
+
+export interface UploadItem {
+  /** Chave local da linha (o mesmo arquivo escolhido de novo vira outra linha so se for outro). */
+  key: string;
+  file: File;
+  status: UploadStatus;
+  /** Anexo gravado (status "done"). */
+  attachment?: FileAttachment;
+  /** Motivo da falha (status "error"). */
+  error?: string;
+  /** Falha de envio que vale tentar de novo (nao a de formato ou tamanho). */
+  retryable?: boolean;
+}
+
+/** Anexos ja enviados da lista, na ordem. */
+export function uploadedAttachments(items: UploadItem[] | undefined): FileAttachment[] {
+  return (items ?? []).flatMap((item) => (item.status === "done" && item.attachment ? [item.attachment] : []));
+}
+
+const uploadItemSchema = z.custom<UploadItem>(
+  (value) =>
+    typeof value === "object" &&
+    value !== null &&
+    "file" in value &&
+    typeof File !== "undefined" &&
+    (value as UploadItem).file instanceof File,
+  { error: "Arquivo inválido." },
+);
+
+/**
+ * Lista do campo de anexar para o RHF (`UploadItem[]`): as mesmas regras de
+ * `filesSchema` e, alem delas, todos precisam estar enviados para salvar.
+ */
+export function uploadsSchema(rules: FileRules & { required?: boolean }) {
+  return z.array(uploadItemSchema).superRefine((items, ctx) => {
+    if (rules.required && items.length === 0) {
+      ctx.addIssue({ code: "custom", message: "Anexe pelo menos um arquivo." });
+      return;
+    }
+    if (rules.maxFiles !== undefined && items.length > rules.maxFiles) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Anexe no máximo ${rules.maxFiles} ${rules.maxFiles === 1 ? "arquivo" : "arquivos"}.`,
+      });
+    }
+    const invalid = items.filter((item) => fileIssue(item.file, rules));
+    if (invalid.length > 0) {
+      const issue = invalid.length === 1 ? fileIssue(invalid[0].file, rules)! : "";
+      ctx.addIssue({
+        code: "custom",
+        message:
+          invalid.length === 1
+            ? `Remova “${invalid[0].file.name}”: ${issue.charAt(0).toLowerCase()}${issue.slice(1)}`
+            : `Remova os ${invalid.length} arquivos marcados em vermelho.`,
+      });
+      return;
+    }
+    if (items.some((item) => item.status === "uploading")) {
+      ctx.addIssue({ code: "custom", message: "Aguarde o envio dos arquivos." });
+    } else if (items.some((item) => item.status === "error")) {
+      ctx.addIssue({ code: "custom", message: "Envie de novo ou tire o arquivo que falhou." });
     }
   });
 }

@@ -7,11 +7,12 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form";
-import { FileText, File as FileIcon, UploadCloud, X } from "lucide-react";
+import { CheckCircle2, FileText, File as FileIcon, Loader2, RotateCw, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fileIssue, fileTypeLabel, formatBytes, sameFile, type FileRules } from "@/lib/files";
+import { fileIssue, fileTypeLabel, formatBytes, sameFile, type FileRules, type UploadItem } from "@/lib/files";
 import { cn } from "@/lib/utils";
 import { FieldShell, fieldAria } from "./field-shell";
+import { useFileUploader } from "./file-uploader-context";
 
 /** Miniatura da imagem (object URL revogada ao trocar/desmontar) ou icone do tipo. */
 function FileThumb({ file }: { file: File }) {
@@ -43,8 +44,13 @@ function FileThumb({ file }: { file: File }) {
 }
 
 export interface FileDropzoneProps extends FileRules {
-  value: File[];
-  onChange: (files: File[]) => void;
+  value: UploadItem[];
+  onChange: (items: UploadItem[]) => void;
+  /**
+   * Valor atual fora do render: o envio termina depois e precisa da lista de
+   * agora (no RHF, `getValues`). Sem ele, usa o ultimo `value` recebido.
+   */
+  getValue?: () => UploadItem[];
   onBlur?: () => void;
   /** Varios arquivos (padrao) ou um so (o novo substitui o anterior). */
   multiple?: boolean;
@@ -55,16 +61,30 @@ export interface FileDropzoneProps extends FileRules {
   inputRef?: (el: HTMLInputElement | null) => void;
 }
 
+let keySeq = 0;
+// Sem crypto.randomUUID: falha fora de HTTPS (rede local).
+const newKey = () => `up-${Date.now().toString(36)}-${(keySeq += 1)}`;
+
+/** Motivo da falha sem o nome do arquivo (o nome ja esta na linha). */
+function failureText(error: unknown): string {
+  const message = (error as { fields?: { message?: string }[] })?.fields?.[0]?.message ?? (error as Error)?.message;
+  const text = (message ?? "não foi possível enviar.").replace(/^“[^”]*”:\s*/, "");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /**
- * Area de arrastar e soltar (ou clicar) para escolher arquivos. Controlado por
- * `value`/`onChange` (`File[]`); nao envia nada, so entrega os `File` com
- * `name`, `type` (MIME) e `size`. Arquivo fora das `FileRules` fica na lista
- * marcado em vermelho com o motivo; quem bloqueia o envio e o schema
- * (`filesSchema`). Repetido (mesmo nome, tamanho e data) nao duplica.
+ * Area de arrastar e soltar (ou clicar) para anexar arquivos (04/11/2026):
+ * cada arquivo sobe assim que entra na lista, um por vez e com novas
+ * tentativas em falha de rede, e mostra a sua situacao (enviando, enviado,
+ * falhou). Uma falha nao para os outros; o que falhou pode ser enviado de novo
+ * ou tirado. Tirar da lista apaga o anexo ainda sem uso. Arquivo fora das
+ * `FileRules` fica na lista em vermelho, sem subir; quem bloqueia o salvar e o
+ * schema (`uploadsSchema`). Repetido (mesmo nome, tamanho e data) nao duplica.
  */
 export function FileDropzone({
   value,
   onChange,
+  getValue,
   onBlur,
   multiple = true,
   disabled,
@@ -78,27 +98,82 @@ export function FileDropzone({
   acceptLabel,
 }: FileDropzoneProps) {
   const rules: FileRules = { accept, maxSizeBytes, maxFiles, acceptLabel };
+  const uploader = useFileUploader();
   const inputEl = useRef<HTMLInputElement | null>(null);
   // Contador: dragenter/dragleave disparam nos filhos e fariam o destaque piscar.
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
+  const lastValue = useRef(value);
+  useEffect(() => {
+    lastValue.current = value;
+  }, [value]);
+
+  const read = () => getValue?.() ?? lastValue.current;
+  const write = (next: UploadItem[]) => {
+    lastValue.current = next;
+    onChange(next);
+  };
+  const patch = (key: string, changes: Partial<UploadItem>) =>
+    write(read().map((item) => (item.key === key ? { ...item, ...changes } : item)));
+
+  const start = (item: UploadItem) => {
+    if (!uploader) {
+      patch(item.key, { status: "error", error: "Envio indisponível nesta tela.", retryable: false });
+      return;
+    }
+    uploader
+      .upload(item.file, rules)
+      .then((attachment) => {
+        // Tirado da lista enquanto subia: o anexo nao fica sem dono.
+        if (!read().some((current) => current.key === item.key)) {
+          void uploader.discard(attachment.id);
+          return;
+        }
+        patch(item.key, { status: "done", attachment, error: undefined, retryable: undefined });
+      })
+      .catch((error: unknown) =>
+        patch(item.key, {
+          status: "error",
+          error: failureText(error),
+          retryable: (error as { retryable?: boolean })?.retryable ?? true,
+        }),
+      );
+  };
+
+  const discard = (item: UploadItem) => {
+    if (item.attachment) void uploader?.discard(item.attachment.id);
+  };
 
   const add = (incoming: FileList | File[] | null) => {
     if (!incoming || disabled) return;
-    const list = Array.from(incoming);
-    if (list.length === 0) return;
-    if (!multiple) {
-      onChange([list[0]]);
-      return;
-    }
-    const next = [...value];
-    for (const file of list) {
-      if (!next.some((f) => sameFile(f, file))) next.push(file);
-    }
-    onChange(next);
+    const current = read();
+    const files = Array.from(incoming).filter((file) => !current.some((item) => sameFile(item.file, file)));
+    if (files.length === 0) return;
+    const chosen = multiple ? files : files.slice(0, 1);
+    const room = multiple && maxFiles !== undefined ? Math.max(0, maxFiles - current.length) : Infinity;
+    const created = chosen.map<UploadItem>((file, index) => {
+      const issue = fileIssue(file, rules) ?? (index >= room ? `Passou do limite de ${maxFiles} arquivos.` : undefined);
+      return issue
+        ? { key: newKey(), file, status: "error", error: issue, retryable: false }
+        : { key: newKey(), file, status: "uploading" };
+    });
+    if (!multiple) current.forEach(discard);
+    write(multiple ? [...current, ...created] : created);
+    created.filter((item) => item.status === "uploading").forEach(start);
   };
 
-  const remove = (index: number) => onChange(value.filter((_, i) => i !== index));
+  const remove = (key: string) => {
+    const item = read().find((current) => current.key === key);
+    if (item) discard(item);
+    write(read().filter((current) => current.key !== key));
+  };
+
+  const retry = (key: string) => {
+    const item = read().find((current) => current.key === key);
+    if (!item) return;
+    patch(key, { status: "uploading", error: undefined, retryable: undefined });
+    start({ ...item, status: "uploading" });
+  };
 
   const onDragEnter = (event: DragEvent) => {
     event.preventDefault();
@@ -188,29 +263,56 @@ export function FileDropzone({
 
       {value.length > 0 ? (
         <ul className="divide-y rounded-lg border" aria-label="Arquivos anexados">
-          {value.map((file, index) => {
-            const issue = fileIssue(file, rules);
+          {value.map((item) => {
+            const failed = item.status === "error";
+            const details = `${fileTypeLabel(item.file.name, item.file.type)} · ${formatBytes(item.file.size)}`;
             return (
-              <li
-                key={`${file.name}-${file.size}-${file.lastModified}`}
-                className={cn("flex items-center gap-3 px-3 py-2", issue && "bg-destructive/5")}
-              >
-                <FileThumb file={file} />
+              <li key={item.key} className={cn("flex items-center gap-3 px-3 py-2", failed && "bg-destructive/5")}>
+                <FileThumb file={item.file} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground" title={file.name}>
-                    {file.name}
-                  </p>
-                  <p className={cn("text-xs", issue ? "text-destructive" : "text-muted-foreground")}>
-                    {issue ?? `${fileTypeLabel(file.name, file.type)} · ${formatBytes(file.size)}`}
+                  <p className="min-w-0 break-words text-sm font-medium text-foreground">{item.file.name}</p>
+                  <p
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs",
+                      failed ? "text-destructive" : "text-muted-foreground",
+                    )}
+                    aria-live="polite"
+                  >
+                    {item.status === "uploading" ? (
+                      <>
+                        <Loader2 className="size-3 animate-spin" aria-hidden />
+                        Enviando… · {details}
+                      </>
+                    ) : item.status === "done" ? (
+                      <>
+                        <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                        Enviado · {details}
+                      </>
+                    ) : (
+                      item.error ?? "Não foi possível enviar."
+                    )}
                   </p>
                 </div>
+                {failed && item.retryable ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={disabled}
+                    aria-label={`Enviar ${item.file.name} de novo`}
+                    title="Tentar de novo"
+                    onClick={() => retry(item.key)}
+                  >
+                    <RotateCw />
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
                   disabled={disabled}
-                  aria-label={`Remover ${file.name}`}
-                  onClick={() => remove(index)}
+                  aria-label={`Remover ${item.file.name}`}
+                  onClick={() => remove(item.key)}
                 >
                   <X />
                 </Button>
@@ -234,8 +336,9 @@ interface FileDropFieldProps<T extends FieldValues> extends FileRules {
 }
 
 /**
- * `FileDropzone` ligado ao RHF: o valor do campo e `File[]` (padrao `[]`).
- * Valide com `filesSchema(rules)` de `@/lib/files` usando as mesmas regras.
+ * `FileDropzone` ligado ao RHF: o valor do campo e `UploadItem[]` (padrao `[]`).
+ * Valide com `uploadsSchema(rules)` de `@/lib/files` usando as mesmas regras;
+ * ao salvar, use `uploadedAttachments(valor)`.
  */
 export function FileDropField<T extends FieldValues>({
   name,
@@ -247,7 +350,7 @@ export function FileDropField<T extends FieldValues>({
   id,
   ...rules
 }: FileDropFieldProps<T>) {
-  const { control } = useFormContext<T>();
+  const { control, getValues } = useFormContext<T>();
   const fieldId = id ?? String(name);
 
   return (
@@ -262,8 +365,9 @@ export function FileDropField<T extends FieldValues>({
             <FileDropzone
               {...rules}
               id={fieldId}
-              value={(field.value as File[] | undefined) ?? []}
+              value={(field.value as UploadItem[] | undefined) ?? []}
               onChange={field.onChange}
+              getValue={() => (getValues(name) as UploadItem[] | undefined) ?? []}
               onBlur={field.onBlur}
               multiple={multiple}
               disabled={disabled}

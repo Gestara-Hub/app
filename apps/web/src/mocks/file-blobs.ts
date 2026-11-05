@@ -53,3 +53,12 @@ export async function getFileBlob(id: Id): Promise<Blob | undefined> {
   if (!hasIndexedDb()) return memory.get(id);
   return run<Blob | undefined>("readonly", (store) => store.get(id));
 }
+
+/** Tira o arquivo guardado (anexo tirado da lista antes de salvar). */
+export async function deleteFileBlob(id: Id): Promise<void> {
+  if (!hasIndexedDb()) {
+    memory.delete(id);
+    return;
+  }
+  await run("readwrite", (store) => store.delete(id));
+}

@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { AttachmentList } from "@/components/shared/attachment-list";
-import { ENTRY_ATTACHMENT_RULES, filesSchema } from "@/lib/files";
+import { ENTRY_ATTACHMENT_RULES, uploadedAttachments, uploadsSchema } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -77,8 +77,8 @@ const schema = z
     method: z.string().optional(),
     repeatMonthly: z.boolean(),
     notes: z.string().max(500, "Use no máximo 500 caracteres.").optional(),
-    /** Arquivos novos (ainda nao enviados). */
-    receipts: filesSchema(ENTRY_ATTACHMENT_RULES),
+    /** Arquivos novos: sobem ao serem escolhidos; salvar so com todos enviados. */
+    receipts: uploadsSchema(ENTRY_ATTACHMENT_RULES),
     /** Anexos ja salvos que continuam no lancamento (edicao). */
     keptAttachments: z.array(z.custom<FileAttachment>()),
   })
@@ -258,7 +258,7 @@ function EntryForm({
           amountCents: values.amountCents,
           dueDate: values.dueDate,
           notes: values.notes ?? "",
-          attachments: values.keptAttachments,
+          attachments: [...values.keptAttachments, ...uploadedAttachments(values.receipts)],
         };
         let scope: FinancialEntryUpdateScope = "single";
         if (entry.recurrenceId) {
@@ -266,7 +266,7 @@ function EntryForm({
           if (!answer) return;
           scope = answer;
         }
-        await updateMut.mutateAsync({ id: entry.id, payload, scope, files: values.receipts });
+        await updateMut.mutateAsync({ id: entry.id, payload, scope });
         toast.success(scope === "following" ? "Lançamento e próximos atualizados." : "Lançamento atualizado.");
       } else {
         await createMut.mutateAsync({
@@ -279,8 +279,8 @@ function EntryForm({
             ...(values.notes?.trim() ? { notes: values.notes.trim() } : {}),
             ...(values.paidNow && values.method ? { paidNow: { method: values.method as PaymentMethod } } : {}),
             ...(values.repeatMonthly ? { repeatMonthly: true } : {}),
+            ...(values.receipts.length > 0 ? { attachments: uploadedAttachments(values.receipts) } : {}),
           },
-          files: values.receipts,
         });
         toast.success(
           values.repeatMonthly ? "Lançamento criado. Ele vai se repetir todo mês." : "Lançamento criado.",

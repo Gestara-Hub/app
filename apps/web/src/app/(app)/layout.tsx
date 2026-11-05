@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
+import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploader-provider";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
@@ -60,6 +61,7 @@ export default async function AppLayout({
   return (
     <SessionProvider user={user} model={model} tier={tier} timeZone={timeZone} googleOnly={googleOnly}>
       <UserPreferencesProvider>
+        <AttachmentUploaderProvider>
         <ViewModeProvider initialModes={initialViewModes}>
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
             <AppSidebar />
@@ -87,6 +89,7 @@ export default async function AppLayout({
             </SidebarInset>
           </SidebarProvider>
         </ViewModeProvider>
+        </AttachmentUploaderProvider>
       </UserPreferencesProvider>
     </SessionProvider>
   );

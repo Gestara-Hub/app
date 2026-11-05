@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  FileAttachment,
   CreateFinancialCategory,
   CreateFinancialEntry,
   FinancialCategoryFilter,
@@ -15,7 +16,6 @@ import type {
   UpdateFinancialEntry,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
 import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { financeService } from "@/services/finance";
 
@@ -25,9 +25,6 @@ function useInvalidateFinance() {
   return () => qc.invalidateQueries({ queryKey: queryKeys.finance.all });
 }
 
-function uploadEntryFiles(files: File[]) {
-  return files.length > 0 ? attachmentsService.upload(files, ENTRY_ATTACHMENT_RULES) : Promise.resolve([]);
-}
 
 /**
  * Abre um anexo numa nova aba. A aba abre no clique (sem bloqueio de pop-up) e
@@ -91,13 +88,8 @@ export function useFinanceEntries(filter: FinancialEntryFilter) {
 export function useCreateFinanceEntry() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    // Envia os arquivos novos antes e grava os anexos junto com o lancamento.
-    mutationFn: async ({ payload, files = [] }: { payload: CreateFinancialEntry; files?: File[] }) => {
-      const uploaded = await uploadEntryFiles(files);
-      return financeService.createEntry(
-        uploaded.length > 0 ? { ...payload, attachments: [...(payload.attachments ?? []), ...uploaded] } : payload,
-      );
-    },
+    // Os anexos ja subiram no formulario (ao serem escolhidos) e vem em `payload.attachments`.
+    mutationFn: ({ payload }: { payload: CreateFinancialEntry }) => financeService.createEntry(payload),
     onSuccess: invalidate,
   });
 }
@@ -105,25 +97,16 @@ export function useCreateFinanceEntry() {
 export function useUpdateFinanceEntry() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    mutationFn: async ({
+    // `payload.attachments` traz os anexos que ficaram mais os novos, ja enviados no formulario.
+    mutationFn: ({
       id,
       payload,
       scope,
-      files = [],
     }: {
       id: Id;
       payload: UpdateFinancialEntry;
       scope: FinancialEntryUpdateScope;
-      /** Arquivos novos; `payload.attachments` traz os anexos que ficaram. */
-      files?: File[];
-    }) => {
-      const uploaded = await uploadEntryFiles(files);
-      return financeService.updateEntry(
-        id,
-        uploaded.length > 0 ? { ...payload, attachments: [...(payload.attachments ?? []), ...uploaded] } : payload,
-        scope,
-      );
-    },
+    }) => financeService.updateEntry(id, payload, scope),
     onSuccess: invalidate,
   });
 }
@@ -140,8 +123,9 @@ export function useMarkFinanceEntryPaid() {
       id: Id;
       method: PaymentMethod;
       paidOn?: DateISO;
-      receipts?: File[];
-    }) => financeService.markEntryPaid(id, method, await uploadEntryFiles(receipts), paidOn),
+      /** Comprovantes ja enviados no diálogo (sobem ao serem escolhidos). */
+      receipts?: FileAttachment[];
+    }) => financeService.markEntryPaid(id, method, receipts, paidOn),
     onSuccess: invalidate,
   });
 }

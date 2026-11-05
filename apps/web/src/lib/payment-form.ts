@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RECEIPT_FILE_RULES, filesSchema } from "./files";
+import { RECEIPT_FILE_RULES, uploadsSchema } from "./files";
 import { dateInSpace } from "@gestarahub/core/date";
 
 /**
@@ -13,7 +13,8 @@ export const paymentFormSchema = z.object({
     .string()
     .min(1, "Informe a data do pagamento.")
     .refine((value) => value <= dateInSpace(), "A data do pagamento não pode ser futura."),
-  receipts: filesSchema(RECEIPT_FILE_RULES),
+  // Comprovantes sobem ao serem escolhidos; salvar so com todos enviados.
+  receipts: uploadsSchema(RECEIPT_FILE_RULES),
 });
 
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;

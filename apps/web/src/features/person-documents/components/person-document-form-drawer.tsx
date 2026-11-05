@@ -17,7 +17,7 @@ import {
 import { DateField, DialogFormFooter, FileDropField, InputText, SelectField, TextArea } from "@/components/form";
 import { DialogBody } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { PERSON_DOCUMENT_FILE_RULES, filesSchema, formatBytes } from "@/lib/files";
+import { PERSON_DOCUMENT_FILE_RULES, formatBytes, uploadedAttachments, uploadsSchema, type UploadItem } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { toast } from "@/lib/toast";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
@@ -29,7 +29,8 @@ interface Values {
   category: string;
   kind: string;
   title: string;
-  files: File[];
+  /** O arquivo sobe ao ser escolhido; salvar so com ele enviado. */
+  files: UploadItem[];
   expiresOn: string;
   notes: string;
 }
@@ -45,7 +46,7 @@ function schemaFor(isEdit: boolean, ownerKind: PersonDocumentOwnerKind) {
       category: z.string().min(1, "Escolha a categoria."),
       kind: z.string(),
       title: z.string().max(MAX_DOCUMENT_TITLE_LENGTH, `Use até ${MAX_DOCUMENT_TITLE_LENGTH} caracteres.`),
-      files: isEdit ? z.array(z.instanceof(File)) : filesSchema({ ...PERSON_DOCUMENT_FILE_RULES, required: true }),
+      files: isEdit ? z.array(z.custom<UploadItem>()) : uploadsSchema({ ...PERSON_DOCUMENT_FILE_RULES, required: true }),
       expiresOn: z.string(),
       notes: z.string().max(MAX_DOCUMENT_NOTES_LENGTH, `Use até ${MAX_DOCUMENT_NOTES_LENGTH} caracteres.`),
     })
@@ -122,7 +123,7 @@ function DocumentForm({
           ownerId,
           ...payload,
           ...(payload.expiresOn ? {} : { expiresOn: undefined }),
-          file: v.files[0],
+          file: uploadedAttachments(v.files)[0],
         });
         toast.success("Documento adicionado.");
       }

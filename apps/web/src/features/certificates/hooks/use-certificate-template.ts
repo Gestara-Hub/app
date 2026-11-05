@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CertificateKind, CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
+import type { FileAttachment, CertificateKind, CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
 import { attachmentsService } from "@/services/attachments/attachmentsService";
 import { certificatesService } from "@/services/settings/certificatesService";
@@ -38,10 +38,10 @@ export interface SaveCertificateTemplateInput {
   template: Omit<SaveCertificateTemplate, "logoFileId">;
   /** Logo atual que fica (sem arquivo novo). */
   keepLogoFileId?: Id;
-  /** Logo nova: sobe antes e entra no lugar da atual. */
-  logoFile?: File;
-  /** Arte de fundo nova ("Minha arte"): sobe antes e entra em `artwork.fileId`. */
-  artworkFile?: File;
+  /** Logo nova, ja enviada no formulario (ao ser escolhida); entra no lugar da atual. */
+  newLogo?: FileAttachment;
+  /** Arte de fundo nova ("Minha arte"), ja enviada; entra em `artwork.fileId`. */
+  newArtwork?: FileAttachment;
   /** Modelo so desta modalidade; sem ele, o do espaco. */
   modalityId?: Id;
   /** Curso (padrao) ou graduacao. */
@@ -51,11 +51,11 @@ export interface SaveCertificateTemplateInput {
 export function useSaveCertificateTemplate() {
   const invalidate = useInvalidateCertificates();
   return useMutation({
-    mutationFn: async ({ template, keepLogoFileId, logoFile, artworkFile, modalityId, kind }: SaveCertificateTemplateInput) => {
-      const logoFileId = logoFile ? (await certificatesService.uploadLogo(logoFile)).id : keepLogoFileId;
+    mutationFn: async ({ template, keepLogoFileId, newLogo, newArtwork, modalityId, kind }: SaveCertificateTemplateInput) => {
+      const logoFileId = newLogo ? newLogo.id : keepLogoFileId;
       const artwork =
         template.layout === "custom" && template.artwork
-          ? { ...template.artwork, fileId: artworkFile ? (await certificatesService.uploadArtwork(artworkFile)).id : template.artwork.fileId }
+          ? { ...template.artwork, fileId: newArtwork ? newArtwork.id : template.artwork.fileId }
           : undefined;
       return certificatesService.saveTemplate(
         {

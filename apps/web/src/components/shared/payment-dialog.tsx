@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { DateISO, PaymentMethod } from "@gestarahub/contracts";
+import type { DateISO, FileAttachment, PaymentMethod } from "@gestarahub/contracts";
 import { DateField, FileDropField, PaymentMethodField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogBody } from "@/components/ui/dialog";
@@ -15,7 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { RECEIPT_FILE_RULES } from "@/lib/files";
+import { RECEIPT_FILE_RULES, uploadedAttachments } from "@/lib/files";
 import { paymentFormSchema, type PaymentFormValues } from "@/lib/payment-form";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -26,7 +26,8 @@ const defaults = (): Partial<PaymentFormValues> => ({ method: undefined, paidOn:
 export interface PaymentDialogResult {
   method: PaymentMethod;
   paidOn: DateISO;
-  receipts: File[];
+  /** Comprovantes ja enviados (sobem ao serem escolhidos, antes de confirmar). */
+  receipts: FileAttachment[];
 }
 
 interface PaymentDialogProps {
@@ -73,7 +74,7 @@ export function PaymentDialog({
   const method = useWatch({ control: form.control, name: "method" });
 
   const submit = form.handleSubmit((values) =>
-    onConfirm({ method: values.method, paidOn: values.paidOn, receipts: values.receipts }),
+    onConfirm({ method: values.method, paidOn: values.paidOn, receipts: uploadedAttachments(values.receipts) }),
   );
 
   return (

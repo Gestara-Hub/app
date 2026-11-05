@@ -172,6 +172,10 @@ Todos os modais de cadastro e edição usam **exclusivamente** este trio de labe
 - As regras (`accept` com MIME exato, curinga `image/*` ou extensão `.pdf`; `maxSizeBytes`; `maxFiles`; `acceptLabel`) vão no campo **e** no schema: `filesSchema(regras)` de `@/lib/files`, para a lista marcar em vermelho o mesmo arquivo que o Zod recusa. Arquivo repetido (mesmo nome, tamanho e data) não duplica. Fora de formulário, use `FileDropzone` (controlado por `value`/`onChange`).
 - Comprovante de pagamento: `RECEIPT_FILE_RULES` (imagem ou PDF, até 4 MB cada, no máximo 5; teto de 4 MB para todo envio, `MAX_UPLOAD_BYTES`, com um arquivo por requisição, desde 04/11/2026), já aplicado no `PaymentDialog`. Por enquanto os arquivos não são enviados (ver `docs/technical/05-modulo-financeiro.md`, seção 10).
 
+- **Envio resistente a falha (04/11/2026, migração 86):** o arquivo sobe assim que entra na lista, um por requisição e com até 3 tentativas sozinho em falha de rede ou do servidor. Cada linha mostra a situação: "Enviando…", "Enviado" ou a falha com o botão de enviar de novo; uma falha não para os outros. O valor do campo é `UploadItem[]` (não mais `File[]`): valide com `uploadsSchema(regras)` (salvar só com todos enviados) e, ao salvar, passe `uploadedAttachments(valor)` ao serviço. O envio chega ao campo pelo `FileUploaderProvider` (no layout do app), então o campo não importa serviços.
+- **Tirar da lista apaga na hora** o anexo ainda sem uso (`DELETE /api/attachments/[id]`, só o enviado pelo próprio usuário). Formulário cancelado ou aba fechada deixa o anexo solto: a rotina diária (`cron.daily`) apaga os sem uso há mais de 24 horas.
+- **"Em uso" é o que algum registro aponta**, conferido no banco (`attachment_is_used`): comprovantes da cobrança, anexos do lançamento e do pagamento de professor, arquivo do documento da ficha, logo e arte dos modelos de certificado. Um registro novo que guardar anexo precisa entrar nessa função, senão a rotina apaga o arquivo.
+
 ---
 
 ### 2.6. Nada muda enquanto o diálogo fecha (21/10/2026)
