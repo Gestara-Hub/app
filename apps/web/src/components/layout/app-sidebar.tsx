@@ -220,13 +220,13 @@ export function AppSidebar() {
           <Image
             src={logoLightImage}
             alt="GestaraHub"
-            className="sidebar-logo-light h-[29px] w-auto group-data-[collapsible=icon]:hidden dark:hidden"
+            className="sidebar-logo-light h-10 w-auto group-data-[collapsible=icon]:hidden dark:hidden"
             priority
           />
           <Image
             src={logoDarkImage}
             alt="GestaraHub"
-            className="sidebar-logo-dark hidden h-[29px] w-auto dark:group-data-[collapsible=icon]:hidden dark:block"
+            className="sidebar-logo-dark hidden h-10 w-auto dark:group-data-[collapsible=icon]:hidden dark:block"
             priority
           />
         </Link>

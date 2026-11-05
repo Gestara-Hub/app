@@ -28,7 +28,7 @@ export default async function OpengraphImage() {
           fontFamily: "sans-serif",
         }}
       >
-        <img src={logoSrc} width={560} height={73} alt="" />
+        <img src={logoSrc} width={560} height={176} alt="" />
         <div style={{ fontSize: 68, fontWeight: 800, letterSpacing: -2 }}>{SITE_TAGLINE}</div>
         <div
           style={{

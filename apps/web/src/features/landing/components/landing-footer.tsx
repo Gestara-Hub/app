@@ -57,12 +57,12 @@ export function LandingFooter() {
               <Image
                 src={logoLightImage}
                 alt="GestaraHub"
-                className="h-5 w-auto dark:hidden"
+                className="h-11 w-auto dark:hidden"
               />
               <Image
                 src={logoDarkImage}
                 alt="GestaraHub"
-                className="hidden h-5 w-auto dark:block"
+                className="hidden h-11 w-auto dark:block"
               />
             </Link>
             <p className="max-w-xs text-sm text-muted-foreground">{SITE_TAGLINE}</p>

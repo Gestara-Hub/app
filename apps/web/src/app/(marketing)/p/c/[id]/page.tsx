@@ -32,13 +32,13 @@ export default async function ChargeInvoicePage({
           <Image
             src={logoLightImage}
             alt="GestaraHub"
-            className="h-6 w-auto dark:hidden"
+            className="h-10 w-auto dark:hidden"
             priority
           />
           <Image
             src={logoDarkImage}
             alt="GestaraHub"
-            className="hidden h-6 w-auto dark:block"
+            className="hidden h-10 w-auto dark:block"
             priority
           />
         </div>

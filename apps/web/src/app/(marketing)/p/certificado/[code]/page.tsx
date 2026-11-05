@@ -28,8 +28,8 @@ export default async function CertificateVerificationPage({ params }: { params: 
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/20 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex justify-center">
-          <Image src={logoLightImage} alt="GestaraHub" className="h-6 w-auto dark:hidden" priority />
-          <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-6 w-auto dark:block" priority />
+          <Image src={logoLightImage} alt="GestaraHub" className="h-10 w-auto dark:hidden" priority />
+          <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-10 w-auto dark:block" priority />
         </div>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
           {!view ? (

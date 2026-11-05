@@ -23,8 +23,8 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
       <div className="relative w-full max-w-[400px] space-y-6">
         <div className="flex justify-center">
           <Link href="/" aria-label="GestaraHub, página inicial">
-            <Image src={logoLightImage} alt="GestaraHub" className="h-8 w-auto dark:hidden" priority />
-            <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-8 w-auto dark:block" priority />
+            <Image src={logoLightImage} alt="GestaraHub" className="h-14 w-auto dark:hidden" priority />
+            <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-14 w-auto dark:block" priority />
           </Link>
         </div>
         <div
