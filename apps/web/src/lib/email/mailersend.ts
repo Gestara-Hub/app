@@ -45,7 +45,7 @@ function escapeHtml(value: string): string {
  * sem ele (localhost, tunel de desenvolvimento), segue anexado inline (cid),
  * para aparecer nos testes. O `v` troca quando o icone muda (proxy do Gmail).
  */
-const EMAIL_ICON_VERSION = "4";
+const EMAIL_ICON_VERSION = "5";
 export function hostedEmailIconUrl(siteUrl: string = SITE_URL, file = "email-icon.png"): string | null {
   let url: URL;
   try {
