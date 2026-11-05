@@ -12,8 +12,13 @@ import type { FileRules } from "@/lib/files";
 export interface FileUploader {
   /** Envia um arquivo (com novas tentativas em falha de rede). Erro de envio vem com `retryable`. */
   upload(file: File, rules: FileRules): Promise<FileAttachment>;
-  /** Tira um anexo ainda sem uso (arquivo tirado da lista antes de salvar). */
-  discard(id: string): Promise<void>;
+  /**
+   * Tira um anexo ainda sem uso (arquivo tirado da lista, formulario
+   * descartado). O servidor so apaga o sem uso e enviado por quem pede.
+   * `ifUnused`: chamado sem saber se o formulario salvou (descarte, volta ao
+   * salvo); fora do servidor (demonstracao local) nao apaga nada.
+   */
+  discard(id: string, options?: { ifUnused?: boolean }): Promise<void>;
 }
 
 const FileUploaderContext = createContext<FileUploader | null>(null);

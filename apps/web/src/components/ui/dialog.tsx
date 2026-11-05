@@ -43,6 +43,11 @@ export interface DialogDirtyRegistry {
   update: (source: object, dirty: boolean) => void
   /** Fecha pelo `close` do chamador (ex.: Cancelar do rodape), pedindo confirmacao se houver alteracao. */
   guardClose: (close: () => void) => void
+  /**
+   * Avisa quando o usuario confirma "Descartar" (ex.: o campo de anexar apaga
+   * os arquivos que ja tinha enviado). Devolve o cancelamento da inscricao.
+   */
+  onDiscard: (listener: () => void) => () => void
 }
 
 const DialogDirtyContext = React.createContext<DialogDirtyRegistry | null>(null)
@@ -64,11 +69,19 @@ export function useDiscardGuard(
   const sourcesRef = React.useRef(new Map<object, { fields: number; dirty: boolean }>())
   // Fechamento pedido pelo rodape (Cancelar), feito ao confirmar o descarte.
   const pendingCloseRef = React.useRef<(() => void) | null>(null)
+  // Quem quer saber do descarte confirmado (campo de anexar).
+  const discardListenersRef = React.useRef(new Set<() => void>())
 
   const registry = React.useMemo<DialogDirtyRegistry>(() => {
     const recompute = () =>
       setDirty([...sourcesRef.current.values()].some((s) => s.dirty))
     return {
+      onDiscard(listener) {
+        discardListenersRef.current.add(listener)
+        return () => {
+          discardListenersRef.current.delete(listener)
+        }
+      },
       guardClose(close) {
         if ([...sourcesRef.current.values()].some((s) => s.dirty)) {
           pendingCloseRef.current = close
@@ -121,6 +134,7 @@ export function useDiscardGuard(
   )
 
   const handleConfirmDiscard = React.useCallback(() => {
+    for (const listener of discardListenersRef.current) listener()
     for (const entry of sourcesRef.current.values()) entry.dirty = false
     setDirty(false)
     setConfirmDiscard(false)

@@ -13,6 +13,7 @@ import { fileIssue, fileTypeLabel, formatBytes, sameFile, type FileRules, type U
 import { cn } from "@/lib/utils";
 import { FieldShell, fieldAria } from "./field-shell";
 import { useFileUploader } from "./file-uploader-context";
+import { useDialogDirty } from "@/components/ui/dialog";
 
 /** Miniatura da imagem (object URL revogada ao trocar/desmontar) ou icone do tipo. */
 function FileThumb({ file }: { file: File }) {
@@ -108,6 +109,37 @@ export function FileDropzone({
     lastValue.current = value;
   }, [value]);
 
+  // Formulario descartado: o que ja subiu e apagado na hora (sem esperar a
+  // limpeza de 24 horas); o que ainda estava subindo e apagado ao terminar.
+  const discardedRef = useRef(false);
+  const dialogDirty = useDialogDirty();
+  useEffect(() => {
+    if (!dialogDirty || !uploader) return;
+    return dialogDirty.onDiscard(() => {
+      discardedRef.current = true;
+      for (const item of lastValue.current) {
+        if (item.attachment) void uploader.discard(item.attachment.id, { ifUnused: true });
+      }
+    });
+  }, [dialogDirty, uploader]);
+
+  // A lista voltou ao salvo por fora (ex.: "Descartar" da barra das
+  // Configuracoes, ou o formulario recarregado depois de salvar): o que subiu e
+  // saiu da lista sem a pessoa tirar e apagado se ninguem usar (o servidor
+  // confere; depois de salvar ele esta em uso e fica).
+  const seen = useRef(new Map<string, UploadItem>());
+  const handled = useRef(new Set<string>());
+  useEffect(() => {
+    const keys = new Set(value.map((item) => item.key));
+    for (const [key, item] of seen.current) {
+      if (keys.has(key)) continue;
+      seen.current.delete(key);
+      if (handled.current.delete(key)) continue;
+      if (item.attachment && uploader) void uploader.discard(item.attachment.id, { ifUnused: true });
+    }
+    for (const item of value) seen.current.set(item.key, item);
+  }, [value, uploader]);
+
   const read = () => getValue?.() ?? lastValue.current;
   const write = (next: UploadItem[]) => {
     lastValue.current = next;
@@ -124,8 +156,8 @@ export function FileDropzone({
     uploader
       .upload(item.file, rules)
       .then((attachment) => {
-        // Tirado da lista enquanto subia: o anexo nao fica sem dono.
-        if (!read().some((current) => current.key === item.key)) {
+        // Tirado da lista (ou formulario descartado) enquanto subia: o anexo nao fica sem dono.
+        if (discardedRef.current || !read().some((current) => current.key === item.key)) {
           void uploader.discard(attachment.id);
           return;
         }
@@ -141,11 +173,14 @@ export function FileDropzone({
   };
 
   const discard = (item: UploadItem) => {
+    handled.current.add(item.key);
     if (item.attachment) void uploader?.discard(item.attachment.id);
   };
 
   const add = (incoming: FileList | File[] | null) => {
     if (!incoming || disabled) return;
+    // Arquivo novo depois de um descarte (formulario reaberto sem desmontar).
+    discardedRef.current = false;
     const current = read();
     const files = Array.from(incoming).filter((file) => !current.some((item) => sameFile(item.file, file)));
     if (files.length === 0) return;

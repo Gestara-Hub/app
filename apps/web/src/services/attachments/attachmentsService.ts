@@ -111,11 +111,14 @@ export const attachmentsService = {
    * servidor so apaga o enviado por quem pede e que nenhum registro usa; o que
    * falhar aqui a rotina diaria apaga depois.
    */
-  async discard(id: Id): Promise<void> {
+  async discard(id: Id, options?: { ifUnused?: boolean }): Promise<void> {
     if (realAccountInBrowser()) {
+      // O servidor confere o uso: anexo de registro salvo nao sai.
       await fetch(`/api/attachments/${id}`, { method: "DELETE" }).catch(() => undefined);
       return;
     }
+    // Local (sem servidor para conferir o uso): so o que a pessoa tirou da lista.
+    if (options?.ifUnused) return;
     await deleteFileBlob(id).catch(() => undefined);
   },
 
