@@ -33,9 +33,9 @@ Data: 2026-10-19.
 
 - **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/dashboard`, tela cheia (`standalone`), fundo e barra no chumbo da marca.
 - **Ícones** em `apps/web/public/icons`, gerados de `src/assets/icon.svg`:
-  - `icon-192/512`: quadrado com cantos arredondados, para o computador e o Android sem corte.
-  - `icon-maskable-192/512`: quadrado cheio com o G em 56%, para caber no corte em círculo do Android (área segura de 80%).
-  - `apple-touch-icon.png` (180, sem transparência): o iPhone só aceita PNG e arredonda sozinho, G em 62%.
+  - `icon-192/512`: quadrado com cantos arredondados e G em 80%, para o computador e o Android sem corte.
+  - `icon-maskable-192/512`: quadrado cheio com o G em 72%, para caber no corte em círculo do Android (área segura de 80%: o ponto mais distante do G fica a 38,7% do lado, contra 40% de limite).
+  - `apple-touch-icon.png` (180, sem transparência): o iPhone só aceita PNG e arredonda sozinho, G em 80%.
 - **Metadados** em `app/layout.tsx`: ícone do iPhone, `appleWebApp` (abre sem a barra do Safari) e a cor da barra do sistema por tema.
 - **Ainda não feito:** service worker de cache e tela offline. O Chrome instala sem ele. Os outros recursos estão em "Recursos do PWA para depois".
 - Ao trocar o ícone, gerar os PNGs de novo a partir do SVG e conferir nos três cortes (quadrado do iPhone, círculo e gota do Android).
