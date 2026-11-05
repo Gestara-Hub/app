@@ -1,6 +1,6 @@
 "use client";
 
-import { FormProvider } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { FormFeedback, InputText, SelectField, TextArea, useActionForm } from "@/components/form";
 import { DrawerBody, DrawerFooter, useDrawerClose } from "@/components/shared/form-drawer";
@@ -64,6 +64,9 @@ export function UpdateRequestForm({ id, status, resolution }: { id: string; stat
       close();
     },
   });
+  // Concluir ou recusar pede o que foi feito (privacyUpdateSchema).
+  const nextStatus = useWatch({ control: form.control, name: "status" });
+  const resolutionRequired = nextStatus === "done" || nextStatus === "rejected";
   return (
     <FormProvider {...form}>
       <form onSubmit={submit()} className="flex min-h-0 flex-1 flex-col" noValidate>
@@ -73,6 +76,7 @@ export function UpdateRequestForm({ id, status, resolution }: { id: string; stat
             name="resolution"
             id={`resolution-${id}`}
             label="O que foi feito"
+            required={resolutionRequired}
             hint="Obrigatório para concluir ou recusar."
             rows={5}
             maxLength={2000}

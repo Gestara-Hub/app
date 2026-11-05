@@ -1608,6 +1608,8 @@ export function ClientForm({
                       <InputCurrency<ClientFormValues>
                         name="firstChargeAmount"
                         label="Valor da 1ª cobrança"
+                        // O onSubmit exige o valor, menos na bolsa (a bolsa ja define o valor).
+                        required={!isScholarship}
                         disabled={pending}
                         hint={firstChargeHint}
                       />
@@ -1685,7 +1687,7 @@ export function ClientForm({
                       placeholder="10"
                       min={1}
                       max={isBiweekly ? 15 : 31}
-                      required
+                      // Sem asterisco: vazio usa o dia padrao do espaco ao salvar.
                       disabled={pending}
                       hint={
                         isBiweekly
@@ -1796,6 +1798,7 @@ export function ClientForm({
                             name="scholarshipPayCents"
                             label="Valor a pagar por período"
                             placeholder="0,00"
+                            required
                             disabled={pending}
                           />
                         ) : (
@@ -1803,6 +1806,7 @@ export function ClientForm({
                             name="scholarshipPercent"
                             label="Bolsa (%)"
                             placeholder="50"
+                            required
                             min={1}
                             max={99}
                             disabled={pending}

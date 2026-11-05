@@ -429,7 +429,7 @@ function MeetingSlotsEditor({
   const allSelectedDaysCount = blocks.flatMap((b) => b.days).length;
 
   return (
-    <FieldShell label="Encontros e Horários">
+    <FieldShell label="Encontros e Horários" required>
       <div className="space-y-2.5">
         {blocks.map((block, index) => {
           const isMain = index === 0;

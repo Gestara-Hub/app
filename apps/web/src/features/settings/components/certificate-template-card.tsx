@@ -791,7 +791,14 @@ function CertificateTemplateForm({
                     </div>
                   ) : (
                     <div className="space-y-1.5">
-                      <FileDropField<Values> name="artwork" multiple={false} disabled={pending} {...CERTIFICATE_ARTWORK_RULES} />
+                      <FileDropField<Values>
+                        name="artwork"
+                        label="Imagem"
+                        required
+                        multiple={false}
+                        disabled={pending}
+                        {...CERTIFICATE_ARTWORK_RULES}
+                      />
                       <p className="text-xs text-muted-foreground">Folha deitada (A4). A imagem é esticada para cobrir a folha.</p>
                     </div>
                   )}

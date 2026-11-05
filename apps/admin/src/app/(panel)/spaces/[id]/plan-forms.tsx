@@ -123,7 +123,7 @@ function ActionDrawerForm<S extends z.ZodType<FieldValues, FieldValues>>({
       >
         <DrawerBody>
           {children}
-          <TextArea name="reason" label="Motivo (fica registrado)" rows={3} maxLength={300} />
+          <TextArea name="reason" label="Motivo (fica registrado)" required rows={3} maxLength={300} />
           <FormFeedback state={state} />
         </DrawerBody>
         <DrawerFooter submitLabel={submitLabel} pendingLabel="Aplicando..." pending={pending} />
@@ -167,7 +167,7 @@ export function CourtesyForm({ spaceId }: { spaceId: string }) {
             ["scale", "Expansão"],
           ]}
         />
-        <InputText name="days" label="Dias" type="number" min={1} max={365} />
+        <InputText name="days" label="Dias" required type="number" min={1} max={365} />
       </div>
     </ActionRow>
   );
@@ -202,7 +202,7 @@ export function GraceForm({ spaceId }: { spaceId: string }) {
       confirmText="A data da renovação passa a ser hoje mais os dias escolhidos, e o espaço segue com o plano até lá."
       submitLabel="Confirmar"
     >
-      <InputText name="days" label="Dias (1 a 30)" type="number" min={1} max={30} inputClassName="w-28" />
+      <InputText name="days" label="Dias (1 a 30)" required type="number" min={1} max={30} inputClassName="w-28" />
     </ActionRow>
   );
 }
@@ -272,7 +272,7 @@ export function ResetUserTwoFactorForm({ spaceId, users }: { spaceId: string; us
       submitLabel="Reiniciar verificação"
       destructive
     >
-      <SelectField name="userId" label="Pessoa" options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
+      <SelectField name="userId" label="Pessoa" required options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
     </ActionRow>
   );
 }

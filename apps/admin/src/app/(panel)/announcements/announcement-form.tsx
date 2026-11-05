@@ -86,7 +86,7 @@ export function AnnouncementForm({ values }: { values: FormValues }) {
           />
           {audience === "tier" ? <CheckboxGroupField name="tiers" legend="Planos" options={TIER_OPTIONS} /> : null}
           {audience === "area" ? <CheckboxGroupField name="areas" legend="Áreas" options={Object.entries(AREA_LABEL)} columns /> : null}
-          {audience === "spaces" ? <TextArea name="spaces" label="Códigos dos espaços (um por linha)" rows={3} inputClassName="font-mono text-xs" /> : null}
+          {audience === "spaces" ? <TextArea name="spaces" label="Códigos dos espaços (um por linha)" required rows={3} inputClassName="font-mono text-xs" /> : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" disabled={pending} onClick={submit(showPreview)}>
               Ver quantos recebem

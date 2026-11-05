@@ -170,12 +170,15 @@ function SeriesForm({
               name="endMode"
               label="Terminar por"
               options={END_MODE_OPTIONS}
+              required
+              clearable={false}
               disabled={pending}
             />
             {endMode === "count" ? (
               <InputNumber<SeriesFormValues>
                 name="untilOccurrences"
                 label="Ocorrências"
+                required
                 min={1}
                 max={52}
                 disabled={pending}

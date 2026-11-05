@@ -1277,6 +1277,7 @@ export function ModalityForm({
                         <FieldShell
                           id="passingGrade"
                           label={sumMode ? "Total mínimo para aprovar" : "Nota mínima para aprovar"}
+                          required
                           error={fieldState.error?.message}
                         >
                           <Input

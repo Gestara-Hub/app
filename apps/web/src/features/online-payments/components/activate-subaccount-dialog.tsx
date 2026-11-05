@@ -348,7 +348,8 @@ export function ActivateSubaccountDialog({
 
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-foreground">Endereço</p>
-                  <AddressFields<FormValues> prefix="address" required disabled={setup.isPending} />
+                  {/* Cidade e UF saem do CEP; o cadastro do recebimento nao as envia. */}
+                  <AddressFields<FormValues> prefix="address" required cityStateRequired={false} disabled={setup.isPending} />
                 </div>
 
                 {/* Taxas por forma de pagamento (01/11/2026): uma linha por forma, a taxa do plano atual, e quando o dinheiro chega. */}

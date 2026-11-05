@@ -500,7 +500,9 @@ export function LoginForm({
 
       <form onSubmit={handlePasswordSignIn} noValidate className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="login-email">E-mail</Label>
+          <Label htmlFor="login-email">
+            E-mail<span aria-hidden className="text-destructive ml-0.5">*</span>
+          </Label>
           <Input
             id="login-email"
             type="email"
@@ -518,7 +520,9 @@ export function LoginForm({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="login-password">Senha</Label>
+            <Label htmlFor="login-password">
+              Senha<span aria-hidden className="text-destructive ml-0.5">*</span>
+            </Label>
             <Link
               href={loginEmail.trim() ? `/forgot-password?email=${encodeURIComponent(loginEmail.trim())}` : "/forgot-password"}
               className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"

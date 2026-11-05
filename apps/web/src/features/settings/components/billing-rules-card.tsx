@@ -54,11 +54,28 @@ export function hashTargets(hash: string): string[] {
   return hash.split("#").filter(Boolean);
 }
 
-function SettingRow({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
+function SettingRow({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string;
+  hint: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="grid gap-3 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-center sm:gap-6">
       <div className="space-y-0.5">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-sm font-medium text-foreground">
+          {label}
+          {required ? (
+            <span aria-hidden className="ml-0.5 text-destructive">
+              *
+            </span>
+          ) : null}
+        </p>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       {children}
@@ -209,6 +226,7 @@ function BillingRulesForm({
             </SettingRow>
             <SettingRow
               label="Dia de vencimento"
+              required={currentStrategy !== "full_cycle"}
               hint={
                 currentStrategy === "full_cycle"
                   ? "Vence todo mês no dia da matrícula."

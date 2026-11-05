@@ -27,12 +27,15 @@ interface AddressFieldsProps<T extends FieldValues = FieldValues> {
   prefix?: Path<T> | string;
   disabled?: boolean;
   required?: boolean;
+  /** Cidade e UF obrigatorias (padrao: igual a `required`). Falso quando o CEP basta. */
+  cityStateRequired?: boolean;
 }
 
 export function AddressFields<T extends FieldValues = FieldValues>({
   prefix = "address",
   disabled,
   required = false,
+  cityStateRequired = required,
 }: AddressFieldsProps<T>) {
   const { setValue, watch, getFieldState } = useFormContext<T>();
   const [loading, setLoading] = useState(false);
@@ -213,7 +216,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           name={getFieldName("city")}
           label="Cidade"
           placeholder="Informe a cidade"
-          required={required}
+          required={cityStateRequired}
           disabled={disabled || loading}
         />
         <SelectField<T>
@@ -221,7 +224,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           label="Estado (UF)"
           placeholder="Selecione"
           options={STATE_OPTIONS}
-          required={required}
+          required={cityStateRequired}
           disabled={disabled || loading}
         />
       </div>

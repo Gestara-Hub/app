@@ -130,12 +130,14 @@ export function SubaccountTransferDialog({
               <InputCurrency<FormValues>
                 name="amountCents"
                 label="Valor a transferir"
+                required
                 disabled={transfer.isPending}
               />
 
               <InputText<FormValues>
                 name="pixKey"
                 label="Chave Pix de destino"
+                required
                 placeholder="CPF, CNPJ, E-mail, Celular ou Chave Aleatória"
                 hint="A transferência será enviada via Pix para esta chave."
                 disabled={transfer.isPending}

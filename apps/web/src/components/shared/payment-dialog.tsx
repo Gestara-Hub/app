@@ -97,6 +97,7 @@ export function PaymentDialog({
               <DateField<PaymentFormValues>
                 name="paidOn"
                 label="Pago em"
+                required
                 max={todayISO()}
                 disabled={isPending}
               />
