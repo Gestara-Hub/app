@@ -21,7 +21,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
-// Barra recolhida: o G solto, branco (a barra e sempre escura), igual ao do logo aberto; o icon.svg com fundo fica para o favicon e o app.
+// Barra recolhida: o G solto colorido (serve nos dois temas), igual ao do logo aberto; o icon.svg com fundo fica para o favicon e o app.
 import markImage from "@/assets/mark-dark.svg";
 import logoLightImage from "@/assets/logo-light.svg";
 import logoDarkImage from "@/assets/logo-dark.svg";
