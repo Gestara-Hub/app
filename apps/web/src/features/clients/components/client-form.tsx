@@ -1543,6 +1543,8 @@ export function ClientForm({
                       searchPlaceholder="Filtrar plano por nome, período ou valor..."
                       emptyMessage="Nenhum plano encontrado."
                       options={planOptions}
+                      // Obrigatorio na mensalidade e na bolsa parcial (client-schema).
+                      required={paymentMode === "membership" || (isScholarship && !isFullScholarship)}
                       clearable
                       disabled={pending}
                     />
