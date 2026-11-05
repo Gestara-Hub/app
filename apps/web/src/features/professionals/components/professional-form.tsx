@@ -11,7 +11,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/lib/toast";
-import { Clock, MailCheck, MapPin, Sparkles, UserPlus } from "lucide-react";
+import { Clock, Info, MailCheck, MapPin, Sparkles, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -163,16 +163,20 @@ export function ProfessionalForm({
   });
 
   const normalizedWatchedEmail = (watchedEmail || "").trim().toLowerCase();
-  const linkedUser = (users ?? []).find(
-    (u) =>
-      (professional?.id && u.professionalId === professional.id) ||
-      (normalizedWatchedEmail && u.email.toLowerCase() === normalizedWatchedEmail),
-  );
+  // O vinculo e so o gravado no usuario (professionalId). O e-mail daqui e o
+  // de contato: pode ser diferente do e-mail de acesso e muda-lo nao muda o login.
+  const linkedUser = professional?.id
+    ? (users ?? []).find((u) => u.professionalId === professional.id)
+    : undefined;
+  // E-mail digitado que ja e de outro usuario: avisa e nao oferece convite.
+  const emailTakenBy = normalizedWatchedEmail
+    ? (users ?? []).find((u) => u !== linkedUser && u.email.toLowerCase() === normalizedWatchedEmail)
+    : undefined;
 
   // Ativa o spotlight na primeira vez que o usuário preenche um e-mail válido para um profissional sem acesso
   const isCandidateForSpotlight =
     !isSpotlightDismissed &&
-    Boolean(normalizedWatchedEmail && normalizedWatchedEmail.includes("@") && !linkedUser);
+    Boolean(normalizedWatchedEmail && normalizedWatchedEmail.includes("@") && !linkedUser && !emailTakenBy);
 
   const [spotlightDismissedThisSession, setSpotlightDismissedThisSession] = useState(false);
   const spotlightActive = isCandidateForSpotlight && !spotlightDismissedThisSession;
@@ -345,7 +349,7 @@ export function ProfessionalForm({
     try {
       if (isEdit && professional) {
         await updateMut.mutateAsync({ id: professional.id, payload });
-        if (inviteUser && !linkedUser && payload.email) {
+        if (inviteUser && !linkedUser && !emailTakenBy && payload.email) {
           try {
             const invited = await createUserMut.mutateAsync({
               name: payload.name,
@@ -370,7 +374,7 @@ export function ProfessionalForm({
         }
       } else {
         const created = await createMut.mutateAsync({ ...payload, status: "active" });
-        if (inviteUser && payload.email) {
+        if (inviteUser && !emailTakenBy && payload.email) {
           try {
             const invited = await createUserMut.mutateAsync({
               name: payload.name,
@@ -469,7 +473,7 @@ export function ProfessionalForm({
           <InputText<ProfessionalFormValues>
             name="email"
             type="email"
-            label="E-mail"
+            label="E-mail de contato"
             placeholder="profissional@email.com (opcional)"
             disabled={pending}
           />
@@ -479,10 +483,18 @@ export function ProfessionalForm({
         {linkedUser ? (
           <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex items-center gap-2.5 text-xs text-indigo-700 dark:text-indigo-300">
             <MailCheck className="size-4 shrink-0 text-indigo-500" />
-            <span>
+            <span className="min-w-0 break-words">
               {linkedUser.pendingInvite
-                ? `Convite pendente de aceite já enviado para ${linkedUser.email}.`
-                : `Vinculado ao usuário ${linkedUser.name} (${userProfileLabel(linkedUser.profile, team.title)}).`}
+                ? `Convite enviado para ${linkedUser.email}, aguardando aceite.`
+                : `Acessa o sistema como ${linkedUser.email} (${userProfileLabel(linkedUser.profile, team.title)}). Mudar o e-mail de contato não muda o acesso.`}
+            </span>
+          </div>
+        ) : emailTakenBy ? (
+          <div className="flex items-center gap-2.5 rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <Info className="size-4 shrink-0" />
+            <span className="min-w-0 break-words">
+              Este e-mail já é de acesso de {emailTakenBy.name}. Para liberar acesso a este {team.lower}, use outro
+              e-mail.
             </span>
           </div>
         ) : normalizedWatchedEmail && normalizedWatchedEmail.includes("@") ? (
