@@ -105,10 +105,20 @@ Constantes em `lib/security/two-factor-rules.ts`:
 
 **Reinício pelo painel.** Quem perdeu o aplicativo e os códigos pede ajuda no Fale com a gente. O proprietário do GestaraHub abre o espaço no painel, aba "Dados e LGPD", escolhe a pessoa e reinicia (motivo obrigatório, confirmação em dois toques; antes, confirmar quem é por fora do sistema). O painel remove o app e desliga o e-mail pela API de administração do Auth, limpa dispositivos lembrados, sessões verificadas e códigos (`platform.finish_user_two_factor_reset`, migração 59), registra na Auditoria do espaço (o dono do espaço vê) e do painel, e avisa a pessoa por e-mail. Código: `apps/admin/src/lib/server/user-two-factor.ts`.
 
+## Troca do e-mail de acesso (05/11/2026)
+
+**Quem troca é a própria pessoa**, no menu da conta → "E-mail de acesso" (`features/auth/components/access-email-dialog.tsx`). O dono do espaço não troca o e-mail de outra pessoa: poderia pôr um e-mail dele e tomar a conta pedindo uma senha nova. Em Usuários o e-mail continua travado depois da ativação.
+
+- **Pedido** (`app/(auth)/email-change-actions.ts`): novo e-mail + senha atual (conferida num cliente à parte, encerrando só aquela sessão). Com a verificação ligada, só a sessão que já passou pelo segundo fator. Limite de 5 pedidos a cada 15 minutos. Não vale na demonstração nem para quem entra só pelo Google (o e-mail é o da conta Google). Vira evento de segurança na Auditoria.
+- **Link** (`services/server/emailChange.ts`, tabela `email_change_tokens`, migração 87, só o hash, RLS sem políticas): vai para o e-mail novo, vale 1 hora e uma vez só; pedir de novo invalida o anterior. O e-mail novo não pode ser de acesso de outra conta nem de um convite em aberto, em nenhum espaço (busca sem curinga, `likeExact`).
+- **Confirmação** (`/confirm-email?token=`, pública como a de nova senha): abrir a página não confirma, o botão confirma (o leitor de links do e-mail abre a mensagem sozinho). Confere de novo se o e-mail ficou livre, troca no Auth e em todas as linhas da pessoa em `users` (uma por espaço) e avisa o e-mail antigo, com o novo mascarado. A senha não muda.
+- **Instrutor:** o e-mail do cadastro do instrutor é "E-mail de contato" e não muda o acesso; o vínculo com o usuário é só o gravado (`users.professional_id`), e o aviso mostra o e-mail de acesso.
+
 ## Testes
 
 - Vitest (`lib/__tests__/two-factor-rules.test.ts`): código, hash, validade, tentativas, reenvio, máscara do e-mail, nome do dispositivo, último uso e conta só do Google.
 - Banco (`app/(auth)/__tests__/twoFactorRecovery.db.test.ts`: 8 códigos uma vez só, uso único, prova da sessão, desligar e gerar novos; `twoFactor.db.test.ts` e `twoFactorEmail.db.test.ts`): senha sem verificação entra; com o e-mail ligado, a senha sozinha não lê dados (`getClientForTenant` e `requireTenant` recusam) até o código; outra sessão segue barrada; 5 erros revogam, vencido e usado não valem, código novo revoga o anterior, o propósito separa; limite de reenvio; dispositivo lembrado entra sem código (vencido, revogado ou de outro usuário não vale); app + dispositivo lembrado entra sem o código do app; ligar pelo e-mail e desligar (revoga dispositivos e sessões, auditoria); desligar com o app remove o fator; remover o e-mail com o código do app e remover o app com o código do e-mail (o outro fica, códigos e dispositivos ficam, a sessão segue lendo, auditoria) e, com um método só, remover recusa.
+- Banco (`services/server/__tests__/emailChange.db.test.ts`): troca pelo link (entra com o novo, a linha do espaço muda, uma vez só), mesmo e-mail, inválido, em uso por outra conta, curinga, e-mail ocupado com o link em aberto, novo pedido invalida o anterior e vencimento em 1 hora.
 - E2E (área `acesso`): `e2e/verificacao-email.spec.ts` (ligar pelo e-mail, sair, entrar com código, lembrar, entrar sem código, esquecer) e `e2e/seguranca-aviso.spec.ts` ("Ativar agora" abre a escolha). O código vem de `setKnownTwoFactorEmailCode` (`e2e/db.ts`), que grava um hash conhecido.
 
 ## Ainda não feito

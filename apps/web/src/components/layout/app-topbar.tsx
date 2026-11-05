@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
-import { Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
+import { AtSign, Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
-import { TwoFactorDialog, useCurrentUser, useGoogleOnlyAccount } from "@/features/auth";
+import { AccessEmailDialog, TwoFactorDialog, useCurrentUser, useGoogleOnlyAccount } from "@/features/auth";
 import { useOrganization, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
@@ -64,6 +64,7 @@ export function AppTopbar() {
   const { data: supportUnread = 0 } = useSupportUnread(!isDemoSpace(user.organizationId));
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
+  const [accessEmailOpen, setAccessEmailOpen] = useState(false);
 
   return (
     <>
@@ -128,10 +129,16 @@ export function AppTopbar() {
               <span>Preferências</span>
             </DropdownMenuItem>
             {googleOnly ? null : (
-              <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
-                <ShieldCheck className="size-4" />
-                <span>Segurança</span>
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
+                  <ShieldCheck className="size-4" />
+                  <span>Segurança</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setAccessEmailOpen(true)} className="cursor-pointer">
+                  <AtSign className="size-4" />
+                  <span>E-mail de acesso</span>
+                </DropdownMenuItem>
+              </>
             )}
             <DropdownMenuSeparator />
             {/* Ajuda e o Fale com a gente num item so: o painel de Ajuda termina
@@ -188,6 +195,7 @@ export function AppTopbar() {
     </header>
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
     {googleOnly ? null : <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />}
+    {googleOnly ? null : <AccessEmailDialog open={accessEmailOpen} onOpenChange={setAccessEmailOpen} />}
     </>
   );
 }

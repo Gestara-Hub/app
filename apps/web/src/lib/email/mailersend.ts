@@ -648,6 +648,185 @@ export async function sendPasswordResetEmail(
   }
 }
 
+// --- Troca do e-mail de acesso (05/11/2026) ---------------------------------------
+
+/** Envio de um e-mail simples com o icone; em desenvolvimento cai no fallback com `devText`. */
+async function sendSimpleEmail(input: {
+  toEmail: string;
+  toName: string;
+  subject: string;
+  html: (hasInlineIcon: boolean) => string;
+  text: string;
+  /** O que aparece no log de desenvolvimento quando o envio nao sai. */
+  devText: string;
+  context: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const apiKey = process.env.MAILERSEND_API_KEY;
+  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br";
+  const fromName = process.env.MAILERSEND_FROM_NAME || "GestaraHub";
+  const what = `${input.context} para ${input.toEmail}`;
+  if (!apiKey) return withoutApiKey(input.devText, what);
+
+  const iconBase64 = await getEmailIconBase64();
+  const payload: Record<string, unknown> = {
+    from: { email: fromEmail, name: fromName },
+    to: [{ email: input.toEmail.trim(), name: input.toName.trim() || input.toEmail.trim() }],
+    reply_to: { email: replyToEmail(), name: fromName },
+    subject: input.subject,
+    html: input.html(Boolean(iconBase64)),
+    text: input.text,
+  };
+  if (iconBase64) {
+    payload.attachments = [
+      { content: iconBase64, filename: "email-icon.png", disposition: "inline", id: "gestarahub-icon" },
+    ];
+  }
+  try {
+    const response = await fetch(MAILERSEND_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      logError(`[mailersend] Erro ao enviar e-mail (${input.context}):`, response.status, errorBody);
+      return devDeliveryFallback(
+        input.devText,
+        what,
+        `MailerSend recusou (status ${response.status})`,
+        "Não foi possível enviar o e-mail. Tente novamente em instantes.",
+      );
+    }
+    if (await wasSuppressed(response, input.context)) {
+      return devDeliveryFallback(input.devText, what, "Destinatário suprimido pelo MailerSend", SUPPRESSED_ERROR);
+    }
+    return { ok: true };
+  } catch (err) {
+    logError(`[mailersend] Falha de conexão ao enviar e-mail (${input.context}):`, err);
+    return devDeliveryFallback(
+      input.devText,
+      what,
+      "Falha de conexão com MailerSend",
+      "Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente.",
+    );
+  }
+}
+
+const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] || name.trim();
+
+export interface SendEmailChangeConfirmInput {
+  toEmail: string;
+  toName: string;
+  confirmUrl: string;
+}
+
+/** Para o e-mail NOVO: confirmar a troca (o link vale 1 hora). */
+export function buildEmailChangeConfirmHtml({
+  toName,
+  toEmail,
+  confirmUrl,
+  hasInlineIcon,
+}: SendEmailChangeConfirmInput & { hasInlineIcon: boolean }): string {
+  const firstName = escapeHtml(firstNameOf(toName));
+  const safeUrl = escapeHtml(confirmUrl);
+  return renderEmailLayout({
+    title: "Confirme seu novo e-mail de acesso",
+    preheader: "Confirme o novo e-mail de acesso. O link vale por 1 hora.",
+    heading: `Confirme seu novo e-mail, ${firstName}`,
+    intro: `Você pediu para entrar no GestaraHub com <strong>${escapeHtml(toEmail)}</strong>.`,
+    body: `<p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">
+                A troca só vale depois que você confirmar no botão abaixo.
+              </p>
+              ${emailButton(safeUrl, "Confirmar novo e-mail")}
+              ${emailNotice("<strong>&#9201; Este link vale por 1 hora</strong> e só pode ser usado uma vez.")}
+              ${emailFallbackLink(safeUrl)}`,
+    footer: `Se não foi você que pediu, ignore este e-mail: nada muda.<br />
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+    hasInlineIcon,
+  });
+}
+
+export function buildEmailChangeConfirmText({ toName, toEmail, confirmUrl }: SendEmailChangeConfirmInput): string {
+  return [
+    `Confirme seu novo e-mail, ${firstNameOf(toName)}`,
+    "",
+    `Você pediu para entrar no GestaraHub com ${toEmail}.`,
+    "A troca só vale depois que você confirmar pelo link abaixo:",
+    "",
+    confirmUrl,
+    "",
+    "O link vale por 1 hora e só pode ser usado uma vez.",
+    "Se não foi você que pediu, ignore este e-mail: nada muda.",
+    `Dúvidas? Escreva para ${replyToEmail()}.`,
+  ].join("\n");
+}
+
+export function sendEmailChangeConfirmEmail(
+  input: SendEmailChangeConfirmInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return sendSimpleEmail({
+    toEmail: input.toEmail,
+    toName: input.toName,
+    subject: "Confirme seu novo e-mail de acesso ao GestaraHub",
+    html: (hasInlineIcon) => buildEmailChangeConfirmHtml({ ...input, hasInlineIcon }),
+    text: buildEmailChangeConfirmText(input),
+    devText: input.confirmUrl,
+    context: "Link de troca de e-mail",
+  });
+}
+
+export interface SendEmailChangedNoticeInput {
+  toEmail: string;
+  toName: string;
+  /** O e-mail novo, ja mascarado (o aviso vai para o antigo). */
+  maskedNewEmail: string;
+}
+
+/** Para o e-mail ANTIGO: o acesso mudou (se nao foi a pessoa, ela fala com a gente). */
+export function buildEmailChangedNoticeHtml({
+  toName,
+  maskedNewEmail,
+  hasInlineIcon,
+}: SendEmailChangedNoticeInput & { hasInlineIcon: boolean }): string {
+  const firstName = escapeHtml(firstNameOf(toName));
+  return renderEmailLayout({
+    title: "Seu e-mail de acesso mudou",
+    preheader: "O e-mail de acesso da sua conta no GestaraHub mudou.",
+    heading: `Seu e-mail de acesso mudou, ${firstName}`,
+    intro: `A partir de agora você entra no GestaraHub com <strong>${escapeHtml(maskedNewEmail)}</strong>.`,
+    body: emailNotice(
+      `<strong>Não foi você?</strong> Responda este e-mail ou escreva para ${escapeHtml(replyToEmail())} agora mesmo.`,
+    ),
+    footer: `Este aviso vai para o e-mail antigo por segurança.<br />
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+    hasInlineIcon,
+  });
+}
+
+export function buildEmailChangedNoticeText({ toName, maskedNewEmail }: SendEmailChangedNoticeInput): string {
+  return [
+    `Seu e-mail de acesso mudou, ${firstNameOf(toName)}`,
+    "",
+    `A partir de agora você entra no GestaraHub com ${maskedNewEmail}.`,
+    "",
+    `Não foi você? Responda este e-mail ou escreva para ${replyToEmail()} agora mesmo.`,
+  ].join("\n");
+}
+
+export function sendEmailChangedNoticeEmail(
+  input: SendEmailChangedNoticeInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return sendSimpleEmail({
+    toEmail: input.toEmail,
+    toName: input.toName,
+    subject: "Seu e-mail de acesso ao GestaraHub mudou",
+    html: (hasInlineIcon) => buildEmailChangedNoticeHtml({ ...input, hasInlineIcon }),
+    text: buildEmailChangedNoticeText(input),
+    devText: `aviso para o e-mail antigo (novo: ${input.maskedNewEmail})`,
+    context: "Aviso de troca de e-mail",
+  });
+}
+
 // --- Codigo da verificacao em duas etapas (doc technical/17) ------------------
 
 export interface SendTwoFactorCodeEmailInput {
