@@ -31,7 +31,7 @@ Data: 2026-10-19.
 
 ## Como ficou a instalação (04/11/2026)
 
-- **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/dashboard`, tela cheia (`standalone`), fundo e barra no chumbo da marca.
+- **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/dashboard`, tela cheia (`standalone`), fundo e barra no quase preto da marca (#18181B, o fundo do ícone desde 05/11/2026).
 - **Ícones** em `apps/web/public/icons`, gerados de `src/assets/icon.svg`:
   - `icon-192/512`: quadrado com cantos arredondados e G em 80%, para o computador e o Android sem corte.
   - `icon-maskable-192/512`: quadrado cheio com o G em 72%, para caber no corte em círculo do Android (área segura de 80%: o ponto mais distante do G fica a 38,7% do lado, contra 40% de limite).
