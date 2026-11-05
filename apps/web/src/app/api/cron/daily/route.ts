@@ -8,6 +8,7 @@ import { reportError } from "@/lib/log";
 import { sendDailyErrorDigest } from "@/services/server/errorDigest";
 import { runPlanDailyTasks } from "@/services/server/subscriptionPlan";
 import { safeEqual } from "@/lib/security/webhook-signature";
+import { cleanupUnusedAttachments } from "@/services/attachments/attachmentsCleanup";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas
@@ -69,6 +70,16 @@ export async function POST(req: Request) {
     totals.errorReferences.push(...plan.errorReferences);
   } catch (err) {
     totals.errorReferences.push(await reportError("cron.daily.plano", err, { source: "cron" }));
+    totals.failures += 1;
+  }
+
+  // Anexos sem uso ha mais de 24 horas: formulario cancelado ou aba fechada
+  // depois do envio (migracao 86). O que algum registro usa nunca sai.
+  try {
+    const attachments = await cleanupUnusedAttachments(admin);
+    Object.assign(result, { unusedAttachmentsRemoved: attachments.removed });
+  } catch (err) {
+    totals.errorReferences.push(await reportError("cron.daily.anexos-sem-uso", err, { source: "cron" }));
     totals.failures += 1;
   }
 

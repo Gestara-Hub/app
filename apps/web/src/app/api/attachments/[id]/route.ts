@@ -5,6 +5,9 @@ import { decodeSession } from "@/lib/session-cookie";
 import { getAttachmentRecord } from "@/services/attachments/attachmentsBackend";
 import { downloadAttachmentFromStorage } from "@/services/attachments/attachmentsStorage";
 import { logError } from "@/lib/log";
+import { isApiError } from "@gestarahub/contracts";
+import { requireTenant } from "@/services/server/tenant";
+import { attachmentIsUsed, removeAttachments } from "@/services/attachments/attachmentsCleanup";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -74,5 +77,39 @@ export async function GET(
       { message: "Erro ao carregar arquivo." },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * Tirar o arquivo da lista antes de salvar o formulario (04/11/2026): apaga o
+ * anexo se foi o proprio usuario que enviou e se nenhum registro o usa
+ * (`attachment_is_used`, migracao 86). Comprovante ja salvo nunca sai por aqui.
+ */
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const ctx = await requireTenant();
+    const admin = createSupabaseAdminClient();
+    const { data: row } = await admin
+      .from("attachments")
+      .select("id, organization_id, storage_path, uploaded_by")
+      .eq("id", id)
+      .eq("organization_id", ctx.organizationId)
+      .maybeSingle();
+    if (!row) return new Response(null, { status: 204 });
+    if (row.uploaded_by !== ctx.userId) {
+      return NextResponse.json({ message: "Só quem enviou pode tirar este arquivo." }, { status: 403 });
+    }
+    if (await attachmentIsUsed(admin, ctx.organizationId, id)) {
+      return NextResponse.json({ message: "Arquivo já está em uso." }, { status: 409 });
+    }
+    await removeAttachments(admin, [
+      { id: String(row.id), organization_id: String(row.organization_id), storage_path: String(row.storage_path) },
+    ]);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    if (isApiError(error)) return NextResponse.json({ message: error.message }, { status: error.httpStatus ?? 403 });
+    logError("[DELETE /api/attachments/:id] Erro:", error);
+    return NextResponse.json({ message: "Erro ao tirar o arquivo." }, { status: 500 });
   }
 }

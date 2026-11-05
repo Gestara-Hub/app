@@ -64,6 +64,8 @@ export async function saveAttachmentInStorage(
     size_bytes: file.size,
     storage_path: storagePath,
     uploaded_at: uploadedAt,
+    // Quem enviou: so ele apaga o anexo antes de salvar o formulario (migracao 86).
+    uploaded_by: ctx.userId,
   });
 
   if (dbError) {
