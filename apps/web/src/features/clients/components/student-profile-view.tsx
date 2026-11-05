@@ -168,10 +168,15 @@ function ProfileSection({
         aria-expanded={open}
         aria-controls={`student-panel-${id}`}
         onClick={onToggle}
-        className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/40"
+        // Aberta: o titulo vira uma faixa com fundo e linha embaixo, para ver onde a
+        // secao comeca; as linhas internas do painel nao se confundem com o fim dela.
+        className={cn(
+          "flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors",
+          open ? "border-b bg-muted/50 hover:bg-muted/70" : "hover:bg-muted/40",
+        )}
       >
         <span className="min-w-0">
-          <span className="block text-sm font-medium text-foreground">{title}</span>
+          <span className={cn("block text-sm text-foreground", open ? "font-semibold" : "font-medium")}>{title}</span>
           <span className="block text-xs text-muted-foreground">{summary}</span>
         </span>
         <ChevronDown
@@ -180,8 +185,8 @@ function ProfileSection({
         />
       </button>
       {open ? (
-        // Respiro em cima: o fundo do hover do titulo nao encosta no conteudo.
-        <div id={`student-panel-${id}`} className="min-w-0 p-4">
+        // Respiro em cima e embaixo: o fim do conteudo fica longe do titulo seguinte.
+        <div id={`student-panel-${id}`} className="min-w-0 px-4 pt-4 pb-6">
           {children}
         </div>
       ) : null}
@@ -608,7 +613,7 @@ export function StudentProfileView({ id }: { id: Id }) {
         onOpenDocuments={canSeeDocuments ? () => openSection("documents") : undefined}
       />
 
-      <div className="divide-y rounded-xl border">
+      <div className="divide-y overflow-hidden rounded-xl border">
         {sections.map((section) => (
           <ProfileSection
             key={section.id}
