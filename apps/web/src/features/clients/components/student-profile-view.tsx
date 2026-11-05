@@ -162,17 +162,22 @@ function ProfileSection({
   children: ReactNode;
 }) {
   return (
-    <div id={`student-section-${id}`} className="scroll-mt-4">
+    // Aberta: a secao inteira (titulo e conteudo) ganha fundo e uma barra na
+    // esquerda, para ver onde comeca e onde termina; as linhas internas do
+    // painel nao se confundem com o fim dela.
+    <div
+      id={`student-section-${id}`}
+      className={cn("relative scroll-mt-4", open && "bg-muted/40 dark:bg-muted/25")}
+    >
+      {open ? <span aria-hidden className="absolute inset-y-2 left-1 w-[3px] rounded-full bg-foreground/60" /> : null}
       <button
         type="button"
         aria-expanded={open}
         aria-controls={`student-panel-${id}`}
         onClick={onToggle}
-        // Aberta: o titulo vira uma faixa com fundo e linha embaixo, para ver onde a
-        // secao comeca; as linhas internas do painel nao se confundem com o fim dela.
         className={cn(
           "flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors",
-          open ? "border-b bg-muted/50 hover:bg-muted/70" : "hover:bg-muted/40",
+          open ? "hover:bg-muted/60" : "hover:bg-muted/40",
         )}
       >
         <span className="min-w-0">
@@ -186,7 +191,7 @@ function ProfileSection({
       </button>
       {open ? (
         // Respiro em cima e embaixo: o fim do conteudo fica longe do titulo seguinte.
-        <div id={`student-panel-${id}`} className="min-w-0 px-4 pt-4 pb-6">
+        <div id={`student-panel-${id}`} className="min-w-0 px-4 pt-1 pb-6">
           {children}
         </div>
       ) : null}
