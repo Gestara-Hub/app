@@ -52,6 +52,10 @@ describe("nova senha pelo link do e-mail", () => {
   it("e-mail sem conta ou link desconhecido: nada", async () => {
     const admin = adminClient();
     expect(await createPasswordResetToken(admin, "ninguem@gestarahub.test")).toBeNull();
+    // "_" e "%" nao sao curinga: um e-mail parecido nao recebe o link de outra conta.
+    const [local, domain] = tenant.owner.email.split("@");
+    expect(await createPasswordResetToken(admin, `_${local.slice(1)}@${domain}`)).toBeNull();
+    expect(await createPasswordResetToken(admin, `%@${domain}`)).toBeNull();
     expect((await checkPasswordResetToken(admin, "nao-existe")).status).toBe("invalid");
     expect((await checkPasswordResetToken(admin, undefined)).status).toBe("invalid");
   });

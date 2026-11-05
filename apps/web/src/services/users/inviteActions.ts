@@ -1,5 +1,6 @@
 "use server";
 
+import { likeExact } from "@/lib/supabase/like";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
@@ -38,7 +39,7 @@ export async function createUserAndInviteAction(
       .from("users")
       .select("id")
       .eq("organization_id", organizationId)
-      .ilike("email", normalizedEmail)
+      .ilike("email", likeExact(normalizedEmail))
       .maybeSingle();
 
     if (existing) {

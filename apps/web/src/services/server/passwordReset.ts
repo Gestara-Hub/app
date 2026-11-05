@@ -1,3 +1,4 @@
+import { likeExact } from "@/lib/supabase/like";
 import { createHash, randomBytes } from "node:crypto";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,7 +24,7 @@ async function accountWithPassword(
   const { data: users } = await admin
     .from("users")
     .select("auth_user_id, name, status")
-    .ilike("email", email)
+    .ilike("email", likeExact(email))
     .eq("status", "active")
     .not("auth_user_id", "is", null)
     .limit(1);
