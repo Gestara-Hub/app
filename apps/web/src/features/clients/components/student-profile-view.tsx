@@ -27,6 +27,7 @@ import type { ListItemAction } from "@/components/shared/list-item-actions-menu"
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { PageActionsMenu } from "@/components/shared/page-actions-menu";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
@@ -165,11 +166,21 @@ function ProfileSection({
     // Aberta: a secao inteira (titulo e conteudo) ganha fundo e uma barra na
     // esquerda, para ver onde comeca e onde termina; as linhas internas do
     // painel nao se confundem com o fim dela.
-    <div
+    <Collapsible
+      open={open}
       id={`student-section-${id}`}
-      className={cn("relative scroll-mt-4", open && "bg-muted/40 dark:bg-muted/25")}
+      className={cn(
+        "relative scroll-mt-4 transition-colors duration-300",
+        open && "bg-muted/40 dark:bg-muted/25",
+      )}
     >
-      {open ? <span aria-hidden className="absolute inset-y-2 left-1 w-[3px] rounded-full bg-foreground/60" /> : null}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-2 left-1 w-[3px] origin-top rounded-full bg-foreground/60 transition-[opacity,transform] duration-300",
+          open ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0",
+        )}
+      />
       <button
         type="button"
         aria-expanded={open}
@@ -186,16 +197,15 @@ function ProfileSection({
         </span>
         <ChevronDown
           aria-hidden
-          className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-300", open && "rotate-180")}
         />
       </button>
-      {open ? (
-        // Respiro em cima e embaixo: o fim do conteudo fica longe do titulo seguinte.
-        <div id={`student-panel-${id}`} className="min-w-0 px-4 pt-1 pb-6">
-          {children}
-        </div>
-      ) : null}
-    </div>
+      {/* Abre e fecha deslizando; fechada, o painel sai da tela (nada carrega escondido). */}
+      <CollapsibleContent id={`student-panel-${id}`}>
+        {/* Respiro em cima e embaixo: o fim do conteudo fica longe do titulo seguinte. */}
+        <div className="min-w-0 px-4 pt-1 pb-6">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
