@@ -165,8 +165,9 @@ export function ProfessionalForm({
   const normalizedWatchedEmail = (watchedEmail || "").trim().toLowerCase();
   // O vinculo e so o gravado no usuario (professionalId). O e-mail daqui e o
   // de contato: pode ser diferente do e-mail de acesso e muda-lo nao muda o login.
+  // Usuario inativo ligado nao conta: pode liberar um acesso novo (no maximo um ativo).
   const linkedUser = professional?.id
-    ? (users ?? []).find((u) => u.professionalId === professional.id)
+    ? (users ?? []).find((u) => u.professionalId === professional.id && u.status === "active")
     : undefined;
   // E-mail digitado que ja e de outro usuario: avisa e nao oferece convite.
   const emailTakenBy = normalizedWatchedEmail

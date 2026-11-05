@@ -181,6 +181,12 @@ Regras especificas:
 ### Usuarios e auditoria (18/10/2026)
 
 - **Um usuario ativo por profissional** (ACE-08): o service recusa ligar um segundo ("Este profissional ja esta ligado ao usuario X.") e o formulario nao oferece quem ja tem usuario. Inativar o usuario libera o profissional; reativar o antigo esbarra no novo.
+- **Vínculo usuário x profissional (05/11/2026):** o vínculo diz quem é a pessoa (o login é ela na equipe), por isso:
+  - **No banco:** no máximo um usuário **ativo** por profissional (índice `uq_users_active_professional`, migração 89). Vale para criar, convidar, vincular e reativar. Reativar um usuário inativo cujo profissional já foi ligado a outro usuário ativo é recusado ("Não dá para reativar: este profissional já está ligado ao usuário X."). Um usuário só tem um profissional (`users.professional_id`), então dois profissionais para o mesmo usuário não acontecem.
+  - **Travado depois do aceite:** com o convite pendente dá para corrigir; depois que a conta foi ativada, o campo vira só leitura e o servidor recusa trocar ou tirar ("Para corrigir, inative este usuário e convide de novo."). Usuário ativo sem vínculo pode ser ligado uma vez. Regras em `services/users/professionalLink.ts`, nos dois caminhos (Supabase e demonstração).
+  - **Perfil é permissão, vínculo é identidade:** trocar o perfil (ex.: instrutora promovida a gerente) não mexe no vínculo; só o perfil Instrutor exige o vínculo.
+  - **Edição não preenche nome nem e-mail** pelo profissional escolhido (só o cadastro novo). No cadastro do instrutor, usuário inativo ligado não conta: dá para liberar um acesso novo.
+  - **Aluno:** ainda não tem login próprio (acesso do aluno, ADR 13, adiado), então não há vínculo a conferir ao reativar. Quando existir, a mesma regra vale (um acesso ativo por aluno e responsável).
 - **Auditoria** registra tambem o WhatsApp assistido ("abriu no WhatsApp uma mensagem para X"; o envio em si nao e confirmado), o reenvio pela API oficial, a troca de instrutor numa aula e a volta do titular, e a chamada quando gasta ou devolve aula de pacote.
 - **Trocar o perfil de Profissional para outro** mantem o vinculo com a equipe (opcional nos outros perfis); o formulario nao fala mais em "agenda dele" (ACE-36). Para ligar o profissional a outro usuario, tire o vinculo ou inative este usuario.
 

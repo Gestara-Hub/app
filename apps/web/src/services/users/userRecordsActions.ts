@@ -1,5 +1,12 @@
 "use server";
 
+import { likeExact } from "@/lib/supabase/like";
+import {
+  PROFESSIONAL_LINK_LOCKED,
+  activeUserLinkedTo,
+  isProfessionalUniqueViolation,
+  professionalTakenMessage,
+} from "./professionalLink";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { UpdateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { guard } from "./userActionsShared";
@@ -88,7 +95,7 @@ export async function updateUserInDb(
   organizationId: string,
   userId: string,
   payload: UpdateUser,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; field?: "email" | "professionalId" }> {
   const denied = await guard(organizationId, {
     manage: true,
     targetUserId: userId,
@@ -110,13 +117,28 @@ export async function updateUserInDb(
     // 1. Confere estado atual do usuário (se tem auth_user_id, a conta já está confirmada/ativa)
     const { data: currentUser } = await admin
       .from("users")
-      .select("email, auth_user_id")
+      .select("email, auth_user_id, professional_id, status")
       .eq("id", userId)
       .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (!currentUser) {
       return { success: false, error: "Usuário não encontrado." };
+    }
+
+    // Vinculo com o instrutor (professionalLink.ts): travado depois do aceite e
+    // no maximo um usuario ativo por instrutor, inclusive ao reativar.
+    const currentProfessional = (currentUser.professional_id as string | null) ?? null;
+    const nextProfessional =
+      payload.professionalId !== undefined ? payload.professionalId || null : currentProfessional;
+    if (currentUser.auth_user_id && currentProfessional && nextProfessional !== currentProfessional) {
+      return { success: false, error: PROFESSIONAL_LINK_LOCKED, field: "professionalId" };
+    }
+    const nextStatus = payload.status ?? (currentUser.status as string);
+    const reactivating = payload.status === "active" && currentUser.status !== "active";
+    if (nextStatus === "active" && nextProfessional) {
+      const clash = await activeUserLinkedTo(admin, organizationId, nextProfessional, userId);
+      if (clash) return { success: false, error: professionalTakenMessage(clash, reactivating), field: "professionalId" };
     }
 
     const nextEmail = payload.email !== undefined ? payload.email.trim().toLowerCase() : undefined;
@@ -136,7 +158,7 @@ export async function updateUserInDb(
         .from("users")
         .select("id")
         .eq("organization_id", organizationId)
-        .ilike("email", nextEmail!)
+        .ilike("email", likeExact(nextEmail!))
         .neq("id", userId)
         .maybeSingle();
 
@@ -161,6 +183,9 @@ export async function updateUserInDb(
       .eq("id", userId)
       .eq("organization_id", organizationId);
 
+    if (isProfessionalUniqueViolation(error)) {
+      return { success: false, error: "Este profissional acabou de ser ligado a outro usuário. Atualize a tela e confira.", field: "professionalId" };
+    }
     if (error) {
       logError("[usersBackend] Erro ao atualizar usuário:", error);
       return { success: false, error: "Erro ao atualizar usuário no banco." };

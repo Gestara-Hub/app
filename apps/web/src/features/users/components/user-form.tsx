@@ -10,7 +10,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/lib/toast";
-import { Check, Mail } from "lucide-react";
+import { Check, Lock, Mail } from "lucide-react";
 import {
   FieldShell,
   InputText,
@@ -74,6 +74,9 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
   const currentUser = useCurrentUser();
   const isSelf = Boolean(user && user.id === currentUser.id);
   const isEmailReadOnly = Boolean(isEdit && user && !user.pendingInvite);
+  // O vinculo diz quem e a pessoa: depois do aceite nao muda (como o e-mail).
+  // Sem vinculo, pode ligar uma vez. O servidor confere de novo (professionalLink.ts).
+  const isLinkLocked = Boolean(isEdit && user && !user.pendingInvite && user.professionalId);
   const allowedProfiles = new Set<UserProfile>(manageableProfiles(currentUser));
   if (user) allowedProfiles.add(user.profile);
   const profileOptions = PROFILE_ORDER.filter((p) => allowedProfiles.has(p)).map(
@@ -213,6 +216,25 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
           }
         />
 
+        {isLinkLocked && user ? (
+          <FieldShell
+            id="user-professional-locked"
+            label={`${team.title} da equipe`}
+            required={isProfessionalProfile}
+            hint="Não muda depois que a conta foi ativada. Para corrigir, inative este usuário e convide de novo."
+          >
+            <div
+              id="user-professional-locked"
+              className="flex min-w-0 items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground"
+            >
+              <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 break-words">
+                {user.professional?.name ?? linked?.name ?? "Profissional da equipe"}
+                {linked?.roleName ? ` · ${linked.roleName}` : ""}
+              </span>
+            </div>
+          </FieldShell>
+        ) : (
         <Controller
           control={form.control}
           name="professionalId"
@@ -235,8 +257,10 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
                   value={field.value ?? ""}
                   onChange={(id) => {
                     field.onChange(id);
-                    // Preenche nome e e-mail com os do profissional quando o campo esta
-                    // vazio ou ainda tem os dados do vinculo anterior.
+                    // So no cadastro novo: preenche nome e e-mail com os do profissional
+                    // quando o campo esta vazio ou ainda tem os dados do vinculo anterior.
+                    // Na edicao, nome e e-mail nunca mudam por causa do vinculo.
+                    if (isEdit) return;
                     const picked = professionalOptions.find((p) => p.id === id);
                     const currentName = form.getValues("name").trim();
                     const currentEmail = form.getValues("email").trim();
@@ -280,11 +304,14 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
             );
           }}
         />
+        )}
 
-        {linked ? (
+        {linked && !isLinkLocked ? (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Check className="size-3.5 text-emerald-600" />
-            Vinculado a <strong className="font-semibold text-foreground">{linked.name.trim()}</strong>, da equipe.
+            <Check className="size-3.5 shrink-0 text-emerald-600" />
+            <span>
+              Vinculado a <strong className="font-semibold text-foreground">{linked.name.trim()}</strong>, da equipe.
+            </span>
           </p>
         ) : null}
 

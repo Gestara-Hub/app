@@ -1,3 +1,4 @@
+import { PROFESSIONAL_LINK_LOCKED } from "./professionalLink";
 import type {
   AuditChange,
   CreateUser,
@@ -152,7 +153,7 @@ export const usersService = {
         );
         if (!res.success || !res.user) {
           throw validationError([
-            { field: "email", message: res.error || "Erro ao criar usuário." },
+            { field: res.field ?? "email", message: res.error || "Erro ao criar usuário." },
           ]);
         }
         store.users = [
@@ -209,7 +210,7 @@ export const usersService = {
         const res = await updateUserInDb(store.organization.id, id, payload);
         if (!res.success) {
           throw validationError([
-            { field: "email", message: res.error || "Erro ao atualizar usuário." },
+            { field: res.field ?? "email", message: res.error || "Erro ao atualizar usuário." },
           ]);
         }
         const updatedUsers = await listUsersFromDb(store.organization.id);
@@ -237,6 +238,15 @@ export const usersService = {
         ensureEmailUnique(payload.email, id);
       }
 
+      // Vinculo travado depois do aceite (professionalLink.ts): so o convite pendente muda.
+      if (
+        Object.prototype.hasOwnProperty.call(payload, "professionalId") &&
+        current.professionalId &&
+        (payload.professionalId || undefined) !== current.professionalId &&
+        !mockPendingInviteUserIds.has(id)
+      ) {
+        throw validationError([{ field: "professionalId", message: PROFESSIONAL_LINK_LOCKED }]);
+      }
       ensureNotSelfPrivilegeChange(current, payload);
       ensureNotLastOwner(current, payload);
       const updated: User = {
@@ -252,7 +262,7 @@ export const usersService = {
           : current.professionalId,
         updatedAt: nowIso(),
       };
-      ensureProfessionalFree(updated.professionalId, updated.status, id);
+      ensureProfessionalFree(updated.professionalId, updated.status, id, current.status !== "active");
       store.users[idx] = updated;
       const changes: AuditChange[] = [];
       if (updated.profile !== current.profile) {

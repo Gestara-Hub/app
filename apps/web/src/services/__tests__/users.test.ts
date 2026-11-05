@@ -71,8 +71,30 @@ describe("um usuário ativo por profissional (ACE-08)", () => {
     expect(other.professionalId).toBe(teacher.id);
     // Reativar o antigo agora esbarra no novo.
     await expect(usersService.update(carlos.id, { status: "active" })).rejects.toMatchObject({
+      fields: [{ field: "professionalId", message: "Não dá para reativar: este profissional já está ligado ao usuário Carlos 2." }],
+    });
+  });
+
+  it("depois do aceite o profissional ligado não muda; com o convite pendente, muda", async () => {
+    const carlos = await createInstructor("Carlos");
+    const bruno = await createInstructor("Bruno");
+    const base = { profile: "professional" as const, status: "active" as const };
+    // Sem convite (conta ja ativa) x com convite pendente.
+    const active = await usersService.create({ ...base, name: "Carlos", email: "c@academiax.com", professionalId: carlos.id }, false);
+    const pending = await usersService.create({ ...base, name: "Bruno", email: "b@academiax.com", professionalId: bruno.id });
+
+    await expect(usersService.update(active.id, { professionalId: bruno.id })).rejects.toMatchObject({
+      fields: [{ field: "professionalId", message: expect.stringContaining("não muda depois que a conta foi ativada") }],
+    });
+    await expect(usersService.update(active.id, { professionalId: "" })).rejects.toMatchObject({
       fields: [{ field: "professionalId" }],
     });
+    // Mesmo vinculo (o formulario manda o atual) passa; o perfil muda sem mexer no vinculo.
+    const promoted = await usersService.update(active.id, { professionalId: carlos.id, profile: "manager" });
+    expect(promoted).toMatchObject({ profile: "manager", professionalId: carlos.id });
+
+    const relinked = await usersService.update(pending.id, { professionalId: undefined, name: "Bruno" });
+    expect(relinked.name).toBe("Bruno");
   });
 });
 

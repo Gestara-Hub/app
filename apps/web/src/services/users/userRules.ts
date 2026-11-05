@@ -1,3 +1,4 @@
+import { professionalTakenMessage } from "./professionalLink";
 import type {
   ApiError,
   ApiErrorField,
@@ -98,6 +99,8 @@ export function ensureProfessionalFree(
   professionalId: Id | undefined,
   status: User["status"],
   exceptId?: Id,
+  /** Usuario inativo voltando: a mensagem diz que a reativacao foi recusada. */
+  reactivating = false,
 ): void {
   if (!professionalId || status !== "active") return;
   const clash = store.users.find(
@@ -105,7 +108,7 @@ export function ensureProfessionalFree(
   );
   if (clash) {
     throw validationError([
-      { field: "professionalId", message: `Este profissional já está ligado ao usuário ${clash.name}.` },
+      { field: "professionalId", message: professionalTakenMessage(clash.name, reactivating && status === "active") },
     ]);
   }
 }

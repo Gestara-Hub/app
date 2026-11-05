@@ -1,6 +1,7 @@
 "use server";
 
 import { likeExact } from "@/lib/supabase/like";
+import { activeUserLinkedTo, isProfessionalUniqueViolation, professionalTakenMessage } from "./professionalLink";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
@@ -24,6 +25,7 @@ export async function createUserAndInviteAction(
   success: boolean;
   user?: UserView;
   error?: string;
+  field?: "email" | "professionalId";
   /** Convite pedido e e-mail enviado. Falhou: `inviteError` diz o motivo e o usuario fica criado. */
   inviteSent?: boolean;
   inviteError?: string;
@@ -56,6 +58,12 @@ export async function createUserAndInviteAction(
       .eq("id", organizationId)
       .single();
 
+    // Um instrutor tem no maximo um usuario ativo (professionalLink.ts, migracao 89).
+    if (payload.professionalId && (payload.status ?? "active") === "active") {
+      const clash = await activeUserLinkedTo(admin, organizationId, payload.professionalId);
+      if (clash) return { success: false, error: professionalTakenMessage(clash, false), field: "professionalId" };
+    }
+
     const organizationName = orgData?.name || "Sua Organização";
     const userId = randomUUID();
 
@@ -74,6 +82,9 @@ export async function createUserAndInviteAction(
       .select()
       .single();
 
+    if (isProfessionalUniqueViolation(insertUserErr)) {
+      return { success: false, error: "Este profissional acabou de ser ligado a outro usuário. Atualize a tela e confira.", field: "professionalId" };
+    }
     if (insertUserErr || !insertedUser) {
       logError("[usersBackend] Erro ao inserir usuário:", insertUserErr);
       return {
