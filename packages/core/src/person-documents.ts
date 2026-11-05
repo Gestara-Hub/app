@@ -76,6 +76,37 @@ export const PROFESSIONAL_DOCUMENT_KINDS: DocumentKindInfo<ProfessionalDocumentK
   { value: "other", label: "Outro", group: "", expires: false, title: "required" },
 ];
 
+/** Categoria da selecao (primeiro campo do formulario): o grupo e os tipos dele. */
+export interface DocumentCategory {
+  /** O grupo do tipo ("Saúde"); vazio no "Outro". */
+  key: string;
+  label: string;
+  kinds: DocumentKindInfo[];
+}
+
+/**
+ * Categorias do dono, na ordem da lista, so com tipos que podem ser escolhidos
+ * (mais o tipo atual do documento, se aposentado). O grupo vazio vira "Outro".
+ */
+export function documentCategoriesFor(ownerKind: PersonDocumentOwnerKind, keepKind?: string): DocumentCategory[] {
+  const categories: DocumentCategory[] = [];
+  for (const kind of documentKindsFor(ownerKind)) {
+    if (kind.retired && kind.value !== keepKind) continue;
+    let category = categories.find((c) => c.key === kind.group);
+    if (!category) {
+      category = { key: kind.group, label: kind.group || "Outro", kinds: [] };
+      categories.push(category);
+    }
+    category.kinds.push(kind);
+  }
+  return categories;
+}
+
+/** Categoria (grupo) de um tipo, para abrir o documento ja guardado. */
+export function documentCategoryOf(ownerKind: PersonDocumentOwnerKind, kind: string): string | undefined {
+  return documentKindsFor(ownerKind).find((k) => k.value === kind)?.group;
+}
+
 /** Todos os tipos do dono, inclusive os aposentados (para mostrar o que ja existe). */
 export function documentKindsFor(ownerKind: PersonDocumentOwnerKind): DocumentKindInfo[] {
   return ownerKind === "client" ? CLIENT_DOCUMENT_KINDS : PROFESSIONAL_DOCUMENT_KINDS;

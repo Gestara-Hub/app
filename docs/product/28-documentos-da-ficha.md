@@ -16,7 +16,7 @@ Decidido e feito em 04/11/2026. Guarda na ficha os documentos que o espaço pede
 
 ## 2. Tipos
 
-Agrupados na seleção. Em negrito, os que entraram em 04/11/2026 (segunda leva).
+Em negrito, os que entraram em 04/11/2026 (segunda leva). No formulário são dois campos: **Categoria** (o grupo) e **Tipo**, que mostra só os tipos daquela categoria. Na categoria "Outro", que tem um tipo só, o campo Tipo não aparece e o "Nome do documento" vem direto. Na edição, a categoria já vem do tipo guardado.
 
 **Aluno**
 

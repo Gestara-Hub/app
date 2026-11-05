@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,8 +9,9 @@ import type { Id, PersonDocumentKind, PersonDocumentOwnerKind, PersonDocumentVie
 import {
   MAX_DOCUMENT_NOTES_LENGTH,
   MAX_DOCUMENT_TITLE_LENGTH,
+  documentCategoriesFor,
+  documentCategoryOf,
   documentKindExpires,
-  documentKindsFor,
   documentTitleMode,
 } from "@gestarahub/core/person-documents";
 import { DateField, DialogFormFooter, FileDropField, InputText, SelectField, TextArea } from "@/components/form";
@@ -23,6 +25,8 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useCreatePersonDocument, useUpdatePersonDocument } from "../hooks/use-person-documents";
 
 interface Values {
+  /** Categoria (so do formulario): filtra o segundo campo, o tipo. */
+  category: string;
   kind: string;
   title: string;
   files: File[];
@@ -30,16 +34,23 @@ interface Values {
   notes: string;
 }
 
+/** O grupo vazio (o "Outro") aparece como "Outro" no campo de categoria. */
+function categoryLabel(group: string | undefined): string {
+  return group === undefined ? "" : group || "Outro";
+}
+
 function schemaFor(isEdit: boolean, ownerKind: PersonDocumentOwnerKind) {
   return z
     .object({
-      kind: z.string().min(1, "Escolha o tipo do documento."),
+      category: z.string().min(1, "Escolha a categoria."),
+      kind: z.string(),
       title: z.string().max(MAX_DOCUMENT_TITLE_LENGTH, `Use até ${MAX_DOCUMENT_TITLE_LENGTH} caracteres.`),
       files: isEdit ? z.array(z.instanceof(File)) : filesSchema({ ...PERSON_DOCUMENT_FILE_RULES, required: true }),
       expiresOn: z.string(),
       notes: z.string().max(MAX_DOCUMENT_NOTES_LENGTH, `Use até ${MAX_DOCUMENT_NOTES_LENGTH} caracteres.`),
     })
     .superRefine((v, ctx) => {
+      if (v.category && !v.kind) ctx.addIssue({ code: "custom", path: ["kind"], message: "Escolha o tipo do documento." });
       if (v.kind && documentTitleMode(ownerKind, v.kind as PersonDocumentKind) === "required" && !v.title.trim()) {
         ctx.addIssue({ code: "custom", path: ["title"], message: "Dê um nome ao documento." });
       }
@@ -66,6 +77,7 @@ function DocumentForm({
     mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: {
+      category: document ? categoryLabel(documentCategoryOf(ownerKind, document.kind)) : "",
       kind: document?.kind ?? "",
       title: document?.title ?? "",
       files: [],
@@ -74,13 +86,23 @@ function DocumentForm({
     },
   });
   const kind = useWatch({ control: form.control, name: "kind" }) as PersonDocumentKind | "";
+  const categoryValue = useWatch({ control: form.control, name: "category" });
+  // Dois campos: a categoria (Saude, Identificacao...) e o tipo dela. O tipo
+  // aposentado so aparece no documento que ja o tem.
+  const categories = documentCategoriesFor(ownerKind, document?.kind);
+  const category = categories.find((c) => c.label === categoryValue);
+  const kindOptions = (category?.kinds ?? []).map((k) => ({ value: k.value, label: k.label }));
+  const singleKind = category?.kinds.length === 1 ? category.kinds[0].value : undefined;
+
+  // Trocou a categoria: o tipo de outra categoria sai; categoria de um tipo so ja escolhe ele.
+  useEffect(() => {
+    if (!category) return;
+    const current = form.getValues("kind");
+    if (category.kinds.some((k) => k.value === current)) return;
+    form.setValue("kind", singleKind ?? "", { shouldValidate: false });
+  }, [category, singleKind, form]);
   const expires = kind ? documentKindExpires(ownerKind, kind) : false;
   const titleMode = kind ? documentTitleMode(ownerKind, kind) : "none";
-  // Selecao agrupada (Saude, Identificacao...). O tipo aposentado so aparece no
-  // documento que ja o tem.
-  const options = documentKindsFor(ownerKind)
-    .filter((k) => !k.retired || k.value === document?.kind)
-    .map((k) => ({ value: k.value, label: k.label, group: k.group }));
 
   const onSubmit = form.handleSubmit(async (v) => {
     const payload = {
@@ -114,7 +136,27 @@ function DocumentForm({
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogBody className="space-y-4">
-          <SelectField<Values> name="kind" label="Tipo" required options={options} disabled={pending} placeholder="Escolha o tipo" />
+          <SelectField<Values>
+            name="category"
+            label="Categoria"
+            required
+            clearable={false}
+            options={categories.map((c) => ({ value: c.label, label: c.label }))}
+            disabled={pending}
+            placeholder="Escolha a categoria"
+          />
+          {category && !singleKind ? (
+            <SelectField<Values>
+              key={category.label}
+              name="kind"
+              label="Tipo"
+              required
+              clearable={false}
+              options={kindOptions}
+              disabled={pending}
+              placeholder="Escolha o tipo"
+            />
+          ) : null}
           {/* Nome livre: obrigatorio no "Outro"; "Qual documento" na identificacao; nos demais nao aparece. */}
           {titleMode === "required" ? (
             <InputText<Values>

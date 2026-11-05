@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   CLIENT_DOCUMENT_KINDS,
   PROFESSIONAL_DOCUMENT_KINDS,
+  documentCategoriesFor,
+  documentCategoryOf,
   documentExpiryGroupKey,
   documentTitleMode,
   isSelectableDocumentKind,
@@ -83,5 +85,14 @@ describe("tipos de documento", () => {
     assert.equal(isSelectableDocumentKind("professional", "first_aid"), true);
     assert.equal(isSelectableDocumentKind("professional", "pickup_authorization"), false);
     assert.equal(selectableDocumentKinds("client").length, CLIENT_DOCUMENT_KINDS.filter((k) => !k.retired).length);
+  });
+
+  it("categorias: grupos na ordem da lista, Outro por ultimo", () => {
+    const client = documentCategoriesFor("client");
+    assert.deepEqual(client.map((c) => c.label), ["Saúde", "Identificação", "Autorizações e termos", "Esporte", "Contratos e financeiro", "Outro"]);
+    assert.deepEqual(client.at(-1)?.kinds.map((k) => k.value), ["other"]);
+    assert.equal(documentCategoryOf("client", "dermatological_exam"), "Saúde");
+    assert.equal(documentCategoryOf("client", "other"), "");
+    assert.deepEqual(documentCategoriesFor("professional").map((c) => c.label), ["Identificação", "Formação e registro", "Contratos", "Outro"]);
   });
 });
