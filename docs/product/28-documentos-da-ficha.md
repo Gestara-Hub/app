@@ -90,6 +90,7 @@ Os tipos ficam numa lista só, no código: `packages/core/src/person-documents.t
 
 ## 8. Para depois
 
+- Usar o documento devolvido pelo salvar direto na lista (adicionar e editar) e tirar a linha ao excluir, com a conferência em segundo plano, em vez de buscar a lista de novo. Hoje a lista é buscada de novo e mostra um item de carregamento (adicionar) ou fica esmaecida (editar e excluir) até chegar. Detalhe e ordem das telas em `pendencias.md`.
 - Lembrete pelo WhatsApp para o aluno trazer o atestado novo (modelo de mensagem próprio).
 - Exigir atestado válido para matricular em modalidades escolhidas (por exemplo, natação).
 - Assinatura digital do termo pelo link, como o consentimento de menor.
