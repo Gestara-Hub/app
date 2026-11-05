@@ -9,8 +9,8 @@ import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { DrawerBody, DrawerFooter, FormDrawer, useDrawerClose } from "@/components/shared/form-drawer";
 import { ListRow } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
-import { courtesySchema, forceFreeSchema, graceSchema, reasonOnlySchema, userTwoFactorSchema } from "@/lib/form-schemas";
-import { inactivateSpaceAction, reactivateSpaceAction, resetUserTwoFactorAction } from "./privacy-actions";
+import { courtesySchema, forceFreeSchema, graceSchema, reasonOnlySchema, userAccessEmailSchema, userTwoFactorSchema } from "@/lib/form-schemas";
+import { changeUserAccessEmailAction, inactivateSpaceAction, reactivateSpaceAction, resetUserTwoFactorAction } from "./privacy-actions";
 import { extendGraceAction, forceFreeAction, grantCourtesyAction, revokeCourtesyAction, type PlanFormState } from "./plan-actions";
 
 /**
@@ -273,6 +273,27 @@ export function ResetUserTwoFactorForm({ spaceId, users }: { spaceId: string; us
       destructive
     >
       <SelectField name="userId" label="Pessoa" required options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
+    </ActionRow>
+  );
+}
+
+/** Trocar o e-mail de acesso de quem perdeu o acesso ao e-mail (ex.: o Gmail): pessoa, e-mail novo e motivo. */
+export function ChangeUserAccessEmailForm({ spaceId, users }: { spaceId: string; users: { id: string; label: string }[] }) {
+  return (
+    <ActionRow
+      title="Trocar o e-mail de acesso de uma pessoa"
+      buttonLabel="Trocar e-mail"
+      description="Para quem perdeu o acesso ao e-mail (por exemplo, o Gmail) e não consegue trocar sozinha. Confirme quem é a pessoa por fora do sistema antes."
+      spaceId={spaceId}
+      action={changeUserAccessEmailAction}
+      schema={userAccessEmailSchema}
+      defaultValues={{ userId: "", newEmail: "" }}
+      confirmText="Troca o e-mail de acesso, tira o login pelo Google antigo e encerra as sessões abertas. O e-mail novo recebe um link para criar a senha (24 horas) e o antigo recebe um aviso."
+      submitLabel="Trocar e-mail"
+      destructive
+    >
+      <SelectField name="userId" label="Pessoa" required options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
+      <InputText name="newEmail" label="Novo e-mail de acesso" type="email" required />
     </ActionRow>
   );
 }

@@ -52,6 +52,12 @@ export const macroSchema = z.object({
 });
 
 export const userTwoFactorSchema = z.object({ spaceId: z.string(), userId: z.string().min(1, "Escolha a pessoa."), reason: reasonField });
+export const userAccessEmailSchema = z.object({
+  spaceId: z.string(),
+  userId: z.string().min(1, "Escolha a pessoa."),
+  newEmail: z.string().trim().toLowerCase().email("Informe um e-mail válido."),
+  reason: reasonField,
+});
 export const accessSchema = z.object({ spaceId: z.string(), reason: reasonField });
 export const reasonOnlySchema = z.object({ spaceId: z.string(), reason: reasonField });
 export const courtesySchema = z.object({

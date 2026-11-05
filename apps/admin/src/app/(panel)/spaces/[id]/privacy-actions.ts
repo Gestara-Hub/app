@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/server/context";
 import { AuthAdminUnavailable } from "@/lib/server/auth-admin";
 import { PrivacyError, setSpaceStatus } from "@/lib/server/privacy";
 import { UserTwoFactorError, resetUserTwoFactor } from "@/lib/server/user-two-factor";
+import { UserAccessEmailError, changeUserAccessEmail } from "@/lib/server/user-access-email";
+import { userAccessEmailSchema } from "@/lib/form-schemas";
 import { getSpace } from "@/lib/server/spaces";
 import type { PlanFormState } from "./plan-actions";
 
@@ -52,6 +54,34 @@ export async function resetUserTwoFactorAction(_prev: PlanFormState, formData: F
     return { ok: true, message: `Verificação de ${name} reiniciada.${emailed ? " Avisamos a pessoa por e-mail." : " O e-mail de aviso não saiu (sem envio configurado); avise a pessoa."}` };
   } catch (error) {
     if (error instanceof UserTwoFactorError || error instanceof AuthAdminUnavailable) return { error: error.message };
+    throw error;
+  }
+}
+
+/**
+ * Troca o e-mail de acesso de uma pessoa do espaco (perdeu o acesso ao e-mail,
+ * ex.: o Gmail). So o proprietario, depois de confirmar quem e por fora.
+ */
+export async function changeUserAccessEmailAction(_prev: PlanFormState, formData: FormData): Promise<PlanFormState> {
+  const { admin } = await requireAdmin("lgpd:manage");
+  const parsed = userAccessEmailSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Confira os campos." };
+  if (!(await getSpace(parsed.data.spaceId))) return { error: "Espaço não encontrado." };
+  try {
+    const { name, emailed } = await changeUserAccessEmail({
+      organizationId: parsed.data.spaceId,
+      userId: parsed.data.userId,
+      newEmail: parsed.data.newEmail,
+      reason: parsed.data.reason,
+      admin: { id: admin.id, name: admin.name },
+    });
+    revalidatePath(`/spaces/${parsed.data.spaceId}`);
+    return {
+      ok: true,
+      message: `E-mail de acesso de ${name} trocado.${emailed ? " O e-mail novo recebeu o link para criar a senha." : " O e-mail com o link não saiu (sem envio configurado); avise a pessoa."}`,
+    };
+  } catch (error) {
+    if (error instanceof UserAccessEmailError) return { error: error.message };
     throw error;
   }
 }

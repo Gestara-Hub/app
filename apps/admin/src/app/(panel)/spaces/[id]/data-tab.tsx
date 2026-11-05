@@ -2,14 +2,19 @@ import { ListContainer, ListRow } from "@/components/shared/list";
 import { SectionHeading } from "@/components/shared/fact-list";
 import { listSpaceUsers } from "@/lib/server/user-two-factor";
 import { ExportDrawer } from "./export-drawer";
-import { InactivateSpaceForm, ReactivateSpaceForm, ResetUserTwoFactorForm } from "./plan-forms";
+import { ChangeUserAccessEmailForm, InactivateSpaceForm, ReactivateSpaceForm, ResetUserTwoFactorForm } from "./plan-forms";
 
 /** Aba "Dados e LGPD": exportar os dados do espaco e inativar/reativar (so o proprietario chega aqui). */
 const PROFILE_LABEL: Record<string, string> = { owner: "Proprietário", manager: "Gerente", attendant: "Atendente", professional: "Profissional" };
 
 export async function DataTab({ space }: { space: { id: string; name: string; status: string } }) {
   const inactive = space.status === "inactive";
-  const users = (await listSpaceUsers(space.id))
+  const spaceUsers = await listSpaceUsers(space.id);
+  // Trocar o e-mail: quem ja tem login (convite aceito).
+  const loginUsers = spaceUsers
+    .filter((u) => u.authUserId)
+    .map((u) => ({ id: u.userId, label: `${u.name} (${PROFILE_LABEL[u.profile] ?? u.profile})` }));
+  const users = spaceUsers
     .filter((u) => u.authUserId && (u.app || u.email2fa))
     .map((u) => ({
       id: u.userId,
@@ -32,6 +37,7 @@ export async function DataTab({ space }: { space: { id: string; name: string; st
               <p className="min-w-0 break-words text-sm text-muted-foreground">Ninguém deste espaço usa a verificação em duas etapas hoje.</p>
             </ListRow>
           )}
+          {loginUsers.length > 0 ? <ChangeUserAccessEmailForm spaceId={space.id} users={loginUsers} /> : null}
         </ListContainer>
       </section>
       <section>
