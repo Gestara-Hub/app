@@ -51,6 +51,20 @@ function DocumentKindIcon({ kind }: { kind: PersonDocumentView["kind"] }) {
   return <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />;
 }
 
+/** Linha de carregamento do documento que acabou de entrar (ate a lista nova chegar). */
+function DocumentRowSkeleton() {
+  return (
+    <li className="flex items-start gap-3 px-3 py-2.5" aria-label="Carregando o documento novo">
+      <Skeleton className="mt-0.5 size-4 shrink-0 rounded" />
+      <span className="flex-1 space-y-1.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-48" />
+      </span>
+    </li>
+  );
+}
+
 function ExpiryBadge({ doc }: { doc: PersonDocumentView }) {
   if (doc.expiry === "expired") {
     return (
@@ -93,7 +107,13 @@ export function PersonDocumentsPanel({
   ownerName: string;
   canManage: boolean;
 }) {
-  const { data: docs, isPending, isError } = usePersonDocuments(ownerKind, ownerId);
+  const { data: docs, isPending, isError, dataUpdatedAt } = usePersonDocuments(ownerKind, ownerId);
+  // Depois de anexar, editar ou excluir, a lista busca de novo; ate os dados
+  // novos chegarem (rede lenta), mostra o carregamento em vez da versao antiga.
+  const [awaiting, setAwaiting] = useState<{ mode: "create" | "update" | "remove"; since: number } | null>(null);
+  // `since` e a versao da lista no momento de salvar: some quando chega outra.
+  const refreshing = awaiting !== null && dataUpdatedAt <= awaiting.since;
+  const startAwaiting = (mode: "create" | "update" | "remove") => setAwaiting({ mode, since: dataUpdatedAt });
   const removeMut = useRemovePersonDocument();
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const [form, setForm] = useState<{ open: boolean; document?: PersonDocumentView }>({ open: false });
@@ -107,7 +127,10 @@ export function PersonDocumentsPanel({
     });
     if (!ok) return;
     removeMut.mutate(doc.id, {
-      onSuccess: () => toast.success("Documento excluído."),
+      onSuccess: () => {
+        startAwaiting("remove");
+        toast.success("Documento excluído.");
+      },
       onError: () => toast.error("Não foi possível excluir o documento."),
     });
   };
@@ -150,9 +173,13 @@ export function PersonDocumentsPanel({
         </div>
       ) : isError ? (
         <p className="text-sm text-muted-foreground">Não foi possível carregar os documentos.</p>
-      ) : docs && docs.length > 0 ? (
-        <ul className="divide-y rounded-lg border">
-          {docs.map((doc) => (
+      ) : (docs && docs.length > 0) || (refreshing && awaiting?.mode === "create") ? (
+        <ul
+          className={cn("divide-y rounded-lg border transition-opacity", refreshing && awaiting?.mode !== "create" && "opacity-60")}
+          aria-busy={refreshing || undefined}
+        >
+          {refreshing && awaiting?.mode === "create" ? <DocumentRowSkeleton /> : null}
+          {(docs ?? []).map((doc) => (
             <li key={doc.id}>
               <ListItemContextMenu actions={actionsOf(doc)}>
                 <div className="flex items-center gap-3 px-3 py-2.5">
@@ -212,6 +239,7 @@ export function PersonDocumentsPanel({
         ownerId={ownerId}
         ownerName={ownerName}
         document={form.document}
+        onSaved={startAwaiting}
       />
     </div>
   );

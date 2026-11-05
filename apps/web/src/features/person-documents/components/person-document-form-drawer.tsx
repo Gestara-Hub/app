@@ -63,11 +63,14 @@ function DocumentForm({
   ownerId,
   document,
   onDone,
+  onSaved,
 }: {
   ownerKind: PersonDocumentOwnerKind;
   ownerId: Id;
   document?: PersonDocumentView;
   onDone: () => void;
+  /** Gravou: a lista mostra o carregamento ate os dados novos chegarem. */
+  onSaved?: (mode: "create" | "update") => void;
 }) {
   const createMut = useCreatePersonDocument();
   const updateMut = useUpdatePersonDocument();
@@ -127,6 +130,7 @@ function DocumentForm({
         });
         toast.success("Documento adicionado.");
       }
+      onSaved?.(document ? "update" : "create");
       onDone();
     } catch (error) {
       handleFormApiError(error, form, "Não foi possível salvar o documento.");
@@ -225,6 +229,7 @@ export function PersonDocumentFormDrawer({
   ownerId,
   ownerName,
   document: documentProp,
+  onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -232,6 +237,7 @@ export function PersonDocumentFormDrawer({
   ownerId: Id;
   ownerName: string;
   document?: PersonDocumentView | null;
+  onSaved?: (mode: "create" | "update") => void;
 }) {
   // Enquanto fecha, mantem o formulario montado (titulo e campos nao somem antes da animacao).
   // Aberto: o documento pedido (nenhum = novo). Fechando: o ultimo, ate a animacao acabar.
@@ -258,6 +264,7 @@ export function PersonDocumentFormDrawer({
             ownerId={ownerId}
             document={document}
             onDone={() => onOpenChange(false)}
+            onSaved={onSaved}
           />
         ) : null}
       </SheetContent>
