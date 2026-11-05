@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
+import { adminClient, createTestTenant, ownerSql, type TestTenant } from "@/test/db";
 import { checkEmailChangeToken, confirmEmailChange, createEmailChangeToken } from "../emailChange";
 
 /** Troca do e-mail de acesso pela propria pessoa (migracao 87): link de 1 hora, uma vez so. */
@@ -96,5 +96,102 @@ describe("troca do e-mail de acesso", () => {
     const later = new Date(Date.now() + 61 * 60 * 1000);
     expect((await checkEmailChangeToken(admin, second.token, later)).status).toBe("expired");
     expect((await checkEmailChangeToken(admin, "nao-existe")).status).toBe("invalid");
+  });
+});
+
+/** Deixa a conta como se tivesse entrado so pelo Google (sem senha). */
+async function makeGoogleOnly(email: string): Promise<void> {
+  const sql = await ownerSql();
+  try {
+    await sql`delete from auth.identities where user_id = ${authUserId}`;
+    await sql`insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+              values (${"google-" + authUserId}, ${authUserId},
+                      ${sql.json({ sub: "google-" + authUserId, email, email_verified: true })}, 'google', now(), now())`;
+    await sql`update auth.users set encrypted_password = null,
+              raw_app_meta_data = raw_app_meta_data || '{"provider":"google","providers":["google"]}'::jsonb
+              where id = ${authUserId}`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function providersOf(id: string): Promise<string[]> {
+  const { data } = await adminClient().auth.admin.getUserById(id);
+  return (data?.user?.identities ?? []).map((identity) => identity.provider).sort();
+}
+
+describe("troca para quem entra pelo Google", () => {
+  it("confirma criando a senha: sai o Google antigo, entra com o e-mail novo e a senha", async () => {
+    const admin = adminClient();
+    await makeGoogleOnly(tenant.owner.email);
+    const newEmail = freshEmail();
+    const created = await createEmailChangeToken(admin, { authUserId, currentEmail: tenant.owner.email, newEmail });
+    if (!created.ok) throw new Error("link");
+
+    expect(await confirmEmailChange(admin, created.token)).toEqual({ ok: false, code: "needs_password" });
+    expect(await confirmEmailChange(admin, created.token, new Date(), { password: "curta" })).toEqual({
+      ok: false,
+      code: "needs_password",
+    });
+    expect(await confirmEmailChange(admin, created.token, new Date(), { password: "SenhaNova123" })).toMatchObject({
+      ok: true,
+      newEmail,
+    });
+    expect(await providersOf(authUserId)).toEqual(["email"]);
+    expect(await canSignIn(newEmail, "SenhaNova123")).toBe(true);
+  });
+
+  it("quem já tem senha continua com ela (a senha mandada é ignorada) e sai das sessões abertas", async () => {
+    const admin = adminClient();
+    const newEmail = freshEmail();
+    const created = await createEmailChangeToken(admin, { authUserId, currentEmail: tenant.owner.email, newEmail });
+    if (!created.ok) throw new Error("link");
+    expect(await confirmEmailChange(admin, created.token, new Date(), { password: "OutraSenha999" })).toMatchObject({
+      ok: true,
+    });
+    expect(await canSignIn(newEmail, tenant.owner.password)).toBe(true);
+    expect(await canSignIn(newEmail, "OutraSenha999")).toBe(false);
+    const sql = await ownerSql();
+    try {
+      // So a sessao do canSignIn acima (as anteriores sairam na troca).
+      const [{ count }] = await sql`select count(*)::int as count from auth.sessions where user_id = ${authUserId}`;
+      expect(count).toBe(1);
+    } finally {
+      await sql.end();
+    }
+  });
+});
+
+describe("troca pelo painel (quem perdeu o acesso)", () => {
+  it("troca o e-mail, tira o Google, deixa o link de criar senha e registra nas duas auditorias", async () => {
+    await makeGoogleOnly(tenant.owner.email);
+    const newEmail = freshEmail();
+    const sql = await ownerSql();
+    try {
+      const call = (email: string, reason = "Perdeu o Gmail, confirmado por telefone") =>
+        sql`select * from platform.change_user_access_email(${tenant.organizationId}, ${tenant.owner.id}, ${email},
+              ${reason}, ${"hash-" + randomUUID()}, ${randomUUID()}, ${"Admin"}, ${"127.0.0.1"}, ${"teste"})`;
+
+      await expect(call(newEmail, "x")).rejects.toMatchObject({ code: "22023" });
+      const other = await tenant.addUser("manager");
+      await expect(call(other.email.toUpperCase())).rejects.toMatchObject({ code: "23505" });
+
+      const [row] = await call(`  ${newEmail.toUpperCase()} `);
+      expect(row).toMatchObject({ old_email: tenant.owner.email, new_email: newEmail });
+      expect(await providersOf(authUserId)).toEqual(["email"]);
+      const [user] = await sql`select email from public.users where id = ${tenant.owner.id}`;
+      expect(user.email).toBe(newEmail);
+      const [link] = await sql`select count(*)::int as count from public.password_reset_tokens
+                               where auth_user_id = ${authUserId} and status = 'pending' and email = ${newEmail}`;
+      expect(link.count).toBe(1);
+      const [space] = await sql`select count(*)::int as count from public.audit_logs
+                                where organization_id = ${tenant.organizationId} and summary like '%trocou o e-mail de acesso%'`;
+      expect(space.count).toBe(1);
+      const [panel] = await sql`select count(*)::int as count from platform.audit_logs
+                                where organization_id = ${tenant.organizationId} and action = 'space.user_access_email'`;
+      expect(panel.count).toBe(1);
+    } finally {
+      await sql.end();
+    }
   });
 });

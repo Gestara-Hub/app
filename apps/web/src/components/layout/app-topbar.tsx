@@ -129,17 +129,16 @@ export function AppTopbar() {
               <span>Preferências</span>
             </DropdownMenuItem>
             {googleOnly ? null : (
-              <>
-                <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
-                  <ShieldCheck className="size-4" />
-                  <span>Segurança</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setAccessEmailOpen(true)} className="cursor-pointer">
-                  <AtSign className="size-4" />
-                  <span>E-mail de acesso</span>
-                </DropdownMenuItem>
-              </>
+              <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
+                <ShieldCheck className="size-4" />
+                <span>Segurança</span>
+              </DropdownMenuItem>
             )}
+            {/* Tambem para quem entra pelo Google: confirma com um codigo no Gmail. */}
+            <DropdownMenuItem onSelect={() => setAccessEmailOpen(true)} className="cursor-pointer">
+              <AtSign className="size-4" />
+              <span>E-mail de acesso</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {/* Ajuda e o Fale com a gente num item so: o painel de Ajuda termina
                 com falar com a gente, relatar problema e sugerir melhoria. */}
@@ -195,7 +194,7 @@ export function AppTopbar() {
     </header>
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
     {googleOnly ? null : <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />}
-    {googleOnly ? null : <AccessEmailDialog open={accessEmailOpen} onOpenChange={setAccessEmailOpen} />}
+    <AccessEmailDialog open={accessEmailOpen} onOpenChange={setAccessEmailOpen} />
     </>
   );
 }

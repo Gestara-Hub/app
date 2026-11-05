@@ -5,7 +5,7 @@ import { PublicAuthShell } from "@/components/shared/public-auth-shell";
 import { Button } from "@/components/ui/button";
 import { maskEmail } from "@/lib/security/two-factor-rules";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkEmailChangeToken } from "@/services/server/emailChange";
+import { accountNeedsPassword, checkEmailChangeToken } from "@/services/server/emailChange";
 import { ConfirmEmailForm } from "./confirm-email-form";
 
 export const metadata: Metadata = { title: "Confirmar novo e-mail | GestaraHub" };
@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
  */
 export default async function ConfirmEmailPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
-  const check = await checkEmailChangeToken(createSupabaseAdminClient(), token);
+  const admin = createSupabaseAdminClient();
+  const check = await checkEmailChangeToken(admin, token);
 
   if (check.status !== "valid" || !token) {
     return (
@@ -36,9 +37,14 @@ export default async function ConfirmEmailPage({ searchParams }: { searchParams:
     );
   }
 
+  // Quem entrava so pelo Google cria a senha aqui (o Google antigo deixa de entrar).
+  const needsPassword = await accountNeedsPassword(admin, check.authUserId);
   return (
-    <PublicAuthShell title="Confirmar novo e-mail" subtitle="Depois de confirmar, você entra com o e-mail novo.">
-      <ConfirmEmailForm token={token} maskedNewEmail={maskEmail(check.newEmail)} />
+    <PublicAuthShell
+      title="Confirmar novo e-mail"
+      subtitle={needsPassword ? "Crie uma senha para entrar com o e-mail novo." : "Depois de confirmar, você entra com o e-mail novo."}
+    >
+      <ConfirmEmailForm token={token} maskedNewEmail={maskEmail(check.newEmail)} needsPassword={needsPassword} />
     </PublicAuthShell>
   );
 }

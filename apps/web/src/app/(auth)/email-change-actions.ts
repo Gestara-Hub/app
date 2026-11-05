@@ -1,10 +1,11 @@
 "use server";
 
 import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { isDemoOrganization } from "@/lib/demo";
-import { sendEmailChangeConfirmEmail, sendEmailChangedNoticeEmail } from "@/lib/email/mailersend";
+import { sendEmailChangeConfirmEmail, sendEmailChangedNoticeEmail, sendTwoFactorCodeEmail } from "@/lib/email/mailersend";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 import { logError } from "@/lib/log";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { secondFactorState } from "@/lib/security/second-factor";
@@ -18,6 +19,7 @@ import {
   discardEmailChangeToken,
   normalizeEmail,
 } from "@/services/server/emailChange";
+import { discardEmailCode, issueEmailCode, verifyEmailCode } from "@/services/server/twoFactor";
 
 /**
  * Troca do e-mail de acesso pela propria pessoa (05/11/2026, doc technical/17
@@ -72,38 +74,79 @@ async function passwordMatches(email: string, password: string): Promise<boolean
   return !error;
 }
 
+function isGoogleOnlyUser(user: User): boolean {
+  return isGoogleOnlyAccount((user.identities ?? []).map((identity) => identity.provider));
+}
+
+/**
+ * Como a pessoa prova que e ela: a senha atual ou, para quem entra so pelo
+ * Google (sem senha), um codigo no e-mail atual.
+ */
 export type AccessEmailStatus =
-  | { ok: true; email: string; canChange: boolean; reason?: "google" | "demo" }
+  | { ok: true; email: string; canChange: true; proof: "password" | "code" }
+  | { ok: true; email: string; canChange: false }
   | { ok: false; message: string };
 
 export async function getAccessEmailStatusAction(): Promise<AccessEmailStatus> {
   const session = await sessionForCurrentUser();
   if (!session) return { ok: false, message: SESSION_EXPIRED };
   const email = session.user.email ?? "";
-  if (isGoogleOnlyAccount((session.user.identities ?? []).map((identity) => identity.provider))) {
-    return { ok: true, email, canChange: false, reason: "google" };
+  if (isDemoOrganization(session.current.organizationId)) return { ok: true, email, canChange: false };
+  return { ok: true, email, canChange: true, proof: isGoogleOnlyUser(session.user) ? "code" : "password" };
+}
+
+export type SendAccessEmailCodeResult =
+  | { ok: true; maskedEmail: string; resendInSeconds: number }
+  | { ok: false; message: string; resendInSeconds?: number };
+
+/** Quem entra pelo Google: codigo de 6 numeros no e-mail atual (vale 10 minutos). */
+export async function sendAccessEmailCodeAction(): Promise<SendAccessEmailCodeResult> {
+  const session = await sessionForCurrentUser();
+  if (!session || isDemoOrganization(session.current.organizationId)) return { ok: false, message: SESSION_EXPIRED };
+  const { user, current } = session;
+  if (!isGoogleOnlyUser(user)) return { ok: false, message: "Confirme com a sua senha." };
+  const email = user.email ?? "";
+  try {
+    const admin = createSupabaseAdminClient();
+    const issued = await issueEmailCode(admin, user.id, "email_change");
+    if (!issued.ok) {
+      if (issued.reason === "wait") {
+        return {
+          ok: false,
+          message: `Enviamos um código há pouco. Aguarde ${issued.resendInSeconds} s para pedir outro.`,
+          resendInSeconds: issued.resendInSeconds,
+        };
+      }
+      if (issued.reason === "limit") return { ok: false, message: "Muitos envios. Aguarde 15 minutos e tente de novo." };
+      return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
+    }
+    const sent = await sendTwoFactorCodeEmail({ toEmail: email, toName: current.name || email, code: issued.code });
+    if (!sent.ok) {
+      await discardEmailCode(admin, user.id, "email_change");
+      return { ok: false, message: sent.error };
+    }
+    return { ok: true, maskedEmail: maskEmail(email), resendInSeconds: issued.resendInSeconds };
+  } catch (err) {
+    logError("[email-change] Erro ao enviar o código:", err);
+    return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
   }
-  if (isDemoOrganization(session.current.organizationId)) return { ok: true, email, canChange: false, reason: "demo" };
-  return { ok: true, email, canChange: true };
 }
 
 export type RequestEmailChangeResult =
   | { ok: true; newEmail: string }
-  | { ok: false; message: string; field?: "newEmail" | "password" };
+  | { ok: false; message: string; field?: "newEmail" | "password" | "code" };
 
-/** Pede a troca: confere a senha e manda o link para o e-mail novo. */
+/** Pede a troca: confere a senha (ou o codigo, no Google) e manda o link para o e-mail novo. */
 export async function requestAccessEmailChangeAction(input: {
   newEmail: string;
-  password: string;
+  password?: string;
+  code?: string;
 }): Promise<RequestEmailChangeResult> {
   const session = await sessionForCurrentUser();
   if (!session) return { ok: false, message: SESSION_EXPIRED };
   const { user, current, supabase } = session;
   if (isDemoOrganization(current.organizationId)) {
     return { ok: false, message: "Na demonstração o e-mail de acesso não muda." };
-  }
-  if (isGoogleOnlyAccount((user.identities ?? []).map((identity) => identity.provider))) {
-    return { ok: false, message: "Sua conta entra pelo Google: o e-mail é o da conta Google." };
   }
   // Com a verificacao ligada, so a sessao que ja passou pelo segundo fator.
   if ((await secondFactorState(supabase, user)) === "missing") return { ok: false, message: SESSION_EXPIRED };
@@ -112,7 +155,20 @@ export async function requestAccessEmailChangeAction(input: {
   }
 
   const currentEmail = user.email ?? "";
-  if (!input.password || !(await passwordMatches(currentEmail, input.password))) {
+  if (isGoogleOnlyUser(user)) {
+    const code = (input.code ?? "").replace(/\s/g, "");
+    if (!/^\d{6}$/.test(code)) return { ok: false, message: "Digite os 6 números do e-mail.", field: "code" };
+    const check = await verifyEmailCode(createSupabaseAdminClient(), user.id, "email_change", code);
+    if (check !== "ok") {
+      const message =
+        check === "locked"
+          ? "Muitas tentativas com este código. Peça um código novo."
+          : check === "expired"
+            ? "Este código venceu. Peça um código novo."
+            : "Código inválido. Confira o e-mail e tente de novo.";
+      return { ok: false, message, field: "code" };
+    }
+  } else if (!input.password || !(await passwordMatches(currentEmail, input.password))) {
     return { ok: false, message: "Senha incorreta.", field: "password" };
   }
 
@@ -167,13 +223,17 @@ export type ConfirmEmailChangeResult =
  * de nova senha). O botao na pagina evita que o leitor de links do e-mail
  * confirme sozinho ao abrir a mensagem.
  */
-export async function confirmAccessEmailChangeAction(input: { token: string }): Promise<ConfirmEmailChangeResult> {
+export async function confirmAccessEmailChangeAction(input: {
+  token: string;
+  /** So para quem entrava pelo Google: a senha nova. */
+  password?: string;
+}): Promise<ConfirmEmailChangeResult> {
   const ip = await getClientIp();
   if (!(await checkRateLimit({ key: `email_change_confirm:${ip}`, maxRequests: 10, windowSeconds: 600 }))) {
     return { ok: false, message: TOO_MANY };
   }
   const admin = createSupabaseAdminClient();
-  const result = await confirmEmailChange(admin, input.token);
+  const result = await confirmEmailChange(admin, input.token, new Date(), { password: input.password });
   if (!result.ok) {
     switch (result.code) {
       case "expired":
@@ -181,6 +241,8 @@ export async function confirmAccessEmailChangeAction(input: { token: string }): 
         return { ok: false, message: "Este link venceu ou já foi usado. Peça a troca de novo.", expired: true };
       case "in_use":
         return { ok: false, message: "Este e-mail passou a ser usado por outra conta. Peça a troca com outro e-mail." };
+      case "needs_password":
+        return { ok: false, message: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
       default:
         return { ok: false, message: "Não foi possível trocar o e-mail. Tente novamente." };
     }

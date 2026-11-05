@@ -10,10 +10,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import {
   getAccessEmailStatusAction,
   requestAccessEmailChangeAction,
+  sendAccessEmailCodeAction,
   type AccessEmailStatus,
 } from "@/app/(auth)/email-change-actions";
 
-type Field = "newEmail" | "password";
+type Field = "newEmail" | "password" | "code";
 
 function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
@@ -35,6 +36,10 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<AccessEmailStatus | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  // Quem entra pelo Google: o codigo vai para o e-mail atual.
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [sendingCode, startSendingCode] = useTransition();
   const [error, setError] = useState<{ message: string; field?: Field } | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -49,16 +54,29 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
+  const usesCode = status?.ok === true && status.canChange && status.proof === "code";
+
+  const sendCode = () => {
+    setError(null);
+    startSendingCode(async () => {
+      const result = await sendAccessEmailCodeAction();
+      if (result.ok) setCodeSentTo(result.maskedEmail);
+      else setError({ message: result.message, field: "code" });
+    });
+  };
+
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     if (!newEmail.trim()) return setError({ message: "Informe o novo e-mail.", field: "newEmail" });
-    if (!password) return setError({ message: "Informe sua senha atual.", field: "password" });
+    if (usesCode && code.length !== 6) return setError({ message: "Digite os 6 números do e-mail.", field: "code" });
+    if (!usesCode && !password) return setError({ message: "Informe sua senha atual.", field: "password" });
     startTransition(async () => {
-      const result = await requestAccessEmailChangeAction({ newEmail, password });
+      const result = await requestAccessEmailChangeAction(usesCode ? { newEmail, code } : { newEmail, password });
       if (result.ok) {
         setSentTo(result.newEmail);
         setPassword("");
+        setCode("");
         return;
       }
       setError({ message: result.message, field: result.field });
@@ -91,11 +109,7 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
     return (
       <DialogBody className="space-y-4">
         {current}
-        <p className="text-sm text-muted-foreground">
-          {status.reason === "google"
-            ? "Você entra pelo Google: o e-mail de acesso é o da sua conta Google."
-            : "Na demonstração o e-mail de acesso não muda."}
-        </p>
+        <p className="text-sm text-muted-foreground">Na demonstração o e-mail de acesso não muda.</p>
       </DialogBody>
     );
   }
@@ -139,22 +153,56 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
             aria-invalid={error?.field === "newEmail" || undefined}
           />
         </div>
-        <div className="space-y-1.5">
-          <RequiredLabel htmlFor="access-password">Senha atual</RequiredLabel>
-          <Input
-            id="access-password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="Confirme com sua senha"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            disabled={pending}
-            aria-invalid={error?.field === "password" || undefined}
-          />
-          <p className="text-xs text-muted-foreground">
-            Mandamos um link para o novo e-mail. O atual recebe um aviso quando a troca for feita.
-          </p>
-        </div>
+        {usesCode ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <RequiredLabel htmlFor="access-code">Código do e-mail atual</RequiredLabel>
+              <button
+                type="button"
+                onClick={sendCode}
+                disabled={sendingCode || pending}
+                className="cursor-pointer text-xs font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50"
+              >
+                {sendingCode ? "Enviando..." : codeSentTo ? "Enviar de novo" : "Enviar código"}
+              </button>
+            </div>
+            <Input
+              id="access-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              disabled={pending}
+              aria-invalid={error?.field === "code" || undefined}
+              className="font-mono tracking-[0.3em]"
+            />
+            <p className="text-xs text-muted-foreground">
+              {codeSentTo
+                ? `Enviamos o código para ${codeSentTo}. Vale por 10 minutos.`
+                : "Você entra pelo Google: confirme com um código no seu e-mail atual."}{" "}
+              Depois, o novo e-mail recebe um link e você cria uma senha ao confirmar.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <RequiredLabel htmlFor="access-password">Senha atual</RequiredLabel>
+            <Input
+              id="access-password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Confirme com sua senha"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={pending}
+              aria-invalid={error?.field === "password" || undefined}
+            />
+            <p className="text-xs text-muted-foreground">
+              Mandamos um link para o novo e-mail. O atual recebe um aviso quando a troca for feita.
+            </p>
+          </div>
+        )}
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error.message}

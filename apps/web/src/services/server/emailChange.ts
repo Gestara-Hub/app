@@ -1,7 +1,7 @@
-import { likeExact } from "@/lib/supabase/like";
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/log";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 
 /**
  * Troca do e-mail de acesso pela propria pessoa (migracao 87, 05/11/2026).
@@ -27,17 +27,26 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * O e-mail ja e de acesso de outra conta (ou de um convite em aberto) em
- * qualquer espaco. A mesma pessoa em varios espacos tem varias linhas em
- * `users` com o mesmo auth_user_id: essas nao contam.
+ * O e-mail ja e de acesso de outra conta (login ou convite em aberto) em
+ * qualquer espaco (migracao 88, `access_email_in_use`). A mesma pessoa em
+ * varios espacos tem varias linhas em `users` com o mesmo auth_user_id: essas
+ * nao contam.
  */
 export async function emailInUseByOther(
   admin: SupabaseClient,
   email: string,
   authUserId: string,
 ): Promise<boolean> {
-  const { data } = await admin.from("users").select("auth_user_id").ilike("email", likeExact(email)).limit(20);
-  return (data ?? []).some((row) => row.auth_user_id !== authUserId);
+  const { data, error } = await admin.rpc("access_email_in_use", { p_auth: authUserId, p_email: email });
+  if (error) throw new Error(`access_email_in_use: ${error.message}`);
+  return data === true;
+}
+
+/** Conta sem senha (entra so pelo Google): ao confirmar a troca, cria a senha. */
+export async function accountNeedsPassword(admin: SupabaseClient, authUserId: string): Promise<boolean> {
+  const { data } = await admin.auth.admin.getUserById(authUserId);
+  const providers = (data?.user?.identities ?? []).map((identity) => identity.provider);
+  return !providers.includes("email");
 }
 
 export type EmailChangeRequest =
@@ -110,21 +119,29 @@ export async function checkEmailChangeToken(
 
 export type EmailChangeResult =
   | { ok: true; oldEmail: string; newEmail: string; name: string }
-  | { ok: false; code: "expired" | "invalid" | "in_use" | "error" };
+  | { ok: false; code: "expired" | "invalid" | "in_use" | "needs_password" | "error" };
 
 /**
  * Confirma a troca (uma vez so): muda o e-mail da conta e de todas as linhas
  * da pessoa em `users` (um por espaco). Confere de novo se o e-mail ficou
- * livre, porque pode ter sido usado enquanto o link estava em aberto.
+ * livre, porque pode ter sido usado enquanto o link estava em aberto. Depois a
+ * conta entra so pelo e-mail novo (`use_email_login`, migracao 88): sai o
+ * login do Google antigo e as sessoes abertas. Conta sem senha (so Google)
+ * cria a senha aqui.
  */
 export async function confirmEmailChange(
   admin: SupabaseClient,
   rawToken: string,
   now = new Date(),
+  options: { password?: string } = {},
 ): Promise<EmailChangeResult> {
   const check = await checkEmailChangeToken(admin, rawToken, now);
   if (check.status !== "valid") return { ok: false, code: check.status };
   const tokenHash = hashToken(rawToken.trim());
+  // So a conta sem senha recebe a senha daqui; quem ja tem continua com a dele.
+  const needsPassword = await accountNeedsPassword(admin, check.authUserId);
+  const password = needsPassword ? (options.password ?? "") : "";
+  if (needsPassword && password.length < MIN_PASSWORD_LENGTH) return { ok: false, code: "needs_password" };
 
   if (await emailInUseByOther(admin, check.newEmail, check.authUserId)) {
     await admin.from("email_change_tokens").update({ status: "revoked" }).eq("token_hash", tokenHash);
@@ -134,11 +151,21 @@ export async function confirmEmailChange(
   const { error: authError } = await admin.auth.admin.updateUserById(check.authUserId, {
     email: check.newEmail,
     email_confirm: true,
+    ...(password ? { password } : {}),
   });
   if (authError) {
     logError("[email-change] Erro ao trocar o e-mail da conta:", authError);
     // Conta com esse e-mail no login (fora da tabela users): trata como em uso.
     return { ok: false, code: authError.status === 422 ? "in_use" : "error" };
+  }
+
+  const { error: switchError } = await admin.rpc("use_email_login", {
+    p_auth: check.authUserId,
+    p_email: check.newEmail,
+  });
+  if (switchError) {
+    logError("[email-change] Erro ao passar a conta para o e-mail novo:", switchError);
+    return { ok: false, code: "error" };
   }
 
   const { data: rows, error: usersError } = await admin

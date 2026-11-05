@@ -27,7 +27,7 @@ import { logError } from "@/lib/log";
  * e mandam o e-mail. Tudo pela chave de servico (tabelas sem politicas, migracao 48).
  */
 
-export type EmailCodePurpose = "login" | "enable" | "disable" | "recovery";
+export type EmailCodePurpose = "login" | "enable" | "disable" | "recovery" | "email_change";
 
 export type IssueEmailCodeResult =
   | { ok: true; code: string; resendInSeconds: number }
