@@ -59,6 +59,7 @@ import {
   matchesStatusFilter,
   shortDate,
   type StatusFilterValue,
+  dueVerb,
 } from "./charge-parts";
 import { useChargeActions } from "./use-charge-actions";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -195,11 +196,11 @@ function cleanSingleSubtitle(c: ChargeView): string {
   } else if (isInstallmentKind(c)) {
     const inst = installmentLabel(c);
     parts.push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
-    parts.push(`vence ${shortDate(c.dueDate)}`);
+    parts.push(`${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`);
   } else {
     if (c.className) parts.push(c.className);
     if (c.planName) parts.push(c.planName);
-    parts.push(`vence ${shortDate(c.dueDate)}`);
+    parts.push(`${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`);
   }
   const reason = cancelReasonOf(c);
   if (reason) parts.push(reason);
@@ -232,20 +233,17 @@ function cleanGroupSubtitle(g: StudentConsolidatedGroup): string {
   const extras = countByKind.get("extra") ?? 0;
   if (extras > 0) items.push(plural(extras, "cobrança avulsa", "cobranças avulsas"));
 
-  const dates = Array.from(
-    new Set(
-      g.charges
-        .filter((c) => c.status !== "canceled" && c.status !== "waived")
-        .map((c) => shortDate(c.dueDate)),
-    ),
-  );
+  const shown = g.charges.filter((c) => c.status !== "canceled" && c.status !== "waived");
+  const dates = Array.from(new Set(shown.map((c) => shortDate(c.dueDate))));
+  // Todas ja vencidas: "venceu"; alguma ainda por vencer: "vence".
+  const verb = shown.length > 0 && shown.every((c) => dueVerb(c.dueDate, c.status) === "venceu") ? "venceu" : "vence";
   const datePart =
     dates.length === 1
-      ? `vence ${dates[0]}`
+      ? `${verb} ${dates[0]}`
       : dates.length === 2
-        ? `vence ${dates[0]} e ${dates[1]}`
+        ? `${verb} ${dates[0]} e ${dates[1]}`
         : dates.length > 2
-          ? `vence ${dates[0]}, ${dates[1]} +${dates.length - 2}`
+          ? `${verb} ${dates[0]}, ${dates[1]} +${dates.length - 2}`
           : null;
 
   return [items.join(" + "), datePart].filter(Boolean).join(" · ");
@@ -1080,7 +1078,7 @@ export function BillingView() {
                                       {subItemTitle(c)}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
-                                      · {c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `vence ${shortDate(c.dueDate)}`}
+                                      · {c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`}
                                       {c.status === "paid" && c.method ? ` · ${paymentMethodLabel(c.method)}` : ""}
                                       {c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue") ? " · link aberto" : ""}
                                     </span>

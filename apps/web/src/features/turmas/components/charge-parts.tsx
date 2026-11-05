@@ -409,6 +409,14 @@ export function ChargeStatusBadge({ charge, size = "md" }: { charge: ChargeView;
 }
 
 /**
+ * "venceu" para a cobranca atrasada ou com a data ja passada; "vence" para a que
+ * ainda vai vencer (hoje inclusive).
+ */
+export function dueVerb(dueDate: string, status?: ChargeView["status"]): "vence" | "venceu" {
+  return status === "overdue" || dueDate < todayISO() ? "venceu" : "vence";
+}
+
+/**
  * Linha de detalhes da cobranca (texto pequeno): o que e cobrado, turma, plano,
  * vencimento, periodo, motivo do cancelamento e forma de pagamento. Sem
  * `showSubject`, o titulo da linha ja diz o que e cobrado.
@@ -422,7 +430,7 @@ export function ChargeDetails({ charge: c, showSubject = true }: { charge: Charg
   if (c.className && c.kind !== "course") parts.push(c.className);
   if (c.planName) parts.push(c.planName);
   if (c.planPeriod && c.planPeriod !== "monthly") parts.push(`cobrança por ${PERIOD_UNIT[c.planPeriod]}`);
-  parts.push(c.kind === "dropin" ? `aula em ${dueDateLabel(c.dueDate)}` : `vence ${dueDateLabel(c.dueDate)}`);
+  parts.push(c.kind === "dropin" ? `aula em ${dueDateLabel(c.dueDate)}` : `${dueVerb(c.dueDate, c.status)} ${dueDateLabel(c.dueDate)}`);
   const ref = referenceLabel(c);
   if (c.kind === "membership" && ref) parts.push(`referente a ${ref}`);
   const reason = cancelReasonOf(c);

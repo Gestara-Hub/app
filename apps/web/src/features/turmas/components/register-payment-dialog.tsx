@@ -5,6 +5,7 @@ import type { ChargeView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { PaymentDialog, type PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
+import { dueVerb } from "./charge-parts";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
@@ -61,7 +62,7 @@ export function RegisterPaymentDialog({
               {charge.kind === "extra" || charge.kind === "course" || charge.kind === "package"
                 ? `${charge.description ?? ""}${(charge.cycleTotal ?? 1) > 1 ? ` (parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal})` : ""} · `
                 : ""}
-              vence {shortDate(charge.dueDate)}
+              {dueVerb(charge.dueDate, charge.status)} {shortDate(charge.dueDate)}
               {reference ? ` · referente a ${reference}` : ""}
             </dd>
             <dt className="text-muted-foreground">Valor</dt>

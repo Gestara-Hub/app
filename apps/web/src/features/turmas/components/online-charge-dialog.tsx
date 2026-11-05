@@ -64,6 +64,7 @@ import Link from "next/link";
 import { PixQrCode } from "@/components/shared/pix-qr-code";
 import { payerIssueMessage } from "@gestarahub/core/payer";
 import { dateInSpace, currentSpaceTimeZone } from "@gestarahub/core/date";
+import { dueVerb } from "./charge-parts";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
@@ -288,7 +289,7 @@ export function OnlineChargeDialog({
             <DialogTitle>Cobrar online</DialogTitle>
             <DialogDescription>
               {charge
-                ? `${charge.studentName} · ${formatCents(charge.amountCents)} · vence ${shortDate(charge.dueDate)}`
+                ? `${charge.studentName} · ${formatCents(charge.amountCents)} · ${dueVerb(charge.dueDate, charge.status)} ${shortDate(charge.dueDate)}`
                 : null}
             </DialogDescription>
           </DialogHeader>
