@@ -770,7 +770,9 @@ export function ClientsList({
     pageSize,
   };
 
-  const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
+  const { data: paginatedData, isPending, isError, refetch, isFetching } = usePaginatedClients(filter);
+  // Buscando de novo (depois de salvar, trocar pagina ou filtro): barrinha no topo da lista.
+  const refreshing = isFetching && !isPending;
   const { data: categories } = useCategories();
   const { data: studentPackages } = useStudentPackages(undefined, isClasses);
   const clients = paginatedData?.items ?? [];
@@ -966,7 +968,9 @@ export function ClientsList({
           ))}
         </div>
       ) : (
-        <ListContainer emptyState={emptyState}>{items}</ListContainer>
+        <ListContainer emptyState={emptyState} refreshing={refreshing}>
+          {items}
+        </ListContainer>
       )}
 
       {/* Paginação */}

@@ -403,6 +403,7 @@ export function BillingView() {
     isLoading,
     isError,
     refetch,
+    isFetching,
   } = useCharges(
     allOverdue
       ? { status: "overdue", kind: kindFilter === "all" ? undefined : kindFilter }
@@ -825,6 +826,8 @@ export function BillingView() {
 
           {/* List */}
           <ListContainer
+            // Buscando de novo depois de marcar pago, cancelar ou criar: barrinha no topo.
+            refreshing={isFetching && !isLoading}
             emptyState={
               !isLoading && isError ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
