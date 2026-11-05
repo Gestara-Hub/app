@@ -24,6 +24,11 @@ const email = `falha-envio-${Date.now()}@gestarahub.test`;
 
 beforeAll(() => {
   vi.stubEnv("MAILERSEND_API_KEY", "teste");
+  // Comportamento de producao: em desenvolvimento a recusa cai no terminal e
+  // conta como enviada (devDeliveryFallback, commit 600f2b07), o que este teste
+  // nao cobre. Sem E2E_NOW, que tambem liga o modo de desenvolvimento.
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("E2E_NOW", undefined);
   // So o MailerSend e simulado; o Supabase local segue de verdade.
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).includes("mailersend.com")) {
