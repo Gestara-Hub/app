@@ -32,14 +32,8 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogBody } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -278,13 +272,13 @@ export function MessageLogsTab() {
         />
       )}
 
-      <MessageDetailDialog message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
+      <MessageDetailSheet message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
     </div>
   );
 }
 
-/** Mensagem completa (texto, situacao e data). */
-export function MessageDetailDialog({
+/** Mensagem completa (texto, situacao e data), na gaveta lateral como os outros detalhes. */
+export function MessageDetailSheet({
   message,
   onOpenChange,
 }: {
@@ -293,14 +287,19 @@ export function MessageDetailDialog({
 }) {
   const selected = useRetainedValue(message);
   return (
-    <Dialog open={Boolean(message)} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>{selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={Boolean(message)} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
+      >
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
+            {selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {selected ? `${selected.recipientName} · ${phoneLabel(selected.recipientPhone)}` : ""}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {selected ? (
           <DialogBody className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -320,7 +319,7 @@ export function MessageDetailDialog({
             ) : null}
           </DialogBody>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

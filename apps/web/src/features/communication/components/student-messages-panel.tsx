@@ -30,7 +30,7 @@ import {
 import { normalizeText } from "@/lib/text";
 import { useMessageLogs } from "../hooks/use-communication";
 import { STATUS_META, TRIGGER_META } from "../message-meta";
-import { MessageDetailDialog, MessageStatusBadge } from "./message-logs-tab";
+import { MessageDetailSheet, MessageStatusBadge } from "./message-logs-tab";
 import { SendMessageDialog, type MessageRecipient } from "./send-message-dialog";
 import { whatsappDigits } from "@gestarahub/core/phone";
 
@@ -195,7 +195,7 @@ export function StudentMessagesPanel({
             })}
       </ListContainer>
 
-      <MessageDetailDialog message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
+      <MessageDetailSheet message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
       <SendMessageDialog open={sendOpen} onOpenChange={setSendOpen} recipient={student} />
     </div>
   );
