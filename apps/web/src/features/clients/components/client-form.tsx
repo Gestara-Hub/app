@@ -1495,7 +1495,7 @@ export function ClientForm({
                         : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
                     )}
                   >
-                    {hasValidCpf ? "Cobrança online pronta" : "Necessário no Pro"}
+                    {hasValidCpf ? "Pagamento online pronto" : "Necessário p/ pagamento online"}
                   </span>
                 ) : null
               }
@@ -1504,9 +1504,9 @@ export function ClientForm({
                   ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
                   : isProOrScale
                     ? hasValidCpf
-                      ? "CPF válido · Link de pagamento Pix automático ativo no WhatsApp."
-                      : "Exigido pelo Banco Central e pelo gateway para gerar o Pix automático no WhatsApp."
-                    : "Usado na cobrança online (Pix e cartão)."
+                      ? "Pix e cartão liberados nas cobranças deste aluno."
+                      : undefined
+                    : "Usado no pagamento online (Pix e cartão)."
               }
               disabled={pending}
             />
@@ -2156,8 +2156,8 @@ export function ClientForm({
                     name={`guardians.${index}.cpf`}
                     hint={
                       isProOrScale
-                        ? "Exigido pelo Banco Central para gerar o link de cobrança automática."
-                        : "Usado na cobrança online do aluno menor."
+                        ? "Necessário para o pagamento online do aluno."
+                        : "Usado no pagamento online do aluno menor."
                     }
                     disabled={pending}
                   />
