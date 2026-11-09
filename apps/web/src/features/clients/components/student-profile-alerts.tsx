@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Cake, Copy, FileText, MessageCircle } from "lucide-react";
@@ -161,6 +162,31 @@ export function StudentProfileAlerts({
         <Button variant="outline" onClick={onOpenCharges}>
           Ver cobranças
         </Button>
+      ),
+    });
+  }
+
+  // Aula experimental sem voltar (09/11/2026): chamar de volta ou matricular.
+  if (isClasses && summary.trial.stage === "trial") {
+    const trial = summary.trial;
+    const when = trial.lastTrialAt ?? trial.firstTrialAt;
+    alerts.push({
+      key: "trial",
+      title: trial.trialCount > 1 ? `Fez ${trial.trialCount} aulas experimentais` : "Fez aula experimental",
+      detail: when ? `Última em ${ddmm(when)} · ainda não virou aluno` : "Ainda não virou aluno",
+      actions: (
+        <>
+          <Button variant="outline" asChild>
+            <Link href="/classes">Matricular</Link>
+          </Button>
+          {whatsAppAction(
+            "trial_follow_up",
+            <Button variant="outline" onClick={() => whatsapp.send({ trigger: "trial_follow_up", recipient })}>
+              <MessageCircle className="size-4" />
+              Chamar de volta
+            </Button>,
+          )}
+        </>
       ),
     });
   }

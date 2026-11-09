@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Ban,
@@ -769,7 +769,12 @@ export function ClientsList({
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   // Aula experimental (09/11/2026): "Experimentais" (sem voltar) e "Viraram alunos".
-  const [trialFilter, setTrialFilter] = useState<"all" | TrialStage>("all");
+  // `?trial=trial` (lembrete do painel) ja abre filtrado.
+  const searchParams = useSearchParams();
+  const [trialFilter, setTrialFilter] = useState<"all" | TrialStage>(() => {
+    const fromUrl = searchParams.get("trial");
+    return fromUrl === "trial" || fromUrl === "converted" ? fromUrl : "all";
+  });
   const [viewMode, setViewMode] = useViewMode("clients", "list");
   const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);

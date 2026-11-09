@@ -11,6 +11,7 @@ export type ReportType =
   | "package_summary"
   | "financial_income_statement"
   | "churn_retention"
+  | "trial_conversion"
   | "revenue_forecast"
   | "teacher_performance";
 
@@ -232,6 +233,43 @@ export interface ChurnReportData {
   }[];
 }
 
+/** Aulas experimentais e conversao (09/11/2026, doc product/11). */
+export interface TrialConversionReportData {
+  header: ReportHeaderInfo;
+  /** Alunos cuja primeira experimental foi no mes. */
+  trialsInMonth: number;
+  /** Desses, quantos ja viraram alunos (ate hoje). */
+  convertedFromMonth: number;
+  /** convertedFromMonth / trialsInMonth, em %. null sem base. */
+  conversionRatePercent: number | null;
+  /** Dias da primeira experimental ate a conversao, media dos convertidos do mes. */
+  averageDaysToConvert: number | null;
+  /** Experimentais de qualquer mes que ainda nao voltaram. */
+  pendingTotal: number;
+  /** Da onde veio a conversao, no mes. */
+  convertedBy: { enrollment: number; plan: number; package: number };
+  /** Experimentais sem voltar, da mais recente para a mais antiga. */
+  pending: {
+    studentId: Id;
+    studentName: string;
+    phone?: string;
+    classGroupNames: string[];
+    firstTrialAt: DateISO;
+    lastTrialAt?: DateISO;
+    trialCount: number;
+    daysSinceTrial: number | null;
+  }[];
+  /** Convertidos no mes (pela conversao), do mais recente ao mais antigo. */
+  converted: {
+    studentId: Id;
+    studentName: string;
+    firstTrialAt: DateISO;
+    convertedAt: DateISO;
+    convertedBy: "enrollment" | "plan" | "package";
+    daysToConvert: number;
+  }[];
+}
+
 // Tipo unificado para respostas de relatório
 export type GeneratedReportData =
   | { type: "attendance_sheet"; data: AttendanceReportData }
@@ -241,4 +279,5 @@ export type GeneratedReportData =
   | { type: "package_summary"; data: PackageReportData }
   | { type: "monthly_birthdays"; data: BirthdayReportData }
   | { type: "financial_income_statement"; data: DREStatementReportData }
-  | { type: "churn_retention"; data: ChurnReportData };
+  | { type: "churn_retention"; data: ChurnReportData }
+  | { type: "trial_conversion"; data: TrialConversionReportData };

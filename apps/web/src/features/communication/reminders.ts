@@ -6,6 +6,7 @@ import { ageTurningThisYear, daysUntilBirthday } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { chargeReminder, packageRemainingText } from "./message-values";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
+import { needsTrialFollowUp } from "@gestarahub/core/trials";
 import { BIRTHDAY_LATE_DAYS, PAYMENT_WINDOW_DAYS, WELCOME_WINDOW_DAYS, paidReference } from "./message-suggestions";
 
 /**
@@ -30,6 +31,8 @@ export type ReminderGroupKey =
   | "welcome"
   | "level_up"
   | "payment_received"
+  /** Experimental que nao voltou depois de alguns dias: chamar de volta. */
+  | "trial_follow_up"
   /** Aviso a uma turma (mudanca de horario): montado na hora, fora do motor. */
   | "schedule_change"
   /** Mensagem avulsa para varios alunos: montada na hora, fora do motor. */
@@ -339,6 +342,32 @@ export function buildReminders(
     .filter(keep)
     .map(withPhone);
 
+  // --- Experimental sem voltar ----------------------------------------------
+  const trialFollowUp = (src.trials ?? [])
+    .filter((t) => needsTrialFollowUp(t))
+    .sort((a, b) => (b.lastTrialAt ?? "").localeCompare(a.lastTrialAt ?? ""))
+    .map((t): ReminderItem => {
+      const sent = lastSent(
+        src.logs,
+        (log) =>
+          log.trigger === "trial_follow_up" &&
+          log.clientId === t.studentId &&
+          (!t.lastTrialAt || localDay(log.sentAt) >= t.lastTrialAt),
+      );
+      const classes = t.classGroupNames.length > 0 ? ` · ${t.classGroupNames.join(", ")}` : "";
+      return {
+        key: `trial_follow_up:${t.studentId}`,
+        studentId: t.studentId,
+        studentName: t.studentName,
+        trigger: "trial_follow_up",
+        values: {},
+        detail: `Experimental ${relativeDateLabel(t.lastTrialAt ?? t.firstTrialAt ?? today)}${classes}`,
+        ...doneFields(sent, today, "Chamado"),
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
   const levelUp = src.promotions
     .filter((p) => studentName.has(p.studentId))
     .sort((a, b) => b.lastAdvancedAt.localeCompare(a.lastAdvancedAt))
@@ -412,6 +441,14 @@ export function buildReminders(
     ),
     group("level_up", "relationship", levelUp, (n) => plural(n, "aluno avançou de nível", "alunos avançaram de nível"), names),
     group("welcome", "relationship", welcome, (n) => plural(n, "aluno novo para dar boas-vindas", "alunos novos para dar boas-vindas"), names),
+    group(
+      "trial_follow_up",
+      "relationship",
+      trialFollowUp,
+      (n) => plural(n, "experimental sem voltar", "experimentais sem voltar"),
+      names,
+      "/clients?trial=trial",
+    ),
     group("payment_received", "relationship", paymentReceived, (n) => plural(n, "pagamento para agradecer", "pagamentos para agradecer"), moneyDetail),
   ].filter((g): g is ReminderGroup => g !== null);
 }

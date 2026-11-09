@@ -77,8 +77,15 @@ export function connectionView(): WhatsAppConnectionView {
 }
 
 export function ensureTemplates(): MessageTemplate[] {
+  const defaults = defaultMessageTemplates(store.organization.id, store.organization.classSegment);
   if (!store.messageTemplates || store.messageTemplates.length === 0) {
-    store.messageTemplates = defaultMessageTemplates(store.organization.id, store.organization.classSegment);
+    store.messageTemplates = defaults;
+    return store.messageTemplates;
+  }
+  // Modelo novo da plataforma (ex.: chamar de volta o experimental, 09/11/2026):
+  // o espaco antigo ganha o padrao sem perder o que ja tem.
+  for (const template of defaults) {
+    if (!store.messageTemplates.some((t) => t.trigger === template.trigger)) store.messageTemplates.push(template);
   }
   return store.messageTemplates;
 }
@@ -100,6 +107,7 @@ export const TRIGGER_CATEGORY: Record<MessageTrigger, MessageCategory> = {
   birthday_greeting: "retention",
   package_ending: "retention",
   level_up: "retention",
+  trial_follow_up: "retention",
   class_canceled: "administrative",
   schedule_change: "administrative",
   holiday_notice: "administrative",

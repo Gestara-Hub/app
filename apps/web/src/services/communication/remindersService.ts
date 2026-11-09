@@ -8,6 +8,7 @@ import { chargesService } from "../billing/chargesService";
 import { studentPackagesService } from "../billing/studentPackagesService";
 import { attendanceService } from "../classes/attendanceService";
 import { levelsOf } from "../clients/studentSummaryRules";
+import { trialStudents } from "../clients/clientTrials";
 import { actorTeacherId } from "../classes/teacherScope";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -32,6 +33,7 @@ export const REMINDER_TRIGGERS: MessageTrigger[] = [
   "welcome_student",
   "level_up",
   "payment_received",
+  "trial_follow_up",
 ];
 
 /** Mensagens consideradas (atraso volta a lembrar depois de 7 dias; 60 cobre a semana do aniversario e o pacote). */
@@ -124,7 +126,13 @@ export const remindersService = {
         .filter((t) => triggers.has(t.trigger))
         .map((t) => ({ trigger: t.trigger, enabled: t.enabled, daysOffset: t.daysOffset }));
 
-      return { canBilling, students, charges, packages, absenceStreaks, promotions, logs, templates };
+      // Experimentais sem voltar (o motor decide a partir de quantos dias lembrar).
+      const trials = trialStudents(
+        store.clients.filter((c) => active.has(c.id)),
+        today,
+      ).filter((t) => t.stage === "trial");
+
+      return { canBilling, students, charges, packages, absenceStreaks, promotions, trials, logs, templates };
     });
   },
 };

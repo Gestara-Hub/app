@@ -201,6 +201,14 @@ function manualMessageTemplates(
     ...ts,
   });
   return [
+    manual("trial-follow-up", {
+      trigger: "trial_follow_up",
+      category: "retention",
+      title: "Chamar de volta (experimental)",
+      description: "Para quem fez aula experimental e ainda não voltou",
+      content: `Oi, {aluno}! Foi muito bom ter você na aula experimental. Que tal continuar com a gente? Me conta o que achou e te ajudo a escolher a turma e o plano.${tone.closing}`,
+      availableVariables: ["{aluno}", "{empresa}"],
+    }),
     manual("payment-received", {
       trigger: "payment_received",
       category: "billing",

@@ -32,6 +32,7 @@ function sources(over: Partial<ReminderSources> = {}): ReminderSources {
     packages: [],
     absenceStreaks: [],
     promotions: [],
+    trials: [],
     logs: [],
     templates: [{ trigger: "billing_before_due", enabled: true, daysOffset: -3 }],
     ...over,

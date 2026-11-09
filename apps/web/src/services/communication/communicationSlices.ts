@@ -40,6 +40,8 @@ const reminderSources: MethodSlice = async (_args, load) => {
     load.where("messageLogs", "trigger", REMINDER_TRIGGERS),
     load.all("messageTemplates"),
     load.all("sessionOverrides"),
+    // Experimentais sem voltar: as reservas `trial` (matriculas e pacotes ja vem com o resto).
+    load.where("reservations", "kind", ["trial"]),
   ]);
 };
 

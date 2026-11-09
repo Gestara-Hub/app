@@ -29,7 +29,7 @@ export const SCOPE_FIELDS: Record<string, readonly string[]> = {
   clients: ["id"],
   enrollments: ["id", "classGroupId", "studentId"],
   attendances: ["sessionId", "studentId"],
-  reservations: ["sessionId", "classGroupId", "studentId"],
+  reservations: ["sessionId", "classGroupId", "studentId", "kind"],
   charges: ["id", "studentId", "classGroupId"],
   studentPackages: ["status", "studentId"],
   sessionOverrides: ["sessionId"],

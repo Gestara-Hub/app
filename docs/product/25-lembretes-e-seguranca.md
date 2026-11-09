@@ -27,6 +27,7 @@ Data: 2026-10-23. Status: fases 1 a 5 feitas (seção 8); o resumo por e-mail fi
 | Pacote | Última aula, aulas acabaram ou pacote vencendo | `package_ending` |
 | Relacionamento | Aniversário (no dia e na semana) | `birthday_greeting` |
 | Relacionamento | Três faltas seguidas | `absence_alert` |
+| Relacionamento | Aluno que fez aula experimental e não voltou há 7 dias ou mais (`TRIAL_FOLLOW_UP_DAYS`, doc 11): "Chamar de volta"; o lembrete some quando ele vira aluno (matrícula, plano ou pacote) ou depois da mensagem enviada após a última experimental (09/11/2026) | `trial_follow_up` |
 | Relacionamento | Aluno novo sem boas-vindas (até 7 dias). Com o WhatsApp oficial conectado e o modelo ligado, as boas-vindas saem sozinhas no cadastro (01/11/2026); o lembrete cobre o assistido e o envio que falhou | `welcome_student` |
 | Relacionamento | Avançou de nível (até 14 dias) | `level_up` |
 | Relacionamento | Pagamento recebido (agradecer, até 7 dias) | `payment_received` |

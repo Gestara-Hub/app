@@ -75,6 +75,14 @@ export const CATALOG: ReportMetadata[] = [
     tierRequired: "pro",
     iconName: "TrendingUp",
   },
+  {
+    type: "trial_conversion",
+    title: "Aulas experimentais",
+    description: "Quem experimentou, quem virou aluno e quem falta chamar.",
+    category: "retention",
+    tierRequired: "pro",
+    iconName: "UserRoundSearch",
+  },
 ];
 
 /**

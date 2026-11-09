@@ -10,6 +10,7 @@ import {
   Lock,
   Ticket,
   TrendingUp,
+  UserRoundSearch,
   Users,
   Wallet,
 } from "lucide-react";
@@ -48,6 +49,8 @@ function ReportIcon({ name }: { name: string }) {
       return <FileSpreadsheet className={`${className} text-purple-500`} />;
     case "TrendingUp":
       return <TrendingUp className={`${className} text-rose-500`} />;
+    case "UserRoundSearch":
+      return <UserRoundSearch className={`${className} text-sky-500`} />;
     default:
       return <FileSpreadsheet className={`${className} text-primary`} />;
   }

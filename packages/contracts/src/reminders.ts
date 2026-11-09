@@ -4,6 +4,7 @@ import type { AbsenceStreakView } from "./class";
 import type { DateISO, DateTimeISO, Id } from "./common";
 import type { MessageTrigger } from "./communication";
 import type { StudentPackageView } from "./package";
+import type { TrialStudentView } from "./client";
 
 /**
  * Dados dos lembretes (doc product/25): uma leitura no servidor com tudo de
@@ -59,6 +60,8 @@ export interface ReminderSources {
   packages: StudentPackageView[];
   absenceStreaks: AbsenceStreakView[];
   promotions: ReminderPromotion[];
+  /** Alunos que fizeram aula experimental e ainda nao voltaram (09/11/2026). */
+  trials: TrialStudentView[];
   /** Mensagens dos ultimos 60 dias, so dos tipos que tem lembrete. */
   logs: ReminderLog[];
   templates: ReminderTemplate[];

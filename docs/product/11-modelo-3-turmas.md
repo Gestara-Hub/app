@@ -203,6 +203,14 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 - **Experimental** (`kind: "trial"`): nao gera cobranca.
 - Remover da aula cancela a reserva e a cobranca avulsa ainda nao paga.
 
+**Aluno experimental e conversão (09/11/2026)**
+- **Cadastro rápido na aula:** em "Adicionar aluno nesta aula", "Cadastrar aluno novo" abre uma gaveta por cima só com Nome (obrigatório), Telefone e Nascimento (opcionais). O aluno fica salvo em Alunos e já selecionado como experimental. **Telefone passou a ser opcional em todo aluno** (migração 90); sem ele não há WhatsApp e a ficha mostra "Falta telefone · Completar cadastro".
+- **Quantas experimentais:** sem limite, a critério do usuário (segunda, quarta, qualquer dia). Nada é gravado no aluno: a situação sai dos dados (`@gestarahub/core/trials`).
+- **Experimental** = aluno cuja primeira participação foi uma reserva `trial`, sem matrícula, plano ou pacote antes dela. Quem já era aluno e experimenta outra turma não conta.
+- **Convertido** = depois da primeira experimental ganhou **matrícula em turma, plano de mensalidade ou pacote de aulas**; a primeira dessas é a conversão. **Aula avulsa não converte.**
+- **Onde aparece:** selo "Experimental" na lista de Alunos (só quem não voltou) e filtro "Experimentais" / "Viraram alunos" (`?trial=trial` abre filtrado); aviso no topo da ficha ("Fez aula experimental", com Matricular e Chamar de volta); lembrete "experimentais sem voltar" no Painel e no sino depois de 7 dias (`TRIAL_FOLLOW_UP_DAYS`), com o modelo manual "Chamar de volta (experimental)" (`trial_follow_up`); relatório **Aulas experimentais** (Pro): quem experimentou no mês, quantos viraram alunos, por matrícula/plano/pacote, tempo médio, e a lista de quem falta chamar.
+- Código: `services/clients/clientTrials.ts`, `services/reports/trialConversionReport.ts`, `features/clients/components/quick-client-drawer.tsx` e `trial-badge.tsx`. Testes: `packages/core/test/trials.test.ts`, `services/__tests__/reports-trials.test.ts`, `services/clients/__tests__/trials.db.test.ts`.
+
 **Presenca / frequencia**
 - Chamada por aula, para o roster da data: matriculados **vigentes naquela data** (matriculados ate o dia e nao cancelados antes dele), quem ja tem presenca marcada na aula e as reservas ativas.
 - Status: `present` ("Presente"), `absent` ("Faltou"), `justified` ("Justificada"). Um clique, sem confirmacao.

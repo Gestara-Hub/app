@@ -10,6 +10,7 @@ import {
   buildPackageSummary,
 } from "./financialReports";
 import { buildChurnRetention } from "./retentionReport";
+import { buildTrialConversion } from "./trialConversionReport";
 import { dateInSpace } from "@gestarahub/core/date";
 
 export const reportsServiceImpl = {
@@ -50,6 +51,8 @@ export const reportsServiceImpl = {
           return buildIncomeStatement(context);
         case "churn_retention":
           return buildChurnRetention(context);
+        case "trial_conversion":
+          return buildTrialConversion(context);
         default:
           throw notFoundError("Relatório não encontrado.");
       }

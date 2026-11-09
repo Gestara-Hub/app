@@ -193,7 +193,15 @@ describe("modelos de mensagem", () => {
 
   it("modelos sumidos sao recriados com o texto padrao", async () => {
     store.messageTemplates = [];
-    expect(await communicationService.listTemplates()).toHaveLength(14);
+    expect(await communicationService.listTemplates()).toHaveLength(15);
+  });
+
+  it("modelo novo da plataforma entra no espaço antigo sem apagar os que ele já tem", async () => {
+    const before = await communicationService.listTemplates();
+    store.messageTemplates = before.filter((t) => t.trigger !== "trial_follow_up");
+    const after = await communicationService.listTemplates();
+    expect(after).toHaveLength(before.length);
+    expect(after.find((t) => t.trigger === "trial_follow_up")).toMatchObject({ category: "retention", enabled: false });
   });
 
   it("modelos so de envio manual: desligados, com a categoria de cada um", async () => {

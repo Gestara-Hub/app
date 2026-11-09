@@ -69,6 +69,8 @@ export type MessageTrigger =
    */
   | "payment_received"
   | "level_up"
+  /** Aluno experimental que nao voltou: chamar de volta (09/11/2026). */
+  | "trial_follow_up"
   | "class_canceled"
   | "schedule_change"
   | "holiday_notice"

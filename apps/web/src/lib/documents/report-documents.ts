@@ -4,6 +4,7 @@ import type {
   BirthdayReportData,
   ChurnReportData,
   CourseReportData,
+  TrialConversionReportData,
   DocumentModel,
   DocumentTableBlock,
   DocumentTone,
@@ -43,6 +44,7 @@ export const REPORT_FILE_SLUG: Record<GeneratedReportData["type"], string> = {
   monthly_birthdays: "aniversariantes",
   financial_income_statement: "dre",
   churn_retention: "retencao",
+  trial_conversion: "experimentais",
 };
 
 /** Cabecalho e meta comuns a todos os relatorios. */
@@ -505,5 +507,86 @@ export function reportToDocument(
       return incomeStatement(report.data, competence);
     case "churn_retention":
       return churnRetention(report.data, competence);
+    case "trial_conversion":
+      return trialConversion(report.data, competence);
   }
+}
+
+const CONVERTED_BY_LABEL = { enrollment: "Matrícula", plan: "Plano", package: "Pacote" } as const;
+
+function trialConversion(data: TrialConversionReportData, competence: string): DocumentModel {
+  const hasBase = data.trialsInMonth > 0;
+  return {
+    ...reportBase(data.header, "Aulas experimentais", `${REPORT_FILE_SLUG.trial_conversion}-${competence}`),
+    subtitle: "Quem experimentou no mês, quem virou aluno e quem ainda falta chamar.",
+    blocks: [
+      {
+        type: "kpis",
+        items: [
+          { label: "Experimentaram no mês", value: data.trialsInMonth, format: "integer" },
+          { label: "Viraram alunos", value: data.convertedFromMonth, format: "integer", tone: "positive" },
+          { label: "Conversão", value: hasBase ? data.conversionRatePercent : null, format: "percent", tone: "positive" },
+          { label: "Sem voltar (todos os meses)", value: data.pendingTotal, format: "integer", tone: data.pendingTotal > 0 ? "negative" : "default" },
+        ],
+      },
+      {
+        type: "fields",
+        title: "Como viraram alunos",
+        items: [
+          { label: "Matrícula em turma", value: data.convertedBy.enrollment, format: "integer" },
+          { label: "Plano de mensalidade", value: data.convertedBy.plan, format: "integer" },
+          { label: "Pacote de aulas", value: data.convertedBy.package, format: "integer" },
+          {
+            label: "Tempo até virar aluno",
+            value: data.averageDaysToConvert === null ? "—" : `${data.averageDaysToConvert} dias em média`,
+          },
+        ],
+      },
+      {
+        type: "table",
+        title: "Ainda não voltaram",
+        columns: [
+          { key: "name", label: "Aluno", width: 2 },
+          { key: "classes", label: "Turma", width: 1.6 },
+          { key: "last", label: "Última experimental" },
+          { key: "count", label: "Aulas", format: "integer" },
+          { key: "days", label: "Dias sem voltar", format: "integer" },
+          { key: "phone", label: "Telefone", width: 1.2 },
+        ],
+        rows: data.pending.map((p) => ({
+          cells: {
+            name: p.studentName,
+            classes: p.classGroupNames.join(", ") || "—",
+            last: p.lastTrialAt ?? p.firstTrialAt,
+            count: p.trialCount,
+            days: p.daysSinceTrial,
+            phone: p.phone ?? "—",
+          },
+          tones: { days: (p.daysSinceTrial ?? 0) >= 7 ? "negative" : "default" },
+        })),
+        emptyText: "Ninguém ficou sem voltar.",
+      },
+      {
+        type: "table",
+        title: "Viraram alunos no mês",
+        columns: [
+          { key: "name", label: "Aluno", width: 2 },
+          { key: "trial", label: "Experimental" },
+          { key: "converted", label: "Virou aluno em" },
+          { key: "by", label: "Como" },
+          { key: "days", label: "Dias", format: "integer" },
+        ],
+        rows: data.converted.map((c) => ({
+          cells: {
+            name: c.studentName,
+            trial: c.firstTrialAt,
+            converted: c.convertedAt,
+            by: CONVERTED_BY_LABEL[c.convertedBy],
+            days: c.daysToConvert,
+          },
+        })),
+        emptyText: "Ninguém virou aluno neste mês.",
+      },
+    ],
+  };
 }
