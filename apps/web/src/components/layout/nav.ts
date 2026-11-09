@@ -12,6 +12,7 @@ import {
   Settings,
   Shapes,
   Tag,
+  Ticket,
   UserCog,
   Users,
   Wallet,
@@ -128,6 +129,16 @@ export const MAIN_NAV: NavItem[] = [
     section: "daily_operations",
     models: ["classes"],
     tourId: "nav-classes",
+    contexts: ["operations"],
+  },
+  // Eventos e seminarios (doc product/29): modulo proprio, so no modelo de turmas.
+  {
+    label: "Eventos",
+    href: "/events",
+    icon: Ticket,
+    permission: "events:view",
+    section: "daily_operations",
+    models: ["classes"],
     contexts: ["operations"],
   },
   {

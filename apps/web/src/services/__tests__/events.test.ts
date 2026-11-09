@@ -85,7 +85,7 @@ describe("evento: cadastro", () => {
     const [done, ...future] = event.sessions;
     const updated = await eventsService.update(event.id, {
       name: "Seminário de Outubro",
-      sessions: [{ id: done.id, ...done }, { id: future[0].id, date: "2026-10-12", start: "10:00", end: "12:00" }],
+      sessions: [{ id: done.id, date: done.date, start: done.start, end: done.end }, { id: future[0].id, date: "2026-10-12", start: "10:00", end: "12:00" }],
     });
     expect(updated.name).toBe("Seminário de Outubro");
     expect(updated.sessions.map((s) => `${s.date} ${s.start}`)).toEqual(["2026-09-20 09:00", "2026-10-12 10:00"]);

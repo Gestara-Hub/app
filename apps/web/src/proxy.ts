@@ -30,6 +30,7 @@ const APP_PATHS = [
   "/clients",
   "/communication",
   "/dashboard",
+  "/events",
   "/finance",
   "/online-payments",
   "/reports",

@@ -20,6 +20,7 @@ import type {
   TimeBlockFilter,
   UserFilter,
   UserProfile,
+  EventFilter,
 } from "@gestarahub/contracts";
 
 /**
@@ -133,6 +134,15 @@ export const queryKeys = {
   measurements: {
     all: ["measurements"] as const,
     student: (studentId: Id) => ["measurements", "student", studentId] as const,
+  },
+  // Eventos e seminarios (doc product/29): evento, dias e inscricoes.
+  events: {
+    all: ["events"] as const,
+    list: (filter?: EventFilter) => ["events", "list", filter] as const,
+    detail: (id: Id) => ["events", "detail", id] as const,
+    registrations: (eventId: Id) => ["events", "registrations", eventId] as const,
+    sessions: (range: { dateFrom: DateISO; dateTo: DateISO }) => ["events", "sessions", range] as const,
+    session: (sessionId: Id) => ["events", "session", sessionId] as const,
   },
   billing: {
     all: ["billing"] as const,

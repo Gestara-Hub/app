@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Decidido (fase 1 feita em 09/11/2026; fases 2 a 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, migração `20261109000091_events.sql`; a criar: `apps/web/src/features/events`, rotas `app/(app)/events` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Decidido (fases 1 e 2 feitas em 09/11/2026; fases 3 a 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -130,7 +130,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | Fase | Entrega | Verificação |
 | --- | --- | --- |
 | 1. Base (**feita 09/11/2026**) | Contrato, migração (4 tabelas, `Charge.kind` event + `eventId`, `FinanceEntry.eventId`), `services/events` com escopo e permissões, slices no mundo, testes Vitest e db | `pnpm test`, db tests da área |
-| 2. Telas | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
+| 2. Telas (**feita 09/11/2026**) | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
 | 3. Cobrança e financeiro | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
 | 4. Calendário e Painel | Sessões de evento no calendário com cor própria e filtro, card no Painel, lembrete "evento amanhã" no sino | manual |
 | 5. Pro | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
@@ -152,6 +152,16 @@ Cada fase é uma leva de commits pequenos, um assunto cada.
 - **Chamada:** presente ou ausente por inscrito e dia, só no dia ou depois, só de inscrição confirmada que cobre o dia (completa, ou por dias com aquele dia). Sem falta justificada. `countsForProgression` está gravado, mas ainda não entra na frequência da graduação (fase 2 ou 3).
 - **Lista:** próximos primeiro (pela primeira data), encerrados no fim (do mais recente ao mais antigo); busca pelo nome do evento e do convidado.
 - **Ainda não feito:** telas, navegação, Calendário com cor própria, aba Financeiro do evento (as cobranças já carregam `eventId`), selo "Visitante" em Alunos, certificado e relatório.
+
+## Como ficou a fase 2 (09/11/2026)
+
+- **Menu:** "Eventos" no Dia a dia, depois de Turmas, só no modelo de turmas (`events:view`). Rotas em `app/(app)/events` (lista, `[id]`, `sessions/[sessionId]`), guardadas por `requirePermission("events:view")`.
+- **Lista** (`EventsView`): busca pelo nome do evento ou do convidado, filtro de situação (Todos, Em breve, Em andamento, Encerrado, Cancelados), `ListSummaryBar`, linhas com nome, modalidade, selo de situação (Em andamento, Encerrado, Lotado, Cancelado), datas ("15/11 a 17/11 (3 dias)"), horas, quem conduz ("(convidado)") e a cobrança. Menu ⋮ e de contexto com Editar e Cancelar evento (`events:manage`). Vazio: guia "Nenhum evento ainda".
+- **Formulário** (`EventFormDrawer`, drawer): Nome*, Modalidade, Quem conduz (segmentado Da equipe / Convidado; convidado abre nome* e "De onde vem"), Dias* (linhas com data, início e fim, "+ Adicionar dia"; dia já feito ou cancelado aparece com cadeado e não muda), Vagas (vazio = sem limite), Cobrança em cartões (Valor fechado com Parcelas até e "Tenho preço de lote" abrindo valor e data; Por dia com valor do dia; Sem cobrança), "Conta para a graduação" e Descrição. "Adicionar"/"Salvar" e erros do serviço mapeados por campo.
+- **Detalhe** (`EventDetailView`): "‹ Voltar", título com selo e modalidade, linha com datas, horas, quem conduz, vagas, cobrança e "Conta para a graduação"; "Inscrever" (`enrollment:manage`, só evento ativo e não encerrado) e menu ⋮ com Editar e Cancelar evento. Abas: Inscritos (confirmados e cancelados, com "Pago", "R$ x a receber", "R$ x vencido" ou "Sem cobrança" e as presenças), Espera (só quando há alguém; ação Promover) e Dias (data, horário, "Hoje", dia cancelado riscado; clicar abre a chamada; Cancelar dia só em dia futuro).
+- **Inscrever** (`RegisterDrawer`): aluno ativo que ainda não está no evento; em evento por dia, "Todos os dias" ou "Só alguns dias" com a lista de dias e o valor de cada um; pagamento com valor sugerido (lote aplicado quando vale) editável, parcelas (só valor fechado e inscrição completa) e vencimento. Evento lotado mostra o aviso e o botão vira "Pôr na espera", sem cobrança. Promover da espera reusa o drawer só com o pagamento.
+- **Dia do evento** (`EventSessionView`): "‹ Voltar" para o evento, nome com selo "Evento" (cor própria, roxo), data, horário e quem conduz; "N de M presentes" e "Todos vieram"; linhas com o círculo de presença (toque marca presente, de novo desmarca), menu com Marcar falta e Desmarcar. Dia futuro: "A chamada abre no dia do evento", sem marcação. Dia cancelado: selo e sem marcação.
+- **Ainda não feito** (fases 3 a 5): aba Financeiro do evento, cards de evento no Calendário e no Painel, selo "Visitante" em Alunos, certificado e relatório, e2e.
 
 ## Decisões (09/11/2026)
 

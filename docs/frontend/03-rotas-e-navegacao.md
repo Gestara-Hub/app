@@ -49,6 +49,9 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
 | `/classes/plans` | Planos | `classes` | `billing:view` | Abas "Planos de mensalidade" e "Pacotes de aulas" (`?tab=packages`). |
 | `/classes/billing` | Cobranças | `classes` | `billing:view` | Cobrancas por competencia: mensalidades, aulas avulsas, cobrancas avulsas e parcelas de curso (antes "Mensalidades", renomeada em 14/10/2026). |
+| `/events` | Eventos | `classes` | `events:view` | Seminários, workshops e aulões (doc product/29): lista com busca e situação; "+ Novo evento" pede `events:manage`. |
+| `/events/[id]` | Detalhe do evento | `classes` | `events:view` | Abas Inscritos, Espera e Dias; Inscrever (`enrollment:manage`), Editar e Cancelar (`events:manage`). |
+| `/events/sessions/[sessionId]` | Dia do evento | `classes` | `events:view` | Chamada do dia (`attendance:mark`); o professor só nos eventos que conduz. |
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
