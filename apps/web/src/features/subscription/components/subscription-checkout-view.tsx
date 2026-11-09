@@ -95,9 +95,9 @@ export function SubscriptionCheckoutView() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Lê parâmetros da URL (?interval=monthly|yearly)
-  // So o Profissional esta a venda; um link antigo com tier=scale cai nele.
-  const initialTier: "pro" | "scale" = "pro";
+  // Lê parâmetros da URL (?tier=pro|scale & ?interval=monthly|yearly)
+  const paramTier = searchParams.get("tier");
+  const initialTier: "pro" | "scale" = paramTier === "scale" ? "scale" : "pro";
 
   const paramInterval = searchParams.get("interval");
   const initialInterval: SubscriptionInterval =
@@ -515,7 +515,7 @@ export function SubscriptionCheckoutView() {
                     noValidate
                     className="space-y-6"
                   >
-                    {/* Plano: so o Profissional esta a venda (o Expansão volta com a multiunidade) */}
+                    {/* Plano escolhido: Profissional ou Expansão */}
                     <div className="space-y-2.5">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Plano escolhido
@@ -540,6 +540,29 @@ export function SubscriptionCheckoutView() {
                             </p>
                           </div>
                           {selectedTier === "pro" && (
+                            <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTier("scale")}
+                          className={cn(
+                            "flex items-start justify-between rounded-xl border p-3.5 text-left transition-all",
+                            selectedTier === "scale"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                              : "border-border/70 hover:border-border bg-card",
+                          )}
+                        >
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                              <span>Expansão</span>
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {interval === "monthly" ? "R$ 199,00/mês" : "R$ 165,83/mês (anual)"}
+                            </p>
+                          </div>
+                          {selectedTier === "scale" && (
                             <Check className="size-4 text-primary shrink-0 mt-0.5" />
                           )}
                         </button>
@@ -1114,7 +1137,9 @@ export function SubscriptionCheckoutView() {
                 Plano {planName}
               </CardTitle>
               <CardDescription className="text-xs">
-                Lembretes no WhatsApp sem clique, relatórios e certificados.
+                {selectedTier === "pro"
+                  ? "Lembretes no WhatsApp sem clique, relatórios e certificados."
+                  : "WhatsApp, multiunidades, taxa reduzida e atendimento prioritário."}
               </CardDescription>
             </CardHeader>
 
@@ -1168,22 +1193,49 @@ export function SubscriptionCheckoutView() {
                   O que a assinatura inclui:
                 </p>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Taxa menor no Pix</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>WhatsApp automático (lembretes e avisos)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Relatório do resultado do mês e retenção</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Certificado de conclusão em PDF</span>
-                  </li>
+                  {selectedTier === "pro" ? (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Taxa menor no Pix</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>WhatsApp automático (lembretes e avisos)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Relatório do resultado do mês e retenção</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Certificado de conclusão em PDF</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Tudo do Profissional</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>1.000 mensagens no WhatsApp por mês</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Multiunidades e filiais da rede</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Taxa reduzida de pagamento online</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Suporte e atendimento prioritário</span>
+                      </li>
+                    </>
+                  )}
                 </ul>
               </div>
 

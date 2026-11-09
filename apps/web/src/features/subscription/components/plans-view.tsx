@@ -110,7 +110,7 @@ export function PlansView() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-sm text-muted-foreground sm:text-base leading-relaxed">
-            O Grátis cobre o dia a dia. O Profissional automatiza o WhatsApp e libera relatórios e certificados.
+            O Grátis cobre o dia a dia. O Profissional automatiza o WhatsApp e libera relatórios e certificados. O Expansão escala sua operação e filiais.
           </p>
 
           {/* Seletor Mensal / Anual */}
@@ -147,13 +147,8 @@ export function PlansView() {
           </div>
         </div>
 
-        {/* Grátis e Profissional; o Expansão só aparece para quem já tem (volta com a multiunidade). */}
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-6 lg:gap-8 items-stretch",
-            currentTier === "scale" ? "md:grid-cols-3" : "mx-auto max-w-4xl md:grid-cols-2",
-          )}
-        >
+        {/* Grátis, Profissional e Expansão */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
           {/* Plano Grátis */}
           <Card
             className={cn(
@@ -283,39 +278,77 @@ export function PlansView() {
             </CardFooter>
           </Card>
 
-          {/* Expansão: só para quem já tem. Volta a ser vendido quando existir multiunidade. */}
-          {currentTier === "scale" ? (
-            <Card className="flex flex-col justify-between rounded-2xl border border-indigo-500/60 bg-card shadow-xs ring-1 ring-indigo-500/20">
+          {/* Plano Expansão */}
+          <Card
+            className={cn(
+              "flex flex-col justify-between rounded-2xl border transition-all duration-200 relative bg-card shadow-xs",
+              currentTier === "scale"
+                ? "border-indigo-500/60 ring-2 ring-indigo-500/20"
+                : "border-border/70 hover:border-border",
+            )}
+          >
+            <div>
               <CardHeader className="pb-4">
                 <div className="flex min-h-[22px] items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Seu plano
+                    Para crescer
                   </span>
-                  <Badge variant="secondary" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
-                    Seu plano atual
-                  </Badge>
+                  {currentTier === "scale" ? (
+                    <Badge variant="secondary" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
+                      Seu plano atual
+                    </Badge>
+                  ) : null}
                 </div>
                 <CardTitle className="text-2xl font-bold flex items-center gap-2">
                   <span>Expansão</span>
                   <Crown className="size-4 text-indigo-500" />
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Tem tudo do Profissional. Este plano não está mais à venda.
+                  Para redes, filiais ou operações com alto volume de mensagens e atendimento prioritário.
                 </CardDescription>
+
+                <div className="pt-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-foreground">
+                      {formatCents(SUBSCRIPTION_PRICES.scale[interval].priceCents)}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {interval === "monthly" ? "/ mês" : "/ ano"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground pt-0.5">
+                    {interval === "monthly" ? "Cobrança mensal, sem fidelidade." : "Cobrança anual, com 2 meses grátis."}
+                  </p>
+                </div>
               </CardHeader>
-              <CardFooter className="pt-4">
-                <PaidPlanAction
-                  tier="scale"
-                  interval={interval}
-                  current={{ tier: onCourtesy ? "free" : currentTier, interval: currentInterval }}
-                  changesInPlace={changesInPlace}
-                  canManage={canManage}
-                  onChange={setChangeTarget}
-                  checkoutLabel="Ativar o Expansão"
-                />
-              </CardFooter>
-            </Card>
-          ) : null}
+
+              <CardContent className="space-y-3 pt-2 text-xs">
+                <p className="font-semibold text-foreground border-b border-border/50 pb-2">
+                  Tudo do Profissional, além de:
+                </p>
+                <ul className="space-y-2.5 text-muted-foreground">
+                  {SCALE_FEATURES.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </div>
+
+            <CardFooter className="pt-4">
+              <PaidPlanAction
+                tier="scale"
+                interval={interval}
+                current={{ tier: onCourtesy ? "free" : currentTier, interval: currentInterval }}
+                changesInPlace={changesInPlace}
+                canManage={canManage}
+                onChange={setChangeTarget}
+                checkoutLabel="Assinar o Expansão"
+              />
+            </CardFooter>
+          </Card>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
@@ -362,6 +395,14 @@ const PRO_FEATURES = [
   "Retenção de alunos",
   "Certificado de conclusão em PDF",
   "Taxa menor por Pix pago",
+];
+
+const SCALE_FEATURES = [
+  "1.000 mensagens no WhatsApp por mês",
+  "Multiunidades e filiais da rede",
+  "Taxa reduzida de pagamento online",
+  "Inteligência analítica preditiva",
+  "Suporte e atendimento prioritário",
 ];
 
 /**
@@ -444,8 +485,8 @@ export function PlansSkeleton() {
         </div>
       </div>
 
-      {/* 2 Pricing Cards Skeleton */}
-      <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8 items-stretch">
+      {/* 3 Pricing Cards Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
         {/* Card 1: Grátis */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
@@ -497,6 +538,35 @@ export function PlansSkeleton() {
                 <div key={i} className="flex items-center gap-2">
                   <Skeleton className="size-4 rounded-full shrink-0" />
                   <Skeleton className={cn("h-3 rounded", i % 2 === 0 ? "w-full" : "w-4/5")} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-9 w-full rounded-md" />
+        </div>
+
+        {/* Card 3: Expansão */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3.5 w-28 rounded" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-32 rounded-md" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-3.5 w-full rounded" />
+              <Skeleton className="h-3.5 w-4/5 rounded" />
+            </div>
+            <div className="pt-2 space-y-1">
+              <Skeleton className="h-10 w-36 rounded-md" />
+              <Skeleton className="h-3 w-48 rounded" />
+            </div>
+            <div className="pt-3 border-t border-border/50 space-y-2.5">
+              <Skeleton className="h-3.5 w-36 rounded mb-3" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="size-4 rounded-full shrink-0" />
+                  <Skeleton className={cn("h-3 rounded", i % 2 === 0 ? "w-5/6" : "w-4/5")} />
                 </div>
               ))}
             </div>
