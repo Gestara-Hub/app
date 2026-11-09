@@ -6,6 +6,7 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form";
+import type { ReactNode } from "react";
 import { formatCpf } from "@gestarahub/core/payer";
 import { Input } from "@/components/ui/input";
 import { FieldShell, fieldAria } from "./field-shell";
@@ -13,6 +14,7 @@ import { FieldShell, fieldAria } from "./field-shell";
 interface InputCpfProps<T extends FieldValues> {
   name: Path<T>;
   label?: string;
+  labelExtra?: ReactNode;
   hint?: string;
   required?: boolean;
   disabled?: boolean;
@@ -23,6 +25,7 @@ interface InputCpfProps<T extends FieldValues> {
 export function InputCpf<T extends FieldValues>({
   name,
   label = "CPF",
+  labelExtra,
   hint,
   required,
   disabled,
@@ -39,6 +42,7 @@ export function InputCpf<T extends FieldValues>({
         <FieldShell
           id={fieldId}
           label={label}
+          labelExtra={labelExtra}
           hint={hint}
           error={fieldState.error?.message}
           required={required}

@@ -6,6 +6,7 @@ export {
 export {
   confirmMinorConsentAction,
   confirmPaperMinorConsentAction,
+  revokePaperMinorConsentAction,
   getPublicMinorConsentDetailsAction,
 } from "./minorConsentActions";
 export type {

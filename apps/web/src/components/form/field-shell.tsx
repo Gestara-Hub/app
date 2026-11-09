@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface FieldShellProps {
   id?: string;
   label?: string;
+  labelExtra?: ReactNode;
   hint?: string;
   error?: string;
   required?: boolean;
@@ -39,6 +40,7 @@ export function fieldAria(id: string, error?: string, hint?: string) {
 export function FieldShell({
   id,
   label,
+  labelExtra,
   hint,
   error,
   required,
@@ -65,16 +67,19 @@ export function FieldShell({
   return (
     <div className={cn("space-y-1.5", className)}>
       {label ? (
-        <Label htmlFor={id} className="text-sm">
-          <span>
-            {label}
-            {required ? (
-              <span className="ml-0.5 text-destructive" aria-hidden>
-                *
-              </span>
-            ) : null}
-          </span>
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={id} className="text-sm">
+            <span>
+              {label}
+              {required ? (
+                <span className="ml-0.5 text-destructive" aria-hidden>
+                  *
+                </span>
+              ) : null}
+            </span>
+          </Label>
+          {labelExtra}
+        </div>
       ) : null}
       {children}
       {error ? (

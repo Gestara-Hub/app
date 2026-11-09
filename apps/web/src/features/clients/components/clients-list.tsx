@@ -763,16 +763,17 @@ export function ClientsList({
     () => preferences.pageSizes?.clients ?? preferences.defaultPageSize ?? 20,
   );
 
-  const filter: ClientFilter = {
-    search: search.trim() || undefined,
-    status: status === "all" ? undefined : status,
-    page,
-    pageSize,
-  };
+  const filter = useMemo<ClientFilter>(
+    () => ({
+      search: search.trim() || undefined,
+      status: status === "all" ? undefined : status,
+      page,
+      pageSize,
+    }),
+    [search, status, page, pageSize],
+  );
 
-  const { data: paginatedData, isPending, isError, refetch, isFetching } = usePaginatedClients(filter);
-  // Buscando de novo (depois de salvar, trocar pagina ou filtro): barrinha no topo da lista.
-  const refreshing = isFetching && !isPending;
+  const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
   const { data: categories } = useCategories();
   const { data: studentPackages } = useStudentPackages(undefined, isClasses);
   const clients = paginatedData?.items ?? [];
@@ -968,7 +969,7 @@ export function ClientsList({
           ))}
         </div>
       ) : (
-        <ListContainer emptyState={emptyState} refreshing={refreshing}>
+        <ListContainer emptyState={emptyState}>
           {items}
         </ListContainer>
       )}

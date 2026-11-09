@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -33,6 +34,7 @@ export function usePaginatedClients(filter?: ClientFilter, enabled = true) {
   return useQuery({
     queryKey: [...queryKeys.clients.list(filter), "paginated", filter?.page ?? 1, filter?.pageSize ?? 20],
     queryFn: () => clientsService.listPaginated(filter),
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -203,6 +205,17 @@ export function useConfirmPaperMinorConsent() {
   return useMutation({
     mutationFn: ({ studentId, guardianName }: { studentId: Id; guardianName?: string }) =>
       legalConsentService.confirmPaperMinorConsent(studentId, guardianName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+    },
+  });
+}
+
+export function useRevokePaperMinorConsent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId }: { studentId: Id }) =>
+      legalConsentService.revokePaperMinorConsent(studentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
     },

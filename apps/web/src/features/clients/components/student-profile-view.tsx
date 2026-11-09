@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -231,6 +231,7 @@ export function StudentProfileView({ id }: { id: Id }) {
 
   // `?tab=` (links antigos e de outras telas) abre aquela secao.
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Set<ProfileSectionId>>(() => {
     const raw = searchParams.get("tab");
     const param = (raw && LEGACY_SECTION[raw]) ?? raw;
@@ -250,14 +251,42 @@ export function StudentProfileView({ id }: { id: Id }) {
     );
   };
 
-  const [editOpen, setEditOpenState] = useState(false);
+  const initialEditParam = searchParams.get("edit");
+  const initialEditFocus: ClientFormFocus | undefined =
+    initialEditParam === "cpf"
+      ? "cpf"
+      : initialEditParam === "guardians" || initialEditParam === "guardian_cpf"
+        ? "guardians"
+        : undefined;
+
+  const [editOpen, setEditOpenState] = useState(() => Boolean(initialEditFocus));
   // "Trocar plano" abre o cadastro ja em Plano e mensalidade; "Completar
   // cadastro", no campo que falta; o resto abre do topo.
-  const [editFocus, setEditFocus] = useState<ClientFormFocus | undefined>(undefined);
+  const [editFocus, setEditFocus] = useState<ClientFormFocus | undefined>(() => initialEditFocus);
   const setEditOpen = (open: boolean, focus?: ClientFormFocus) => {
     if (open) setEditFocus(focus);
     setEditOpenState(open);
   };
+
+  // Suporte a links externos e modais (?edit=cpf ou ?edit=guardians): abre focado no campo desejado
+  useEffect(() => {
+    if (searchParams.get("edit")) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("edit");
+      const cleanUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+      window.history.replaceState(null, "", cleanUrl);
+    }
+
+    const handleEditEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ studentId?: string; focus?: ClientFormFocus }>;
+      if (!customEvent.detail?.studentId || customEvent.detail.studentId === id) {
+        setEditOpen(true, customEvent.detail?.focus);
+      }
+    };
+
+    window.addEventListener("gestarahub:edit-client", handleEditEvent);
+    return () => window.removeEventListener("gestarahub:edit-client", handleEditEvent);
+  }, [id, pathname, searchParams]);
   const [inactivateOpen, setInactivateOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);

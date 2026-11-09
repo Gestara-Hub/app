@@ -63,6 +63,9 @@ export function PaginationBar({
     pagesToShow.push(totalPages);
   }
 
+  // Setas duplas (« e ») so aparecem quando ha mais de 5 paginas no total
+  const showFirstLast = totalPages > 5;
+
   return (
     <div
       ref={rootRef}
@@ -71,143 +74,171 @@ export function PaginationBar({
         className,
       )}
     >
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>
-          Mostrando <span className="font-medium text-foreground">{start}</span>–
-          <span className="font-medium text-foreground">{end}</span> de{" "}
-          <span className="font-medium text-foreground">{total}</span> {total === 1 ? singularLabel(itemLabel) : itemLabel}
+          Mostrando{" "}
+          <span className="font-medium text-foreground">
+            {start === end ? start : `${start}–${end}`}
+          </span>{" "}
+          de <span className="font-medium text-foreground">{total}</span>{" "}
+          {total === 1 ? singularLabel(itemLabel) : itemLabel}
         </span>
 
         {onPageSizeChange && (
-          <div className="ml-2 hidden items-center gap-1.5 sm:flex">
-            <span>por página:</span>
-            <Select
-              value={String(pageSize)}
-              disabled={disabled}
-              onValueChange={(value) => {
-                const newSize = Number(value);
-                onPageSizeChange(newSize);
-                scrollToListStart(rootRef.current);
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(
-                    new CustomEvent("gestarahub:pagesize-change", {
-                      detail: { screenKey, pageSize: newSize },
-                    }),
-                  );
-                }
-              }}
-            >
-              <SelectTrigger size="sm" className="w-auto min-w-16 text-xs" aria-label="Itens por página">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {pageSizeOptions.map((opt) => (
-                  <SelectItem key={opt} value={String(opt)}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <>
+            <span className="text-border" aria-hidden>·</span>
+            <div className="flex items-center gap-1.5">
+              <span>por página:</span>
+              <Select
+                value={String(pageSize)}
+                disabled={disabled}
+                onValueChange={(value) => {
+                  const newSize = Number(value);
+                  onPageSizeChange(newSize);
+                  scrollToListStart(rootRef.current);
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                      new CustomEvent("gestarahub:pagesize-change", {
+                        detail: { screenKey, pageSize: newSize },
+                      }),
+                    );
+                  }
+                }}
+              >
+                <SelectTrigger size="sm" className="h-7 w-auto min-w-14 text-xs" aria-label="Itens por página">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((opt) => (
+                    <SelectItem key={opt} value={String(opt)}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-1 sm:justify-end">
-        {/* Mobile simple controls */}
-        <div className="flex items-center gap-1 sm:hidden">
-          <Button
-            variant="outline"
-            onClick={() => goTo(page - 1)}
-            disabled={page <= 1 || disabled}
-            aria-label="Página anterior"
-          >
-            <ChevronLeft className="size-4" />
-            <span>Anterior</span>
-          </Button>
-          <span className="px-2 text-xs font-medium text-muted-foreground">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => goTo(page + 1)}
-            disabled={page >= totalPages || disabled}
-            aria-label="Próxima página"
-          >
-            <span>Próxima</span>
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-
-        {/* Desktop full pagination */}
-        <div className="hidden items-center gap-1 sm:flex">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => goTo(1)}
-            disabled={page <= 1 || disabled}
-            aria-label="Primeira página"
-            title="Primeira página"
-          >
-            <ChevronsLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => goTo(page - 1)}
-            disabled={page <= 1 || disabled}
-            aria-label="Página anterior"
-            title="Página anterior"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-
-          <div className="flex items-center gap-0.5 px-1">
-            {pagesToShow.map((p, idx) =>
-              p === "ellipsis" ? (
-                <span
-                  key={`ellipsis-${idx}`}
-                  className="flex size-8 items-center justify-center text-xs text-muted-foreground"
-                >
-                  …
-                </span>
-              ) : (
-                <Button
-                  key={p}
-                  variant={p === page ? "default" : "outline"}
-                  size="icon-sm"
-                  onClick={() => goTo(p)}
-                  disabled={disabled}
-                  aria-label={`Ir para a página ${p}`}
-                  aria-current={p === page ? "page" : undefined}
-                >
-                  {p}
-                </Button>
-              ),
-            )}
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-between gap-1 sm:justify-end">
+          {/* Mobile simple controls */}
+          <div className="flex items-center gap-1 sm:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goTo(page - 1)}
+              disabled={page <= 1 || disabled}
+              className="h-8 gap-1 border-border/60 text-xs disabled:opacity-25"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="size-3.5" />
+              <span>Anterior</span>
+            </Button>
+            <span className="px-2 text-xs font-medium text-muted-foreground">
+              {page} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goTo(page + 1)}
+              disabled={page >= totalPages || disabled}
+              className="h-8 gap-1 border-border/60 text-xs disabled:opacity-25"
+              aria-label="Próxima página"
+            >
+              <span>Próxima</span>
+              <ChevronRight className="size-3.5" />
+            </Button>
           </div>
 
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => goTo(page + 1)}
-            disabled={page >= totalPages || disabled}
-            aria-label="Próxima página"
-            title="Próxima página"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => goTo(totalPages)}
-            disabled={page >= totalPages || disabled}
-            aria-label="Última página"
-            title="Última página"
-          >
-            <ChevronsRight className="size-4" />
-          </Button>
+          {/* Desktop full pagination */}
+          <div className="hidden items-center gap-1 sm:flex">
+            {showFirstLast && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => goTo(1)}
+                disabled={page <= 1 || disabled}
+                className="disabled:opacity-25 text-muted-foreground hover:text-foreground"
+                aria-label="Primeira página"
+                title="Primeira página"
+              >
+                <ChevronsLeft className="size-4" />
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => goTo(page - 1)}
+              disabled={page <= 1 || disabled}
+              className="disabled:opacity-25 border-border/60 text-muted-foreground hover:text-foreground"
+              aria-label="Página anterior"
+              title="Página anterior"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+
+            <div className="flex items-center gap-0.5 px-0.5">
+              {pagesToShow.map((p, idx) =>
+                p === "ellipsis" ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="flex size-8 items-center justify-center text-xs text-muted-foreground select-none"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === page ? "default" : "ghost"}
+                    size="icon-sm"
+                    onClick={() => goTo(p)}
+                    disabled={disabled}
+                    className={cn(
+                      "text-xs font-medium transition-colors",
+                      p === page
+                        ? "shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/70",
+                    )}
+                    aria-label={`Ir para a página ${p}`}
+                    aria-current={p === page ? "page" : undefined}
+                  >
+                    {p}
+                  </Button>
+                ),
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => goTo(page + 1)}
+              disabled={page >= totalPages || disabled}
+              className="disabled:opacity-25 border-border/60 text-muted-foreground hover:text-foreground"
+              aria-label="Próxima página"
+              title="Próxima página"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+
+            {showFirstLast && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => goTo(totalPages)}
+                disabled={page >= totalPages || disabled}
+                className="disabled:opacity-25 text-muted-foreground hover:text-foreground"
+                aria-label="Última página"
+                title="Última página"
+              >
+                <ChevronsRight className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -61,7 +61,7 @@ import type {
   OrganizationSettings,
   PlanPeriod,
 } from "@gestarahub/contracts";
-import { useCan, useModel } from "@/features/auth";
+import { useCan, useModel, useSubscriptionTier } from "@/features/auth";
 import { useWhatsAppSend } from "@/features/communication";
 import {
   SellPackageDialog,
@@ -81,7 +81,7 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { pauseDescription, pausedChargeDescription, planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
 import { normalizeText } from "@/lib/text";
 import { whatsappDigits } from "@gestarahub/core/phone";
-import { cpfDigits } from "@gestarahub/core/payer";
+import { cpfDigits, isValidCpf } from "@gestarahub/core/payer";
 import { NOTES_MAX, clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
@@ -255,7 +255,7 @@ interface ClientFormProps {
   initialFocus?: ClientFormFocus;
 }
 
-export type ClientFormFocus = "plan" | "phone" | "email" | "birthDate";
+export type ClientFormFocus = "plan" | "phone" | "email" | "birthDate" | "cpf" | "guardians";
 
 export function ClientForm({
   client,
@@ -380,12 +380,17 @@ export function ClientForm({
     name: "notes",
   });
   const birthDate = useWatch({ control: form.control, name: "birthDate" });
+  const studentCpf = useWatch({ control: form.control, name: "cpf" });
+  const tier = useSubscriptionTier();
+  const isProOrScale = tier === "pro" || tier === "scale";
+  const hasValidCpf = isValidCpf(studentCpf);
   const {
     fields: guardianFields,
     append: appendGuardian,
     remove: removeGuardian,
   } = useFieldArray({ control: form.control, name: "guardians" });
   const guardianValues = useWatch({ control: form.control, name: "guardians" });
+  const hasGuardianWithCpf = (guardianValues ?? []).some((g) => isValidCpf(g?.cpf));
   // Um so responsavel financeiro: marcar um desmarca os outros.
   const setFinancialGuardian = (index: number, checked: boolean) => {
     (form.getValues("guardians") ?? []).forEach((_, i) => {
@@ -471,8 +476,35 @@ export function ClientForm({
   // plano (ou o primeiro campo da parte, quando o aluno nao paga por plano).
   // "Completar cadastro": foca o campo que falta (telefone, e-mail, nascimento).
   const planSectionRef = useRef<HTMLDivElement>(null);
+  const guardiansSectionRef = useRef<HTMLDivElement>(null);
+  const [guardiansUserToggled, setGuardiansUserToggled] = useState<boolean | null>(
+    () => (initialFocus === "guardians" ? true : null),
+  );
+
   useEffect(() => {
     if (!initialFocus) return;
+    if (initialFocus === "guardians") {
+      const timer = setTimeout(() => {
+        guardiansSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+        const firstInput = guardiansSectionRef.current?.querySelector<HTMLInputElement>(
+          "input[name*='cpf'], input[name*='name']",
+        );
+        firstInput?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    if (initialFocus === "cpf") {
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const timer = setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>(`input[name="cpf"]`);
+        input?.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (!touch) {
+          form.setFocus("cpf");
+          input?.focus();
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    }
     // Direto na montagem: os campos ja existem e a gaveta nao puxa o foco
     // (onOpenAutoFocus cancelado). Sem requestAnimationFrame, que nao roda
     // com a aba em segundo plano.
@@ -511,7 +543,6 @@ export function ClientForm({
     ),
   );
   const [notesOpen, setNotesOpen] = useState(Boolean(client?.notes?.trim()));
-  const [guardiansUserToggled, setGuardiansUserToggled] = useState<boolean | null>(null);
   const [sendWelcome, setSendWelcome] = useState(false);
 
   const selectedPlan = useMemo(
@@ -921,12 +952,22 @@ export function ClientForm({
       ? guardiansUserToggled
       : isMinor || (client?.guardians?.length ?? 0) > 0;
 
+  const scrollToGuardians = useCallback(() => {
+    setGuardiansUserToggled(true);
+    if (guardianFields.length === 0) {
+      appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: true });
+    }
+    setTimeout(() => {
+      guardiansSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const firstInput = guardiansSectionRef.current?.querySelector<HTMLInputElement>("input[name*='name']");
+      firstInput?.focus();
+    }, 100);
+  }, [guardianFields.length, appendGuardian]);
+
   const birthDateHint =
     age === null
       ? "Usada para lembrar os aniversariantes."
-      : age < 18 && guardianFields.length === 0
-        ? `${ageLabel(age)}. Menor de idade: cadastre um responsável abaixo.`
-        : `${ageLabel(age)}.`;
+      : `${ageLabel(age)}.`;
 
   const onInvalid = useCallback((errors: FieldErrors<ClientFormValues>) => {
     if (errors.address) {
@@ -1366,6 +1407,69 @@ export function ClientForm({
             />
           </div>
 
+          {isMinor ? (
+            <div
+              role="alert"
+              className={cn(
+                "flex flex-col gap-3 rounded-lg border p-3.5 text-xs transition-colors sm:flex-row sm:items-center sm:justify-between",
+                guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf)
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                  : "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200",
+              )}
+            >
+              <div className="flex items-start gap-2.5 min-w-0">
+                {guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf) ? (
+                  <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                ) : (
+                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                )}
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-foreground">
+                      Aluno menor de idade ({ageLabel(age)})
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border",
+                        guardianFields.length === 0
+                          ? "border-amber-500/30 bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                          : isProOrScale && !hasGuardianWithCpf
+                            ? "border-amber-500/30 bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                            : "border-emerald-500/30 bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
+                      )}
+                    >
+                      {guardianFields.length === 0
+                        ? "Responsável pendente"
+                        : isProOrScale && !hasGuardianWithCpf
+                          ? "Falta CPF do responsável"
+                          : "Responsável vinculado"}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    {guardianFields.length === 0
+                      ? "Para recebimento online automático no WhatsApp (Pix/cartão), avisos e autorização LGPD, é necessário cadastrar o responsável com CPF."
+                      : isProOrScale && !hasGuardianWithCpf
+                        ? `${guardianFields.length} ${guardianFields.length === 1 ? "responsável cadastrado" : "responsáveis cadastrados"}, mas sem CPF válido. O Banco Central e o gateway exigem o CPF do responsável financeiro para gerar o link de pagamento Pix automático no WhatsApp.`
+                        : `${guardianFields.length} ${guardianFields.length === 1 ? "responsável cadastrado" : "responsáveis cadastrados"}. As cobranças online usarão o CPF do responsável financeiro.`}
+                  </p>
+                </div>
+              </div>
+
+              {guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={scrollToGuardians}
+                  className="h-8 shrink-0 gap-1.5 border-amber-500/40 bg-background px-3 text-xs font-medium text-foreground hover:bg-amber-500/20 hover:text-foreground cursor-pointer"
+                >
+                  <Users className="size-3.5" />
+                  {guardianFields.length === 0 ? "Cadastrar responsável" : "Adicionar CPF do responsável"}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InputText<ClientFormValues>
               name="email"
@@ -1380,10 +1484,28 @@ export function ClientForm({
             />
             <InputCpf<ClientFormValues>
               name="cpf"
+              labelExtra={
+                !isMinor && isProOrScale ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-1.5 py-0.2 text-[10px] font-medium border",
+                      hasValidCpf
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                    )}
+                  >
+                    {hasValidCpf ? "Cobrança online pronta" : "Necessário no Pro"}
+                  </span>
+                ) : null
+              }
               hint={
                 isMinor
                   ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
-                  : "Usado na cobrança online (Pix e cartão)."
+                  : isProOrScale
+                    ? hasValidCpf
+                      ? "CPF válido · Link de pagamento Pix automático ativo no WhatsApp."
+                      : "Exigido pelo Banco Central e pelo gateway para gerar o Pix automático no WhatsApp."
+                    : "Usado na cobrança online (Pix e cartão)."
               }
               disabled={pending}
             />
@@ -1881,13 +2003,27 @@ export function ClientForm({
 
         {/* Responsáveis (opcional, só turmas ou menor de idade): recolhido por padrão */}
         {isClasses || (age !== null && age < 18) ? (
-          <CollapsibleSection
-            title="Responsáveis (opcional)"
-            icon={<Users className="h-4 w-4" />}
-            badge={guardiansBadge}
-            open={guardiansOpen}
-            onOpenChange={setGuardiansUserToggled}
-          >
+          <div ref={guardiansSectionRef} className="scroll-mt-4">
+            <CollapsibleSection
+              title={isMinor ? "Responsáveis (aluno menor de idade)" : "Responsáveis (opcional)"}
+              icon={<Users className="h-4 w-4" />}
+              badge={
+                guardiansBadge ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                      guardianFields.length === 0 && isMinor
+                        ? "border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                        : "bg-primary/10 text-primary",
+                    )}
+                  >
+                    {guardiansBadge}
+                  </span>
+                ) : undefined
+              }
+              open={guardiansOpen}
+              onOpenChange={setGuardiansUserToggled}
+            >
             <div className="space-y-4">
               {age !== null && age < 18 ? (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
@@ -2015,7 +2151,15 @@ export function ClientForm({
                     placeholder="Informe o e-mail (opcional)"
                     disabled={pending}
                   />
-                  <InputCpf<ClientFormValues> name={`guardians.${index}.cpf`} disabled={pending} />
+                  <InputCpf<ClientFormValues>
+                    name={`guardians.${index}.cpf`}
+                    hint={
+                      isProOrScale
+                        ? "Exigido pelo Banco Central para gerar o link de cobrança automática."
+                        : "Usado na cobrança online do aluno menor."
+                    }
+                    disabled={pending}
+                  />
                 </div>
                 <label className="flex cursor-pointer items-start gap-2.5 text-sm">
                   <Checkbox
@@ -2047,6 +2191,7 @@ export function ClientForm({
             </Button>
           </div>
         </CollapsibleSection>
+        </div>
         ) : null}
 
         {/* Bloco 3: Endereço Estruturado (Opcional) */}

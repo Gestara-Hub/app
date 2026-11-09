@@ -157,6 +157,45 @@ export async function confirmPaperMinorConsentAction(
 }
 
 /**
+ * Desfaz o registro presencial em papel de um aluno menor, voltando o status para 'pending'.
+ * Apenas permitido se o status atual for 'confirmed_paper'.
+ */
+export async function revokePaperMinorConsentAction(
+  studentId: string,
+): Promise<{ success: boolean; error?: string }> {
+  let ctx: Awaited<ReturnType<typeof requireTenant>>;
+  try {
+    ctx = await requireTenant();
+    ctx.require("clients:manage");
+  } catch {
+    return { success: false, error: "Não autorizado." };
+  }
+
+  const adminClient = createSupabaseAdminClient();
+
+  const { data: updated, error } = await adminClient
+    .from("clients")
+    .update({
+      minor_consent_status: "pending",
+      minor_consent_at: null,
+      minor_consent_by: null,
+      minor_consent_evidence: null,
+    })
+    .eq("id", studentId)
+    .eq("organization_id", ctx.organizationId)
+    .eq("minor_consent_status", "confirmed_paper")
+    .select("id");
+
+  if (error || !updated || updated.length === 0) {
+    return {
+      success: false,
+      error: "Não foi possível desfazer. O registro não foi encontrado ou não é um termo em papel.",
+    };
+  }
+  return { success: true };
+}
+
+/**
  * Consulta pública para a página de autorização aberta pelo pai no celular.
  */
 /**

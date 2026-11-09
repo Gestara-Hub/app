@@ -3,6 +3,7 @@ import {
   recordLegalConsentAction,
   confirmMinorConsentAction,
   confirmPaperMinorConsentAction,
+  revokePaperMinorConsentAction,
   getPublicMinorConsentDetailsAction,
   type ConfirmMinorConsentInput,
 } from "./actions";
@@ -40,6 +41,12 @@ export const legalConsentService = {
     guardianName?: string,
   ): Promise<{ success: boolean; error?: string }> => {
     return confirmPaperMinorConsentAction(studentId, guardianName);
+  },
+
+  revokePaperMinorConsent: async (
+    studentId: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    return revokePaperMinorConsentAction(studentId);
   },
 
   getPublicMinorConsentDetails: async (studentId: string) => {
