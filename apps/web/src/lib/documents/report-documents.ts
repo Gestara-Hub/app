@@ -14,6 +14,7 @@ import type {
   PaymentMethod,
   ReportHeaderInfo,
   StudentRosterReportData,
+  EventsReportData,
 } from "@gestarahub/contracts";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { displayCell, documentDateTime } from "./format";
@@ -45,6 +46,7 @@ export const REPORT_FILE_SLUG: Record<GeneratedReportData["type"], string> = {
   financial_income_statement: "dre",
   churn_retention: "retencao",
   trial_conversion: "experimentais",
+  events_summary: "eventos",
 };
 
 /** Cabecalho e meta comuns a todos os relatorios. */
@@ -509,7 +511,70 @@ export function reportToDocument(
       return churnRetention(report.data, competence);
     case "trial_conversion":
       return trialConversion(report.data, competence);
+    case "events_summary":
+      return eventsSummary(report.data, competence);
   }
+}
+
+const EVENT_STAGE_LABEL = { upcoming: "Em breve", ongoing: "Em andamento", finished: "Encerrado", canceled: "Cancelado" } as const;
+
+function eventsSummary(data: EventsReportData, competence: string): DocumentModel {
+  const period = (e: EventsReportData["events"][number]) =>
+    !e.firstDate ? "—" : e.firstDate === e.lastDate ? e.firstDate : `${e.firstDate} a ${e.lastDate}`;
+  return {
+    ...reportBase(data.header, "Eventos e seminários", `${REPORT_FILE_SLUG.events_summary}-${competence}`),
+    subtitle: "Inscritos, presença e resultado de cada evento com dia no mês.",
+    blocks: [
+      {
+        type: "kpis",
+        items: [
+          { label: "Eventos no mês", value: data.eventsCount, format: "integer" },
+          { label: "Inscritos", value: data.confirmedTotal, format: "integer" },
+          { label: "Arrecadado", value: data.receivedCents, format: "money", tone: "positive" },
+          { label: "Resultado", value: data.resultCents, format: "money", tone: data.resultCents >= 0 ? "positive" : "negative" },
+        ],
+      },
+      {
+        type: "fields",
+        title: "Dinheiro dos eventos do mês",
+        items: [
+          { label: "A receber", value: data.openCents, format: "money" },
+          { label: "Saídas ligadas aos eventos", value: data.expensesCents, format: "money" },
+        ],
+      },
+      {
+        type: "table",
+        title: "Eventos",
+        columns: [
+          { key: "name", label: "Evento", width: 2 },
+          { key: "period", label: "Dias", width: 1.4 },
+          { key: "instructor", label: "Quem conduz", width: 1.4 },
+          { key: "stage", label: "Situação" },
+          { key: "confirmed", label: "Inscritos", format: "integer" },
+          { key: "attendance", label: "Presença", format: "percent" },
+          { key: "received", label: "Arrecadado", format: "money" },
+          { key: "open", label: "A receber", format: "money" },
+          { key: "expenses", label: "Saídas", format: "money" },
+          { key: "result", label: "Resultado", format: "money" },
+        ],
+        rows: data.events.map((e) => ({
+          cells: {
+            name: e.name,
+            period: `${period(e)} (${e.daysCount} ${e.daysCount === 1 ? "dia" : "dias"})`,
+            instructor: `${e.instructorName}${e.isGuestInstructor ? " (convidado)" : ""}`,
+            stage: EVENT_STAGE_LABEL[e.stage],
+            confirmed: e.confirmedCount,
+            attendance: e.attendancePercent,
+            received: e.receivedCents,
+            open: e.openCents,
+            expenses: e.expensesCents,
+            result: e.resultCents,
+          },
+        })),
+        emptyText: "Nenhum evento com dia neste mês.",
+      },
+    ],
+  };
 }
 
 const CONVERTED_BY_LABEL = { enrollment: "Matrícula", plan: "Plano", package: "Pacote" } as const;

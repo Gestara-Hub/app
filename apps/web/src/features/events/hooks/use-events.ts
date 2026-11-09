@@ -58,6 +58,40 @@ export function useEventFinance(eventId: Id, enabled = true) {
   });
 }
 
+/** Certificado de participacao (Pro; sem o recurso, FEATURE_NOT_IN_PLAN). Abrir emite. */
+export function useEventCertificate(registrationId: Id) {
+  return useQuery({
+    queryKey: queryKeys.events.certificate(registrationId),
+    queryFn: () => eventsService.getEventCertificate(registrationId),
+    enabled: Boolean(registrationId),
+    retry: false,
+  });
+}
+
+export function useEventCertificateCandidates(eventId: Id, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.events.certificateCandidates(eventId),
+    queryFn: () => eventsService.listEventCertificateCandidates(eventId),
+    enabled: enabled && Boolean(eventId),
+  });
+}
+
+export function useIssueEventCertificates() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: Id) => eventsService.issueEventCertificates(eventId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.events.certificates }),
+  });
+}
+
+export function useCancelEventCertificate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (registrationId: Id) => eventsService.cancelEventCertificate(registrationId),
+    onSuccess: (_issued, registrationId) => qc.invalidateQueries({ queryKey: queryKeys.events.certificate(registrationId) }),
+  });
+}
+
 export function useEventSessions(range: { dateFrom: DateISO; dateTo: DateISO }, enabled = true) {
   return useQuery({
     queryKey: queryKeys.events.sessions(range),

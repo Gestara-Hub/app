@@ -143,6 +143,9 @@ export const queryKeys = {
     registrations: (eventId: Id) => ["events", "registrations", eventId] as const,
     sessions: (range: { dateFrom: DateISO; dateTo: DateISO }) => ["events", "sessions", range] as const,
     session: (sessionId: Id) => ["events", "session", sessionId] as const,
+    certificates: ["events", "certificate"] as const,
+    certificate: (registrationId: Id) => ["events", "certificate", registrationId] as const,
+    certificateCandidates: (eventId: Id) => ["events", "certificate", "candidates", eventId] as const,
   },
   billing: {
     all: ["billing"] as const,

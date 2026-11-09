@@ -52,6 +52,8 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/events` | Eventos | `classes` | `events:view` | Seminários, workshops e aulões (doc product/29): lista com busca e situação; "+ Novo evento" pede `events:manage`. |
 | `/events/[id]` | Detalhe do evento | `classes` | `events:view` | Abas Inscritos, Espera e Dias; Inscrever (`enrollment:manage`), Editar e Cancelar (`events:manage`). |
 | `/events/sessions/[sessionId]` | Dia do evento | `classes` | `events:view` | Chamada do dia (`attendance:mark`); o professor só nos eventos que conduz. |
+| `/events/[id]/certificate/[registrationId]` | Certificado de participação | `classes` | `events:view` + Plano Pro (`certificates`) | Inscrito com presença em evento encerrado; sem o recurso, tela "Disponível no Plano Pro". |
+| `/events/[id]/certificates` | Certificados do evento | `classes` | `events:view` + Plano Pro (`certificates`) | Todos os presentes, um por folha, para imprimir (a conta real baixa o PDF pela rota de documentos). |
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |

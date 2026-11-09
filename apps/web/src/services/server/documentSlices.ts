@@ -1,6 +1,7 @@
 import type { Id, ReportFilter, ReportType } from "@gestarahub/contracts";
 import { classSlices } from "../classes/classSlices";
 import { clientSlices, oneStudent } from "../clients/clientSlices";
+import { eventSlices } from "../events/eventSlices";
 import { teacherPaySlices } from "../finance/financeSlices";
 import { gradeSlices } from "../grades/gradeSlices";
 import { reportSlices } from "../reports/reportSlices";
@@ -56,4 +57,7 @@ export const documentSlices: Record<string, MethodSlice> = {
   // Certificado de graduacao (doc 21 §1.6): o aluno e o certificado do registro.
   graduationCertificate: async (args, load) => clientSlices.getGraduationCertificate(args, load),
   graduationCertificatePreview: async (args, load) => clientSlices.previewGraduationCertificate(args, load),
+  // Certificado de participacao em evento (doc product/29, fase 5).
+  eventCertificate: async (args, load) => eventSlices.getEventCertificate(args, load),
+  eventCertificates: async (args, load) => eventSlices.issueEventCertificates(args, load),
 };

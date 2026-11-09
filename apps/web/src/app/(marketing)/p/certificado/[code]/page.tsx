@@ -54,12 +54,15 @@ export default async function CertificateVerificationPage({ params }: { params: 
                   </>
                 ) : (
                   <>
-                    <Row label="Curso" value={view.modalityName ? `${view.courseName} · ${view.modalityName}` : view.courseName} />
+                    <Row label={view.kind === "event" ? "Evento" : "Curso"} value={view.modalityName ? `${view.courseName} · ${view.modalityName}` : view.courseName} />
                     <Row
                       label="Período"
                       value={view.startDate === view.endDate ? formatDate(view.startDate) : `${formatDate(view.startDate)} a ${formatDate(view.endDate)}`}
                     />
-                    <Row label="Carga horária" value={`${formatWorkload(view.workloadMinutes)} · ${view.lessonsCount} ${view.lessonsCount === 1 ? "aula" : "aulas"}`} />
+                    <Row
+                      label="Carga horária"
+                      value={`${formatWorkload(view.workloadMinutes)} · ${view.lessonsCount} ${view.kind === "event" ? (view.lessonsCount === 1 ? "dia" : "dias") : view.lessonsCount === 1 ? "aula" : "aulas"}`}
+                    />
                     {view.attendancePercent !== null ? <Row label="Frequência" value={`${view.attendancePercent}%`} /> : null}
                   </>
                 )}

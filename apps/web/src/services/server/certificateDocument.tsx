@@ -10,6 +10,7 @@ import { sampleCertificate, sampleGraduationCertificate } from "@/features/certi
 import type { DocumentLogo } from "@/lib/documents/document-pdf";
 import { CertificatePdf, CertificatesPdf, type CertificatePageProps } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
+import { eventCertificateService } from "../events/eventCertificateService";
 import { graduationCertificateService } from "../clients/graduationCertificateService";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
@@ -103,6 +104,33 @@ export async function renderGraduationCertificatePdf(
   const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
   const pdf = await renderToBuffer(<CertificatePdf {...page} />);
   return { pdf, fileName: `certificado-graduacao-${slugOf(certificate.studentName, promotionId.slice(0, 8))}` };
+}
+
+/** Certificados de participacao de todos os presentes do evento num PDF so (doc product/29). */
+export async function renderEventCertificatesPdf(ctx: TenantContext, eventId: Id): Promise<{ pdf: Buffer; fileName: string }> {
+  const batch = await runInWorld(ctx, () => eventCertificateService.issueEventCertificates(eventId), {
+    fn: documentSlices.eventCertificates,
+    args: [eventId],
+  });
+  const images = await loadTemplateImages(ctx.organizationId, batch.template);
+  const pages = await Promise.all(
+    batch.items.filter((item) => item.issued.status === "valid").map((item) => certificatePage(item.certificate, batch.template, images)),
+  );
+  const organizationName = batch.items[0]?.certificate.organizationName ?? "";
+  const pdf = await renderToBuffer(<CertificatesPdf title={`Certificados · ${batch.eventName}`} organizationName={organizationName} pages={pages} />);
+  return { pdf, fileName: `certificados-${slugOf(batch.eventName, batch.eventId.slice(0, 8))}` };
+}
+
+/** Certificado de participacao de um inscrito em PDF: emite na 1a vez, como a tela. */
+export async function renderEventCertificatePdf(ctx: TenantContext, registrationId: Id): Promise<{ pdf: Buffer; fileName: string }> {
+  const sheet = await runInWorld(ctx, () => eventCertificateService.getEventCertificate(registrationId), {
+    fn: documentSlices.eventCertificate,
+    args: [registrationId],
+  });
+  const { certificate, template } = sheet;
+  const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
+  const pdf = await renderToBuffer(<CertificatePdf {...page} />);
+  return { pdf, fileName: `certificado-${slugOf(certificate.studentName, registrationId.slice(0, 8))}` };
 }
 
 export async function renderCertificatePdf(

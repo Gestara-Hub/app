@@ -12,6 +12,7 @@ export type ReportType =
   | "financial_income_statement"
   | "churn_retention"
   | "trial_conversion"
+  | "events_summary"
   | "revenue_forecast"
   | "teacher_performance";
 
@@ -270,6 +271,36 @@ export interface TrialConversionReportData {
   }[];
 }
 
+/** Eventos e seminarios do mes (doc product/29, Pro): inscritos, presenca e dinheiro por evento. */
+export interface EventsReportData {
+  header: ReportHeaderInfo;
+  eventsCount: number;
+  confirmedTotal: number;
+  receivedCents: number;
+  openCents: number;
+  expensesCents: number;
+  resultCents: number;
+  events: {
+    eventId: Id;
+    name: string;
+    firstDate?: DateISO;
+    lastDate?: DateISO;
+    daysCount: number;
+    instructorName: string;
+    isGuestInstructor: boolean;
+    stage: "upcoming" | "ongoing" | "finished" | "canceled";
+    confirmedCount: number;
+    waitlistCount: number;
+    canceledCount: number;
+    /** Presencas / (inscritos x dias ja feitos), em %. null sem dia feito. */
+    attendancePercent: number | null;
+    receivedCents: number;
+    openCents: number;
+    expensesCents: number;
+    resultCents: number;
+  }[];
+}
+
 // Tipo unificado para respostas de relatório
 export type GeneratedReportData =
   | { type: "attendance_sheet"; data: AttendanceReportData }
@@ -280,4 +311,5 @@ export type GeneratedReportData =
   | { type: "monthly_birthdays"; data: BirthdayReportData }
   | { type: "financial_income_statement"; data: DREStatementReportData }
   | { type: "churn_retention"; data: ChurnReportData }
-  | { type: "trial_conversion"; data: TrialConversionReportData };
+  | { type: "trial_conversion"; data: TrialConversionReportData }
+  | { type: "events_summary"; data: EventsReportData };

@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpCircle, CalendarDays, ClipboardList, ListChecks, Pencil, UserPlus, Users, Wallet, XCircle } from "lucide-react";
+import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, UserPlus, Users, Wallet, XCircle } from "lucide-react";
 import type { EventRegistrationView, EventSession } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useCan } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
+import { isSupabaseOrganization } from "@/lib/session";
 import { useCancelEvent, useCancelEventRegistration, useCancelEventSession, useEvent, useEventRegistrations } from "../hooks/use-events";
 import { billingSummary, datesLabel, dayLabel, hoursLabel, occupancyLabel, sessionTimeLabel } from "../event-copy";
 import { EventFormDrawer } from "./event-form-drawer";
@@ -41,6 +42,8 @@ export function EventDetailView({ id }: { id: string }) {
   const canManage = can("events:manage");
   const canEnroll = can("enrollment:manage");
   const canSeeMoney = can("billing:view");
+  const hasCertificates = useHasFeature()("certificates");
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const { data: event, isPending, isError } = useEvent(id);
   const { data: registrations } = useEventRegistrations(id);
   const [tab, setTab] = useState<Tab>("registered");
@@ -135,8 +138,23 @@ export function EventDetailView({ id }: { id: string }) {
     }
   };
 
+  const finished = active && event.stage === "finished";
   const pageActions: ListItemAction[] = [
     ...(canManage && active ? [{ key: "edit", label: "Editar", icon: <Pencil className="size-4" />, onSelect: () => setEditOpen(true) }] : []),
+    // Certificados de participacao (Pro): todos os presentes num PDF (conta real) ou numa tela de impressao.
+    ...(finished && confirmed.some((r) => r.presentCount > 0)
+      ? [
+          {
+            key: "certificates",
+            label: "Certificados",
+            icon: <Award className="size-4" />,
+            onSelect: () => {
+              if (hasCertificates && serverDocuments) window.open(`/api/documents/certificates/event/${event.id}`, "_blank", "noopener");
+              else router.push(`/events/${event.id}/certificates`);
+            },
+          },
+        ]
+      : []),
     ...(canManage && open
       ? [{ key: "cancel", label: "Cancelar evento", icon: <XCircle className="size-4" />, destructive: true, onSelect: () => void cancelEvent() }]
       : []),
@@ -162,6 +180,9 @@ export function EventDetailView({ id }: { id: string }) {
   const registrationRow = (r: EventRegistrationView) => {
     const pay = paymentLabel(r);
     const actions: ListItemAction[] = [
+      ...(finished && r.status === "confirmed" && r.presentCount > 0
+        ? [{ key: "certificate", label: "Certificado", icon: <Award className="size-4" />, onSelect: () => router.push(`/events/${event.id}/certificate/${r.id}`) }]
+        : []),
       ...(canEnroll && r.status === "waitlist" && open && !event.isFull
         ? [
             {

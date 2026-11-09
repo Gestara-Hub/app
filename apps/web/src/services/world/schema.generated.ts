@@ -1449,6 +1449,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "text",
         "nullable": true,
         "hasDefault": false
+      },
+      "event_registration_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

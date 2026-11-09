@@ -11,6 +11,7 @@ import {
 } from "./financialReports";
 import { buildChurnRetention } from "./retentionReport";
 import { buildTrialConversion } from "./trialConversionReport";
+import { buildEventsSummary } from "./eventsReport";
 import { dateInSpace } from "@gestarahub/core/date";
 
 export const reportsServiceImpl = {
@@ -53,6 +54,8 @@ export const reportsServiceImpl = {
           return buildChurnRetention(context);
         case "trial_conversion":
           return buildTrialConversion(context);
+        case "events_summary":
+          return buildEventsSummary(context);
         default:
           throw notFoundError("Relatório não encontrado.");
       }

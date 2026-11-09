@@ -60,7 +60,23 @@ async function eventFinance(eventId: Id, load: SliceLoader): Promise<void> {
   ]);
 }
 
+/** Certificados do evento: o evento inteiro mais os certificados ja emitidos dele. */
+async function eventCertificates(eventId: Id, load: SliceLoader): Promise<void> {
+  await oneEvent(eventId, load);
+  await load.where("issuedCertificates", "eventId", [eventId]);
+}
+
+async function byRegistrationWithCertificates([registrationId]: unknown[], load: SliceLoader): Promise<void> {
+  const [registration] = await load.where("eventRegistrations", "id", [registrationId as Id]);
+  if (registration) await eventCertificates(registration.eventId as Id, load);
+  else load.none("auditLog");
+}
+
 export const eventSlices: Record<string, MethodSlice> = {
+  listEventCertificateCandidates: async ([id], load) => eventCertificates(id as Id, load),
+  issueEventCertificates: async ([id], load) => eventCertificates(id as Id, load),
+  getEventCertificate: byRegistrationWithCertificates,
+  cancelEventCertificate: byRegistrationWithCertificates,
   list: listWorld,
   getEventFinance: async ([id], load) => eventFinance(id as Id, load),
   listSessions: listWorld,

@@ -279,6 +279,15 @@ export const DEFAULT_CERTIFICATE_TITLE = "Certificado de conclusão";
 export const DEFAULT_CERTIFICATE_BODY =
   "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, que teve {aulas}, com frequência de {frequencia}.";
 
+/**
+ * Certificado de participacao em evento (doc product/29): quando o modelo do
+ * espaco ainda tem o titulo e o texto padrao (ou de um modelo pronto), o
+ * evento usa estes; texto editado pelo espaco fica como esta.
+ */
+export const DEFAULT_EVENT_CERTIFICATE_TITLE = "Certificado de participação";
+export const DEFAULT_EVENT_CERTIFICATE_BODY =
+  "Certificamos que {aluno} participou de {curso}, de {inicio} a {fim}, com carga horária de {carga_horaria}, conduzido por {professor}.";
+
 export const DEFAULT_CERTIFICATE_SIGNATURES: readonly CertificateSignature[] = [
   { name: "{professor}", role: "Instrutor" },
   { name: "{empresa}", role: "Responsável" },

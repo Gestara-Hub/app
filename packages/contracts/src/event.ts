@@ -1,4 +1,6 @@
 import type { ChargeView } from "./billing";
+import type { CertificateTemplate, CourseCertificateDocument } from "./certificate";
+import type { CourseCertificate } from "./class";
 import type { DateISO, DateTimeISO, Id, TenantScopeFields, TimeISO } from "./common";
 import type { FinancialEntry } from "./finance";
 
@@ -210,6 +212,20 @@ export interface EventFinanceView {
   resultCents: number;
   charges: ChargeView[];
   entries: FinancialEntry[];
+}
+
+/**
+ * Certificado de participacao (doc product/29, Pro): mesma folha e o mesmo
+ * codigo de verificacao do certificado de curso. No snapshot, `courseName` e
+ * o nome do evento, `enrollmentId` a inscricao e `classGroupId` o evento.
+ */
+export type EventCertificateDocument = CourseCertificateDocument;
+
+export interface EventCertificatesBatch {
+  eventId: Id;
+  eventName: string;
+  template: CertificateTemplate;
+  items: { certificate: CourseCertificate; issued: CourseCertificateDocument["issued"] }[];
 }
 
 export interface EventSessionView extends EventSession {

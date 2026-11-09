@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Decidido (fases 1 a 4 feitas em 09/11/2026; fase 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; fica para depois o lembrete "evento amanhã" no sino e a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -133,7 +133,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | 2. Telas (**feita 09/11/2026**) | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
 | 3. Cobrança e financeiro (**feita 09/11/2026**) | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
 | 4. Calendário e Painel (**feita 09/11/2026**, sem o lembrete do sino) | Sessões de evento no calendário com cor própria e filtro, card no Painel; lembrete "evento amanhã" no sino ficou para depois | manual |
-| 5. Pro | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
+| 5. Pro (**feita 09/11/2026**) | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
 | 6. Depois | Inscrição pública por link | nova proposta |
 
 Cada fase é uma leva de commits pequenos, um assunto cada.
@@ -178,6 +178,15 @@ A cobrança da inscrição (valor fechado com parcelas, lote, por dia, cancelame
 - **Calendário:** aulas e dias de evento no mesmo formato (`CalendarEntry`, em `features/turmas/calendar-entries.ts`), na grade e na lista. O card de evento tem cor própria fixa (roxo suave, `violet`) com o selo "Evento" e "(convidado)" no nome de quem conduz; a aula segue neutra. Filtro "Mostrar: Turmas e eventos / Só turmas / Só eventos" (`?show=`), que só aparece quando a semana tem evento. Os filtros de modalidade e instrutor valem para os dois. Vindo de uma turma ("Ver aulas no calendário"), só as aulas dela, sem eventos. Clicar no card de evento abre o dia do evento. O hook `useCalendarEventSessions` fica em `features/turmas` para não criar ciclo com `features/events`, que já importa turmas.
 - **Painel:** card "Próximos eventos" (`UpcomingEventsCard`), logo abaixo das aulas de hoje, com até 3 eventos em breve ou em andamento (nome, selo, datas, quem conduz e inscritos) e o atalho "Ver eventos". Sem evento à vista, o card não aparece.
 - **Não feito nesta fase:** lembrete "evento amanhã" no sino (o motor de lembretes nasce dos modelos de mensagem; fica junto da fase 5 ou de uma rodada de comunicação).
+
+## Como ficou a fase 5 (09/11/2026)
+
+- **Certificado de participação** (Plano Profissional, recurso `certificates`): mesma folha, modelo e código de verificação do certificado de curso (doc 21 §1.3). Sai para inscrição confirmada com presença em ao menos um dia, depois que o evento termina. O snapshot é um `CourseCertificate` com o nome do evento em `courseName`, a inscrição em `enrollmentId` e o evento em `classGroupId`; `IssuedCertificate.kind = "event"` com `eventRegistrationId` e `eventId` (migração 92, um certificado por inscrição). Carga horária = soma dos dias que a inscrição cobre (todos, ou só os escolhidos); frequência = presenças sobre esses dias.
+- **Texto:** o modelo do espaço (ou da modalidade) é o do curso; quando o título e o texto ainda são o padrão ou um modelo pronto da área, o evento usa "Certificado de participação" e "Certificamos que {aluno} participou de {curso}, de {inicio} a {fim}, com carga horária de {carga_horaria}, conduzido por {professor}."; texto editado pelo espaço fica como está. A página pública `/p/certificado/<código>` mostra "Evento" no lugar de "Curso" e conta em dias.
+- **Telas:** no detalhe do evento encerrado, a linha do inscrito com presença ganha "Certificado" (`/events/[id]/certificate/[registrationId]`, com Baixar PDF na conta real ou imprimir na demonstração, e Cancelar certificado para quem gere) e o menu ⋮ ganha "Certificados" (todos num PDF pelo servidor, `/api/documents/certificates/event/[eventId]`, ou a tela `/events/[id]/certificates`). Sem o recurso, tela "Disponível no Plano Profissional".
+- **Serviço:** `events.listEventCertificateCandidates`, `getEventCertificate` (abrir emite), `issueEventCertificates` (lote) e `cancelEventCertificate` (`events:manage`); o professor só nos eventos que conduz.
+- **Relatório "Eventos e seminários"** (`events_summary`, Pro, `finance:view`): cada evento com algum dia no mês, com dias, quem conduz, situação, inscritos, presença (presenças sobre inscritos x dias feitos), arrecadado, a receber, saídas e resultado; totais no topo. PDF e CSV pelo mesmo caminho dos outros relatórios.
+- **Fora:** lembrete "evento amanhã" no sino e inscrição pública por link continuam em "Fica para depois".
 
 ## Decisões (09/11/2026)
 

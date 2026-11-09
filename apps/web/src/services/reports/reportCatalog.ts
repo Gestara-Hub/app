@@ -83,6 +83,14 @@ export const CATALOG: ReportMetadata[] = [
     tierRequired: "pro",
     iconName: "UserRoundSearch",
   },
+  {
+    type: "events_summary",
+    title: "Eventos e seminários",
+    description: "Inscritos, presença e resultado de cada evento do mês.",
+    category: "financial",
+    tierRequired: "pro",
+    iconName: "Ticket",
+  },
 ];
 
 /**
@@ -97,6 +105,7 @@ export const REPORT_PERMISSION: Partial<Record<ReportType, Permission>> = {
   churn_retention: "finance:view",
   revenue_forecast: "finance:view",
   teacher_performance: "finance:view",
+  events_summary: "finance:view",
 };
 
 /** O usuario logado pode ver o relatorio? Sem ator (scripts) passa. */

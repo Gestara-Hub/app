@@ -20,6 +20,9 @@ export interface IssuedCertificate {
   /** So no certificado de graduacao: o registro no historico do aluno e a modalidade. */
   promotionId?: Id;
   modalityId?: Id;
+  /** So no certificado de participacao em evento (doc product/29): a inscricao e o evento. */
+  eventRegistrationId?: Id;
+  eventId?: Id;
   studentId: Id;
   /** Codigo curto, ex.: "GH-7K3M-2A9F". */
   code: string;
@@ -46,7 +49,8 @@ interface CertificateVerificationBase {
 }
 
 export interface CourseCertificateVerification extends CertificateVerificationBase {
-  kind: "course";
+  /** `event`: participacao em evento, com os mesmos campos (nome do evento em `courseName`). */
+  kind: "course" | "event";
   courseName: string;
   startDate: string;
   endDate: string;

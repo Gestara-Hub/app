@@ -6,7 +6,8 @@ import type { CourseCertificate } from "./class";
  * fim) ou de graduacao (faixa, nivel, modulo ou fase, pelo registro na evolucao
  * do aluno). Cada tipo tem o proprio modelo e as proprias variaveis.
  */
-export type CertificateKind = "course" | "graduation";
+/** `event`: participacao em evento ou seminario (doc product/29); usa o modelo e a folha do curso. */
+export type CertificateKind = "course" | "graduation" | "event";
 
 /** Dados do certificado de graduacao (doc 21 §1.6): o registro do historico do aluno. */
 export interface GraduationCertificate {

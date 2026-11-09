@@ -76,6 +76,9 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       ...all(["list", "getById", "listSessions", "getSessionDetail", "listRegistrations"], ["events:view"]),
       // Dinheiro do evento: quem ve cobrancas.
       getEventFinance: VIEW_BILLING,
+      // Certificado de participacao (Pro): quem ve o evento emite (o professor so o dele); cancelar e de quem gere.
+      ...all(["listEventCertificateCandidates", "getEventCertificate", "issueEventCertificates"], ["events:view"]),
+      cancelEventCertificate: ["events:manage"],
       ...all(["create", "update", "cancelSession", "cancelEvent"], ["events:manage"]),
       ...all(["register", "promoteFromWaitlist", "cancelRegistration"], MANAGE_ENROLLMENT),
       ...all(["markEventAttendance", "markManyEventAttendance", "clearEventAttendance"], MARK_ATTENDANCE),

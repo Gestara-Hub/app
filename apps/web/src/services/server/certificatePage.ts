@@ -39,7 +39,8 @@ export async function loadCertificatePage(input: string): Promise<CertificateVer
     }
     const snapshot = data.snapshot as CourseCertificate;
     return {
-      kind: "course",
+      // Participacao em evento (doc product/29): mesmos campos, com o nome do evento em `courseName`.
+      kind: data.kind === "event" ? "event" : "course",
       code: String(data.code),
       status,
       studentName: maskPersonName(snapshot.studentName),

@@ -1,9 +1,11 @@
 import type { Charge, EventView } from "@gestarahub/contracts";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import { eventsService } from "@/services/events";
 import { financeService } from "@/services/finance";
+import { reportsService } from "@/services/reports";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
 import { createInstructor, createStudent, resetAcademy } from "@/test/academy";
 
 /**
@@ -240,6 +242,88 @@ describe("evento: financeiro", () => {
     await expect(
       financeService.createEntry({ type: "expense", categoryId: expenses.id, description: "Sem evento", amountCents: 100, dueDate: "2026-10-01", eventId: "nope" }),
     ).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+});
+
+describe("evento: certificado de participacao e relatorio (Pro)", () => {
+  /** O relogio anda: inscreve antes do evento, faz a chamada nos dias e volta a hoje (22/09) com ele terminado. */
+  async function finishedEventWithPresence() {
+    await subscriptionService.setTier("pro");
+    vi.setSystemTime(new Date("2026-09-18T12:00:00"));
+    const event = await seminar({
+      capacity: undefined,
+      sessions: [{ date: "2026-09-19", start: "09:00", end: "12:00" }, { date: "2026-09-20", start: "09:00", end: "12:30" }],
+    });
+    const ana = await createStudent("Ana");
+    const bia = await createStudent("Bia");
+    const anaReg = await eventsService.register({ eventId: event.id, studentId: ana.id, payment: { amountCents: 25000, installments: 1, firstDueDate: "2026-09-10" } });
+    const biaReg = await eventsService.register({ eventId: event.id, studentId: bia.id, payment: { amountCents: 0, installments: 1, firstDueDate: "2026-09-10" } });
+    vi.setSystemTime(new Date("2026-09-20T12:00:00"));
+    await eventsService.markEventAttendance({ sessionId: event.sessions[0].id, registrationId: anaReg.id, status: "present" });
+    await eventsService.markEventAttendance({ sessionId: event.sessions[1].id, registrationId: anaReg.id, status: "present" });
+    await eventsService.markEventAttendance({ sessionId: event.sessions[0].id, registrationId: biaReg.id, status: "absent" });
+    chargesOf(ana.id)[0].status = "paid";
+    vi.setSystemTime(new Date("2026-09-22T12:00:00"));
+    return { event, ana, bia, anaReg, biaReg };
+  }
+
+  it("emite para quem esteve presente, com codigo, horas e texto de participacao", async () => {
+    const { event, anaReg, biaReg } = await finishedEventWithPresence();
+    const candidates = await eventsService.listEventCertificateCandidates(event.id);
+    expect(candidates.map((c) => c.studentName)).toEqual(["Ana"]);
+
+    const sheet = await eventsService.getEventCertificate(anaReg.id);
+    expect(sheet.certificate.courseName).toBe("Seminário do Sensei");
+    expect(sheet.certificate.instructorName).toBe("Sensei Kenji");
+    expect(sheet.certificate.lessonsCount).toBe(2);
+    expect(sheet.certificate.workloadMinutes).toBe(390);
+    expect(sheet.certificate.attendancePercent).toBe(100);
+    expect(sheet.certificate.startDate).toBe("2026-09-19");
+    expect(sheet.certificate.endDate).toBe("2026-09-20");
+    expect(sheet.issued.code).toMatch(/^GH-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(sheet.template.title).toBe("Certificado de participação");
+    expect(sheet.template.body).toContain("participou de {curso}");
+    // Abrir de novo devolve o mesmo codigo; o lote traz so quem teve presenca.
+    expect((await eventsService.getEventCertificate(anaReg.id)).issued.code).toBe(sheet.issued.code);
+    const batch = await eventsService.issueEventCertificates(event.id);
+    expect(batch.items.map((i) => `${i.certificate.studentName} ${i.issued.code === sheet.issued.code}`)).toEqual(["Ana true"]);
+    expect(lastAudit()).toContain("emitiu o certificado de participação de Ana em Seminário do Sensei");
+
+    await expect(eventsService.getEventCertificate(biaReg.id)).rejects.toMatchObject({ code: "VALIDATION" });
+    const canceled = await eventsService.cancelEventCertificate(anaReg.id, "Nome errado");
+    expect(canceled.status).toBe("canceled");
+    expect((await eventsService.listEventCertificateCandidates(event.id))[0].issuedCode).toBe(sheet.issued.code);
+  });
+
+  it("sem o plano, FEATURE_NOT_IN_PLAN; evento em andamento ainda nao emite", async () => {
+    const { event, anaReg } = await finishedEventWithPresence();
+    await subscriptionService.setTier("free");
+    await expect(eventsService.getEventCertificate(anaReg.id)).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
+    await subscriptionService.setTier("pro");
+    const ongoing = await seminar({ capacity: undefined, sessions: [{ date: "2026-09-22", start: "09:00", end: "12:00" }, { date: "2026-09-29", start: "09:00", end: "12:00" }] });
+    const caio = await createStudent("Caio");
+    const reg = await eventsService.register({ eventId: ongoing.id, studentId: caio.id, payment: { amountCents: 0, installments: 1, firstDueDate: "2026-09-22" } });
+    await eventsService.markEventAttendance({ sessionId: ongoing.sessions[0].id, registrationId: reg.id, status: "present" });
+    await expect(eventsService.getEventCertificate(reg.id)).rejects.toMatchObject({ code: "VALIDATION" });
+    void event;
+  });
+
+  it("relatorio do mes: inscritos, presenca e dinheiro por evento", async () => {
+    const { event } = await finishedEventWithPresence();
+    await seminar({ name: "Workshop de novembro", capacity: undefined, sessions: [{ date: "2026-11-07", start: "09:00", end: "12:00" }] });
+    const result = await reportsService.generateReport("events_summary", { competence: "2026-09" });
+    if (result.type !== "events_summary") throw new Error("relatorio errado");
+    expect(result.data.eventsCount).toBe(1);
+    expect(result.data.confirmedTotal).toBe(2);
+    expect(result.data.receivedCents).toBe(25000);
+    expect(result.data.openCents).toBe(0);
+    const row = result.data.events[0];
+    expect(row.eventId).toBe(event.id);
+    expect([row.stage, row.daysCount, row.confirmedCount, row.attendancePercent, row.resultCents]).toEqual(["finished", 2, 2, 50, 25000]);
+    expect(row.instructorName).toBe("Sensei Kenji");
+    expect(row.isGuestInstructor).toBe(true);
+    const catalog = await reportsService.getCatalog();
+    expect(catalog.some((r) => r.type === "events_summary" && r.tierRequired === "pro")).toBe(true);
   });
 });
 

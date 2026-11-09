@@ -58,7 +58,7 @@ function setOwnTemplate(category: (typeof store.categories)[number], kind: Certi
   else category.certificateTemplate = template;
 }
 
-const KIND_LABEL: Record<CertificateKind, string> = { course: "certificado", graduation: "certificado de graduação" };
+const KIND_LABEL: Record<CertificateKind, string> = { course: "certificado", graduation: "certificado de graduação", event: "certificado de participação" };
 
 /**
  * Modelo em vigor para quem monta o certificado: o da modalidade, se ela tem o
