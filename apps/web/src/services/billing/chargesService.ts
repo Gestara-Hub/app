@@ -57,6 +57,7 @@ export const chargesService = {
       }
       if (filter?.kind) result = result.filter((c) => c.kind === filter.kind);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);
+      if (filter?.eventId) result = result.filter((c) => c.eventId === filter.eventId);
       if (filter?.studentId) {
         result = result.filter((c) => c.studentId === filter.studentId);
       }
@@ -81,6 +82,7 @@ export const chargesService = {
       }
       if (filter?.kind) result = result.filter((c) => c.kind === filter.kind);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);
+      if (filter?.eventId) result = result.filter((c) => c.eventId === filter.eventId);
       if (filter?.studentId) {
         result = result.filter((c) => c.studentId === filter.studentId);
       }

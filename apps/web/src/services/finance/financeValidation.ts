@@ -9,6 +9,7 @@ import type {
 } from "@gestarahub/contracts";
 import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
 import { validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { isEntryType, isPaymentMethod, isValidDate } from "./financeHelpers";
 import { categoryOf } from "./financeStore";
 
@@ -72,6 +73,9 @@ export function validateCreate(payload: CreateFinancialEntry): void {
   validateCategoryRef(payload.categoryId, isEntryType(payload.type) ? payload.type : undefined, fields);
   validateDescription(payload.description, fields);
   validateAmount(payload.amountCents, fields);
+  if (payload.eventId && !(store.events ?? []).some((e) => e.id === payload.eventId)) {
+    fields.push({ field: "eventId", message: "Evento não encontrado." });
+  }
   // Repetir todo mes aceita qualquer dia: 29 a 31 caem no ultimo dia dos meses curtos.
   if (!isValidDate(payload.dueDate)) {
     fields.push({ field: "dueDate", message: "Informe uma data de vencimento válida." });

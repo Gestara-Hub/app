@@ -168,6 +168,8 @@ export const queryKeys = {
     entries: (filter?: FinancialEntryFilter) => ["finance", "entries", filter] as const,
     categories: (filter?: FinancialCategoryFilter) =>
       ["finance", "categories", filter] as const,
+    // Financeiro de um evento (doc product/29): muda com cobrancas e lancamentos.
+    event: (eventId: Id) => ["finance", "event", eventId] as const,
   },
   teacherPay: {
     all: ["teacherPay"] as const,

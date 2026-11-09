@@ -1,4 +1,6 @@
+import type { ChargeView } from "./billing";
 import type { DateISO, DateTimeISO, Id, TenantScopeFields, TimeISO } from "./common";
+import type { FinancialEntry } from "./finance";
 
 /**
  * Eventos e seminarios (doc product/29, decidido em 09/11/2026): modulo proprio,
@@ -186,6 +188,28 @@ export interface EventSessionDetail {
   event: EventView;
   roster: EventRosterEntry[];
   presentCount: number;
+}
+
+/**
+ * Financeiro proprio do evento (doc product/29 §Financeiro do evento): as
+ * parcelas das inscricoes e os lancamentos ligados ao evento. Tudo isso
+ * tambem esta no Financeiro geral; aqui e so o recorte.
+ */
+export interface EventFinanceView {
+  /** Parcelas pagas. */
+  receivedCents: number;
+  /** Parcelas pendentes e vencidas. */
+  openCents: number;
+  /** So as vencidas (parte de `openCents`). */
+  overdueCents: number;
+  /** Saidas ligadas ao evento (pagas e a pagar, fora as canceladas). */
+  expensesCents: number;
+  /** Entradas manuais ligadas ao evento (fora as canceladas). */
+  otherIncomeCents: number;
+  /** Recebido + entradas manuais pagas - saidas pagas. */
+  resultCents: number;
+  charges: ChargeView[];
+  entries: FinancialEntry[];
 }
 
 export interface EventSessionView extends EventSession {

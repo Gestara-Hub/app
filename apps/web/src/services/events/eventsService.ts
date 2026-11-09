@@ -4,6 +4,7 @@ import type {
   DateISO,
   Event,
   EventFilter,
+  EventFinanceView,
   EventSession,
   EventSessionDetail,
   EventSessionView,
@@ -18,6 +19,7 @@ import { apiError, newId, nowIso, readOp, textIncludes, writeOp } from "@/servic
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
+import { toChargeView } from "../billing/billingViews";
 import {
   actorTeacherId,
   assertTeacherSeesEvent,
@@ -131,6 +133,40 @@ export const eventsService = {
         .filter((s) => visible.has(s.eventId) && s.status !== "canceled" && s.date >= filter.dateFrom && s.date <= filter.dateTo)
         .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
       return clone(sessions.map(toSessionView));
+    });
+  },
+
+  /** Financeiro do evento: parcelas das inscricoes e lancamentos ligados a ele. */
+  getEventFinance(eventId: Id): Promise<EventFinanceView> {
+    return readOp(async () => {
+      const event = findEvent(eventId);
+      assertTeacherSeesEvent(event);
+      const charges = store.charges
+        .filter((c) => c.eventId === eventId)
+        .map(toChargeView)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.studentName.localeCompare(b.studentName, "pt-BR"));
+      const entries = store.financialEntries
+        .filter((e) => e.eventId === eventId)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+      const sum = <T,>(items: T[], pick: (item: T) => number) => items.reduce((total, item) => total + pick(item), 0);
+      const receivedCents = sum(charges.filter((c) => c.status === "paid"), (c) => c.amountCents);
+      const openCents = sum(charges.filter((c) => c.status === "pending" || c.status === "overdue"), (c) => c.amountCents);
+      const overdueCents = sum(charges.filter((c) => c.status === "overdue"), (c) => c.amountCents);
+      const live = entries.filter((e) => e.status !== "canceled");
+      const expensesCents = sum(live.filter((e) => e.type === "expense"), (e) => e.amountCents);
+      const otherIncomeCents = sum(live.filter((e) => e.type === "income"), (e) => e.amountCents);
+      const paidExpenses = sum(live.filter((e) => e.type === "expense" && e.status === "paid"), (e) => e.amountCents);
+      const paidIncome = sum(live.filter((e) => e.type === "income" && e.status === "paid"), (e) => e.amountCents);
+      return clone({
+        receivedCents,
+        openCents,
+        overdueCents,
+        expensesCents,
+        otherIncomeCents,
+        resultCents: receivedCents + paidIncome - paidExpenses,
+        charges,
+        entries,
+      });
     });
   },
 

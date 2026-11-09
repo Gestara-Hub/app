@@ -441,6 +441,12 @@ export function FinanceEntriesTab({
       meta = (
         <>
           <span>{row.categoryName}</span>
+          {row.eventName ? (
+            <>
+              <span>·</span>
+              <span className="min-w-0 break-words">evento {row.eventName}</span>
+            </>
+          ) : null}
           <span>·</span>
           <span title={fullDate(row.dueDate)}>vence {shortDate(row.dueDate)}</span>
           {row.status === "paid" && row.method ? (

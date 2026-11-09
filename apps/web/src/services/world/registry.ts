@@ -74,6 +74,8 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../events/eventSlices")).eventSlices,
     permissions: {
       ...all(["list", "getById", "listSessions", "getSessionDetail", "listRegistrations"], ["events:view"]),
+      // Dinheiro do evento: quem ve cobrancas.
+      getEventFinance: VIEW_BILLING,
       ...all(["create", "update", "cancelSession", "cancelEvent"], ["events:manage"]),
       ...all(["register", "promoteFromWaitlist", "cancelRegistration"], MANAGE_ENROLLMENT),
       ...all(["markEventAttendance", "markManyEventAttendance", "clearEventAttendance"], MARK_ATTENDANCE),

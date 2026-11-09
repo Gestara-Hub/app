@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import { eventsService } from "@/services/events";
+import { financeService } from "@/services/finance";
 import { createInstructor, createStudent, resetAcademy } from "@/test/academy";
 
 /**
@@ -196,6 +197,49 @@ describe("evento: inscricao e cobranca", () => {
     expect((await eventsService.listRegistrations(paid.id))[0].status).toBe("canceled");
     expect(lastAudit()).toContain("cancelou o evento Seminário do Sensei e 1 inscrição (2 parcelas futuras canceladas): Convidado não pôde vir");
     await expect(eventsService.register({ eventId: paid.id, studentId: ana.id })).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+});
+
+describe("evento: financeiro", () => {
+  it("soma parcelas pagas, em aberto e vencidas e os lancamentos ligados ao evento", async () => {
+    const event = await seminar({ capacity: undefined });
+    const ana = await createStudent("Ana");
+    const bia = await createStudent("Bia");
+    await eventsService.register({ eventId: event.id, studentId: ana.id, payment: { amountCents: 30000, installments: 3, firstDueDate: "2026-09-10" } });
+    await eventsService.register({ eventId: event.id, studentId: bia.id });
+    const [first, second] = chargesOf(ana.id);
+    first.status = "paid";
+    first.paidAt = "2026-09-10T12:00:00.000Z";
+    second.status = "overdue";
+    second.dueDate = "2026-09-20";
+    const expenses = (await financeService.listCategories({ type: "expense", includeSystem: false }))[0];
+    await financeService.createEntry({
+      type: "expense",
+      categoryId: expenses.id,
+      description: "Passagem do sensei",
+      amountCents: 80000,
+      dueDate: "2026-10-01",
+      paidNow: { method: "pix" },
+      eventId: event.id,
+    });
+    await financeService.createEntry({ type: "expense", categoryId: expenses.id, description: "Fora do evento", amountCents: 5000, dueDate: "2026-10-01" });
+
+    const finance = await eventsService.getEventFinance(event.id);
+    expect(finance.receivedCents).toBe(10000);
+    expect(finance.openCents).toBe(10000 + 10000 + 25000);
+    expect(finance.overdueCents).toBe(10000);
+    expect(finance.expensesCents).toBe(80000);
+    expect(finance.resultCents).toBe(10000 - 80000);
+    expect(finance.charges.map((c) => `${c.studentName} ${c.amountCents} ${c.status}`)).toEqual([
+      "Ana 10000 paid",
+      "Ana 10000 overdue",
+      "Bia 25000 pending",
+      "Ana 10000 pending",
+    ]);
+    expect(finance.entries.map((e) => e.description)).toEqual(["Passagem do sensei"]);
+    await expect(
+      financeService.createEntry({ type: "expense", categoryId: expenses.id, description: "Sem evento", amountCents: 100, dueDate: "2026-10-01", eventId: "nope" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 });
 

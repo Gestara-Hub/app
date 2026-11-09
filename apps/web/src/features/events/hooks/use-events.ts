@@ -50,6 +50,14 @@ export function useEventRegistrations(eventId: Id) {
   });
 }
 
+export function useEventFinance(eventId: Id, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.finance.event(eventId),
+    queryFn: () => eventsService.getEventFinance(eventId),
+    enabled: enabled && Boolean(eventId),
+  });
+}
+
 export function useEventSessions(range: { dateFrom: DateISO; dateTo: DateISO }, enabled = true) {
   return useQuery({
     queryKey: queryKeys.events.sessions(range),

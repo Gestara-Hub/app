@@ -164,12 +164,15 @@ function EntryForm({
   entry,
   defaultType,
   defaultDueDate,
+  eventId,
   onSuccess,
   onCancel,
 }: {
   entry?: FinancialEntry;
   defaultType: FinancialEntryType;
   defaultDueDate: string;
+  /** Lancamento de um evento (doc product/29): gravado com o vinculo. */
+  eventId?: string;
   onSuccess: () => void;
   onCancel?: () => void;
 }) {
@@ -281,6 +284,7 @@ function EntryForm({
             ...(values.paidNow && values.method ? { paidNow: { method: values.method as PaymentMethod } } : {}),
             ...(values.repeatMonthly ? { repeatMonthly: true } : {}),
             ...(values.receipts.length > 0 ? { attachments: uploadedAttachments(values.receipts) } : {}),
+            ...(eventId ? { eventId } : {}),
           },
         });
         toast.success(
@@ -446,6 +450,8 @@ export function FinanceEntryFormDialog({
   entry,
   defaultType = "expense",
   competence,
+  eventId,
+  eventName,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -453,6 +459,9 @@ export function FinanceEntryFormDialog({
   defaultType?: FinancialEntryType;
   /** Mes aberto na tela: o vencimento padrao cai nele. */
   competence: string;
+  /** Lancamento de um evento (doc product/29): fica ligado a ele e aparece no Financeiro geral tambem. */
+  eventId?: string;
+  eventName?: string;
 }) {
   // Retem o lancamento enquanto o dialog anima a saida: sem isso o formulario
   // sumia (corpo encolhia) e o titulo voltava para "Novo lancamento" no fechar.
@@ -480,12 +489,15 @@ export function FinanceEntryFormDialog({
           <SheetDescription>
             {current
               ? "Altere os dados do lançamento. O tipo não muda depois de criado."
-              : "Registre uma receita ou despesa que não vem das mensalidades."}
+              : eventName
+                ? `Lançamento do evento ${eventName}. Entra no Financeiro geral também.`
+                : "Registre uma receita ou despesa que não vem das mensalidades."}
           </SheetDescription>
         </SheetHeader>
         <EntryForm
           key={`${shown.session}-${current?.id ?? "new"}`}
           entry={current}
+          eventId={eventId}
           defaultType={defaultType}
           defaultDueDate={defaultDueDate}
           onSuccess={() => onOpenChange(false)}

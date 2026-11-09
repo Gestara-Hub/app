@@ -448,6 +448,9 @@ export interface FinanceEntryView {
   method?: PaymentMethod;
   /** Lancamento manual original (source = "entry"). */
   entry?: FinancialEntry;
+  /** Lancamento ligado a um evento (doc product/29): aparece tambem no financeiro do evento. */
+  eventId?: Id;
+  eventName?: string;
   recurrenceId?: Id;
   /** Lancamento ja foi pago alguma vez (mesmo desfeito): nao pode ser excluido (D2). */
   everPaid?: boolean;

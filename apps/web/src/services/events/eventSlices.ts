@@ -46,8 +46,23 @@ async function bySession(sessionId: Id, load: SliceLoader): Promise<void> {
   else load.none("auditLog");
 }
 
+/** Financeiro do evento: o evento inteiro mais o que a leitura das cobrancas usa. */
+async function eventFinance(eventId: Id, load: SliceLoader): Promise<void> {
+  await oneEvent(eventId, load);
+  const registrations = await load.where("eventRegistrations", "eventId", [eventId]);
+  await Promise.all([
+    load.all("plans"),
+    load.all("classGroups"),
+    load.all("teacherPayouts"),
+    load.all("financialEntries"),
+    load.all("financialCategories"),
+    load.where("messageLogs", "clientId", registrations.map((r) => r.studentId as string)),
+  ]);
+}
+
 export const eventSlices: Record<string, MethodSlice> = {
   list: listWorld,
+  getEventFinance: async ([id], load) => eventFinance(id as Id, load),
   listSessions: listWorld,
   getById: async ([id], load) => oneEvent(id as Id, load),
   getSessionDetail: async ([id], load) => bySession(id as Id, load),

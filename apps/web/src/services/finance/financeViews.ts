@@ -36,6 +36,7 @@ export function toEntryView(e: FinancialEntry, today: string): FinanceEntryView 
     method: e.method,
     entry: e,
     recurrenceId: e.recurrenceId,
+    ...(e.eventId ? { eventId: e.eventId, eventName: (store.events ?? []).find((ev) => ev.id === e.eventId)?.name } : {}),
     everPaid: wasEverPaid(e),
     recurrenceActive: e.recurrenceId
       ? store.financialRecurrences.some((r) => r.id === e.recurrenceId && r.status === "active")

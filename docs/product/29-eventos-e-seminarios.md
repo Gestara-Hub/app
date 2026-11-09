@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Decidido (fases 1 e 2 feitas em 09/11/2026; fases 3 a 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Decidido (fases 1 a 3 feitas em 09/11/2026; fases 4 e 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -131,7 +131,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | --- | --- | --- |
 | 1. Base (**feita 09/11/2026**) | Contrato, migração (4 tabelas, `Charge.kind` event + `eventId`, `FinanceEntry.eventId`), `services/events` com escopo e permissões, slices no mundo, testes Vitest e db | `pnpm test`, db tests da área |
 | 2. Telas (**feita 09/11/2026**) | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
-| 3. Cobrança e financeiro | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
+| 3. Cobrança e financeiro (**feita 09/11/2026**) | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
 | 4. Calendário e Painel | Sessões de evento no calendário com cor própria e filtro, card no Painel, lembrete "evento amanhã" no sino | manual |
 | 5. Pro | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
 | 6. Depois | Inscrição pública por link | nova proposta |
@@ -162,6 +162,16 @@ Cada fase é uma leva de commits pequenos, um assunto cada.
 - **Inscrever** (`RegisterDrawer`): aluno ativo que ainda não está no evento; em evento por dia, "Todos os dias" ou "Só alguns dias" com a lista de dias e o valor de cada um; pagamento com valor sugerido (lote aplicado quando vale) editável, parcelas (só valor fechado e inscrição completa) e vencimento. Evento lotado mostra o aviso e o botão vira "Pôr na espera", sem cobrança. Promover da espera reusa o drawer só com o pagamento.
 - **Dia do evento** (`EventSessionView`): "‹ Voltar" para o evento, nome com selo "Evento" (cor própria, roxo), data, horário e quem conduz; "N de M presentes" e "Todos vieram"; linhas com o círculo de presença (toque marca presente, de novo desmarca), menu com Marcar falta e Desmarcar. Dia futuro: "A chamada abre no dia do evento", sem marcação. Dia cancelado: selo e sem marcação.
 - **Ainda não feito** (fases 3 a 5): aba Financeiro do evento, cards de evento no Calendário e no Painel, selo "Visitante" em Alunos, certificado e relatório, e2e.
+
+## Como ficou a fase 3 (09/11/2026)
+
+A cobrança da inscrição (valor fechado com parcelas, lote, por dia, cancelamento com a regra do curso) já veio na fase 1. A fase 3 fechou o financeiro próprio do evento:
+
+- **Aba "Financeiro"** no detalhe do evento (`EventFinanceTab`), só para quem tem `billing:view`. Quatro cartões: Arrecadado (parcelas pagas), A receber (pendentes e vencidas, com "R$ x já venceu" em âmbar), Saídas (lançamentos de saída ligados ao evento, fora os cancelados; outras entradas manuais aparecem na legenda) e Resultado (recebido mais entradas pagas menos saídas pagas).
+- **Cobranças das inscrições:** lista com aluno, situação, valor, parcela e vencimento, com as mesmas ações das Cobranças (registrar pagamento, cobrar online, cancelar) pelo `useChargeActions`.
+- **Lançamentos do evento:** lista dos lançamentos com `eventId` e "+ Nova saída" (`finance:manage`), que abre o formulário de lançamento do Financeiro já ligado ao evento (`FinanceEntryFormDialog` com `eventId`; a descrição do drawer diz "Lançamento do evento X. Entra no Financeiro geral também."). Editar, pagar ou cancelar continua no Financeiro geral, que mostra "evento X" na linha.
+- **Serviço:** `events.getEventFinance(eventId)` (`EventFinanceView`), permissão `billing:view`, recorte com as cobranças do evento, lançamentos e o que a leitura das cobranças usa. `ChargeFilter.eventId` filtra as Cobranças por evento; `FinancialEntry.eventId` é validado na criação (evento tem de existir). As cobranças de evento já entram no caixa pela categoria de sistema "Eventos e seminários".
+- **Ainda não feito** (fases 4 e 5): cards de evento no Calendário e no Painel, selo "Visitante" em Alunos, certificado e relatório.
 
 ## Decisões (09/11/2026)
 

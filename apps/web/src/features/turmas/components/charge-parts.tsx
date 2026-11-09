@@ -352,7 +352,7 @@ export function referenceLabel(c: ChargeView): string | null {
 
 /** Avulsa, curso e pacote: cobrancas sem plano, que podem vir em parcelas. */
 export const isInstallmentKind = (c: Pick<ChargeView, "kind">) =>
-  c.kind === "extra" || c.kind === "course" || c.kind === "package";
+  c.kind === "extra" || c.kind === "course" || c.kind === "package" || c.kind === "event";
 
 /** "parcela 2 de 3" da cobranca avulsa, do curso ou do pacote parcelado. */
 export function installmentLabel(c: ChargeView): string | null {

@@ -82,6 +82,8 @@ export const transactionsService = {
           : {}),
         ...(payload.notes?.trim() ? { notes: payload.notes.trim() } : {}),
         ...(payload.attachments?.length ? { attachments: payload.attachments } : {}),
+        // Lancamento de um evento (doc product/29): entra no financeiro do evento tambem.
+        ...(payload.eventId ? { eventId: payload.eventId } : {}),
         createdAt: ts,
         updatedAt: ts,
       };

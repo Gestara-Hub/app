@@ -136,6 +136,8 @@ export interface ChargeFilter extends PaginationParams {
   kind?: ChargeKind;
   status?: ChargeStatus;
   studentId?: Id;
+  /** Parcelas das inscricoes de um evento (doc product/29). */
+  eventId?: Id;
 }
 
 export interface ChargeView extends Charge {

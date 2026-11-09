@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpCircle, CalendarDays, ClipboardList, ListChecks, Pencil, UserPlus, Users, XCircle } from "lucide-react";
+import { ArrowUpCircle, CalendarDays, ClipboardList, ListChecks, Pencil, UserPlus, Users, Wallet, XCircle } from "lucide-react";
 import type { EventRegistrationView, EventSession } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -24,8 +24,9 @@ import { billingSummary, datesLabel, dayLabel, hoursLabel, occupancyLabel, sessi
 import { EventFormDrawer } from "./event-form-drawer";
 import { EventStatusBadge } from "./event-badges";
 import { RegisterDrawer } from "./register-drawer";
+import { EventFinanceTab } from "./event-finance-tab";
 
-type Tab = "registered" | "waitlist" | "days";
+type Tab = "registered" | "waitlist" | "days" | "finance";
 
 function paymentLabel(r: EventRegistrationView): { text: string; tone: string } {
   if (r.amountCents === 0) return { text: "Sem cobrança", tone: "text-muted-foreground" };
@@ -39,6 +40,7 @@ export function EventDetailView({ id }: { id: string }) {
   const can = useCan();
   const canManage = can("events:manage");
   const canEnroll = can("enrollment:manage");
+  const canSeeMoney = can("billing:view");
   const { data: event, isPending, isError } = useEvent(id);
   const { data: registrations } = useEventRegistrations(id);
   const [tab, setTab] = useState<Tab>("registered");
@@ -153,6 +155,7 @@ export function EventDetailView({ id }: { id: string }) {
     { value: "registered" as const, label: `Inscritos (${confirmed.length})`, icon: Users },
     ...(waiting.length > 0 ? [{ value: "waitlist" as const, label: `Espera (${waiting.length})`, icon: ListChecks }] : []),
     { value: "days" as const, label: `Dias (${event.sessions.filter((s) => s.status !== "canceled").length})`, icon: CalendarDays },
+    ...(canSeeMoney ? [{ value: "finance" as const, label: "Financeiro", icon: Wallet }] : []),
   ];
   const activeTab = tab === "waitlist" && waiting.length === 0 ? "registered" : tab;
 
@@ -300,6 +303,8 @@ export function EventDetailView({ id }: { id: string }) {
         <section className="space-y-3">
           <ListContainer>{waiting.map(registrationRow)}</ListContainer>
         </section>
+      ) : activeTab === "finance" ? (
+        <EventFinanceTab event={event} />
       ) : (
         <section className="space-y-3">
           <ListContainer>
