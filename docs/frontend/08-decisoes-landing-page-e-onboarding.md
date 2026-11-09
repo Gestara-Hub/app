@@ -139,7 +139,7 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 
 ### 3.9. Prévia do link (17/10/2026)
 - `app/(marketing)/opengraph-image.tsx` gera a imagem de 1200 x 630 (logo, *"Gestão simples para quem ensina"* e o selo do plano grátis) que aparece ao compartilhar o link no WhatsApp e nas redes.
-- `metadataBase` vem de `NEXT_PUBLIC_SITE_URL` (sem ela, `http://localhost:3000`): **definir em produção**, senão a prévia aponta para o localhost.
+- `metadataBase` vem de `NEXT_PUBLIC_SITE_URL` (sem ela, `http://localhost:3200`): **definir em produção**, senão a prévia aponta para o localhost.
 - O grupo de rotas gera a imagem em `/opengraph-image-<hash>`; o `proxy.ts` libera esse caminho sem sessão, junto com `/terms` e `/privacy`.
 - A descrição padrão do site (`app/layout.tsx`) deixou de citar "agenda, clientes, equipe e serviços" (modelo antigo).
 

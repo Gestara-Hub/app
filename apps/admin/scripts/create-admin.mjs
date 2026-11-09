@@ -117,7 +117,7 @@ try {
     await auth.auth.admin.deleteUser(data.user.id);
     fail(`não foi possível cadastrar o administrador (${err.message}).`);
   }
-  console.log(`\nAdministrador cadastrado: ${email} (${role}). Entre em http://localhost:3001 e configure o aplicativo autenticador.`);
+  console.log(`\nAdministrador cadastrado: ${email} (${role}). Entre em http://localhost:3201 e configure o aplicativo autenticador.`);
 } finally {
   await sql.end();
 }

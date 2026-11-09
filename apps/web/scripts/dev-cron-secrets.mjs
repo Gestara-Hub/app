@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const ENV_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../.env.local");
 const DB_CONTAINER = process.env.SUPABASE_DB_CONTAINER || "supabase_db_gestarahub";
-const APP_URL = process.env.CRON_APP_URL || `http://host.docker.internal:${process.env.PORT || "3000"}`;
+const APP_URL = process.env.CRON_APP_URL || `http://host.docker.internal:${process.env.PORT || "3200"}`;
 
 let content = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8") : "";
 let secret = content.match(/^CRON_SECRET=(.+)$/m)?.[1]?.trim();

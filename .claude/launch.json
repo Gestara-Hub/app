@@ -9,7 +9,7 @@
         "@gestarahub/web",
         "dev"
       ],
-      "port": 3000
+      "port": 3200
     },
     {
       "name": "capturas",

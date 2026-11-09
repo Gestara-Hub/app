@@ -22,7 +22,7 @@ export default defineConfig({
   timeout: 180_000,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3200",
     channel: "chrome",
     locale: "pt-BR",
     timezoneId: "America/Sao_Paulo",

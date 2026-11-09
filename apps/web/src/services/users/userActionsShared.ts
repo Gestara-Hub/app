@@ -60,7 +60,7 @@ export async function resolveAppBaseUrl(): Promise<string> {
   }
   const hdrs = await headers();
   const host =
-    hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+    hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3200";
   const proto =
     hdrs.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");

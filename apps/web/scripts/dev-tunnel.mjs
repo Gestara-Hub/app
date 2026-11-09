@@ -4,7 +4,7 @@
  *
  *   pnpm tunnel
  *
- * 1. Sobe `cloudflared tunnel --url http://localhost:3000` (tunel rapido, sem conta).
+ * 1. Sobe `cloudflared tunnel --url http://localhost:3200` (tunel rapido, sem conta).
  * 2. Le o endereco publico gerado e grava em apps/web/.env.local:
  *    ASAAS_WEBHOOK_URL=<endereco>/api/webhooks/asaas
  *    e cria ASAAS_WEBHOOK_SECRET se ainda nao existir.
@@ -24,7 +24,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ENV_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../.env.local");
-const PORT = process.env.PORT || "3000";
+const PORT = process.env.PORT || "3200";
 const WEBHOOK_PATH = "/api/webhooks/asaas";
 
 if (spawnSync("cloudflared", ["--version"], { stdio: "ignore" }).status !== 0) {

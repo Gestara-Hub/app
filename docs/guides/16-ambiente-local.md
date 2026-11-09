@@ -11,6 +11,19 @@ Data: 2026-10-21.
 - `pnpm install` na raiz.
 - Para testar pagamentos com webhook: `brew install cloudflared`.
 
+## Portas (09/11/2026)
+
+O projeto usa um bloco próprio de portas, para não bater com outros projetos na mesma máquina (as portas padrão do Next e do Supabase ficam livres):
+
+| O que | Porta | Onde está definido |
+| --- | --- | --- |
+| App dos clientes (`pnpm dev`) | 3200 | `apps/web/package.json`, `.claude/launch.json` |
+| Painel interno (`pnpm dev:admin`) | 3201 | `apps/admin/package.json` |
+| E2E do app e do painel | 3100 e 3101 | `playwright.config.ts` de cada app |
+| Supabase: API, banco, Studio, e-mails (Mailpit) | 55321, 55322, 55323, 55324 | `apps/supabase/config.toml` |
+
+Os `.env.local` apontam para essas portas; os scripts (`setup:local`, `admin:setup`, testes de banco) leem a porta do `supabase status`. Se mudar de novo, troque no `config.toml`, rode `pnpm supabase:stop` e `pnpm supabase:start`, e ajuste a URL de volta do Google (seção abaixo).
+
 ## Subir tudo
 
 ```bash
@@ -53,13 +66,13 @@ Igual ao anterior, mas zera o banco local (`supabase db reset`): **apaga todos o
 pnpm tunnel
 ```
 
-Sobe um túnel público para `localhost:3000` e grava a URL em `ASAAS_WEBHOOK_URL`. O endereço muda a cada execução: rode o túnel antes do `pnpm dev`, ou reinicie o `pnpm dev` depois. Detalhes no [doc 19](../product/19-levantamento-pagamentos.md), seção 4.
+Sobe um túnel público para `localhost:3200` e grava a URL em `ASAAS_WEBHOOK_URL`. O endereço muda a cada execução: rode o túnel antes do `pnpm dev`, ou reinicie o `pnpm dev` depois. Detalhes no [doc 19](../product/19-levantamento-pagamentos.md), seção 4.
 
 ## Entrar com Google
 
 1. No Google Cloud, crie um cliente OAuth do tipo **Web application** (tela de consentimento em **Testing**, com o seu e-mail em **Test users**; escopos `openid`, `email` e `profile`):
-   - **Authorized JavaScript origins:** `http://localhost:3000`
-   - **Authorized redirect URIs:** `http://127.0.0.1:54321/auth/v1/callback` (quem recebe a volta do Google é o Supabase, não o app)
+   - **Authorized JavaScript origins:** `http://localhost:3200`
+   - **Authorized redirect URIs:** `http://127.0.0.1:55321/auth/v1/callback` (quem recebe a volta do Google é o Supabase, não o app)
 2. Cole o Client ID e o Client secret em `apps/supabase/.env` (fora do git; modelo em `apps/supabase/.env.example`):
    `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` e `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`.
 3. Reinicie o Supabase local para ler a configuração (os dados continuam): `pnpm supabase:stop` e `pnpm supabase:start`.

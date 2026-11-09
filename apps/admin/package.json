@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3001",
+    "dev": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3201",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 3201",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

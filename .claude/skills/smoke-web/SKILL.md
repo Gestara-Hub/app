@@ -30,7 +30,7 @@ detail modals) needs a **real browser**. This skill is the verified path.
 ```bash
 pnpm --filter @gestarahub/web dev > /tmp/gestara-dev.log 2>&1 &
 # wait for "Ready", then:
-lsof -ti:3000 >/dev/null && echo LISTENING   # http://localhost:3000
+lsof -ti:3000 >/dev/null && echo LISTENING   # http://localhost:3200
 ```
 
 To also prove the **workspace packages resolve in a production build** (e.g. after
@@ -52,8 +52,8 @@ Forge it in the driver via `page.setCookie({ name:'gestarahub_session', value:'u
 Quick HTTP check without a browser:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' -b 'gestarahub_session=usr-marcelo' http://localhost:3000/schedule  # 200
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/schedule                                      # 307 -> /login
+curl -s -o /dev/null -w '%{http_code}\n' -b 'gestarahub_session=usr-marcelo' http://localhost:3200/schedule  # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3200/schedule                                      # 307 -> /login
 ```
 (`/appointments` legitimately 307-redirects to `/schedule` — unified screen.)
 
@@ -69,7 +69,7 @@ npm init -y >/dev/null && npm i puppeteer-core@23 >/dev/null   # no browser down
 ```js
 const puppeteer = require("puppeteer-core");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const BASE = "http://localhost:3000", OUT = __dirname;
+const BASE = "http://localhost:3200", OUT = __dirname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Radix dropdowns/popovers/dialogs need REAL pointer events and must be clicked

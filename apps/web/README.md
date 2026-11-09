@@ -8,7 +8,7 @@ Requer pnpm (versao fixada em `packageManager` no `package.json` da raiz). Na ra
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000
+pnpm dev        # http://localhost:3200
 ```
 
 - **Login:** a tela `/login` lista usuarios de demonstracao; escolha um para entrar. Cada usuario pertence a uma organizacao (Corte Nobre, barbearia, ou Academia X, academia) e entrar com ele ativa aquela organizacao. Para trocar depois, use o menu do usuario na topbar.

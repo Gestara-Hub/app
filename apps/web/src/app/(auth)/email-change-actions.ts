@@ -35,7 +35,7 @@ async function resolveAppBaseUrl(): Promise<string> {
   const h = await headers();
   const origin = h.get("origin");
   if (origin) return origin.replace(/\/+$/, "");
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3200";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }

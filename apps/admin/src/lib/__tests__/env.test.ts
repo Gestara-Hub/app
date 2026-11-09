@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const BASE = {
-  PLATFORM_DATABASE_URL: "postgresql://platform_app:senha@127.0.0.1:54322/postgres",
+  PLATFORM_DATABASE_URL: "postgresql://platform_app:senha@127.0.0.1:55322/postgres",
   ADMIN_SESSION_SECRET: "s".repeat(40),
 };
 
@@ -18,7 +18,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("configuração do painel", () => {
   it("no local, usa o Supabase local por padrão e o ambiente 'local'", async () => {
     const env = await load(BASE);
-    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe("http://127.0.0.1:54321");
+    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe("http://127.0.0.1:55321");
     expect(env.ADMIN_ENV_LABEL).toBe("local");
   });
 
