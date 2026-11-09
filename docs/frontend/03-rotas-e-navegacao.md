@@ -45,7 +45,7 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/classes/[id]` | Detalhe da turma | `classes` | `classes:view` | Matriculas, lista de espera. |
 | `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Usa o modelo do espaco (Configurações → Certificado). Impressão pelo navegador (A4 deitado). |
 | `/classes/sessions/[sessionId]` | Aula | `classes` | `classes:view` | Chamada, reservas, instrutor substituto. |
-| `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas. |
+| `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas e dos dias de evento (cor própria; `?show=classes|events`). |
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
 | `/classes/plans` | Planos | `classes` | `billing:view` | Abas "Planos de mensalidade" e "Pacotes de aulas" (`?tab=packages`). |
 | `/classes/billing` | Cobranças | `classes` | `billing:view` | Cobrancas por competencia: mensalidades, aulas avulsas, cobrancas avulsas e parcelas de curso (antes "Mensalidades", renomeada em 14/10/2026). |

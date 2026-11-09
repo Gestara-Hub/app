@@ -40,6 +40,7 @@ import { Onboarding } from "@/features/onboarding";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useSubscription } from "@/features/settings";
 import { useWhatsAppConnection } from "@/features/communication";
+import { UpcomingEventsCard } from "@/features/events";
 import { BirthdaysCard } from "./birthdays-card";
 import { DashboardTodo } from "./dashboard-todo";
 import { useBellAlerts } from "./reminders-bell";
@@ -477,6 +478,8 @@ function DashboardMainGrid({ d }: { d: DashboardData }) {
   return (
     <div className="space-y-4">
       <TodaySessionsCard d={d} />
+      {/* Proximos eventos (doc product/29): so aparece quando ha evento a vista. */}
+      <UpcomingEventsCard />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <OccupancyCard d={d} scrollClassName="max-h-48" />
         {/* Altura maxima com rolagem: a 4a linha aparece cortada, sinalizando que ha mais */}

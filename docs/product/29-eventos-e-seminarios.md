@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Decidido (fases 1 a 3 feitas em 09/11/2026; fases 4 e 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Decidido (fases 1 a 4 feitas em 09/11/2026; fase 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -132,7 +132,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | 1. Base (**feita 09/11/2026**) | Contrato, migração (4 tabelas, `Charge.kind` event + `eventId`, `FinanceEntry.eventId`), `services/events` com escopo e permissões, slices no mundo, testes Vitest e db | `pnpm test`, db tests da área |
 | 2. Telas (**feita 09/11/2026**) | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
 | 3. Cobrança e financeiro (**feita 09/11/2026**) | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
-| 4. Calendário e Painel | Sessões de evento no calendário com cor própria e filtro, card no Painel, lembrete "evento amanhã" no sino | manual |
+| 4. Calendário e Painel (**feita 09/11/2026**, sem o lembrete do sino) | Sessões de evento no calendário com cor própria e filtro, card no Painel; lembrete "evento amanhã" no sino ficou para depois | manual |
 | 5. Pro | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
 | 6. Depois | Inscrição pública por link | nova proposta |
 
@@ -172,6 +172,12 @@ A cobrança da inscrição (valor fechado com parcelas, lote, por dia, cancelame
 - **Lançamentos do evento:** lista dos lançamentos com `eventId` e "+ Nova saída" (`finance:manage`), que abre o formulário de lançamento do Financeiro já ligado ao evento (`FinanceEntryFormDialog` com `eventId`; a descrição do drawer diz "Lançamento do evento X. Entra no Financeiro geral também."). Editar, pagar ou cancelar continua no Financeiro geral, que mostra "evento X" na linha.
 - **Serviço:** `events.getEventFinance(eventId)` (`EventFinanceView`), permissão `billing:view`, recorte com as cobranças do evento, lançamentos e o que a leitura das cobranças usa. `ChargeFilter.eventId` filtra as Cobranças por evento; `FinancialEntry.eventId` é validado na criação (evento tem de existir). As cobranças de evento já entram no caixa pela categoria de sistema "Eventos e seminários".
 - **Ainda não feito** (fases 4 e 5): cards de evento no Calendário e no Painel, selo "Visitante" em Alunos, certificado e relatório.
+
+## Como ficou a fase 4 (09/11/2026)
+
+- **Calendário:** aulas e dias de evento no mesmo formato (`CalendarEntry`, em `features/turmas/calendar-entries.ts`), na grade e na lista. O card de evento tem cor própria fixa (roxo suave, `violet`) com o selo "Evento" e "(convidado)" no nome de quem conduz; a aula segue neutra. Filtro "Mostrar: Turmas e eventos / Só turmas / Só eventos" (`?show=`), que só aparece quando a semana tem evento. Os filtros de modalidade e instrutor valem para os dois. Vindo de uma turma ("Ver aulas no calendário"), só as aulas dela, sem eventos. Clicar no card de evento abre o dia do evento. O hook `useCalendarEventSessions` fica em `features/turmas` para não criar ciclo com `features/events`, que já importa turmas.
+- **Painel:** card "Próximos eventos" (`UpcomingEventsCard`), logo abaixo das aulas de hoje, com até 3 eventos em breve ou em andamento (nome, selo, datas, quem conduz e inscritos) e o atalho "Ver eventos". Sem evento à vista, o card não aparece.
+- **Não feito nesta fase:** lembrete "evento amanhã" no sino (o motor de lembretes nasce dos modelos de mensagem; fica junto da fase 5 ou de uma rodada de comunicação).
 
 ## Decisões (09/11/2026)
 

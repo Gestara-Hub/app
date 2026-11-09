@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { turmasService } from "@/services/classes";
+import { eventsService } from "@/services/events";
 import type {
   AttendanceStatus,
   ClassGroupFilter,
@@ -34,6 +35,17 @@ function invalidateEnrollmentMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.audit.all });
   qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
   qc.invalidateQueries({ queryKey: queryKeys.clients.trials });
+}
+
+/**
+ * Dias de evento no periodo, para o Calendario (doc product/29). Fica aqui, e
+ * nao em `features/events`, porque o modulo de eventos ja importa este.
+ */
+export function useCalendarEventSessions(range: { dateFrom: DateISO; dateTo: DateISO }) {
+  return useQuery({
+    queryKey: queryKeys.events.sessions(range),
+    queryFn: () => eventsService.listSessions(range),
+  });
 }
 
 // --- Turmas ---------------------------------------------------------------

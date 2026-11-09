@@ -4,4 +4,5 @@ export { EventDetailView } from "./components/event-detail-view";
 export { EventSessionView } from "./components/event-session-view";
 export { EventFormDrawer } from "./components/event-form-drawer";
 export { EventKindBadge, EventStatusBadge } from "./components/event-badges";
+export { UpcomingEventsCard } from "./components/upcoming-events-card";
 export { datesLabel, dayLabel, sessionTimeLabel } from "./event-copy";

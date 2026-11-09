@@ -34,7 +34,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@gestarahub/core/date";
-import { useClassSessions } from "../hooks/use-turmas";
+import { useCalendarEventSessions, useClassSessions } from "../hooks/use-turmas";
+import { classEntry, eventEntry, type CalendarEntry, type CalendarShow } from "../calendar-entries";
+import { sessionLinkLabel } from "../turma-copy";
 import { rememberCalendarQuery } from "../calendar-filters";
 import { TurmasWeekGrid, dayLabel } from "./turmas-week-grid";
 
@@ -91,6 +93,9 @@ function useCalendarFilters() {
   const instructor = searchParams.get("instructor") ?? ALL;
   // Vindo de uma turma ("Ver aulas no calendario"): so as aulas dela.
   const classGroupId = searchParams.get("class");
+  // Turmas e eventos juntos (padrao), so turmas ou so eventos (doc product/29).
+  const showParam = searchParams.get("show");
+  const show: CalendarShow = showParam === "classes" || showParam === "events" ? showParam : "all";
 
   const update = (patch: Record<string, string | null>) => {
     // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
@@ -121,7 +126,8 @@ function useCalendarFilters() {
   const setModality = (value: string) => update({ modality: value === ALL ? null : value });
   const setInstructor = (value: string) =>
     update({ instructor: value === ALL ? null : value });
-  const clearFilters = () => update({ modality: null, instructor: null, class: null });
+  const setShow = (value: CalendarShow) => update({ show: value === "all" ? null : value });
+  const clearFilters = () => update({ modality: null, instructor: null, class: null, show: null });
   const clearClassGroup = () => update({ class: null });
 
   return {
@@ -130,6 +136,8 @@ function useCalendarFilters() {
     modality,
     instructor,
     classGroupId,
+    show,
+    setShow,
     clearClassGroup,
     setAnchor,
     shiftWeek,
@@ -148,6 +156,8 @@ export function TurmasCalendarView() {
     modality,
     instructor,
     classGroupId,
+    show,
+    setShow,
     clearClassGroup,
     setAnchor,
     shiftWeek,
@@ -166,41 +176,44 @@ export function TurmasCalendarView() {
 
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
-  const { data: sessions, isLoading } = useClassSessions({
-    dateFrom: toISO(weekStart),
-    dateTo: toISO(weekEnd),
-  });
+  const range = { dateFrom: toISO(weekStart), dateTo: toISO(weekEnd) };
+  const { data: sessions, isLoading } = useClassSessions(range);
+  const { data: eventSessions, isLoading: eventsLoading } = useCalendarEventSessions(range);
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const today = todayISO();
 
+  // Aulas e dias de evento no mesmo formato; "so turmas" e "so eventos" tiram um lado.
+  const entries = useMemo<CalendarEntry[]>(() => {
+    const classes = show === "events" ? [] : (sessions ?? []).filter((s) => !classGroupId || s.classGroupId === classGroupId).map((s) => classEntry(s, sessionLinkLabel(s)));
+    const events = show === "classes" || classGroupId ? [] : (eventSessions ?? []).map(eventEntry);
+    return [...classes, ...events];
+  }, [sessions, eventSessions, show, classGroupId]);
+
   const modalityOptions = useMemo(() => {
-    const names = new Set(
-      (sessions ?? []).map((s) => s.modalityName).filter(Boolean) as string[],
-    );
+    const names = new Set(entries.map((s) => s.modalityName).filter(Boolean) as string[]);
     return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [sessions]);
+  }, [entries]);
 
   const instructorOptions = useMemo(() => {
-    const names = new Set((sessions ?? []).map((s) => s.instructorName));
+    const names = new Set(entries.map((s) => s.instructorName));
     return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [sessions]);
+  }, [entries]);
 
   const filtered = useMemo(
     () =>
-      (sessions ?? []).filter(
-        (s) =>
-          (modality === ALL || s.modalityName === modality) &&
-          (instructor === ALL || s.instructorName === instructor) &&
-          (!classGroupId || s.classGroupId === classGroupId),
+      entries.filter(
+        (s) => (modality === ALL || s.modalityName === modality) && (instructor === ALL || s.instructorName === instructor),
       ),
-    [sessions, modality, instructor, classGroupId],
+    [entries, modality, instructor],
   );
+  const hasEvents = (eventSessions ?? []).length > 0;
 
-  const hasFilters = modality !== ALL || instructor !== ALL || Boolean(classGroupId);
+  const hasFilters = modality !== ALL || instructor !== ALL || Boolean(classGroupId) || show !== "all";
   const filteredClassName = classGroupId
     ? (sessions ?? []).find((s) => s.classGroupId === classGroupId)?.className
     : undefined;
+  void sessions;
 
   return (
     <>
@@ -270,6 +283,18 @@ export function TurmasCalendarView() {
 
         {/* No celular os filtros empilham em largura total para o texto caber. */}
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          {hasEvents || show !== "all" ? (
+            <Select value={show} onValueChange={(v) => setShow(v as CalendarShow)}>
+              <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Mostrar">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Turmas e eventos</SelectItem>
+                <SelectItem value="classes">Só turmas</SelectItem>
+                <SelectItem value="events">Só eventos</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
           <Select value={modality} onValueChange={setModality}>
             <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Filtrar por modalidade">
               <SelectValue placeholder="Modalidade" />
@@ -313,7 +338,7 @@ export function TurmasCalendarView() {
         </p>
       ) : null}
 
-      {!mounted || isLoading ? (
+      {!mounted || isLoading || eventsLoading ? (
         <Skeleton className="h-96 w-full rounded-lg" />
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border">
@@ -338,7 +363,7 @@ export function TurmasCalendarView() {
           />
         </div>
       ) : view === "grid" ? (
-        <TurmasWeekGrid days={days} sessions={filtered} />
+        <TurmasWeekGrid days={days} entries={filtered} />
       ) : (
         <div className="space-y-4">
           {days.map((d) => {
@@ -366,17 +391,20 @@ export function TurmasCalendarView() {
                 <div className="space-y-1.5">
                   {daySessions.map((s) => {
                     // Mesma ocupacao da tela da aula: roster da data (com avulsos).
-                    const full = s.occupiedCount >= s.capacity;
+                    const isEvent = s.kind === "event";
                     return (
-                      <Link
-                        key={s.id}
-                        href={`/classes/sessions/${encodeURIComponent(s.id)}`}
-                        className="block"
-                      >
-                        <ListItemCard>
+                      <Link key={s.id} href={s.href} className="block">
+                        <ListItemCard className={cn(isEvent && "border-violet-500/40 bg-violet-500/10")}>
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium">{s.className}</p>
+                              <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                                {isEvent ? (
+                                  <span className="inline-flex items-center rounded-sm bg-violet-500/20 px-1 text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                                    Evento
+                                  </span>
+                                ) : null}
+                                <span className="min-w-0 break-words">{s.title}</span>
+                              </p>
                               <p className="min-w-0 break-words text-xs text-muted-foreground">
                                 {s.modalityName ? `${s.modalityName} · ` : ""}
                                 {s.isSubstitute ? (
@@ -384,18 +412,10 @@ export function TurmasCalendarView() {
                                     {s.instructorName} (Subst.)
                                   </span>
                                 ) : (
-                                  s.instructorName
+                                  `${s.instructorName}${s.isGuest ? " (convidado)" : ""}`
                                 )}
                                 {" · "}
-                                <span
-                                  className={cn(
-                                    full && "font-medium text-amber-700 dark:text-amber-400",
-                                  )}
-                                >
-                                  {full
-                                    ? "Turma lotada"
-                                    : `${s.occupiedCount} de ${s.capacity} alunos`}
-                                </span>
+                                <span className={cn(s.isFull && "font-medium text-amber-700 dark:text-amber-400")}>{s.occupancy}</span>
                               </p>
                             </div>
                             <span className="shrink-0 text-sm tabular-nums text-muted-foreground">

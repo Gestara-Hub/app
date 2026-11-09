@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { sessionLinkLabel } from "../turma-copy";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { todayISO } from "@gestarahub/core/date";
-import type { ClassSessionView } from "@gestarahub/contracts";
 import { cn } from "@/lib/utils";
+import type { CalendarEntry } from "../calendar-entries";
 
 /**
  * Quadro de horarios da semana: linhas = horario de inicio, colunas = dias.
@@ -22,18 +21,20 @@ import { cn } from "@/lib/utils";
  * vao morto entre a aula da manha e a da noite.
  */
 
-// Cards neutros de proposito: cor por modalidade exigiria uma cor definida pelo
-// tenant (Category.color) para ser confiavel — derivar de hash colide e passa a
-// mentir sobre agrupamento. Quem separa por modalidade e o filtro da tela. Se
-// cor voltar, vale mais para ESTADO (lotada, cancelada) do que para categoria.
+// Cards de aula neutros de proposito: cor por modalidade exigiria uma cor
+// definida pelo tenant (Category.color) para ser confiavel — derivar de hash
+// colide e passa a mentir sobre agrupamento. Quem separa por modalidade e o
+// filtro da tela. A unica cor e a do EVENTO (doc product/29): diz o tipo do
+// item, nao a categoria.
+const EVENT_CARD = "border-violet-500/40 bg-violet-500/10 hover:border-violet-500/60 hover:bg-violet-500/15";
 
 interface TurmasWeekGridProps {
   days: Date[];
-  sessions: ClassSessionView[];
+  entries: CalendarEntry[];
 }
 
-export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
-  const startTimes = [...new Set(sessions.map((s) => s.start))].sort();
+export function TurmasWeekGrid({ days, entries }: TurmasWeekGridProps) {
+  const startTimes = [...new Set(entries.map((s) => s.start))].sort();
   const today = todayISO();
 
   return (
@@ -86,9 +87,9 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
               {days.map((day) => {
                 const iso = format(day, "yyyy-MM-dd");
                 const isToday = iso === today;
-                const cell = sessions
+                const cell = entries
                   .filter((s) => s.date === iso && s.start === start)
-                  .sort((a, b) => a.className.localeCompare(b.className, "pt-BR"));
+                  .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
                 return (
                   <td
                     key={iso}
@@ -98,35 +99,42 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                     )}
                   >
                     <div className="space-y-1.5">
-                      {cell.map((session) => {
-                        return (
-                          <Link
-                            key={session.id}
-                            href={`/classes/sessions/${encodeURIComponent(session.id)}`}
-                            title={`${session.className} · ${session.start}–${session.end} · ${session.instructorName}`}
-                            className="block rounded-md border bg-background px-2 py-1.5 transition-colors hover:border-foreground/20 hover:bg-accent"
-                          >
-                            <span className="sr-only">{sessionLinkLabel(session)}</span>
-                            <div aria-hidden="true">
-                              <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">
-                                {session.className}
-                              </p>
-                              <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
-                                {session.start}–{session.end}
-                              </p>
-                              <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
-                                {session.isSubstitute ? (
-                                  <span className="font-medium text-amber-700 dark:text-amber-400">
-                                    {session.instructorName} (Subst.)
-                                  </span>
-                                ) : (
-                                  session.instructorName
-                                )}
-                              </p>
-                            </div>
-                          </Link>
-                        );
-                      })}
+                      {cell.map((entry) => (
+                        <Link
+                          key={entry.id}
+                          href={entry.href}
+                          title={`${entry.title} · ${entry.start}–${entry.end} · ${entry.instructorName}`}
+                          className={cn(
+                            "block rounded-md border px-2 py-1.5 transition-colors",
+                            entry.kind === "event" ? EVENT_CARD : "bg-background hover:border-foreground/20 hover:bg-accent",
+                          )}
+                        >
+                          <span className="sr-only">{entry.accessibleLabel}</span>
+                          <div aria-hidden="true">
+                            <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">
+                              {entry.kind === "event" ? (
+                                <span className="mr-1 inline-flex items-center rounded-sm bg-violet-500/20 px-1 text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                                  Evento
+                                </span>
+                              ) : null}
+                              {entry.title}
+                            </p>
+                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                              {entry.start}–{entry.end}
+                            </p>
+                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                              {entry.isSubstitute ? (
+                                <span className="font-medium text-amber-700 dark:text-amber-400">{entry.instructorName} (Subst.)</span>
+                              ) : (
+                                <>
+                                  {entry.instructorName}
+                                  {entry.isGuest ? " (convidado)" : ""}
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
                   </td>
                 );
