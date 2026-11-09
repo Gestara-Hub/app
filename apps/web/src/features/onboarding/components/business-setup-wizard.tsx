@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -483,7 +484,10 @@ export function BusinessSetupWizard() {
             >
               <div className="space-y-2">
                 <Label htmlFor="business-name" className="inline-block text-base font-semibold text-foreground">
-                  Nome<span className="text-destructive ml-0.5">*</span>
+                  <span>
+                    Nome
+                    <RequiredMark />
+                  </span>
                 </Label>
                 <Input
                   ref={nameInputRef}
@@ -624,7 +628,10 @@ export function BusinessSetupWizard() {
                   <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
                     <div className="space-y-2">
                       <Label htmlFor="custom-segment-input" className="inline-block text-sm font-semibold text-foreground">
-                        O que você ensina?<span className="text-destructive ml-0.5">*</span>
+                        <span>
+                          O que você ensina?
+                          <RequiredMark />
+                        </span>
                       </Label>
                       <Input
                         ref={customInputRef}

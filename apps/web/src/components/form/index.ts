@@ -1,4 +1,4 @@
-export { FieldShell, fieldAria } from "./field-shell";
+export { FieldShell, fieldAria , RequiredMark } from "./field-shell";
 export { InputText } from "./input-text";
 export { InputPhone } from "./input-phone";
 export { InputCpf } from "./input-cpf";

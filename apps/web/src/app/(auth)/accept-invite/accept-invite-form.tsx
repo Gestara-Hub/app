@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -111,7 +112,10 @@ export function AcceptInviteForm({
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="password">
-            Nova senha<span className="ml-0.5 text-destructive">*</span>
+            <span>
+              Nova senha
+              <RequiredMark />
+            </span>
           </Label>
           <Input
             id="password"
@@ -127,7 +131,10 @@ export function AcceptInviteForm({
 
         <div className="space-y-1.5">
           <Label htmlFor="confirmPassword">
-            Confirmar nova senha<span className="ml-0.5 text-destructive">*</span>
+            <span>
+              Confirmar nova senha
+              <RequiredMark />
+            </span>
           </Label>
           <Input
             id="confirmPassword"

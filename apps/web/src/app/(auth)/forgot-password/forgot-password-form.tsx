@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
@@ -54,7 +55,10 @@ export function ForgotPasswordForm({ initialEmail }: { initialEmail?: string }) 
     <form onSubmit={submit} noValidate className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="forgot-email">
-          E-mail<span className="ml-0.5 text-destructive">*</span>
+          <span>
+            E-mail
+            <RequiredMark />
+          </span>
         </Label>
         <Input
           id="forgot-email"

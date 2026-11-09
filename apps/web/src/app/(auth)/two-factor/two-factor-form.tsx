@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -118,8 +119,10 @@ export function TwoFactorForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="two-factor-code">
-          {method === "app" ? "Código do aplicativo" : method === "recovery" ? "Código de recuperação" : "Código do e-mail"}
-          <span className="ml-0.5 text-destructive">*</span>
+          <span>
+            {method === "app" ? "Código do aplicativo" : method === "recovery" ? "Código de recuperação" : "Código do e-mail"}
+            <RequiredMark />
+          </span>
         </Label>
         <Input
           id="two-factor-code"

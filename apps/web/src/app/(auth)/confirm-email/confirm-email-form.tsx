@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock } from "lucide-react";
@@ -65,9 +66,9 @@ export function ConfirmEmailForm({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="confirm-new-password">
-              Nova senha
-              <span aria-hidden className="ml-0.5 text-destructive">
-                *
+              <span>
+                Nova senha
+                <RequiredMark />
               </span>
             </Label>
             <Input
@@ -81,9 +82,9 @@ export function ConfirmEmailForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm-repeat-password">
-              Repita a senha
-              <span aria-hidden className="ml-0.5 text-destructive">
-                *
+              <span>
+                Repita a senha
+                <RequiredMark />
               </span>
             </Label>
             <Input

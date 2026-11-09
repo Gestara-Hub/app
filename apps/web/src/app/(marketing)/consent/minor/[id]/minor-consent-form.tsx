@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -185,7 +186,10 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="guardian-name" className="text-xs">
-                Seu Nome Completo (Pai, Mãe ou Tutor)<span className="text-destructive">*</span>
+                <span>
+                  Seu Nome Completo (Pai, Mãe ou Tutor)
+                  <RequiredMark />
+                </span>
               </Label>
               <Input
                 id="guardian-name"

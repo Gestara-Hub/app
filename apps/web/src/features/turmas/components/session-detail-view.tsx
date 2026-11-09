@@ -28,7 +28,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DialogFormFooter } from "@/components/form";
+import { DialogFormFooter, RequiredMark } from "@/components/form";
 import { DialogBody } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
@@ -68,6 +68,7 @@ import {
   StudentRecordsDialog,
   nextClassReminder,
   useClients,
+  useTrialStudents,
 } from "@/features/clients";
 import { StudentGradesDialog } from "@/features/grades";
 import {
@@ -970,6 +971,9 @@ function AddStudentSessionDialog({
   // Cadastro rapido (09/11/2026): quem chegou para a experimental entra so com o
   // nome. O aluno novo ja fica escolhido, como experimental, ate a lista recarregar.
   const [quickOpen, setQuickOpen] = useState(false);
+  // Aluno que ja fez experimental e nao voltou: entra como experimental de novo.
+  const { data: trialStudents } = useTrialStudents(open);
+  const isTrialStudent = (id: string) => (trialStudents ?? []).some((t) => t.studentId === id && t.stage === "trial");
   const [justCreated, setJustCreated] = useState<{ id: string; name: string } | null>(null);
   const candidates = session.packageCandidates;
   const hasPackages = candidates.length > 0;
@@ -999,6 +1003,7 @@ function AddStudentSessionDialog({
     setStudentId(id);
     setStudentError(null);
     if (id && isCandidate(id) && kind === "dropin") setKind("package");
+    else if (id && isTrialStudent(id)) setKind("trial");
   };
   const chooseKind = (next: ReservationKind) => {
     setKind(next);
@@ -1044,7 +1049,10 @@ function AddStudentSessionDialog({
           <DialogBody className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="session-add-student">
-                Aluno<span className="ml-0.5 text-destructive">*</span>
+                <span>
+                  Aluno
+                  <RequiredMark />
+                </span>
               </Label>
               <Combobox
                 id="session-add-student"
@@ -1073,7 +1081,10 @@ function AddStudentSessionDialog({
 
             <div className="space-y-1.5">
               <Label>
-                Tipo de inscrição<span className="ml-0.5 text-destructive">*</span>
+                <span>
+                  Tipo de inscrição
+                  <RequiredMark />
+                </span>
               </Label>
               <div className="space-y-2">
                 {session.allowDropin ? (

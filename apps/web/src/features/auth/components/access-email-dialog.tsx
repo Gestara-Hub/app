@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,9 +20,9 @@ type Field = "newEmail" | "password" | "code";
 function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
     <Label htmlFor={htmlFor}>
-      {children}
-      <span aria-hidden className="ml-0.5 text-destructive">
-        *
+      <span>
+        {children}
+        <RequiredMark />
       </span>
     </Label>
   );

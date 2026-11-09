@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
@@ -171,7 +172,10 @@ export function LoginForm({
 
         <div className="space-y-1.5">
           <Label htmlFor="signup-new-password">
-            Senha<span className="text-destructive ml-0.5">*</span>
+            <span>
+              Senha
+              <RequiredMark />
+            </span>
           </Label>
           <div className="relative">
             <Input
@@ -202,7 +206,10 @@ export function LoginForm({
 
         <div className="space-y-1.5">
           <Label htmlFor="signup-confirm-password">
-            Confirmar senha<span className="text-destructive ml-0.5">*</span>
+            <span>
+              Confirmar senha
+              <RequiredMark />
+            </span>
           </Label>
           <div className="relative">
             <Input
@@ -501,7 +508,10 @@ export function LoginForm({
       <form onSubmit={handlePasswordSignIn} noValidate className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="login-email">
-            E-mail<span aria-hidden className="text-destructive ml-0.5">*</span>
+            <span>
+              E-mail
+              <RequiredMark />
+            </span>
           </Label>
           <Input
             id="login-email"
@@ -521,7 +531,10 @@ export function LoginForm({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="login-password">
-              Senha<span aria-hidden className="text-destructive ml-0.5">*</span>
+              <span>
+                Senha
+                <RequiredMark />
+              </span>
             </Label>
             <Link
               href={loginEmail.trim() ? `/forgot-password?email=${encodeURIComponent(loginEmail.trim())}` : "/forgot-password"}

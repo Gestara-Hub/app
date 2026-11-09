@@ -23,6 +23,7 @@ import {
   SelectField,
   SwitchField,
   TextArea,
+  RequiredMark,
 } from "@/components/form";
 import {
   AlertDialog,
@@ -309,7 +310,10 @@ function EntryForm({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="categoryId">
-                Categoria<span aria-hidden className="ml-0.5 text-destructive">*</span>
+                <span>
+                  Categoria
+                  <RequiredMark />
+                </span>
               </Label>
               {/* Novo lancamento: pulsa ao abrir (2x, depois da animacao do modal)
                   para lembrar que da para criar a categoria aqui mesmo, ate o

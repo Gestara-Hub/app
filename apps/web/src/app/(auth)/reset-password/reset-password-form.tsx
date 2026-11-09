@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
@@ -54,7 +55,10 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
 
       <div className="space-y-1.5">
         <Label htmlFor="reset-password">
-          Nova senha<span className="ml-0.5 text-destructive">*</span>
+          <span>
+            Nova senha
+            <RequiredMark />
+          </span>
         </Label>
         <div className="relative">
           <Input
@@ -85,7 +89,10 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
 
       <div className="space-y-1.5">
         <Label htmlFor="reset-confirm">
-          Confirmar nova senha<span className="ml-0.5 text-destructive">*</span>
+          <span>
+            Confirmar nova senha
+            <RequiredMark />
+          </span>
         </Label>
         <Input
           id="reset-confirm"

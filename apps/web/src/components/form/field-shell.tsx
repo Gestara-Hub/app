@@ -37,6 +37,19 @@ export function fieldAria(id: string, error?: string, hint?: string) {
  * hint/erro abaixo. Erro tem precedencia sobre hint. O texto do erro vem do
  * schema Zod (doc 10).
  */
+/**
+ * Asterisco do campo obrigatorio ("Nome*", doc 08 §2): colado no texto, fora do
+ * nome acessivel. Dentro de um `Label` (flex com gap), fica no MESMO span do
+ * texto, senao o gap do flex afasta o asterisco: `<Label><span>Nome<RequiredMark /></span></Label>`.
+ */
+export function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-destructive" aria-hidden>
+      *
+    </span>
+  );
+}
+
 export function FieldShell({
   id,
   label,
@@ -71,11 +84,7 @@ export function FieldShell({
           <Label htmlFor={id} className="text-sm">
             <span>
               {label}
-              {required ? (
-                <span className="ml-0.5 text-destructive" aria-hidden>
-                  *
-                </span>
-              ) : null}
+              {required ? <RequiredMark /> : null}
             </span>
           </Label>
           {labelExtra}

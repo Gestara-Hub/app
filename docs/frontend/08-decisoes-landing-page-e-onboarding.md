@@ -46,7 +46,7 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
    - NUNCA renderizar duas listas que mostram os mesmos dados na mesma tela (ex.: no setup de modalidades, os chips interativos já mostram a seleção; não deve existir uma segunda caixa abaixo repetindo "Modalidades selecionadas").
 5. **Tipografia e Rótulos Naturais**:
    - Labels de formulários devem ser concisas (ex.: usar **`Nome*`** em vez de *"Nome da sua academia, estúdio ou escola\*"*).
-   - O asterisco de obrigatório deve ficar tipograficamente colado ao texto (**`Nome*`**), sem `gap` de flexbox afastando o caractere.
+   - O asterisco de obrigatório deve ficar tipograficamente colado ao texto (**`Nome*`**), sem `gap` de flexbox afastando o caractere. Nos campos do `FieldShell` isso é automático (`required`). Em `Label` escrito à mão (09/11/2026), use `RequiredMark` de `@/components/form` **dentro do mesmo `span` do texto**: `<Label><span>Nome<RequiredMark /></span></Label>`. O `Label` é flex com `gap-2`: asterisco como filho direto fica a 8 px do texto.
 
 ---
 

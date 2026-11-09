@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Copy, Download, KeyRound, Loader2, Mail, Smartphone } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -66,8 +67,10 @@ function CodeField({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>
-        {label}
-        <span className="ml-0.5 text-destructive">*</span>
+        <span>
+          {label}
+          <RequiredMark />
+        </span>
       </Label>
       <Input
         id={id}
@@ -107,8 +110,10 @@ function RecoveryField({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>
-        Código de recuperação
-        <span className="ml-0.5 text-destructive">*</span>
+        <span>
+          Código de recuperação
+          <RequiredMark />
+        </span>
       </Label>
       <Input
         id={id}

@@ -30,9 +30,11 @@ function ExportForm({ spaceId }: { spaceId: string }) {
       <DrawerBody>
         <div className="space-y-1.5">
           <Label htmlFor="export-reason" className="text-sm">
-            Motivo (fica registrado)
-            <span aria-hidden className="ml-0.5 text-destructive">
-              *
+            <span>
+              Motivo (fica registrado)
+              <span aria-hidden className="ml-0.5 text-destructive">
+                *
+              </span>
             </span>
           </Label>
           <Textarea id="export-reason" name="reason" rows={3} required minLength={5} maxLength={300} className="text-base md:text-sm" />

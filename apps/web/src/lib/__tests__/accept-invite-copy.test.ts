@@ -19,7 +19,8 @@ describe("tela do convite no padrão das telas de entrada (achado 15)", () => {
   });
 
   it("campos com asterisco vermelho e botão de altura padrão (36 px)", () => {
-    expect(form).toContain('<span className="ml-0.5 text-destructive">*</span>');
+    // Asterisco colado ao texto (RequiredMark dentro do span do rotulo, doc 08).
+    expect(form).toContain('<RequiredMark />');
     expect(form).not.toMatch(/Button[^>]*h-10/);
   });
 });

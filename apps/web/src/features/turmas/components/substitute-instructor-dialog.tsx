@@ -1,5 +1,6 @@
 "use client";
 
+import { RequiredMark } from "@/components/form";
 import { useTeamWords } from "@/features/settings";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
@@ -124,7 +125,10 @@ function SubstituteInstructorForm({
 
           <div className="space-y-1.5">
             <Label htmlFor="substitute-instructor">
-              {team.title} substituto<span className="ml-0.5 text-destructive">*</span>
+              <span>
+                {team.title} substituto
+                <RequiredMark />
+              </span>
             </Label>
             <Select
               value={instructorId}
