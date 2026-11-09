@@ -25,11 +25,11 @@ const addressSchema = z.object({
  */
 export const clientFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome."),
+  // Opcional (09/11/2026): quem entra como experimental pode ficar so com o nome.
   phone: z
     .string()
     .trim()
-    .min(1, "Informe o telefone.")
-    .refine((v) => isPossiblePhone(v), {
+    .refine((v) => !v || isPossiblePhone(v), {
       message: "Informe um telefone válido.",
     }),
   email: z

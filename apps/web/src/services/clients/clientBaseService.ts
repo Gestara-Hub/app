@@ -106,7 +106,7 @@ export const clientBaseService = {
         id: newId(),
         organizationId: store.organization.id,
         name: payload.name.trim(),
-        phone: payload.phone.trim(),
+        phone: payload.phone?.trim() || undefined,
         email: payload.email?.trim() || undefined,
         birthDate: payload.birthDate || undefined,
         cpf: cpfDigits(payload.cpf) || undefined,

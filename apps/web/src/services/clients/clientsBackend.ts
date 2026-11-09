@@ -16,7 +16,7 @@ function mapRowToClient(row: Record<string, unknown>): Client {
     id: String(row.id),
     organizationId: String(row.organization_id),
     name: String(row.name),
-    phone: String(row.phone),
+    phone: row.phone ? String(row.phone) : undefined,
     email: row.email ? String(row.email) : undefined,
     birthDate: row.birth_date ? String(row.birth_date) : undefined,
     cpf: row.cpf ? String(row.cpf) : undefined,

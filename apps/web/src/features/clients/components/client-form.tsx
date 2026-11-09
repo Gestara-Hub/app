@@ -1002,9 +1002,10 @@ export function ClientForm({
 
   const onSubmit = async (values: ClientFormValues) => {
     if (!isEdit) {
+      // Sem telefone (experimental so com o nome) nao ha o que comparar.
       const phone = whatsappDigits(values.phone) ?? values.phone.replace(/\D/g, "");
       const same = (existingClients ?? []).find(
-        (c) => phone && (whatsappDigits(c.phone) ?? c.phone.replace(/\D/g, "")) === phone,
+        (c) => phone && c.phone && (whatsappDigits(c.phone) ?? c.phone.replace(/\D/g, "")) === phone,
       );
       if (same) {
         const sameName = normalizeText(same.name) === normalizeText(values.name);
@@ -1395,7 +1396,7 @@ export function ClientForm({
             <InputPhone<ClientFormValues>
               name="phone"
               label="Telefone (WhatsApp)"
-              required
+              hint="Sem ele, nada de WhatsApp para este aluno."
               disabled={pending}
             />
             <DateField<ClientFormValues>

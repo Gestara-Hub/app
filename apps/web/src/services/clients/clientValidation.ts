@@ -24,11 +24,8 @@ export function validateClient(
       fields.push({ field: "name", message: `Informe o nome do ${clientNoun()}.` });
     }
   }
-  if (!partial || has("phone")) {
-    if (!payload.phone || !payload.phone.trim()) {
-      fields.push({ field: "phone", message: "Informe o telefone." });
-    }
-  }
+  // Telefone opcional (09/11/2026): o aluno experimental entra so com o nome;
+  // a ficha cobra o que falta ("Falta telefone · Completar cadastro").
   if (has("email") && payload.email && !EMAIL_RE.test(payload.email)) {
     fields.push({ field: "email", message: "Informe um e-mail válido." });
   }

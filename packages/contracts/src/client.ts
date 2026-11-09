@@ -189,7 +189,8 @@ export interface Client {
   id: Id;
   organizationId: Id;
   name: string;
-  phone: string;
+  /** Opcional desde 09/11/2026 (aluno experimental so com o nome); sem ele, nada de WhatsApp ate completar. */
+  phone?: string;
   email?: string;
   /** Aniversariantes do mes/dia (relatorio, avisos, mensagem de parabens). */
   birthDate?: DateISO;

@@ -672,7 +672,7 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "phone": {
         "type": "text",
-        "nullable": false,
+        "nullable": true,
         "hasDefault": false
       },
       "email": {
