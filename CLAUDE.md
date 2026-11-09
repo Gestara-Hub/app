@@ -122,7 +122,7 @@ pnpm e2e                                 # all browser flows (Playwright, one at
 
 ---
 
-## 6. Git Workflow (USER RULE, 2026-10-30)
-- **Commit on your own** when a piece of work is done and the checks of §5 pass: small commits, one subject each, in the repo message style (`feat(area): ...`). Tell the user the hash.
+## 6. Git Workflow (USER RULE, 2026-11-09)
+- **Never commit on your own.** Make the change, run the checks of §5 and leave the tree dirty; the user asks for the commit. When asked, group the pending work in small commits, one subject each, in the repo message style (`feat(area): ...`), and tell the user the hashes. (Until 2026-11-09 commits were autonomous.)
 - **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
 - Work happens on `main` (`painel-admin` and the overnight branch were merged and deleted on 2026-10-30).

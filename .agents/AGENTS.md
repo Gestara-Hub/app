@@ -66,7 +66,7 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 
 ## 5. Git Workflow (USER RULE)
 - **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
-- **Commit:** Claude Code commits on its own after the checks pass (user rule of 30/10/2026, `CLAUDE.md` §6). Other agents commit only when the user asks: leave changes in the working tree and tell the user what changed.
+- **Commit:** every agent commits only when the user asks (user rule of 09/11/2026, `CLAUDE.md` §6): leave changes in the working tree and tell the user what changed. When asked, small commits, one subject each.
 
 ---
 
