@@ -128,7 +128,8 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
   it("validação do serviço volta como erro de campo; professor não cadastra aluno", async () => {
     const invalid = await serviceAction("clients.create", [{ name: "", phone: "", status: "active" }]);
     expect(invalid.ok).toBe(false);
-    if (!invalid.ok) expect(invalid.error.fields?.map((f) => f.field)).toEqual(["name", "phone"]);
+    // Telefone e opcional desde 09/11/2026 (aluno experimental so com o nome).
+    if (!invalid.ok) expect(invalid.error.fields?.map((f) => f.field)).toEqual(["name"]);
 
     await signInAs(await tenant.addUser("professional"));
     const denied = await serviceAction("clients.create", [{ name: "X", phone: "1", status: "active" }]);
