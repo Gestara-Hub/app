@@ -16,6 +16,7 @@ import {
   CalendarClock,
   AlertTriangle,
   CheckCircle2,
+  Circle,
   FileText,
   MapPin,
   MessageCircle,
@@ -952,17 +953,32 @@ export function ClientForm({
       ? guardiansUserToggled
       : isMinor || (client?.guardians?.length ?? 0) > 0;
 
-  const scrollToGuardians = useCallback(() => {
-    setGuardiansUserToggled(true);
-    if (guardianFields.length === 0) {
-      appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: true });
-    }
-    setTimeout(() => {
-      guardiansSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-      const firstInput = guardiansSectionRef.current?.querySelector<HTMLInputElement>("input[name*='name']");
-      firstInput?.focus();
-    }, 100);
-  }, [guardianFields.length, appendGuardian]);
+  // Checklist do menor de idade: cada item muda de estado em vez de trocar o
+  // texto do aviso, para o usuario ver o passo que acabou de resolver.
+  const minorSteps = isMinor
+    ? [
+        { key: "name" as const, label: "Responsável cadastrado", action: "Cadastrar responsável", done: guardianFields.length > 0 },
+        ...(isProOrScale
+          ? [{ key: "cpf" as const, label: "CPF do responsável (pagamento online)", action: "Adicionar CPF", done: hasGuardianWithCpf }]
+          : []),
+      ]
+    : [];
+  const minorPending = minorSteps.filter((step) => !step.done);
+
+  const scrollToGuardians = useCallback(
+    (field: "name" | "cpf" = "name") => {
+      setGuardiansUserToggled(true);
+      if (guardianFields.length === 0) {
+        appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: true });
+      }
+      setTimeout(() => {
+        guardiansSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+        const input = guardiansSectionRef.current?.querySelector<HTMLInputElement>(`input[name*='${field}']`);
+        input?.focus();
+      }, 100);
+    },
+    [guardianFields.length, appendGuardian],
+  );
 
   const birthDateHint =
     age === null
@@ -1339,6 +1355,198 @@ export function ClientForm({
     }
   };
 
+  // Responsáveis: fica logo abaixo do aviso de menor de idade; senão, depois do plano.
+  const guardiansSection = isClasses || isMinor ? (
+    <div ref={guardiansSectionRef} className="scroll-mt-4">
+      <CollapsibleSection
+        title={isMinor ? "Responsáveis (aluno menor de idade)" : "Responsáveis (opcional)"}
+        icon={<Users className="h-4 w-4" />}
+        badge={
+          guardiansBadge ? (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                guardianFields.length === 0 && isMinor
+                  ? "border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : "bg-primary/10 text-primary",
+              )}
+            >
+              {guardiansBadge}
+            </span>
+          ) : undefined
+        }
+        open={guardiansOpen}
+        onOpenChange={setGuardiansUserToggled}
+      >
+      <div className="space-y-4">
+        {age !== null && age < 18 ? (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="text-xs font-semibold text-foreground">
+                  Consentimento de Menor (Art. 14 da LGPD)
+                </h4>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Para alunos menores de 18 anos, a LGPD orienta a coleta de consentimento de ao menos um dos pais ou responsável legal. A ausência de aceite não impede a realização de aulas nem a emissão de cobranças.
+                </p>
+              </div>
+            </div>
+
+            {client?.minorConsentStatus === "confirmed_whatsapp" ? (
+              <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>
+                  Autorizado eletronicamente pelo responsável via WhatsApp
+                  {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
+                </span>
+              </div>
+            ) : client?.minorConsentStatus === "confirmed_paper" ? (
+              <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>
+                  Termo físico presencial arquivado na unidade
+                  {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
+                </span>
+              </div>
+            ) : (
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...form.register("hasPaperConsent")}
+                    className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <div className="text-xs">
+                    <span className="font-medium text-foreground">
+                      O responsável já assinou o termo físico presencialmente
+                    </span>
+                    <p className="text-muted-foreground text-[11px] leading-relaxed">
+                      Marque se você já coletou o termo impresso assinado. Caso contrário, você poderá enviar o link de autorização por WhatsApp pela ficha do aluno após salvar.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {guardianFields.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Pais, avós ou outra pessoa para contato. Recomendado para menores de idade.
+          </p>
+        ) : null}
+
+      {guardianFields.map((field, index) => (
+        <div
+          key={field.id}
+          className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">
+              Responsável {index + 1}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => removeGuardian(index)}
+              disabled={pending}
+              aria-label={`Remover responsável ${index + 1}`}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <InputText<ClientFormValues>
+                name={`guardians.${index}.name`}
+                label="Nome"
+                placeholder="Informe o nome do responsável"
+                required
+                disabled={pending}
+              />
+              <InputText<ClientFormValues>
+                name={`guardians.${index}.relationship`}
+                label="Parentesco"
+                placeholder="Informe o parentesco (opcional)"
+                disabled={pending}
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {GUARDIAN_RELATIONSHIPS.map((relationship) => (
+                <button
+                  key={relationship}
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    form.setValue(`guardians.${index}.relationship`, relationship, {
+                      shouldDirty: true,
+                    })
+                  }
+                  className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  + {relationship}
+                </button>
+              ))}
+            </div>
+          </div>
+          <InputPhone<ClientFormValues>
+            name={`guardians.${index}.phone`}
+            label="Telefone (WhatsApp)"
+            disabled={pending}
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <InputText<ClientFormValues>
+              name={`guardians.${index}.email`}
+              type="email"
+              label="E-mail"
+              placeholder="Informe o e-mail (opcional)"
+              disabled={pending}
+            />
+            <InputCpf<ClientFormValues>
+              name={`guardians.${index}.cpf`}
+              hint={
+                isProOrScale
+                  ? "Necessário para o pagamento online do aluno."
+                  : "Usado no pagamento online do aluno menor."
+              }
+              disabled={pending}
+            />
+          </div>
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+            <Checkbox
+              checked={Boolean(guardianValues?.[index]?.financial)}
+              onCheckedChange={(checked) => setFinancialGuardian(index, checked === true)}
+              disabled={pending}
+              className="mt-0.5"
+            />
+            <span className="min-w-0">
+              <span className="font-medium text-foreground">Responsável financeiro</span>
+              <span className="block text-xs text-muted-foreground">
+                Paga as cobranças online do aluno menor de idade.
+              </span>
+            </span>
+          </label>
+        </div>
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() =>
+          appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: false })
+        }
+        disabled={pending}
+      >
+        <Plus className="size-4" />
+        Adicionar responsável
+      </Button>
+    </div>
+  </CollapsibleSection>
+  </div>
+  ) : null;
   const FormBodyWrapper = isPage ? "div" : DialogBody;
 
   return (
@@ -1409,66 +1617,68 @@ export function ClientForm({
           </div>
 
           {isMinor ? (
-            <div
-              role="alert"
-              className={cn(
-                "flex flex-col gap-3 rounded-lg border p-3.5 text-xs transition-colors sm:flex-row sm:items-center sm:justify-between",
-                guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf)
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
-                  : "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200",
-              )}
-            >
-              <div className="flex items-start gap-2.5 min-w-0">
-                {guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf) ? (
-                  <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                ) : (
-                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+            <>
+              <div
+                role="status"
+                className={cn(
+                  "flex flex-col gap-3 rounded-lg border p-3.5 text-xs transition-colors sm:flex-row sm:items-center sm:justify-between",
+                  minorPending.length > 0
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                    : "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200",
                 )}
-                <div className="space-y-0.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">
-                      Aluno menor de idade ({ageLabel(age)})
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border",
-                        guardianFields.length === 0
-                          ? "border-amber-500/30 bg-amber-500/20 text-amber-800 dark:text-amber-300"
-                          : isProOrScale && !hasGuardianWithCpf
+              >
+                <div className="flex min-w-0 items-start gap-2.5">
+                  {minorPending.length > 0 ? (
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  ) : (
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-foreground">Aluno menor de idade ({ageLabel(age)})</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                          minorPending.length > 0
                             ? "border-amber-500/30 bg-amber-500/20 text-amber-800 dark:text-amber-300"
                             : "border-emerald-500/30 bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
-                      )}
-                    >
-                      {guardianFields.length === 0
-                        ? "Responsável pendente"
-                        : isProOrScale && !hasGuardianWithCpf
-                          ? "Falta CPF do responsável"
+                        )}
+                      >
+                        {minorPending.length > 0
+                          ? `${minorPending.length} de ${minorSteps.length} ${minorPending.length === 1 ? "pendente" : "pendentes"}`
                           : "Responsável vinculado"}
-                    </span>
+                      </span>
+                    </div>
+                    <ul className="space-y-1">
+                      {minorSteps.map((step) => (
+                        <li key={step.key} className="flex items-center gap-2 text-[11px] leading-relaxed">
+                          {step.done ? (
+                            <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Circle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                          )}
+                          <span className={step.done ? "text-muted-foreground" : "text-foreground"}>{step.label}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    {guardianFields.length === 0
-                      ? "Para recebimento online automático no WhatsApp (Pix/cartão), avisos e autorização LGPD, é necessário cadastrar o responsável com CPF."
-                      : isProOrScale && !hasGuardianWithCpf
-                        ? `${guardianFields.length} ${guardianFields.length === 1 ? "responsável cadastrado" : "responsáveis cadastrados"}, mas sem CPF válido. O Banco Central e o gateway exigem o CPF do responsável financeiro para gerar o link de pagamento Pix automático no WhatsApp.`
-                        : `${guardianFields.length} ${guardianFields.length === 1 ? "responsável cadastrado" : "responsáveis cadastrados"}. As cobranças online usarão o CPF do responsável financeiro.`}
-                  </p>
                 </div>
-              </div>
 
-              {guardianFields.length === 0 || (isProOrScale && !hasGuardianWithCpf) ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={scrollToGuardians}
-                  className="h-8 shrink-0 gap-1.5 border-amber-500/40 bg-background px-3 text-xs font-medium text-foreground hover:bg-amber-500/20 hover:text-foreground cursor-pointer"
-                >
-                  <Users className="size-3.5" />
-                  {guardianFields.length === 0 ? "Cadastrar responsável" : "Adicionar CPF do responsável"}
-                </Button>
-              ) : null}
-            </div>
+                {minorPending[0] ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => scrollToGuardians(minorPending[0].key)}
+                    className="h-8 shrink-0 cursor-pointer gap-1.5 border-amber-500/40 bg-background px-3 text-xs font-medium text-foreground hover:bg-amber-500/20 hover:text-foreground"
+                  >
+                    <Users className="size-3.5" />
+                    {minorPending[0].action}
+                  </Button>
+                ) : null}
+              </div>
+              {guardiansSection}
+            </>
           ) : null}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1503,9 +1713,7 @@ export function ClientForm({
                 isMinor
                   ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
                   : isProOrScale
-                    ? hasValidCpf
-                      ? "As cobranças dele saem com link para pagar por Pix ou cartão."
-                      : undefined
+                    ? undefined
                     : "Usado no pagamento online (Pix e cartão)."
               }
               disabled={pending}
@@ -2002,198 +2210,7 @@ export function ClientForm({
           </div>
         ) : null}
 
-        {/* Responsáveis (opcional, só turmas ou menor de idade): recolhido por padrão */}
-        {isClasses || (age !== null && age < 18) ? (
-          <div ref={guardiansSectionRef} className="scroll-mt-4">
-            <CollapsibleSection
-              title={isMinor ? "Responsáveis (aluno menor de idade)" : "Responsáveis (opcional)"}
-              icon={<Users className="h-4 w-4" />}
-              badge={
-                guardiansBadge ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                      guardianFields.length === 0 && isMinor
-                        ? "border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        : "bg-primary/10 text-primary",
-                    )}
-                  >
-                    {guardiansBadge}
-                  </span>
-                ) : undefined
-              }
-              open={guardiansOpen}
-              onOpenChange={setGuardiansUserToggled}
-            >
-            <div className="space-y-4">
-              {age !== null && age < 18 ? (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-semibold text-foreground">
-                        Consentimento de Menor (Art. 14 da LGPD)
-                      </h4>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
-                        Para alunos menores de 18 anos, a LGPD orienta a coleta de consentimento de ao menos um dos pais ou responsável legal. A ausência de aceite não impede a realização de aulas nem a emissão de cobranças.
-                      </p>
-                    </div>
-                  </div>
-
-                  {client?.minorConsentStatus === "confirmed_whatsapp" ? (
-                    <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>
-                        Autorizado eletronicamente pelo responsável via WhatsApp
-                        {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
-                      </span>
-                    </div>
-                  ) : client?.minorConsentStatus === "confirmed_paper" ? (
-                    <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>
-                        Termo físico presencial arquivado na unidade
-                        {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="pt-1">
-                      <label className="flex items-start gap-2.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          {...form.register("hasPaperConsent")}
-                          className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4"
-                        />
-                        <div className="text-xs">
-                          <span className="font-medium text-foreground">
-                            O responsável já assinou o termo físico presencialmente
-                          </span>
-                          <p className="text-muted-foreground text-[11px] leading-relaxed">
-                            Marque se você já coletou o termo impresso assinado. Caso contrário, você poderá enviar o link de autorização por WhatsApp pela ficha do aluno após salvar.
-                          </p>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {guardianFields.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Pais, avós ou outra pessoa para contato. Recomendado para menores de idade.
-                </p>
-              ) : null}
-
-            {guardianFields.map((field, index) => (
-              <div
-                key={field.id}
-                className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">
-                    Responsável {index + 1}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => removeGuardian(index)}
-                    disabled={pending}
-                    aria-label={`Remover responsável ${index + 1}`}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <InputText<ClientFormValues>
-                      name={`guardians.${index}.name`}
-                      label="Nome"
-                      placeholder="Informe o nome do responsável"
-                      required
-                      disabled={pending}
-                    />
-                    <InputText<ClientFormValues>
-                      name={`guardians.${index}.relationship`}
-                      label="Parentesco"
-                      placeholder="Informe o parentesco (opcional)"
-                      disabled={pending}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {GUARDIAN_RELATIONSHIPS.map((relationship) => (
-                      <button
-                        key={relationship}
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          form.setValue(`guardians.${index}.relationship`, relationship, {
-                            shouldDirty: true,
-                          })
-                        }
-                        className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        + {relationship}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <InputPhone<ClientFormValues>
-                  name={`guardians.${index}.phone`}
-                  label="Telefone (WhatsApp)"
-                  disabled={pending}
-                />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <InputText<ClientFormValues>
-                    name={`guardians.${index}.email`}
-                    type="email"
-                    label="E-mail"
-                    placeholder="Informe o e-mail (opcional)"
-                    disabled={pending}
-                  />
-                  <InputCpf<ClientFormValues>
-                    name={`guardians.${index}.cpf`}
-                    hint={
-                      isProOrScale
-                        ? "Necessário para o pagamento online do aluno."
-                        : "Usado no pagamento online do aluno menor."
-                    }
-                    disabled={pending}
-                  />
-                </div>
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-                  <Checkbox
-                    checked={Boolean(guardianValues?.[index]?.financial)}
-                    onCheckedChange={(checked) => setFinancialGuardian(index, checked === true)}
-                    disabled={pending}
-                    className="mt-0.5"
-                  />
-                  <span className="min-w-0">
-                    <span className="font-medium text-foreground">Responsável financeiro</span>
-                    <span className="block text-xs text-muted-foreground">
-                      Paga as cobranças online do aluno menor de idade.
-                    </span>
-                  </span>
-                </label>
-              </div>
-            ))}
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: false })
-              }
-              disabled={pending}
-            >
-              <Plus className="size-4" />
-              Adicionar responsável
-            </Button>
-          </div>
-        </CollapsibleSection>
-        </div>
-        ) : null}
+        {!isMinor ? guardiansSection : null}
 
         {/* Bloco 3: Endereço Estruturado (Opcional) */}
         <CollapsibleSection
