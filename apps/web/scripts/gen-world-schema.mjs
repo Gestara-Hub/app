@@ -19,7 +19,8 @@ const TABLES = [
   "organizations", "units", "users", "roles", "categories", "professionals", "clients", "plans",
   "lesson_packages", "student_packages", "charges", "class_groups", "enrollments", "attendances",
   "waitlist", "class_reservations", "class_session_overrides", "assessments", "student_measurements",
-  "issued_certificates", "person_documents", "financial_categories",
+  "issued_certificates", "person_documents", "events", "event_sessions", "event_registrations", "event_attendances",
+  "financial_categories",
   "financial_recurrences", "financial_entries", "teacher_pay_rules", "teacher_payouts", "online_payments",
   "whatsapp_connections", "message_templates", "message_logs", "audit_logs",
 ];

@@ -67,6 +67,18 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       ...all(["markAttendance", "markManyAttendance", "clearAttendance"], MARK_ATTENDANCE),
     },
   },
+  // Eventos e seminarios (doc product/29): gerir pede events:manage; inscrever
+  // e promover usam enrollment:manage e a chamada do dia, attendance:mark.
+  events: {
+    load: async () => (await import("../events")).eventsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../events/eventSlices")).eventSlices,
+    permissions: {
+      ...all(["list", "getById", "listSessions", "getSessionDetail", "listRegistrations"], ["events:view"]),
+      ...all(["create", "update", "cancelSession", "cancelEvent"], ["events:manage"]),
+      ...all(["register", "promoteFromWaitlist", "cancelRegistration"], MANAGE_ENROLLMENT),
+      ...all(["markEventAttendance", "markManyEventAttendance", "clearEventAttendance"], MARK_ATTENDANCE),
+    },
+  },
   billing: {
     load: async () => (await import("../billing")).billingServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../billing/billingSlices")).billingSlices,

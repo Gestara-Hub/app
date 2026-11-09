@@ -39,6 +39,13 @@ const CLASS_OPS = [
   "progression:manage",
 ] as const satisfies readonly Permission[];
 
+// Eventos e seminarios (doc product/29): ver e gerir eventos. Inscrever usa
+// `enrollment:manage` e a chamada do dia usa `attendance:mark`, como nas turmas.
+const EVENT_OPS = [
+  "events:view",
+  "events:manage",
+] as const satisfies readonly Permission[];
+
 // Financeiro do M3 (planos + mensalidades) — territorio de owner/gerente.
 const BILLING_OPS = [
   "billing:view",
@@ -75,6 +82,7 @@ const ALL_PERMISSIONS = [
   ...OPERATIONAL_VIEWS,
   ...APPOINTMENT_OPS,
   ...CLASS_OPS,
+  ...EVENT_OPS,
   ...BILLING_OPS,
   ...FINANCE_OPS,
   ...COMMUNICATION_OPS,
@@ -120,6 +128,7 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     // + usuario Atendente/Profissional) e limitado no read-model do service.
     "audit:view",
     ...CLASS_OPS,
+    ...EVENT_OPS,
     ...BILLING_OPS,
     ...FINANCE_OPS,
     ...COMMUNICATION_OPS,
@@ -133,6 +142,8 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "classes:view",
     "enrollment:manage",
     "attendance:mark",
+    // Eventos: ve e inscreve (enrollment:manage), sem criar ou editar eventos.
+    "events:view",
     // Financeiro: ve mensalidades, mas nao gerencia planos/cobrancas.
     "billing:view",
     // Comunicacao: ve o historico e manda mensagens aos alunos (decisao de
@@ -153,6 +164,8 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "attendance:mark",
     "grades:manage",
     "progression:manage",
+    // Eventos que conduz (o service escopa): ve e faz a chamada do dia.
+    "events:view",
   ],
 };
 

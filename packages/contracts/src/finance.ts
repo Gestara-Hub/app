@@ -30,6 +30,8 @@ export type FinancialSystemCategoryKey =
   | "extras"
   | "courses"
   | "packages"
+  /** Inscricoes em eventos e seminarios (doc product/29; virou fonte automatica em 09/11/2026). */
+  | "events"
   | "teachers"
   /** Taxas do pagamento online que ficaram com o espaco (saida automatica, 01/11/2026). */
   | "online_fees";
@@ -77,6 +79,8 @@ export interface FinancialEntry {
   notes?: string;
   /** Comprovantes, notas e boletos (entrada ou saida). */
   attachments?: FileAttachment[];
+  /** Lancamento de um evento (cache do convidado, passagem): aparece no financeiro do evento tambem. */
+  eventId?: Id;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

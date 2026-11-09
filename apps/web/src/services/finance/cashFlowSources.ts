@@ -53,6 +53,7 @@ export const CHARGE_CATEGORY_KEY: Record<ChargeKind, FinancialSystemCategoryKey>
   extra: "extras",
   course: "courses",
   package: "packages",
+  event: "events",
 };
 
 export function chargeCategoryId(kind: ChargeKind): Id {

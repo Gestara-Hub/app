@@ -31,3 +31,4 @@ export * from "./preferences";
 export * from "./legal";
 export * from "./document";
 export * from "./person-document";
+export * from "./event";

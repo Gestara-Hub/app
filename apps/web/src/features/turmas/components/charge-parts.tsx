@@ -404,6 +404,7 @@ export const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
   extra: "Cobranças avulsas",
   course: "Cursos",
   package: "Pacotes",
+  event: "Eventos",
 };
 
 /** Filtro de situacao da lista: "open" (A receber), status individuais, "other" (Isentas e encerradas) e "replaced". */

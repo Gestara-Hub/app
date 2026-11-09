@@ -43,7 +43,8 @@ export interface PlanFilter {
  * or course (installment of a closed-price course, created at enrollment)
  * or package (installment of a lesson package sold to the student).
  */
-export type ChargeKind = "membership" | "dropin" | "extra" | "course" | "package";
+/** `event`: inscricao em evento ou seminario (doc product/29). */
+export type ChargeKind = "membership" | "dropin" | "extra" | "course" | "package" | "event";
 /** `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso. */
 export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
@@ -95,6 +96,9 @@ export interface Charge {
   enrollmentId?: Id;
   /** Package installment: the student package that created it. */
   studentPackageId?: Id;
+  /** Event (doc product/29): the event and the registration that created it. Per-day charge: `sessionId` = the event day. */
+  eventId?: Id;
+  eventRegistrationId?: Id;
   /** Position in the competence (membership) or installment number (extra/course/package, "2 de 3"). */
   cycleIndex?: number;
   cycleTotal?: number;

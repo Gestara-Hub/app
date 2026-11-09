@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Decidido (09/11/2026; implementação por fases, nada codado ainda) · Código: a criar em `packages/contracts/src/event.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events` · Testes: a escrever (`services/events/__tests__`, e2e `events`)
+Data: 09/11/2026 · Status: Decidido (fase 1 feita em 09/11/2026; fases 2 a 5 por fazer) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, migração `20261109000091_events.sql`; a criar: `apps/web/src/features/events`, rotas `app/(app)/events` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -129,7 +129,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 
 | Fase | Entrega | Verificação |
 | --- | --- | --- |
-| 1. Base | Contrato, migração (4 tabelas, `Charge.kind` event + `eventId`, `FinanceEntry.eventId`), `services/events` com escopo e permissões, slices no mundo, testes Vitest e db | `pnpm test`, db tests da área |
+| 1. Base (**feita 09/11/2026**) | Contrato, migração (4 tabelas, `Charge.kind` event + `eventId`, `FinanceEntry.eventId`), `services/events` com escopo e permissões, slices no mundo, testes Vitest e db | `pnpm test`, db tests da área |
 | 2. Telas | Lista, formulário, detalhe com abas, dia do evento com chamada, nav e RBAC | typecheck, lint, smoke manual |
 | 3. Cobrança e financeiro | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
 | 4. Calendário e Painel | Sessões de evento no calendário com cor própria e filtro, card no Painel, lembrete "evento amanhã" no sino | manual |
@@ -137,6 +137,21 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | 6. Depois | Inscrição pública por link | nova proposta |
 
 Cada fase é uma leva de commits pequenos, um assunto cada.
+
+## Como ficou a fase 1 (09/11/2026)
+
+- **Contrato** (`packages/contracts/src/event.ts`): `Event`, `EventSession`, `EventRegistration`, `EventAttendance`, as leituras `EventView` (situação, horas, vagas, preço sugerido de hoje), `EventRegistrationView` (pago, em aberto, vencido, presenças) e `EventSessionDetail` (chamada do dia). `Charge` ganhou `kind: "event"`, `eventId` e `eventRegistrationId`; `FinancialEntry` ganhou `eventId`; `FinancialSystemCategoryKey` ganhou `events`.
+- **Regras puras** (`packages/core/src/events.ts`): situação pelas datas não canceladas, carga horária, lote valendo e preço sugerido (lote, cheio, por dia ou zero).
+- **Banco** (migração 91): tabelas `events`, `event_sessions`, `event_registrations` e `event_attendances`, leitura por qualquer membro do espaço e gravação só pelo servidor (`apply_world_changes`); `charges.kind` aceita `event`; a categoria "Eventos e seminários" virou de sistema (`system_key = events`) nos espaços que já a tinham e nos novos; a exportação LGPD leva as tabelas novas.
+- **Serviço** (`services/events`, namespace `events` no registro): `list`, `getById`, `listSessions` (período, para o Calendário), `getSessionDetail`, `create`, `update`, `cancelSession`, `cancelEvent`, `listRegistrations`, `register`, `promoteFromWaitlist`, `cancelRegistration`, `markEventAttendance`, `markManyEventAttendance`, `clearEventAttendance`. Recortes por método (`eventSlices`).
+- **Permissões:** `events:view` (os quatro perfis; o professor só nos eventos em que é o instrutor) e `events:manage` (dono e gerente). Inscrever, promover e cancelar inscrição usam `enrollment:manage`; a chamada do dia usa `attendance:mark`. Evento de convidado só aparece para quem gere (o convidado não é usuário).
+- **Inscrição:** evento cancelado ou já terminado não aceita; aluno inativo não entra; um aluno só uma vez por evento. Lotou: entra como `waitlist`, sem cobrança. Sem `payment`, vale o preço sugerido de hoje à vista vencendo hoje; o valor é editável e pode ser zero (cortesia, sem parcela). Parcelas só na inscrição completa de evento `fixed`, até `maxInstallments`.
+- **Por dia** (`per_day`): inscrição `days` com os dias escolhidos gera **uma cobrança por dia**, todas com o mesmo vencimento, descrição "Nome · dd/mm" e `sessionId` do dia; inscrição completa soma os dias. Evento `fixed` ou `free` não aceita inscrição por dia.
+- **Cancelar inscrição:** parcelas pagas ficam, as que vencem depois de hoje saem (`canceledBy: system`, Pix e link cancelados), as vencidas e a de hoje continuam. Cancelar o evento faz o mesmo em todas as inscrições e cancela os dias; evento já terminado não cancela.
+- **Editar dias:** dia com data até hoje, cancelado ou com chamada feita não sai nem muda; os demais mudam ou saem; dia sem `id` é criado. Dois blocos do mesmo dia não podem se cruzar.
+- **Chamada:** presente ou ausente por inscrito e dia, só no dia ou depois, só de inscrição confirmada que cobre o dia (completa, ou por dias com aquele dia). Sem falta justificada. `countsForProgression` está gravado, mas ainda não entra na frequência da graduação (fase 2 ou 3).
+- **Lista:** próximos primeiro (pela primeira data), encerrados no fim (do mais recente ao mais antigo); busca pelo nome do evento e do convidado.
+- **Ainda não feito:** telas, navegação, Calendário com cor própria, aba Financeiro do evento (as cobranças já carregam `eventId`), selo "Visitante" em Alunos, certificado e relatório.
 
 ## Decisões (09/11/2026)
 

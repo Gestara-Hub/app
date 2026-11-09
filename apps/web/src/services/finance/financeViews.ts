@@ -49,6 +49,7 @@ export const CHARGE_ROW_TITLE: Record<ChargeKind, string> = {
   extra: "Cobranças avulsas",
   course: "Cursos",
   package: "Pacotes de aulas",
+  event: "Eventos e seminários",
 };
 
 /** Linha agregada das cobrancas de um kind na competencia (D7). */

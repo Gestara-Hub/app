@@ -42,6 +42,8 @@ export type AuditEntityType =
   | "charge"
   | "class_group"
   | "enrollment"
+  | "event" // evento ou seminario (doc product/29)
+  | "event_registration"
   | "assessment"
   | "measurement"
   | "certificate" // certificado emitido (doc 21 §1.3)

@@ -34,6 +34,9 @@ export type Permission =
   | "attendance:mark" // marcar presenca nas sessoes
   | "grades:manage" // criar avaliacoes e lancar notas (professor: so nas proprias turmas)
   | "progression:manage" // graduar e registrar a evolucao (professor: so nos alunos das turmas dele)
+  // Eventos e seminarios (doc product/29): inscricao usa enrollment:manage e chamada usa attendance:mark.
+  | "events:view" // ver eventos, inscritos e chamada (professor: so os que conduz)
+  | "events:manage" // criar/editar/cancelar eventos e os dias deles
   | "billing:view" // ver planos e mensalidades/cobrancas
   | "billing:manage" // criar planos, gerar cobrancas, marcar pago
   // Financeiro do negocio (plano pago: tambem exige o recurso "finance").

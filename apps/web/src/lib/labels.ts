@@ -97,6 +97,8 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   charge: "Cobrança",
   class_group: "Turma",
   enrollment: "Matrícula",
+  event: "Evento",
+  event_registration: "Inscrição em evento",
   assessment: "Avaliação",
   measurement: "Testes e medidas",
   certificate: "Certificado",

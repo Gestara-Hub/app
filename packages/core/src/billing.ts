@@ -408,14 +408,16 @@ export function describeCharge(
 ): string {
   if (charge.kind === "dropin") return `aula avulsa de ${studentName}`;
   if (charge.kind === "membership") return `mensalidade de ${studentName}`;
-  const noun = charge.kind === "course" ? "curso" : charge.kind === "package" ? "pacote" : "cobrança avulsa";
+  const noun =
+    charge.kind === "course" ? "curso" : charge.kind === "package" ? "pacote" : charge.kind === "event" ? "evento" : "cobrança avulsa";
   const what = `${noun} "${charge.description ?? ""}" de ${studentName}`;
   const of = charge.kind === "extra" ? "da" : "do";
   if ((charge.cycleTotal ?? 1) > 1) return `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} ${of} ${what}`;
   // A vista: a auditoria escreve "registrou o pagamento da ...", entao o rotulo
-  // e feminino ("compra do pacote", "matricula no curso").
+  // e feminino ("compra do pacote", "matricula no curso", "inscricao no evento").
   if (charge.kind === "package") return `compra do ${what}`;
   if (charge.kind === "course") return `matrícula no ${what}`;
+  if (charge.kind === "event") return `inscrição no ${what}`;
   return what;
 }
 

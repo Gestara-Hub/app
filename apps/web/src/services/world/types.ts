@@ -4,6 +4,10 @@ import type {
   StudentMeasurement,
   IssuedCertificate,
   PersonDocument,
+  Event,
+  EventAttendance,
+  EventRegistration,
+  EventSession,
   Attendance,
   AuditLogEntry,
   Category,
@@ -83,6 +87,11 @@ export interface TenantWorld {
   issuedCertificates?: IssuedCertificate[];
   // Documentos da ficha do aluno e do instrutor (doc product/28). Opcional como as avaliacoes.
   personDocuments?: PersonDocument[];
+  // Eventos e seminarios (doc product/29): evento, dias, inscricoes e chamada. Opcionais como as avaliacoes.
+  events?: Event[];
+  eventSessions?: EventSession[];
+  eventRegistrations?: EventRegistration[];
+  eventAttendances?: EventAttendance[];
   // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
   // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
   financialCategories: FinancialCategory[];

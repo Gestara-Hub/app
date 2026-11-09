@@ -111,6 +111,7 @@ export async function buildIncomeStatement({ competence, periodLabel }: ReportCo
       extra: "Cobranças Avulsas",
       course: "Cursos",
       package: "Pacotes de aulas",
+      event: "Eventos e seminários",
     };
     const chargeRevenue = new Map<string, number>();
     paidCharges.forEach((c) => {

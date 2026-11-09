@@ -45,6 +45,11 @@ export const WORLD_COLLECTIONS: WorldCollection[] = [
   { key: "lessonPackages", table: "lesson_packages", kind: "list" },
   { key: "enrollments", table: "enrollments", kind: "list" },
   { key: "studentPackages", table: "student_packages", kind: "list" },
+  // Eventos antes das cobrancas: a parcela da inscricao referencia o evento e a inscricao.
+  { key: "events", table: "events", kind: "list" },
+  { key: "eventSessions", table: "event_sessions", kind: "list" },
+  { key: "eventRegistrations", table: "event_registrations", kind: "list" },
+  { key: "eventAttendances", table: "event_attendances", kind: "list" },
   { key: "charges", table: "charges", kind: "list" },
   { key: "attendances", table: "attendances", kind: "list" },
   { key: "waitlist", table: "waitlist", kind: "list" },

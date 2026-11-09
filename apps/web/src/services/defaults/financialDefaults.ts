@@ -39,7 +39,7 @@ const DEFAULT_FINANCIAL_CATEGORIES: {
   { key: "courses", type: "income", name: "Cursos", systemKey: "courses" },
   { key: "packages", type: "income", name: "Pacotes de aulas", systemKey: "packages" },
   { key: "products", type: "income", name: "Venda de produtos" },
-  { key: "events", type: "income", name: "Eventos e seminários" },
+  { key: "events", type: "income", name: "Eventos e seminários", systemKey: "events" },
   { key: "graduation", type: "income", name: "Taxa de graduação" },
   { key: "other-income", type: "income", name: "Outras receitas" },
   { key: "teachers", type: "expense", name: "Professores", systemKey: "teachers" },

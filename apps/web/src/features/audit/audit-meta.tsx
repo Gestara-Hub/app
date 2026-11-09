@@ -60,6 +60,8 @@ const ENTITY_ICON: Record<AuditEntityType, typeof Users> = {
   charge: Wallet,
   class_group: GraduationCap,
   enrollment: BookOpenCheck,
+  event: CalendarClock,
+  event_registration: BookOpenCheck,
   assessment: ClipboardCheck,
   measurement: Ruler,
   certificate: Award,

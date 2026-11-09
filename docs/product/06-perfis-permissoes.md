@@ -109,6 +109,8 @@ As acoes do sistema sao `capability keys` no formato `entidade:acao`, com fonte 
 | classes:manage | ✓ | ✓ | | |
 | enrollment:manage | ✓ | ✓ | ✓ | |
 | attendance:mark | ✓ | ✓ | ✓ | ✓ |
+| events:view | ✓ | ✓ | ✓ | ✓ (so os eventos que conduz) |
+| events:manage | ✓ | ✓ | | |
 | grades:manage | ✓ | ✓ | | ✓ (so nas proprias turmas) |
 | progression:manage | ✓ | ✓ | | ✓ (so alunos das proprias turmas) |
 | billing:view | ✓ | ✓ | ✓ | |

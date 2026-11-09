@@ -439,6 +439,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "event_registration_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -857,6 +867,291 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       }
     }
   },
+  "event_attendances": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "session_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "registration_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "student_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "marked_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
+  "event_registrations": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "student_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "scope": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "session_ids": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "amount_cents": {
+        "type": "integer",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "installments": {
+        "type": "integer",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "installment_group_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "registered_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "canceled_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "cancellation_reason": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      }
+    }
+  },
+  "event_sessions": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "date": {
+        "type": "date",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "start": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "end": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "cancel_reason": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "created_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "updated_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
+  "events": {
+    "primaryKey": "id",
+    "columns": {
+      "id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "organization_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "unit_id": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "name": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "description": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "modality_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "instructor_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "guest_instructor_name": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "guest_instructor_origin": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "capacity": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "billing_mode": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": false
+      },
+      "price_cents": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "max_installments": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "day_price_cents": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "early_bird_price_cents": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "early_bird_until": {
+        "type": "date",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "counts_for_progression": {
+        "type": "boolean",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "canceled_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "cancel_reason": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "created_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "updated_at": {
+        "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      }
+    }
+  },
   "financial_categories": {
     "primaryKey": "id",
     "columns": {
@@ -994,6 +1289,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "event_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

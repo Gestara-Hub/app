@@ -20,7 +20,8 @@ export function chargeAccessibleLabel(charge: ChargeLabelInput): string {
     return `mensalidade ${MONTHS[Number(month) - 1] ?? month}/${year}`;
   }
   if (charge.kind === "dropin") return `aula avulsa de ${charge.dueDate.slice(8, 10)}/${charge.dueDate.slice(5, 7)}`;
-  const noun = charge.kind === "course" ? "curso" : charge.kind === "package" ? "pacote" : "cobrança";
+  const noun =
+    charge.kind === "course" ? "curso" : charge.kind === "package" ? "pacote" : charge.kind === "event" ? "evento" : "cobrança";
   const what = `${noun} ${charge.description ?? ""}`.trim();
   const installment = (charge.cycleTotal ?? 1) > 1 ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} do ` : "";
   return installment ? `${installment}${what}` : what;
