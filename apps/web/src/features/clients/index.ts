@@ -1,6 +1,7 @@
 export * from "./hooks/use-clients";
 export { ClientsView } from "./components/clients-view";
 export { ClientFormDrawer } from "./components/client-form-drawer";
+export { QuickClientDrawer } from "./components/quick-client-drawer";
 export { StudentGraduationDialog } from "./components/student-graduation-dialog";
 export { StudentProfileView } from "./components/student-profile-view";
 export { GraduationCertificateLocked, GraduationCertificateView } from "./components/graduation-certificate-view";

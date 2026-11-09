@@ -63,6 +63,7 @@ import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import {
   ClassRecordsDialog,
+  QuickClientDrawer,
   StudentGraduationDialog,
   StudentRecordsDialog,
   nextClassReminder,
@@ -966,6 +967,10 @@ function AddStudentSessionDialog({
   const [studentId, setStudentId] = useState("");
   // Erro junto do campo, nao num aviso que some (achado 40).
   const [studentError, setStudentError] = useState<string | null>(null);
+  // Cadastro rapido (09/11/2026): quem chegou para a experimental entra so com o
+  // nome. O aluno novo ja fica escolhido, como experimental, ate a lista recarregar.
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [justCreated, setJustCreated] = useState<{ id: string; name: string } | null>(null);
   const candidates = session.packageCandidates;
   const hasPackages = candidates.length > 0;
   const [chosenKind, setKind] = useState<ReservationKind>(
@@ -984,7 +989,10 @@ function AddStudentSessionDialog({
           value: c.studentId,
           label: `${c.studentName} · ${c.remaining === 1 ? "1 aula" : `${c.remaining} aulas`} no pacote`,
         }))
-      : availableClients.map((c) => ({ value: c.id, label: c.name }));
+      : [
+          ...(justCreated && !availableClients.some((c) => c.id === justCreated.id) ? [justCreated] : []),
+          ...availableClients,
+        ].map((c) => ({ value: c.id, label: c.name }));
 
   // Aluno com pacote para esta aula entra pelo pacote (sem cobranca avulsa).
   const chooseStudent = (id: string) => {
@@ -1053,6 +1061,14 @@ function AddStudentSessionDialog({
                   {studentError}
                 </p>
               ) : null}
+              <button
+                type="button"
+                onClick={() => setQuickOpen(true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+              >
+                <UserPlus className="size-3.5" aria-hidden />
+                Cadastrar aluno novo
+              </button>
             </div>
 
             <div className="space-y-1.5">
@@ -1099,6 +1115,16 @@ function AddStudentSessionDialog({
           <DialogFormFooter isPending={isPending} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4" />
         </form>
       </SheetContent>
+      <QuickClientDrawer
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        onCreated={(client) => {
+          setJustCreated({ id: client.id, name: client.name });
+          setStudentId(client.id);
+          setStudentError(null);
+          setKind("trial");
+        }}
+      />
     </Sheet>
   );
 }
