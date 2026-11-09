@@ -173,7 +173,9 @@ export function StudentProfileAlerts({
     alerts.push({
       key: "trial",
       title: trial.trialCount > 1 ? `Fez ${trial.trialCount} aulas experimentais` : "Fez aula experimental",
-      detail: when ? `Última em ${ddmm(when)} · ainda não virou aluno` : "Ainda não virou aluno",
+      detail: when
+        ? `${when > today ? "Marcada para" : "Última em"} ${ddmm(when)} · ainda não virou aluno`
+        : "Ainda não virou aluno",
       actions: (
         <>
           <Button variant="outline" asChild>
