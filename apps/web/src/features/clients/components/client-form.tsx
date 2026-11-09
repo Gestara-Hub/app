@@ -1504,7 +1504,7 @@ export function ClientForm({
                   ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
                   : isProOrScale
                     ? hasValidCpf
-                      ? "Pix e cartão nas cobranças deste aluno."
+                      ? "As cobranças dele saem com link para pagar por Pix ou cartão."
                       : undefined
                     : "Usado no pagamento online (Pix e cartão)."
               }
