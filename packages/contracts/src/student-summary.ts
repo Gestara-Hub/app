@@ -7,6 +7,7 @@ import type {
   StudentBillingStrategy,
   StudentCyclePaymentTiming,
   StudentEvaluationEntry,
+  TrialOutcome,
 } from "./client";
 import type { DateISO, DateTimeISO, Id } from "./common";
 import type { MessageLog } from "./communication";
@@ -136,6 +137,8 @@ export interface StudentSummary {
   /** Dia do cadastro. */
   studentSince: DateISO;
   membership: StudentSummaryMembership;
+  /** Aula experimental: se fez, quantas, e se virou aluno (09/11/2026). */
+  trial: TrialOutcome;
   enrollments: StudentSummaryEnrollment[];
   openBalance: StudentOpenBalance;
   attendance30d: StudentAttendanceWindow;

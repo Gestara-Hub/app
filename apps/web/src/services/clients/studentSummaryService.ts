@@ -1,3 +1,4 @@
+import { trialOutcomeOf } from "./clientTrials";
 import type { Id, StudentSummary } from "@gestarahub/contracts";
 import { daysUntilBirthday } from "@/lib/birthdays";
 import { ageAt } from "@/lib/progression-tracks";
@@ -55,6 +56,7 @@ export const studentSummaryServiceImpl = {
         daysToBirthday: client.birthDate ? daysUntilBirthday(client.birthDate, today) : null,
         studentSince: localDateOf(client.createdAt),
         membership: membershipOf(client, today),
+        trial: trialOutcomeOf(client, today),
         enrollments,
         openBalance: openBalanceOf(charges, today),
         attendance30d: attendanceWindow(attendances, today),

@@ -249,6 +249,36 @@ export interface ClientFilter extends PaginationParams {
   status?: RecordStatus;
   planId?: Id;
   membershipStatus?: MembershipStatus;
+  /** Aula experimental (09/11/2026): quem ainda nao voltou e quem virou aluno. */
+  trial?: TrialStage;
+}
+
+/**
+ * Aula experimental e conversao (09/11/2026): nada e gravado no aluno, tudo sai
+ * das reservas `trial`, das matriculas, do plano e dos pacotes
+ * (`@gestarahub/core/trials`).
+ */
+export type TrialStage = "none" | "trial" | "converted";
+export type TrialConversionBy = "enrollment" | "plan" | "package";
+
+export interface TrialOutcome {
+  stage: TrialStage;
+  trialCount: number;
+  firstTrialAt?: DateISO;
+  lastTrialAt?: DateISO;
+  daysSinceTrial?: number;
+  convertedAt?: DateISO;
+  convertedBy?: TrialConversionBy;
+  daysToConvert?: number;
+}
+
+/** Aluno que fez aula experimental (lista, filtro, lembrete e relatorio). */
+export interface TrialStudentView extends TrialOutcome {
+  studentId: Id;
+  studentName: string;
+  phone?: string;
+  /** Turmas das experimentais, para a lista ("Jiu-Jitsu Manhã"). */
+  classGroupNames: string[];
 }
 
 

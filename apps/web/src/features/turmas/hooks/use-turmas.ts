@@ -33,6 +33,7 @@ function invalidateEnrollmentMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
   qc.invalidateQueries({ queryKey: queryKeys.audit.all });
   qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+  qc.invalidateQueries({ queryKey: queryKeys.clients.trials });
 }
 
 // --- Turmas ---------------------------------------------------------------
@@ -345,6 +346,9 @@ export function useReserveSession() {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.billing.all });
       qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+      // Experimental: o selo e o filtro em Alunos e a ficha.
+      qc.invalidateQueries({ queryKey: queryKeys.clients.trials });
+      qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
     },
   });
 }

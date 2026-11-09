@@ -30,6 +30,15 @@ export function useClients(filter?: ClientFilter, enabled = true) {
   });
 }
 
+/** Quem fez aula experimental: ainda sem voltar ou ja convertido (09/11/2026). */
+export function useTrialStudents(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clients.trials,
+    queryFn: () => clientsService.listTrials(),
+    enabled,
+  });
+}
+
 export function usePaginatedClients(filter?: ClientFilter, enabled = true) {
   return useQuery({
     queryKey: [...queryKeys.clients.list(filter), "paginated", filter?.page ?? 1, filter?.pageSize ?? 20],

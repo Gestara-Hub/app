@@ -1,4 +1,4 @@
-import type { Client, ClientFilter, CreateClient, Id, PaginatedResult } from "@gestarahub/contracts";
+import type { Client, ClientFilter, CreateClient, Id, PaginatedResult, TrialStudentView } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
 import { store } from "@/services/world/store";
 import {
@@ -19,6 +19,7 @@ import { cpfDigits } from "@gestarahub/core/payer";
 import { teacherStudentIds } from "../classes/teacherScope";
 import { clientWithoutMoney } from "./studentSummaryRules";
 import { consentFieldsFor } from "./clientConsentRules";
+import { trialOutcomeOf, trialStudents } from "./clientTrials";
 
 /**
  * O professor ve so os alunos das turmas dele, sem dinheiro, documentos nem
@@ -81,10 +82,19 @@ export const clientBaseService = {
       if (filter?.membershipStatus) {
         result = result.filter((c) => c.membershipStatus === filter.membershipStatus);
       }
+      if (filter?.trial) {
+        const today = todayISO();
+        result = result.filter((c) => trialOutcomeOf(c, today).stage === filter.trial);
+      }
 
       const sorted = [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
       return clone(paginateArray(sorted, filter?.page, filter?.pageSize));
     });
+  },
+
+  /** Alunos que fizeram aula experimental: quem ainda nao voltou e quem virou aluno. */
+  listTrials(): Promise<TrialStudentView[]> {
+    return readOp(async () => clone(trialStudents(visibleClients(), todayISO())));
   },
 
   getById(id: Id): Promise<Client> {

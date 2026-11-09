@@ -59,6 +59,8 @@ import type {
   ClientFilter,
   RecordStatus,
   StudentPackageView,
+  TrialOutcome,
+  TrialStage,
 } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
 import { useSegmentVocabulary } from "@/features/settings";
@@ -69,7 +71,9 @@ import {
   useEnrolledModalities,
   useStudentPackages,
 } from "@/features/turmas";
-import { usePaginatedClients } from "../hooks/use-clients";
+import { usePaginatedClients, useTrialStudents } from "../hooks/use-clients";
+import { TrialBadge } from "./trial-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserPreferences } from "@/features/preferences";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -232,6 +236,7 @@ function ClientRow({
   onSellPackage,
   onCancelPackage,
   packages,
+  trial,
   onInactivate,
   onReactivate,
 }: {
@@ -249,6 +254,8 @@ function ClientRow({
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
   packages: StudentPackageView[];
+  /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
+  trial?: TrialOutcome;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -400,6 +407,7 @@ function ClientRow({
                 {client.name}
               </Link>
               {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
+              <TrialBadge trial={trial} compact />
               <MinorConsentBadge client={client} compact />
               {isClasses ? (
                 <ClientProgressionBadges
@@ -451,6 +459,7 @@ function ClientCard({
   onSellPackage,
   onCancelPackage,
   packages,
+  trial,
   onInactivate,
   onReactivate,
 }: {
@@ -468,6 +477,8 @@ function ClientCard({
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
   packages: StudentPackageView[];
+  /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
+  trial?: TrialOutcome;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -609,6 +620,7 @@ function ClientCard({
               </Link>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
+              <TrialBadge trial={trial} compact />
                 <MinorConsentBadge client={client} compact />
                 {isClasses ? (
                   <ClientProgressionBadges
@@ -756,6 +768,8 @@ export function ClientsList({
   const [search, setSearch] = useState("");
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
+  // Aula experimental (09/11/2026): "Experimentais" (sem voltar) e "Viraram alunos".
+  const [trialFilter, setTrialFilter] = useState<"all" | TrialStage>("all");
   const [viewMode, setViewMode] = useViewMode("clients", "list");
   const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
@@ -767,15 +781,18 @@ export function ClientsList({
     () => ({
       search: search.trim() || undefined,
       status: status === "all" ? undefined : status,
+      trial: trialFilter === "all" ? undefined : trialFilter,
       page,
       pageSize,
     }),
-    [search, status, page, pageSize],
+    [search, status, trialFilter, page, pageSize],
   );
 
   const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
   const { data: categories } = useCategories();
   const { data: studentPackages } = useStudentPackages(undefined, isClasses);
+  const { data: trialStudents } = useTrialStudents(isClasses);
+  const trialById = useMemo(() => new Map((trialStudents ?? []).map((t) => [t.studentId, t])), [trialStudents]);
   const clients = paginatedData?.items ?? [];
   const total = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
@@ -803,7 +820,7 @@ export function ClientsList({
 
   const hasSearch = Boolean(filter.search);
   // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
-  const hasFilters = status !== DEFAULT_STATUS;
+  const hasFilters = status !== DEFAULT_STATUS || trialFilter !== "all";
 
   const clearSearch = () => {
     setSearch("");
@@ -812,6 +829,7 @@ export function ClientsList({
   const clearAll = () => {
     setSearch("");
     setStatus(DEFAULT_STATUS);
+    setTrialFilter("all");
     setPage(1);
   };
 
@@ -870,6 +888,7 @@ export function ClientsList({
       <ClientRow
         key={client.id}
         client={client}
+        trial={trialById.get(client.id)}
         categoryById={categoryById}
         canManage={canManage}
         isClasses={isClasses}
@@ -911,6 +930,24 @@ export function ClientsList({
               setPage(1);
             }}
           />
+          {isClasses ? (
+            <Select
+              value={trialFilter}
+              onValueChange={(val) => {
+                setTrialFilter(val as "all" | TrialStage);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="sm:w-44" aria-label="Aula experimental">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os alunos</SelectItem>
+                <SelectItem value="trial">Experimentais</SelectItem>
+                <SelectItem value="converted">Viraram alunos</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </div>
       </div>
@@ -950,6 +987,7 @@ export function ClientsList({
             <ClientCard
               key={client.id}
               client={client}
+              trial={trialById.get(client.id)}
               categoryById={categoryById}
               canManage={canManage}
               isClasses={isClasses}

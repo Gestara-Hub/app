@@ -22,7 +22,8 @@
     "./membership-generation": "./src/membership-generation.ts",
     "./subscription-plan": "./src/subscription-plan.ts",
     "./privacy": "./src/privacy.ts",
-    "./subscription-prices": "./src/subscription-prices.ts"
+    "./subscription-prices": "./src/subscription-prices.ts",
+    "./trials": "./src/trials.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

@@ -10,6 +10,24 @@ const clientsOnly: MethodSlice = async (_args, load) => {
   await load.all("clients");
 };
 
+/** Experimental e conversao: reservas `trial`, matriculas, pacotes e turmas (nomes). */
+const trialsWorld: MethodSlice = async (_args, load) => {
+  await Promise.all([
+    load.all("clients"),
+    load.where("reservations", "kind", ["trial"]),
+    load.all("enrollments"),
+    load.all("studentPackages"),
+    load.all("classGroups"),
+  ]);
+};
+
+/** A lista com o filtro de experimental precisa do mesmo recorte. */
+const clientsList: MethodSlice = async (args, load) => {
+  const filter = args[0] as { trial?: string } | undefined;
+  if (filter?.trial) await trialsWorld(args, load);
+  else await clientsOnly(args, load);
+};
+
 /** Tudo de um aluno: cadastro, matriculas, presencas, cobrancas, pacotes, mensagens e reservas. */
 export async function oneStudent(studentId: Id, load: SliceLoader): Promise<void> {
   await Promise.all([
@@ -37,8 +55,9 @@ async function graduationCertificate([studentId, promotionId]: unknown[], load: 
 }
 
 export const clientSlices: Record<string, MethodSlice> = {
-  list: clientsOnly,
-  listPaginated: clientsOnly,
+  list: clientsList,
+  listPaginated: clientsList,
+  listTrials: trialsWorld,
   // Previa do editor com uma graduacao real: todos os alunos (historico), turmas e matriculas (recorte do professor).
   listGraduations: async (_args, load) => {
     await Promise.all([load.all("clients"), load.all("categories"), load.all("classGroups"), load.all("enrollments")]);
