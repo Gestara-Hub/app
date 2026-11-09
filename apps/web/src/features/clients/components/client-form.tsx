@@ -1495,7 +1495,7 @@ export function ClientForm({
                         : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
                     )}
                   >
-                    {hasValidCpf ? "Pagamento online pronto" : "Obrigatório para pagar online"}
+                    {hasValidCpf ? "Pode pagar online" : "Obrigatório para pagar online"}
                   </span>
                 ) : null
               }
@@ -1504,7 +1504,7 @@ export function ClientForm({
                   ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
                   : isProOrScale
                     ? hasValidCpf
-                      ? "Pix e cartão liberados nas cobranças deste aluno."
+                      ? "Pix e cartão nas cobranças deste aluno."
                       : undefined
                     : "Usado no pagamento online (Pix e cartão)."
               }
