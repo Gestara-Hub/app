@@ -1,15 +1,13 @@
 "use client";
 
 import { useRetainedValue } from "@/lib/use-retained-value";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
-import {
-  DialogBody,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -20,33 +18,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { TEMPLATE_MAX_LENGTH, fillMessage, isManualTrigger } from "@/lib/whatsapp";
-import { charCount } from "@/lib/text";
-import { cn } from "@/lib/utils";
+import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useUpdateTemplate } from "../hooks/use-communication";
-import { TRIGGER_META, automationTiming, metaStatusNotice, sampleValues, templatePreview } from "../message-meta";
+import { TRIGGER_META, automationTiming, sampleValues, templatePreview } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
-/** Texto do modelo: ate 900 caracteres, com folga para os nomes (o envio aceita 1000). */
-
-/** Nome amigavel de cada variavel (o texto usa a forma {chave}). */
-const VARIABLE_LABELS: Record<string, string> = {
-  "{aluno}": "Nome do aluno",
-  "{empresa}": "Nome do espaço",
-  "{valor}": "Valor",
-  "{vencimento}": "Vencimento",
-  "{link_pagamento}": "Link de pagamento",
-  "{link_app}": "Link do app",
-  "{referencia}": "O que é cobrado",
-  "{pacote}": "Nome do pacote",
-  "{restante}": "Aulas e validade",
-  "{nivel}": "Novo nível",
-};
-
-function EditTemplateForm({
+function TemplateConfigForm({
   template,
   official,
   onClose,
@@ -58,161 +37,108 @@ function EditTemplateForm({
   const updateMut = useUpdateTemplate();
   const { data: organization } = useOrganization();
   const hasFeature = useHasFeature();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [content, setContent] = useState(template.content);
   const [enabled, setEnabled] = useState(template.enabled);
   const [sendHour, setSendHour] = useState(template.sendHour);
-  // Modelo so de envio manual: sem envio automatico nem horario.
-  const automatic = official && !isManualTrigger(template.trigger);
-  const notice = metaStatusNotice(template.metaStatus);
 
-  // Insere a variavel onde esta o cursor (ou no fim).
-  function insertVariable(variable: string) {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? content.length;
-    const end = el?.selectionEnd ?? content.length;
-    const next = `${content.slice(0, start)}${variable}${content.slice(end)}`;
-    setContent(next);
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + variable.length, start + variable.length);
-    });
-  }
+  // Modelo só de envio manual (sem rotina automática nem horário).
+  const automatic = official && !isManualTrigger(template.trigger);
 
   async function save() {
-    if (!content.trim()) {
-      toast.error("Escreva o texto da mensagem.");
-      return;
-    }
-    if (charCount(content) > TEMPLATE_MAX_LENGTH) {
-      toast.error(`Use no máximo ${TEMPLATE_MAX_LENGTH} caracteres.`);
-      return;
-    }
     try {
-      await updateMut.mutateAsync({
-        id: template.id,
-        content,
-        ...(automatic ? { enabled, sendHour } : {}),
-      });
-      toast.success(
-        official && template.metaTemplateName
-          ? "Mensagem salva e enviada para análise da Meta."
-          : "Mensagem salva.",
-      );
+      if (automatic) {
+        await updateMut.mutateAsync({
+          id: template.id,
+          enabled,
+          sendHour,
+        });
+      }
+      toast.success("Configuração da mensagem salva.");
       onClose();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Não foi possível salvar a mensagem."));
+      toast.error(getErrorMessage(err, "Não foi possível salvar a configuração."));
     }
   }
 
-  const withPaymentLink = hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
+  const withPaymentLink =
+    hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
   const preview = templatePreview(
     template.trigger,
-    fillMessage(content, sampleValues(organization?.name, withPaymentLink)),
-  );
-  // Variavel que o modelo nao conhece: a frase dela sumia sem aviso (ALU-39).
-  const unknownVariables = [...new Set([...content.matchAll(/\{(\w+)\}/g)].map((m) => `{${m[1]}}`))].filter(
-    (v) => !template.availableVariables.includes(v),
+    fillMessage(template.content, sampleValues(organization?.name, withPaymentLink)),
   );
 
   return (
     <>
       <DialogBody className="space-y-4">
-        {official ? (
-          // Sem selo: so o que importa ao editar. Aprovado e o normal.
-          <p
-            className={cn(
-              "rounded-lg border px-3 py-2 text-xs",
-              notice?.tone === "danger"
-                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : notice
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                  : "border-border/60 bg-muted/40 text-muted-foreground",
-            )}
-          >
-            {notice ? `${notice.text}. ${notice.hint} ` : ""}
-            Ao salvar um texto novo, o WhatsApp analisa de novo. Leva alguns minutos.
-          </p>
-        ) : null}
+        {/* Selo informativo de modelo oficial homologado pela Meta */}
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-xs text-foreground">
+          <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">Modelo oficial homologado pelo WhatsApp</p>
+            <p className="text-muted-foreground leading-relaxed">
+              O texto deste modelo é padronizado e validado diretamente pela Meta. Isso garante entrega com prioridade máxima, evita bloqueios de número e mantém a tarifa mais econômica por mensagem.
+            </p>
+          </div>
+        </div>
 
+        {/* Configurações operacionais (Envio automático e horário) */}
         {automatic ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Switch checked={enabled} onCheckedChange={setEnabled} />
-              Envio automático
-            </label>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="template-hour" className="text-sm">
-                Horário
+          <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="template-enabled" className="text-sm font-medium text-foreground cursor-pointer">
+                Envio automático
+              </label>
+              <Switch
+                id="template-enabled"
+                checked={enabled}
+                onCheckedChange={setEnabled}
+                disabled={updateMut.isPending}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+              <Label htmlFor="template-hour" className="text-sm font-medium text-foreground">
+                Horário de envio
               </Label>
               <Input
                 id="template-hour"
                 type="time"
                 value={sendHour}
                 onChange={(e) => setSendHour(e.target.value)}
-                className="h-8 w-28 text-base md:text-sm"
+                disabled={!enabled || updateMut.isPending}
+                className="h-8 w-28 text-base md:text-sm bg-background"
               />
             </div>
-            <p className="basis-full text-xs text-muted-foreground">{automationTiming(template)}.</p>
+            <p className="text-xs text-muted-foreground pt-0.5">{automationTiming(template)}.</p>
           </div>
         ) : null}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="template-content" className="text-sm">
-            Texto<span className="ml-0.5 text-destructive">*</span>
-          </Label>
-          <Textarea
-            id="template-content"
-            ref={textareaRef}
-            rows={5}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="text-base leading-relaxed md:text-sm"
-          />
-          {/* Limite com folga para os nomes: o envio aceita ate 1000 caracteres. */}
-          <p
-            className={cn(
-              "text-right text-[11px] tabular-nums",
-              charCount(content) > TEMPLATE_MAX_LENGTH ? "font-medium text-destructive" : "text-muted-foreground",
-            )}
-          >
-            {charCount(content)} de {TEMPLATE_MAX_LENGTH}
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {template.availableVariables.map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => insertVariable(v)}
-                className="rounded-md border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-              >
-                + {VARIABLE_LABELS[v] ?? v}
-              </button>
-            ))}
+        {/* Prévia realista do balão de WhatsApp */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground">Como o aluno recebe</p>
+            <span className="text-xs text-muted-foreground">Prévia simulada</span>
           </div>
-          {unknownVariables.length > 0 ? (
-            <p role="alert" className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              {unknownVariables.join(", ")} não {unknownVariables.length === 1 ? "existe" : "existem"} neste
-              modelo. A frase com {unknownVariables.length === 1 ? "ela" : "elas"} sai da mensagem.
-            </p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            Frase com informação que o sistema não tem (como o link de pagamento sem cobrança online) sai da mensagem.
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium text-foreground">Como o aluno recebe</p>
           <MessageBubble text={preview} />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            As variáveis dinâmicas (como nome do aluno, valores e links seguros) são preenchidas automaticamente no momento do disparo.
+          </p>
         </div>
       </DialogBody>
+
       <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
-        <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
-          Cancelar
-        </Button>
-        <Button type="button" onClick={() => void save()} disabled={updateMut.isPending}>
-          {updateMut.isPending ? "Salvando..." : "Salvar"}
-        </Button>
+        {automatic ? (
+          <>
+            <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => void save()} disabled={updateMut.isPending}>
+              {updateMut.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </>
+        ) : (
+          <Button type="button" variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        )}
       </DialogFooter>
     </>
   );
@@ -235,7 +161,8 @@ export function EditTemplateDialog({
       <SheetContent
         side="right"
         className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-lg"
-        onInteractOutside={(event) => event.preventDefault()}>
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
           <SheetTitle className="text-lg font-semibold text-foreground">
             {template ? TRIGGER_META[template.trigger].label : "Mensagem"}
@@ -249,7 +176,7 @@ export function EditTemplateDialog({
           </SheetDescription>
         </SheetHeader>
         {template ? (
-          <EditTemplateForm
+          <TemplateConfigForm
             key={template.id}
             template={template}
             official={official}

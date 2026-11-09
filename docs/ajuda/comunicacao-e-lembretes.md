@@ -14,20 +14,22 @@ Guia: /communication
 Em Comunicação, "Nova mensagem". Escolha um ou vários alunos (há "Selecionar todos com WhatsApp"), escreva o texto e use {aluno} para o nome. Com vários, o envio segue em sequência: um toque por aluno.
 
 ## Modelos
-Resumo: Edite o texto de cada aviso e ligue o envio automático.
+Resumo: Veja a prévia de cada aviso e ligue o envio automático.
 Guia: /communication
 + aba "Mensagens": Aqui ficam os modelos de aviso.
-+ botão "Editar texto": Abra o modelo que quer mudar.
-+ campo "Texto": Mude o texto. As variáveis como {aluno} e {valor} são trocadas no envio.
-+ botão "Salvar": Clique aqui para guardar o modelo.
-Na aba Mensagens, edite o texto de cada aviso (atraso, vence hoje, aniversário, pacote acabando...). Variáveis como {aluno} e {valor} são trocadas no envio.
++ botão "Configurar modelo": Abra o modelo para ver a prévia e as opções.
++ campo "Envio automático": Ligue ou desligue o envio sozinho deste aviso.
++ botão "Salvar": Clique aqui para guardar.
+Na aba Mensagens, cada aviso (atraso, vence hoje, aniversário, pacote acabando...) tem um texto padrão aprovado pelo WhatsApp, que não muda. Abra o modelo para ver como o aluno recebe: o nome, os valores e os links entram sozinhos no envio.
 
 ## Envio automático de um aviso
 Resumo: Com o WhatsApp oficial, ligue o aviso para sair sozinho.
 Guia: /communication
 + aba "Mensagens": Abra a lista de modelos.
-+ campo "Envio automático": Ligue o aviso que deve sair sozinho. Só funciona com o WhatsApp oficial conectado.
-+ botão "Editar texto": Se quiser, ajuste o texto e o horário do envio.
++ botão "Configurar modelo": Abra o aviso que deve sair sozinho.
++ campo "Envio automático": Ligue aqui. Só funciona com o WhatsApp oficial conectado.
++ campo "Horário de envio": Escolha a hora em que o aviso sai.
++ botão "Salvar": Clique aqui para guardar.
 
 ## Horário do envio automático
 Resumo: Defina o intervalo do dia em que as mensagens automáticas saem.

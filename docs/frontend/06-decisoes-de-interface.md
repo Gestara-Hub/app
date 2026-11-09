@@ -38,6 +38,11 @@
     - No topo da sidebar, há um controle segmentado `[ Dia a dia ] [ Gestão ]` (e botão compacto `[DIA]` / `[GES]` no modo ícone).
     - **Sincronização flexível:** O clique do usuário altera a aba livremente. Navegações do navegador ajustam a aba durante o render (`if (pathname !== prevPathname)`).
     - **Indicador de aba:** Quando o usuário está em uma rota de uma aba (ex.: Calendário em Dia a dia) e visualiza a outra aba (Gestão), a aba de origem exibe um ponto verde pulsante (`bg-emerald-500` com `animate-ping`), com o texto no `title`. Clicar na aba volta para ela. O banner "Tela aberta: [Nome] · [Aba] →" abaixo do seletor foi removido em 21/10/2026 a pedido: poluía o topo da sidebar e repetia o que o ponto já diz.
+16. **Modelos de mensagem do WhatsApp blindados (apenas prévia e configuração operacional, 05/11/2026).** O texto das mensagens oficiais de WhatsApp não pode ser editado livremente pelo usuário. Como as mensagens oficiais na Meta Cloud API exigem templates homologados e categorizados como `UTILITY` (para menor custo e entrega garantida), permitir edição livre gerava risco crítico de quebra de variáveis essenciais (`{link_pagamento}`, `{aluno}`), textos agressivos que resultavam em denúncias/bloqueios do número do espaço na Meta, ou reclassificação para `MARKETING` (tarifa 4x mais alta). A interface de configuração (`TemplateConfigForm` em `edit-template-dialog.tsx`) mantém o texto fixo e homologado, oferecendo:
+    - Selo informativo de *Modelo oficial homologado pelo WhatsApp*;
+    - Chave para Habilitar / Desabilitar o envio automático (`Switch`);
+    - Definição do horário de disparo (`sendHour`);
+    - Prévia visual realista no balão do WhatsApp (`MessageBubble`) com valores dinâmicos simulados.
 
 ## Contexto
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HeartHandshake, Megaphone, MessageSquare, Pencil, Wallet } from "lucide-react";
+import { HeartHandshake, Megaphone, MessageSquare, SlidersHorizontal, Wallet } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -156,13 +156,13 @@ function TemplateCard({
                   size="icon-sm"
                   className="text-muted-foreground hover:text-foreground"
                   onClick={onEdit}
-                  aria-label="Editar texto"
+                  aria-label="Configurar modelo"
                 >
-                  <Pencil className="size-4" />
-                  <span className="sr-only">Editar texto</span>
+                  <SlidersHorizontal className="size-4" />
+                  <span className="sr-only">Configurar modelo</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Editar texto</TooltipContent>
+              <TooltipContent>Configurar modelo</TooltipContent>
             </Tooltip>
           ) : null}
         </div>
