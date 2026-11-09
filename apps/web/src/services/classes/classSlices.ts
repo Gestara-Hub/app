@@ -148,6 +148,9 @@ const classList: MethodSlice = async (_args, load) => {
 };
 
 export const classSlices: Record<string, MethodSlice> = {
+  listEnrolledModalities: async (_args, load) => {
+    await Promise.all([load.all("classGroups"), load.all("enrollments")]);
+  },
   listSessions: async ([filter], load) => sessionsInRange(filter as { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }, load),
   list: classList,
   getSession: sessionOf,

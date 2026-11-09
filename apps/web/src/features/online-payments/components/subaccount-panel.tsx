@@ -26,8 +26,10 @@ import {
   History,
   QrCode,
   Receipt,
+  RotateCw,
 } from "lucide-react";
 import { formatCents } from "@gestarahub/core/format";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -98,6 +100,80 @@ const TRANSFER_STATUS_MAP: Record<
       "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400",
   },
 };
+
+function ReceiptsTableSkeleton() {
+  return (
+    <table className="w-full text-left text-xs">
+      <thead className="border-b bg-muted/40 text-muted-foreground">
+        <tr>
+          <th className="px-3.5 py-2.5 font-medium">Data / Hora</th>
+          <th className="px-3.5 py-2.5 font-medium">Método</th>
+          <th className="px-3.5 py-2.5 font-medium">Valor Bruto</th>
+          <th className="px-3.5 py-2.5 font-medium">Taxas</th>
+          <th className="px-3.5 py-2.5 font-medium">Valor Líquido</th>
+          <th className="px-3.5 py-2.5 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border/60">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <tr key={i}>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-24" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-5 w-12 rounded-full" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-16" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-14" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-16" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TransfersTableSkeleton() {
+  return (
+    <table className="w-full text-left text-xs">
+      <thead className="border-b bg-muted/40 text-muted-foreground">
+        <tr>
+          <th className="px-3.5 py-2.5 font-medium">Data</th>
+          <th className="px-3.5 py-2.5 font-medium">Valor do Saque</th>
+          <th className="px-3.5 py-2.5 font-medium">Status</th>
+          <th className="px-3.5 py-2.5 font-medium text-right">Comprovante</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border/60">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <tr key={i}>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-20" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-16" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </td>
+            <td className="px-3.5 py-3 text-right">
+              <Skeleton className="ml-auto h-4 w-24" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export function SubaccountPanel({
   organizationId,
@@ -215,9 +291,17 @@ export function SubaccountPanel({
       {/* Extrato e Movimentações */}
       <Card className="border-border/70 shadow-xs">
         <CardHeader data-tour="op-history" className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base font-semibold">
-            Histórico de Movimentações
-          </CardTitle>
+          <div className="flex items-center gap-2.5">
+            <CardTitle className="text-base font-semibold">
+              Histórico de Movimentações
+            </CardTitle>
+            {receiptsQuery.isFetching && !receiptsQuery.isLoading && tab === "receipts" ? (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground animate-pulse">
+                <RotateCw className="size-3 animate-spin" />
+                Atualizando...
+              </span>
+            ) : null}
+          </div>
 
           {/* Seletor de Abas do Extrato */}
           <div
@@ -252,7 +336,7 @@ export function SubaccountPanel({
               )}
             >
               <History className="size-3.5" />
-              Saques ({transfers.length})
+              Saques {transfersQuery.isLoading ? "" : `(${transfers.length})`}
             </button>
           </div>
         </CardHeader>
@@ -319,8 +403,24 @@ export function SubaccountPanel({
                 </div>
               ) : null}
 
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              {receipts.length === 0 ? (
+            <div className={cn("overflow-x-auto rounded-lg border border-border/60 transition-opacity", receiptsQuery.isFetching && !receiptsQuery.isLoading && "opacity-60")}>
+              {receiptsQuery.isLoading ? (
+                <ReceiptsTableSkeleton />
+              ) : receiptsQuery.isError ? (
+                <div className="flex flex-col items-center gap-2.5 py-10 text-center text-xs text-muted-foreground">
+                  <p>Não foi possível carregar as movimentações.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void receiptsQuery.refetch()}
+                    className="gap-1.5 h-8 text-xs"
+                  >
+                    <RotateCw className="size-3.5" />
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : receipts.length === 0 ? (
                 <div className="py-10 text-center text-xs text-muted-foreground">
                   {hasFilters
                     ? "Nenhuma movimentação com estes filtros."
@@ -447,8 +547,24 @@ export function SubaccountPanel({
           ) : null}
 
           {tab === "transfers" ? (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              {transfers.length === 0 ? (
+            <div className={cn("overflow-x-auto rounded-lg border border-border/60 transition-opacity", transfersQuery.isFetching && !transfersQuery.isLoading && "opacity-60")}>
+              {transfersQuery.isLoading ? (
+                <TransfersTableSkeleton />
+              ) : transfersQuery.isError ? (
+                <div className="flex flex-col items-center gap-2.5 py-10 text-center text-xs text-muted-foreground">
+                  <p>Não foi possível carregar os saques.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void transfersQuery.refetch()}
+                    className="gap-1.5 h-8 text-xs"
+                  >
+                    <RotateCw className="size-3.5" />
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : transfers.length === 0 ? (
                 <div className="py-10 text-center text-xs text-muted-foreground">
                   Nenhum saque realizado ainda.
                 </div>

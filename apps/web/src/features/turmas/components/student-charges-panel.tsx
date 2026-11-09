@@ -40,6 +40,7 @@ import {
   RecurringLimitBadge,
   STATUS_FILTERS,
   ScholarshipBadge,
+  WhatsAppSentBadge,
   isReplaced,
   matchesStatusFilter,
   statementTitle,
@@ -262,6 +263,7 @@ export function StudentChargesPanel({ studentId }: { studentId: Id }) {
                     <PaidViaBadge charge={c} />
                     <ScholarshipBadge charge={c} />
                     <RecurringLimitBadge limitCents={actions.overRecurringLimit(c)} />
+                    <WhatsAppSentBadge charge={c} />
                   </div>
                   <ChargeDetails charge={c} showSubject={false} />
                 </ListRow>,

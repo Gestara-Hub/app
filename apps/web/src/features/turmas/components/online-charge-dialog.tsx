@@ -59,6 +59,7 @@ import {
   useOnlineCheckout,
   useSimulateOnlinePaid,
 } from "../hooks/use-billing";
+import type { OnlineChargeCheckout } from "@/services/onlinePayments";
 import { IllustrativeQr } from "./illustrative-qr";
 import Link from "next/link";
 import { PixQrCode } from "@/components/shared/pix-qr-code";
@@ -313,15 +314,33 @@ export function OnlineChargeDialog({
                 Tentar novamente
               </Button>
             </div>
-          ) : showChooser ? (
+          ) : (
             <div className="space-y-4">
+              {checkout.data?.lastMessage ? (
+                <WhatsAppSentBanner lastMessage={checkout.data.lastMessage} />
+              ) : null}
+
+              {showChooser ? (
+                <div className="space-y-4">
               {payerIssue ? (
                 <div role="alert" className="space-y-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
                   <p>{payerIssueMessage(payerIssue)}</p>
                   <Link
-                    href={`/clients/${checkout.data?.studentId ?? charge?.studentId ?? ""}`}
+                    href={`/clients/${checkout.data?.studentId ?? charge?.studentId ?? ""}?edit=${payerIssue === "guardian_cpf_missing" ? "guardians" : "cpf"}`}
                     className="inline-flex font-semibold underline underline-offset-2"
-                    onClick={() => close(false)}
+                    onClick={() => {
+                      close(false);
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                          new CustomEvent("gestarahub:edit-client", {
+                            detail: {
+                              studentId: checkout.data?.studentId ?? charge?.studentId,
+                              focus: payerIssue === "guardian_cpf_missing" ? "guardians" : "cpf",
+                            },
+                          }),
+                        );
+                      }
+                    }}
                   >
                     {payerIssue === "guardian_cpf_missing" ? "Cadastrar CPF do responsável" : "Cadastrar CPF"}
                   </Link>
@@ -636,6 +655,8 @@ export function OnlineChargeDialog({
               )}
             </div>
           ) : null}
+            </div>
+          )}
 
           <DialogFooter>
             {showChooser && !checkout.isLoading && !checkout.isError ? (
@@ -668,6 +689,73 @@ export function OnlineChargeDialog({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+const MESSAGE_TRIGGER_LABELS: Record<string, string> = {
+  billing_before_due: "Lembrete antes do vencimento",
+  billing_due_date: "Cobrança no vencimento",
+  billing_after_due: "Aviso de atraso",
+  billing_critical: "Aviso de atraso crítico",
+  manual_broadcast: "Mensagem avulsa",
+};
+
+const MESSAGE_STATUS_LABELS: Record<string, string> = {
+  delivered: "Entregue",
+  read: "Lida",
+  sent: "Enviada",
+  opened: "Aberta no WhatsApp",
+  queued: "Na fila",
+  failed: "Falha no envio",
+};
+
+function WhatsAppSentBanner({
+  lastMessage,
+}: {
+  lastMessage: NonNullable<OnlineChargeCheckout["lastMessage"]>;
+}) {
+  const triggerLabel = MESSAGE_TRIGGER_LABELS[lastMessage.trigger] ?? "Cobrança";
+  const statusLabel = MESSAGE_STATUS_LABELS[lastMessage.status] ?? lastMessage.status;
+  const isFailed = lastMessage.status === "failed";
+  const sentDate = parseISO(lastMessage.sentAt);
+  const isToday = format(sentDate, "yyyy-MM-dd") === dateInSpace();
+  const timeFormatted = format(sentDate, "HH:mm");
+  const dateFormatted = isToday ? `hoje às ${timeFormatted}` : format(sentDate, "dd/MM 'às' HH:mm");
+
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex items-start gap-2.5 rounded-lg border p-3 text-xs transition-colors",
+        isFailed
+          ? "border-destructive/30 bg-destructive/10 text-destructive"
+          : "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100",
+      )}
+    >
+      <MessageCircle
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          isFailed ? "text-destructive" : "text-emerald-600 dark:text-emerald-400",
+        )}
+        aria-hidden
+      />
+      <div className="min-w-0 space-y-0.5">
+        <p className="font-semibold text-foreground">
+          {triggerLabel} enviado pelo WhatsApp
+        </p>
+        <p className="text-muted-foreground">
+          Disparado {dateFormatted} · Situação:{" "}
+          <span
+            className={cn(
+              "font-medium",
+              isFailed ? "font-semibold text-destructive" : "text-emerald-600 dark:text-emerald-400",
+            )}
+          >
+            {statusLabel}
+          </span>
+        </p>
+      </div>
+    </div>
   );
 }
 

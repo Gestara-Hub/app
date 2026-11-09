@@ -36,6 +36,7 @@ function teacherPayClosedIn(c: Charge): string | undefined {
 }
 
 export function toChargeView(c: Charge): ChargeView {
+  const lastMsg = lastMessageForCharge(c.id);
   return {
     ...c,
     teacherPayClosedIn: teacherPayClosedIn(c),
@@ -51,6 +52,21 @@ export function toChargeView(c: Charge): ChargeView {
     planPeriod: planOf(c.planId)?.period ?? (!c.planId && c.scholarshipPercent ? "monthly" : undefined),
     className: className(c.classGroupId),
     onlineOpenedAt: openedOnlineAt(c.id),
+    lastMessageSentAt: lastMsg?.sentAt,
+    lastMessageTrigger: lastMsg?.trigger,
+    lastMessageStatus: lastMsg?.status,
+  };
+}
+
+/** Ultima mensagem disparada pelo WhatsApp vinculada a esta cobranca. */
+function lastMessageForCharge(chargeId: string): { sentAt: string; trigger: string; status: string } | undefined {
+  const logs = (store.messageLogs ?? []).filter((l) => l.chargeId === chargeId);
+  if (logs.length === 0) return undefined;
+  const latest = [...logs].sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
+  return {
+    sentAt: latest.sentAt,
+    trigger: latest.trigger,
+    status: latest.status,
   };
 }
 

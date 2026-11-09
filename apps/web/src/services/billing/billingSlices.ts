@@ -26,11 +26,12 @@ const NOT_USED_BY_BILLING = new Set([
 
 /** O espaco sem o historico que cobranca nao usa (tambem a base dos lembretes). */
 export async function billingWorld(load: SliceLoader): Promise<void> {
-  await Promise.all(
-    WORLD_COLLECTIONS.filter((c) => c.kind === "list" && !c.appendOnly && !NOT_USED_BY_BILLING.has(c.key)).map((c) =>
+  await Promise.all([
+    ...WORLD_COLLECTIONS.filter((c) => c.kind === "list" && !c.appendOnly && !NOT_USED_BY_BILLING.has(c.key)).map((c) =>
       load.all(c.key),
     ),
-  );
+    load.where("messageLogs", "category", ["billing", "administrative"]),
+  ]);
   load.none("auditLog");
 }
 

@@ -39,6 +39,43 @@ describe("cobrança online: gerar Pix ou link", () => {
     expect(store.onlinePayments).toHaveLength(1);
   });
 
+  it("carrega última notificação de WhatsApp no getCheckout e na lista de cobranças", async () => {
+    const { student, charge } = await studentWithCharge();
+    const initialCheckout = await onlinePaymentsService.getCheckout(charge.id);
+    expect(initialCheckout.lastMessage).toBeUndefined();
+
+    const chargesBefore = await billingService.listCharges();
+    const chgBefore = chargesBefore.find((c) => c.id === charge.id);
+    expect(chgBefore?.lastMessageSentAt).toBeUndefined();
+
+    store.messageLogs.push({
+      id: "msg-1",
+      organizationId: store.organization.id,
+      recipientName: student.name,
+      recipientPhone: student.phone ?? "5511999999999",
+      trigger: "billing_due_date",
+      category: "billing",
+      content: "Olá! Sua mensalidade vence hoje.",
+      status: "delivered",
+      clientId: student.id,
+      chargeId: charge.id,
+      sentAt: "2026-09-01T12:00:00.000Z",
+    });
+
+    const checkout = await onlinePaymentsService.getCheckout(charge.id);
+    expect(checkout.lastMessage).toMatchObject({
+      trigger: "billing_due_date",
+      status: "delivered",
+      sentAt: "2026-09-01T12:00:00.000Z",
+    });
+
+    const chargesAfter = await billingService.listCharges();
+    const chgAfter = chargesAfter.find((c) => c.id === charge.id);
+    expect(chgAfter?.lastMessageSentAt).toBe("2026-09-01T12:00:00.000Z");
+    expect(chgAfter?.lastMessageTrigger).toBe("billing_due_date");
+    expect(chgAfter?.lastMessageStatus).toBe("delivered");
+  });
+
   it("grava tarifa do Asaas, taxa GestaraHub e líquido (doc 19 §4, decisão A)", async () => {
     // proAcademy: split R$ 1,29. Cobrança de R$ 150,00.
     const { charge } = await studentWithCharge();

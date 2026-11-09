@@ -1,7 +1,7 @@
 "use client";
 
 import { PausedTag } from "@/features/clients";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
@@ -29,7 +29,7 @@ import { normalizeText } from "@/lib/text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
-import type { ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
+import type { ChargeFilter, ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useUserPreferences } from "@/features/preferences";
 import { CompetencePicker } from "@/features/finance";
@@ -47,6 +47,7 @@ import {
   STATUS_FILTERS,
   STATUS_LABEL,
   ScholarshipBadge,
+  WhatsAppSentBadge,
   cancelReasonOf,
   chargeSubject,
   getCycleTitle,
@@ -396,19 +397,22 @@ export function BillingView() {
     setExpandedStudents((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
   };
 
+  const chargesFilter = useMemo<ChargeFilter>(() => {
+    const kind = kindFilter === "all" ? undefined : kindFilter;
+    return allOverdue
+      ? (kind ? { status: "overdue", kind } : { status: "overdue" })
+      : (kind ? { competence, kind } : { competence });
+  }, [allOverdue, kindFilter, competence]);
+
   const {
     data: charges,
     isLoading,
     isError,
     refetch,
-    isFetching,
-  } = useCharges(
-    allOverdue
-      ? { status: "overdue", kind: kindFilter === "all" ? undefined : kindFilter }
-      : { competence, kind: kindFilter === "all" ? undefined : kindFilter },
-  );
+  } = useCharges(chargesFilter);
   const isCurrentMonth = !allOverdue && competence === currentCompetence();
-  const { data: allOverdueCharges } = useCharges({ status: "overdue" });
+  const overdueOnlyFilter = useMemo<ChargeFilter>(() => ({ status: "overdue" }), []);
+  const { data: allOverdueCharges } = useCharges(overdueOnlyFilter, isCurrentMonth);
   const earlierOverdue = isCurrentMonth
     ? (allOverdueCharges ?? []).filter((c) => (c.competence ?? c.dueDate.slice(0, 7)) < competence)
     : [];
@@ -824,8 +828,6 @@ export function BillingView() {
 
           {/* List */}
           <ListContainer
-            // Buscando de novo depois de marcar pago, cancelar ou criar: barrinha no topo.
-            refreshing={isFetching && !isLoading}
             emptyState={
               !isLoading && isError ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
@@ -946,6 +948,7 @@ export function BillingView() {
                             <PaidViaBadge charge={c} />
                             <ScholarshipBadge charge={c} />
                             <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
+                            <WhatsAppSentBadge charge={c} />
                           </div>
 
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1086,6 +1089,7 @@ export function BillingView() {
                                     <PaidViaBadge charge={c} />
                                     <ScholarshipBadge charge={c} />
                                     <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
+                                    <WhatsAppSentBadge charge={c} size="sm" />
                                   </div>
                                 </div>
 

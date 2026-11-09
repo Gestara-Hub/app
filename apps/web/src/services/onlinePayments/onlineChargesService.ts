@@ -19,6 +19,7 @@ import { isSupabaseOrganization } from "@/lib/session";
 import {
   cancelOnlinePaymentsForChargeInDb,
   insertOnlinePaymentInDb,
+  lastMessageForChargeFromDb,
   listOnlinePaymentsForChargeFromDb,
   simulateOnlinePaidAction,
 } from "./actions";
@@ -33,6 +34,7 @@ import {
   newPublicCode,
   expireStale,
   paymentsOf,
+  lastMessageOf,
   methodLabel,
   chargeMethodFor,
   assertMethodAccepted,
@@ -65,6 +67,7 @@ export const onlineChargesService = {
       if (!c) throw notFoundError("Cobrança não encontrada.");
       const student = store.clients.find((s) => s.id === c.studentId);
       let payments = paymentsOf(c.id);
+      let lastMessage = lastMessageOf(c.id);
 
       if (realAccountInBrowser()) {
         const dbPayments = await listOnlinePaymentsForChargeFromDb(
@@ -73,6 +76,13 @@ export const onlineChargesService = {
         );
         if (dbPayments.length > 0) {
           payments = dbPayments;
+        }
+        const dbMsg = await lastMessageForChargeFromDb(
+          c.id,
+          store.organization.id,
+        );
+        if (dbMsg) {
+          lastMessage = dbMsg;
         }
       }
 
@@ -87,6 +97,7 @@ export const onlineChargesService = {
         payments,
         platformSplitCents: effectivePlatformSplitCents(store.organization.subscription?.tier),
         payerIssue: payerRequired() ? payerIssueOf(student ? resolveOnlinePayer(student, todayISO()) : null) : undefined,
+        lastMessage,
       });
     });
   },

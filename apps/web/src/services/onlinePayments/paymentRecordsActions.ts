@@ -1,6 +1,6 @@
 "use server";
 
-import type { Id, OnlinePayment } from "@gestarahub/contracts";
+import type { Id, MessageLogStatus, MessageTrigger, OnlinePayment } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { forbiddenError, notFoundError } from "@gestarahub/core/api-error";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -10,6 +10,7 @@ import { isDemoOrganization } from "@/lib/demo";
 import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
+import type { OnlineChargeMessageInfo } from "./onlinePaymentRules";
 import { logError, logWarn } from "@/lib/log";
 
 /**
@@ -272,4 +273,29 @@ export async function cancelGatewayPaymentsAction(paymentIds: Id[]): Promise<voi
       .eq("organization_id", ctx.organizationId)
       .in("id", pending);
   }
+}
+
+/** Ultima mensagem disparada (automatica ou manual) para a cobranca no banco. */
+export async function lastMessageForChargeFromDb(
+  chargeId: Id,
+  organizationId: string,
+): Promise<OnlineChargeMessageInfo | undefined> {
+  const { client } = await requireSameOrganization(organizationId);
+  const { data, error } = await client
+    .from("message_logs")
+    .select("sent_at, trigger, status, recipient_phone, recipient_name")
+    .eq("charge_id", chargeId)
+    .eq("organization_id", organizationId)
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return undefined;
+  return {
+    sentAt: data.sent_at,
+    trigger: data.trigger as MessageTrigger,
+    status: data.status as MessageLogStatus,
+    recipientPhone: data.recipient_phone,
+    recipientName: data.recipient_name,
+  };
 }

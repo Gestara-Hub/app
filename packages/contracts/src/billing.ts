@@ -152,6 +152,12 @@ export interface ChargeView extends Charge {
   className?: string;
   /** Pix ou link em aberto ja aberto pelo aluno na pagina publica (/p/<codigo>). */
   onlineOpenedAt?: string;
+  /** Ultima mensagem de WhatsApp enviada para a cobranca (data/hora ISO). */
+  lastMessageSentAt?: string;
+  /** Gatilho do envio (ex: "billing_due_date", "billing_before_due"). */
+  lastMessageTrigger?: string;
+  /** Status da mensagem (ex: "delivered", "sent", "read", "opened", "failed"). */
+  lastMessageStatus?: string;
 }
 
 // Backward compatibility aliases during transition

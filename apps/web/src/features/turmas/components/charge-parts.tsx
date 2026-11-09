@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { format, parseISO } from "date-fns";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, MessageCircle } from "lucide-react";
 import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { formatCents, formatDate } from "@gestarahub/core/format";
@@ -88,6 +88,67 @@ export function PaidViaBadge({ charge }: { charge: ChargeView }) {
         Pago online
       </button>
     </OnlineSettlementPopover>
+  );
+}
+
+const WHATSAPP_BADGE_CLASS =
+  "inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400";
+
+const TRIGGER_LABELS: Record<string, string> = {
+  billing_before_due: "Lembrete antes do vencimento",
+  billing_due_date: "Cobrança no vencimento",
+  billing_after_due: "Aviso de atraso",
+  billing_critical: "Aviso de atraso crítico",
+  manual_broadcast: "Mensagem avulsa",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  delivered: "Entregue",
+  read: "Lida",
+  sent: "Enviada",
+  opened: "Aberta no WhatsApp",
+  queued: "Na fila",
+  failed: "Falhou",
+};
+
+/**
+ * Selo discreto indicando que a cobrança já teve notificação/lembrete de WhatsApp
+ * enviado automaticamente pelo sistema (ou manualmente).
+ */
+export function WhatsAppSentBadge({
+  charge,
+  size = "default",
+}: {
+  charge: ChargeView;
+  size?: "default" | "sm";
+}) {
+  if (!charge.lastMessageSentAt || charge.lastMessageStatus === "failed") return null;
+
+  const date = parseISO(charge.lastMessageSentAt);
+  const isToday = format(date, "yyyy-MM-dd") === dateInSpace();
+  const timeStr = format(date, "HH:mm");
+  const triggerLabel = charge.lastMessageTrigger ? (TRIGGER_LABELS[charge.lastMessageTrigger] ?? "Cobrança") : "Cobrança";
+  const statusLabel = charge.lastMessageStatus ? (STATUS_LABELS[charge.lastMessageStatus] ?? charge.lastMessageStatus) : "Enviada";
+
+  const title = `${triggerLabel} enviado via WhatsApp em ${format(date, "dd/MM/yyyy 'às' HH:mm")} · Situação: ${statusLabel}`;
+
+  return (
+    <span
+      className={cn(
+        WHATSAPP_BADGE_CLASS,
+        size === "sm" ? "px-1.5 py-0.5 text-[9px] leading-none" : "px-2 py-0.5 text-[10px] leading-none",
+      )}
+      title={title}
+    >
+      <MessageCircle
+        className={cn(
+          size === "sm" ? "size-2.5" : "size-3",
+          "shrink-0 text-emerald-600 dark:text-emerald-400",
+        )}
+        aria-hidden
+      />
+      <span>WhatsApp {isToday ? timeStr : format(date, "dd/MM")}</span>
+    </span>
   );
 }
 

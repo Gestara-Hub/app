@@ -3,6 +3,7 @@ export {
   cancelGatewayPaymentsAction,
   cancelOnlinePaymentsForChargeInDb,
   insertOnlinePaymentInDb,
+  lastMessageForChargeFromDb,
   listOnlinePaymentsForChargeFromDb,
   simulateOnlinePaidAction,
 } from "./paymentRecordsActions";

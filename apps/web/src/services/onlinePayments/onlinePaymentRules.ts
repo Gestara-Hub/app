@@ -2,6 +2,8 @@ import type {
   ApiErrorField,
   Charge,
   Id,
+  MessageLogStatus,
+  MessageTrigger,
   OnlinePayment,
   OnlinePaymentMethod,
   OnlinePaymentSettings,
@@ -47,6 +49,14 @@ export const MAX_EXPIRES_IN_MINUTES = 43_200; // 30 dias
 
 export const PIX_KEY_MAX_LENGTH = 77;
 
+export interface OnlineChargeMessageInfo {
+  sentAt: string;
+  trigger: MessageTrigger;
+  status: MessageLogStatus;
+  recipientPhone?: string;
+  recipientName?: string;
+}
+
 /** Contexto do dialogo "Cobrar online" (read-model desta tela). */
 export interface OnlineChargeCheckout {
   chargeId: Id;
@@ -63,6 +73,8 @@ export interface OnlineChargeCheckout {
   payerIssue?: PayerIssue;
   /** Aluno menor com responsavel: a mensagem da cobranca vai para ele (nome e telefone). */
   guardianContact?: { name: string; phone: string };
+  /** Ultima mensagem de WhatsApp enviada para esta cobranca (automatica ou manual). */
+  lastMessage?: OnlineChargeMessageInfo;
 }
 
 /** Conta real exige o CPF de quem paga (o parceiro recusa sem ele); a demonstração e o e2e não. */
@@ -177,6 +189,19 @@ export function paymentsOf(chargeId: Id): OnlinePayment[] {
   return store.onlinePayments
     .filter((p) => p.chargeId === chargeId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function lastMessageOf(chargeId: Id): OnlineChargeMessageInfo | undefined {
+  const logs = (store.messageLogs ?? []).filter((l) => l.chargeId === chargeId);
+  if (logs.length === 0) return undefined;
+  const latest = [...logs].sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
+  return {
+    sentAt: latest.sentAt,
+    trigger: latest.trigger,
+    status: latest.status,
+    recipientPhone: latest.recipientPhone,
+    recipientName: latest.recipientName,
+  };
 }
 
 export function methodLabel(method: OnlinePaymentMethod): string {
