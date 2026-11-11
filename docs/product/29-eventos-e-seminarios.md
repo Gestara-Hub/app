@@ -103,7 +103,7 @@ Aba "Financeiro" no detalhe do evento, lendo as cobranças com `eventId` e os la
 ## Calendário compartilhado
 
 - `turmas-calendar-view` passa a ler também `useEventSessions` da semana e misturar na grade e na lista por horário.
-- Card de evento com **cor própria fixa** (não por modalidade, como já decidido para as turmas: cor diz tipo, não categoria): borda esquerda e fundo suaves num tom reservado só a eventos, selo "Evento" e o nome do convidado quando houver. Turma segue neutra.
+- Card de evento com **cor própria fixa** (roxo, reservado só a eventos): borda esquerda e fundo suaves, selo "Evento" e o nome do convidado quando houver. Desde 10/11/2026 a aula de turma ganha a cor da sua modalidade (faixa à esquerda e fundo leve, pela ordem de criação das modalidades, paleta de 8 tons sem roxo; `features/turmas/modality-colors.ts`), com a bolinha da cor no filtro de modalidade. Na grade (10/11/2026), "Evento" e a ocupação ("8/12", "Lotada" em âmbar, "12 inscritos") ficam na linha do horário, o dia de hoje é marcado só pelo círculo no número, dia sem nada fica com 1/3 da largura, o que já terminou esmaece e o que está acontecendo ganha um anel na cor da modalidade. Próximo passo: campo de cor na modalidade, escolhido no formulário.
 - Filtro "Mostrar: Turmas e eventos / Só turmas / Só eventos" junto dos filtros atuais de modalidade e instrutor.
 - Clicar abre o dia do evento (`/events/[id]/sessions/[sessionId]`), não a aula de turma.
 

@@ -38,7 +38,9 @@ import { useCalendarEventSessions, useClassSessions } from "../hooks/use-turmas"
 import { classEntry, eventEntry, type CalendarEntry, type CalendarShow } from "../calendar-entries";
 import { sessionLinkLabel } from "../turma-copy";
 import { rememberCalendarQuery } from "../calendar-filters";
-import { TurmasWeekGrid, dayLabel } from "./turmas-week-grid";
+import { TurmasWeekGrid, dayLabel, entryColor } from "./turmas-week-grid";
+import { modalityColorMap } from "../modality-colors";
+import { useCategories } from "@/features/categories";
 
 type View = "grid" | "list";
 
@@ -190,6 +192,10 @@ export function TurmasCalendarView() {
     return [...classes, ...events];
   }, [sessions, eventSessions, show, classGroupId]);
 
+  // Cor de cada modalidade pela ordem de criacao (modality-colors.ts).
+  const { data: modalities } = useCategories();
+  const modalityColors = useMemo(() => modalityColorMap(modalities), [modalities]);
+
   const modalityOptions = useMemo(() => {
     const names = new Set(entries.map((s) => s.modalityName).filter(Boolean) as string[]);
     return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"));
@@ -219,7 +225,7 @@ export function TurmasCalendarView() {
     <>
       <PageHeader
         title="Calendário de turmas"
-        description="Grade semanal das aulas."
+        description="Aulas e eventos da semana."
       >
         <div className="flex items-center gap-1">
           <Button
@@ -303,7 +309,10 @@ export function TurmasCalendarView() {
               <SelectItem value={ALL}>Todas as modalidades</SelectItem>
               {modalityOptions.map((name) => (
                 <SelectItem key={name} value={name}>
-                  {name}
+                  <span className="flex items-center gap-2">
+                    <span className={cn("size-2 shrink-0 rounded-full", modalityColors.get(name)?.dot ?? "bg-muted-foreground/40")} aria-hidden />
+                    {name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -363,7 +372,7 @@ export function TurmasCalendarView() {
           />
         </div>
       ) : view === "grid" ? (
-        <TurmasWeekGrid days={days} entries={filtered} />
+        <TurmasWeekGrid days={days} entries={filtered} colors={modalityColors} />
       ) : (
         <div className="space-y-4">
           {days.map((d) => {
@@ -394,7 +403,10 @@ export function TurmasCalendarView() {
                     const isEvent = s.kind === "event";
                     return (
                       <Link key={s.id} href={s.href} className="block">
-                        <ListItemCard className={cn(isEvent && "border-violet-500/40 bg-violet-500/10")}>
+                        <ListItemCard
+                          className={cn("pl-4", entryColor(s, modalityColors).tint)}
+                          accentClassName={entryColor(s, modalityColors).dot}
+                        >
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">

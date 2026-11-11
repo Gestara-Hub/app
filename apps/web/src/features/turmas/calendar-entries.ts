@@ -22,6 +22,8 @@ export interface CalendarEntry {
   isGuest: boolean;
   /** "3 de 10 alunos", "Turma lotada", "2 inscritos". */
   occupancy: string;
+  /** Versao curta para o card da grade: "8/12", "2 inscritos". */
+  occupancyShort: string;
   isFull: boolean;
   /** Texto do leitor de tela. */
   accessibleLabel: string;
@@ -42,6 +44,7 @@ export function classEntry(s: ClassSessionListItem, accessibleLabel: string): Ca
     isSubstitute: Boolean(s.isSubstitute),
     isGuest: false,
     occupancy: full ? "Turma lotada" : `${s.occupiedCount} de ${s.capacity} alunos`,
+    occupancyShort: `${s.occupiedCount}/${s.capacity}`,
     isFull: full,
     accessibleLabel,
   };
@@ -69,6 +72,7 @@ export function eventEntry(s: EventSessionView): CalendarEntry {
     isSubstitute: false,
     isGuest: false,
     occupancy: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
+    occupancyShort: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
     isFull: false,
     accessibleLabel: `Evento ${s.eventName}, ${s.start} às ${s.end}, ${blockInstructors(s)}`,
   };
