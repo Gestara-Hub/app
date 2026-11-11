@@ -6,9 +6,9 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Client, StudentPackageView } from "@gestarahub/contracts";
+import type { Client } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
-import { NewExtraChargeDialog, SellPackageDialog, useCancelStudentPackage } from "@/features/turmas";
+import { NewExtraChargeDialog } from "@/features/turmas";
 import { StudentGradesDialog } from "@/features/grades";
 import { StudentMeasurementsDialog } from "@/features/measurements";
 import { SendMessageDialog } from "@/features/communication";
@@ -19,7 +19,6 @@ import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { withKind } from "@/lib/text";
 
 export function ClientsView() {
   const isClasses = useModel() === "classes";
@@ -34,11 +33,8 @@ export function ClientsView() {
   const [measurementsClient, setMeasurementsClient] = useState<Client | null>(null);
   // Cobranca avulsa com o aluno fixo.
   const [chargeClient, setChargeClient] = useState<Client | null>(null);
-  // Venda de pacote de aulas com o aluno fixo.
-  const [packageClient, setPackageClient] = useState<Client | null>(null);
   // Mensagem no WhatsApp com o aluno fixo (o aluno fica ate o fim da animacao).
   const [messageState, setMessageState] = useState<{ open: boolean; client?: Client }>({ open: false });
-  const cancelPackageMut = useCancelStudentPackage();
 
   const updateMut = useUpdateClient();
   const can = useCan();
@@ -78,26 +74,6 @@ export function ClientsView() {
     }
   }
 
-  // Desfaz a venda de um pacote sem aula usada (mexe no dinheiro: confirma).
-  async function cancelPackage(pkg: StudentPackageView) {
-    if (
-      !(await confirmAction({
-        title: "Cancelar pacote?",
-        description: `O ${withKind("pacote", pkg.name)} de ${pkg.studentName} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
-        confirmLabel: "Cancelar pacote",
-        cancelLabel: "Voltar",
-      }))
-    ) {
-      return;
-    }
-    try {
-      await cancelPackageMut.mutateAsync(pkg.id);
-      toast.success("Pacote cancelado.");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível cancelar o pacote."));
-    }
-  }
-
   return (
     <>
       {confirmDialog}
@@ -127,8 +103,6 @@ export function ClientsView() {
         onOpenGrades={isClasses ? setGradesClient : undefined}
         onOpenMeasurements={isClasses ? setMeasurementsClient : undefined}
         onNewCharge={canCharge ? setChargeClient : undefined}
-        onSellPackage={canCharge ? setPackageClient : undefined}
-        onCancelPackage={canCharge ? (pkg) => void cancelPackage(pkg) : undefined}
         onInactivate={setInactivating}
         onReactivate={reactivate}
       />
@@ -148,13 +122,6 @@ export function ClientsView() {
               if (!open) setChargeClient(null);
             }}
             student={chargeClient}
-          />
-          <SellPackageDialog
-            open={Boolean(packageClient)}
-            onOpenChange={(open) => {
-              if (!open) setPackageClient(null);
-            }}
-            student={packageClient}
           />
           <StudentGradesDialog
             client={gradesClient}

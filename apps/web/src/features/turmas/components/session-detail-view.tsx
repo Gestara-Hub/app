@@ -87,6 +87,7 @@ import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 import { dateInSpace } from "@gestarahub/core/date";
+import { focusField } from "@/lib/form-errors";
 
 /**
  * Saldo do pacote de quem paga a aula com pacote: "7 de 10 aulas", "Última
@@ -624,26 +625,34 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           },
                         ]
                       : []),
-                    ...(canProgress
-                      ? [
-                          {
-                            key: "graduation",
-                            label: vocabulary.levelsTitle,
-                            icon: <GraduationCap className="size-4" />,
-                            onSelect: () => setGraduationClient(student),
-                          },
-                        ]
-                      : []),
-                    ...(hasAssessments
-                      ? [
-                          {
-                            key: "grades",
-                            label: "Notas",
-                            icon: <ClipboardList className="size-4" />,
-                            onSelect: () => setGradesClient(student),
-                          },
-                        ]
-                      : []),
+                    // Graduacao e notas no submenu (doc 07 §1.4); a presenca e o registro ficam na 1a camada.
+                    {
+                      key: "follow-up",
+                      label: "Acompanhamento",
+                      icon: <ClipboardList className="size-4" />,
+                      children: [
+                        ...(canProgress
+                          ? [
+                              {
+                                key: "graduation",
+                                label: vocabulary.levelsTitle,
+                                icon: <GraduationCap className="size-4" />,
+                                onSelect: () => setGraduationClient(student),
+                              },
+                            ]
+                          : []),
+                        ...(hasAssessments
+                          ? [
+                              {
+                                key: "grades",
+                                label: "Notas",
+                                icon: <ClipboardList className="size-4" />,
+                                onSelect: () => setGradesClient(student),
+                              },
+                            ]
+                          : []),
+                      ],
+                    },
                     ...(isMinorConsentPending(student)
                       ? [
                           {
@@ -1014,6 +1023,7 @@ function AddStudentSessionDialog({
     e.preventDefault();
     if (!studentId) {
       setStudentError("Selecione o aluno.");
+      focusField("session-add-student");
       return;
     }
     onAdd({

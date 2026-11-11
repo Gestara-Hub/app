@@ -830,23 +830,31 @@ export function TurmaDetailView({
                           ...certificate,
                           ...payment,
                           ...minorConsentAct,
-                          ...(student && can("progression:manage")
-                            ? [
-                                {
-                                  key: "records",
-                                  label: "Registros de aula",
-                                  icon: <MessageSquarePlus className="size-4" />,
-                                  onSelect: () => setRecordsClient(student),
-                                },
-                                {
-                                  key: "graduation",
-                                  label: vocabulary.levelsTitle,
-                                  icon: <GraduationCap className="size-4" />,
-                                  onSelect: () => setGraduationClient(student),
-                                },
-                              ]
-                            : []),
-                          ...grades,
+                          // Registros, graduacao e notas no submenu (doc 07 §1.4).
+                          {
+                            key: "follow-up",
+                            label: "Acompanhamento",
+                            icon: <ClipboardList className="size-4" />,
+                            children: [
+                              ...(student && can("progression:manage")
+                                ? [
+                                    {
+                                      key: "records",
+                                      label: "Registros de aula",
+                                      icon: <MessageSquarePlus className="size-4" />,
+                                      onSelect: () => setRecordsClient(student),
+                                    },
+                                    {
+                                      key: "graduation",
+                                      label: vocabulary.levelsTitle,
+                                      icon: <GraduationCap className="size-4" />,
+                                      onSelect: () => setGraduationClient(student),
+                                    },
+                                  ]
+                                : []),
+                              ...grades,
+                            ],
+                          },
                           {
                             key: "cancel",
                             label: "Cancelar matrícula",

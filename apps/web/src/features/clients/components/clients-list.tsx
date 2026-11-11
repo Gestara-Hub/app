@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
-  Ban,
   ClipboardList,
   Ruler,
   GraduationCap,
@@ -19,7 +18,6 @@ import {
   Receipt,
   RotateCw,
   ShieldCheck,
-  Ticket,
   UserRound,
   Users,
 } from "lucide-react";
@@ -58,7 +56,6 @@ import type {
   Client,
   ClientFilter,
   RecordStatus,
-  StudentPackageView,
   TrialOutcome,
   TrialStage,
 } from "@gestarahub/contracts";
@@ -66,10 +63,7 @@ import { useModel } from "@/features/auth";
 import { useSegmentVocabulary } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import {
-  canSellPackageTo,
-  cancelablePackage,
   useEnrolledModalities,
-  useStudentPackages,
 } from "@/features/turmas";
 import { usePaginatedClients, useTrialStudents } from "../hooks/use-clients";
 import { TrialBadge } from "./trial-badge";
@@ -170,7 +164,59 @@ function ClientProgressionBadges({
   );
 }
 
-const NO_PACKAGES: StudentPackageView[] = [];
+type FollowUpHandlers = {
+  onOpenRecords?: (c: Client) => void;
+  onOpenGraduation?: (c: Client) => void;
+  onOpenGrades?: (c: Client) => void;
+  onOpenMeasurements?: (c: Client) => void;
+};
+
+/**
+ * Submenu "Acompanhamento" (09/11/2026): registros, graduacao, notas e testes
+ * saem da primeira camada do menu para ele nao passar de 6 itens (doc 07 §1.4).
+ */
+function buildFollowUpActions(
+  client: Client,
+  levelsTitle: string,
+  isClasses: boolean,
+  { onOpenRecords, onOpenGraduation, onOpenGrades, onOpenMeasurements }: FollowUpHandlers,
+): ListItemAction[] {
+  if (!isClasses) return [];
+  const actions: ListItemAction[] = [];
+  if (onOpenRecords) {
+    actions.push({
+      key: "records",
+      label: "Registros de aula",
+      icon: <MessageSquarePlus className="size-4" />,
+      onSelect: () => onOpenRecords(client),
+    });
+  }
+  if (onOpenGraduation) {
+    actions.push({
+      key: "graduation",
+      label: levelsTitle,
+      icon: <GraduationCap className="size-4" />,
+      onSelect: () => onOpenGraduation(client),
+    });
+  }
+  if (onOpenGrades) {
+    actions.push({
+      key: "grades",
+      label: "Notas",
+      icon: <ClipboardList className="size-4" />,
+      onSelect: () => onOpenGrades(client),
+    });
+  }
+  if (onOpenMeasurements) {
+    actions.push({
+      key: "measurements",
+      label: "Testes e medidas",
+      icon: <Ruler className="size-4" />,
+      onSelect: () => onOpenMeasurements(client),
+    });
+  }
+  return actions;
+}
 
 function minorConsentAction(client: Client): ListItemAction | null {
   if (!isMinorConsentPending(client)) return null;
@@ -214,9 +260,6 @@ interface ClientsListProps {
   onOpenMeasurements?: (client: Client) => void;
   /** Nova cobranca avulsa (so com permissao de cobranca). */
   onNewCharge?: (client: Client) => void;
-  /** Venda e cancelamento de pacote de aulas (mesma permissao). */
-  onSellPackage?: (client: Client) => void;
-  onCancelPackage?: (pkg: StudentPackageView) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
 }
@@ -233,9 +276,6 @@ function ClientRow({
   onOpenGrades,
   onOpenMeasurements,
   onNewCharge,
-  onSellPackage,
-  onCancelPackage,
-  packages,
   trial,
   onInactivate,
   onReactivate,
@@ -251,9 +291,6 @@ function ClientRow({
   onOpenGrades?: (c: Client) => void;
   onOpenMeasurements?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
-  onSellPackage?: (c: Client) => void;
-  onCancelPackage?: (pkg: StudentPackageView) => void;
-  packages: StudentPackageView[];
   /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
   trial?: TrialOutcome;
   onInactivate: (c: Client) => void;
@@ -261,9 +298,14 @@ function ClientRow({
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
-  const cancelable = cancelablePackage(packages);
   const router = useRouter();
   const openProfile = () => router.push(`/clients/${client.id}`);
+  const followUpActions = buildFollowUpActions(client, vocabulary.levelsTitle, isClasses, {
+    onOpenRecords,
+    onOpenGraduation,
+    onOpenGrades,
+    onOpenMeasurements,
+  });
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -284,46 +326,12 @@ function ClientRow({
             ]
           : []),
         ...(minorConsentAction(client) ? [minorConsentAction(client)!] : []),
-        ...(isClasses && onOpenRecords
-          ? [
-              {
-                key: "records",
-                label: "Registros de aula",
-                icon: <MessageSquarePlus className="size-4" />,
-                onSelect: () => onOpenRecords(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenGraduation
-          ? [
-              {
-                key: "graduation",
-                label: vocabulary.levelsTitle,
-                icon: <GraduationCap className="size-4" />,
-                onSelect: () => onOpenGraduation(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenGrades
-          ? [
-              {
-                key: "grades",
-                label: "Notas",
-                icon: <ClipboardList className="size-4" />,
-                onSelect: () => onOpenGrades(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenMeasurements
-          ? [
-              {
-                key: "measurements",
-                label: "Testes e medidas",
-                icon: <Ruler className="size-4" />,
-                onSelect: () => onOpenMeasurements(client),
-              },
-            ]
-          : []),
+        {
+          key: "follow-up",
+          label: "Acompanhamento",
+          icon: <ClipboardList className="size-4" />,
+          children: followUpActions,
+        },
         ...(isClasses && onNewCharge && isActive
           ? [
               {
@@ -331,27 +339,6 @@ function ClientRow({
                 label: "Nova cobrança",
                 icon: <Receipt className="size-4" />,
                 onSelect: () => onNewCharge(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onSellPackage && canSellPackageTo(client)
-          ? [
-              {
-                key: "sell-package",
-                label: "Vender pacote",
-                icon: <Ticket className="size-4" />,
-                onSelect: () => onSellPackage(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onCancelPackage && cancelable
-          ? [
-              {
-                key: "cancel-package",
-                label: "Cancelar pacote",
-                icon: <Ban className="size-4" />,
-                destructive: true,
-                onSelect: () => onCancelPackage(cancelable),
               },
             ]
           : []),
@@ -456,9 +443,6 @@ function ClientCard({
   onOpenGrades,
   onOpenMeasurements,
   onNewCharge,
-  onSellPackage,
-  onCancelPackage,
-  packages,
   trial,
   onInactivate,
   onReactivate,
@@ -474,9 +458,6 @@ function ClientCard({
   onOpenGrades?: (c: Client) => void;
   onOpenMeasurements?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
-  onSellPackage?: (c: Client) => void;
-  onCancelPackage?: (pkg: StudentPackageView) => void;
-  packages: StudentPackageView[];
   /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
   trial?: TrialOutcome;
   onInactivate: (c: Client) => void;
@@ -484,9 +465,14 @@ function ClientCard({
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
-  const cancelable = cancelablePackage(packages);
   const router = useRouter();
   const openProfile = () => router.push(`/clients/${client.id}`);
+  const followUpActions = buildFollowUpActions(client, vocabulary.levelsTitle, isClasses, {
+    onOpenRecords,
+    onOpenGraduation,
+    onOpenGrades,
+    onOpenMeasurements,
+  });
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -507,46 +493,12 @@ function ClientCard({
             ]
           : []),
         ...(minorConsentAction(client) ? [minorConsentAction(client)!] : []),
-        ...(isClasses && onOpenRecords
-          ? [
-              {
-                key: "records",
-                label: "Registros de aula",
-                icon: <MessageSquarePlus className="size-4" />,
-                onSelect: () => onOpenRecords(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenGraduation
-          ? [
-              {
-                key: "graduation",
-                label: vocabulary.levelsTitle,
-                icon: <GraduationCap className="size-4" />,
-                onSelect: () => onOpenGraduation(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenGrades
-          ? [
-              {
-                key: "grades",
-                label: "Notas",
-                icon: <ClipboardList className="size-4" />,
-                onSelect: () => onOpenGrades(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onOpenMeasurements
-          ? [
-              {
-                key: "measurements",
-                label: "Testes e medidas",
-                icon: <Ruler className="size-4" />,
-                onSelect: () => onOpenMeasurements(client),
-              },
-            ]
-          : []),
+        {
+          key: "follow-up",
+          label: "Acompanhamento",
+          icon: <ClipboardList className="size-4" />,
+          children: followUpActions,
+        },
         ...(isClasses && onNewCharge && isActive
           ? [
               {
@@ -554,27 +506,6 @@ function ClientCard({
                 label: "Nova cobrança",
                 icon: <Receipt className="size-4" />,
                 onSelect: () => onNewCharge(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onSellPackage && canSellPackageTo(client)
-          ? [
-              {
-                key: "sell-package",
-                label: "Vender pacote",
-                icon: <Ticket className="size-4" />,
-                onSelect: () => onSellPackage(client),
-              },
-            ]
-          : []),
-        ...(isClasses && onCancelPackage && cancelable
-          ? [
-              {
-                key: "cancel-package",
-                label: "Cancelar pacote",
-                icon: <Ban className="size-4" />,
-                destructive: true,
-                onSelect: () => onCancelPackage(cancelable),
               },
             ]
           : []),
@@ -759,8 +690,6 @@ export function ClientsList({
   onOpenGrades,
   onOpenMeasurements,
   onNewCharge,
-  onSellPackage,
-  onCancelPackage,
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
@@ -795,20 +724,11 @@ export function ClientsList({
 
   const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
   const { data: categories } = useCategories();
-  const { data: studentPackages } = useStudentPackages(undefined, isClasses);
   const { data: trialStudents } = useTrialStudents(isClasses);
   const trialById = useMemo(() => new Map((trialStudents ?? []).map((t) => [t.studentId, t])), [trialStudents]);
   const clients = paginatedData?.items ?? [];
   const total = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
-
-  const packagesByStudent = useMemo(() => {
-    const map = new Map<string, StudentPackageView[]>();
-    for (const p of studentPackages ?? []) {
-      map.set(p.studentId, [...(map.get(p.studentId) ?? []), p]);
-    }
-    return map;
-  }, [studentPackages]);
 
   const categoryById = useMemo(
     () => new Map((categories ?? []).map((c) => [c.id, c])),
@@ -904,9 +824,6 @@ export function ClientsList({
         onOpenGrades={gradesAction}
         onOpenMeasurements={measurementsAction}
         onNewCharge={onNewCharge}
-        onSellPackage={onSellPackage}
-        onCancelPackage={onCancelPackage}
-        packages={packagesByStudent.get(client.id) ?? NO_PACKAGES}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
       />
@@ -1003,9 +920,6 @@ export function ClientsList({
               onOpenGrades={gradesAction}
               onOpenMeasurements={measurementsAction}
               onNewCharge={onNewCharge}
-              onSellPackage={onSellPackage}
-              onCancelPackage={onCancelPackage}
-              packages={packagesByStudent.get(client.id) ?? NO_PACKAGES}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
             />
