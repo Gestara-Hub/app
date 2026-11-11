@@ -51,6 +51,8 @@ export function useCreatePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePlan) => billingService.createPlan(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => invalidateMoney(qc),
   });
 }
@@ -60,6 +62,8 @@ export function useUpdatePlan() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdatePlan }) =>
       billingService.updatePlan(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => invalidateMoney(qc),
   });
 }
@@ -96,6 +100,8 @@ export function useCreateExtraCharge() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateExtraCharge) => billingService.createExtraCharge(payload),
+    // Pisca a linha do aluno em Cobrancas (lib/record-highlight).
+    meta: { highlight: (_data: unknown, vars: unknown) => (vars as CreateExtraCharge).studentId },
     onSuccess: () => invalidateMoney(qc),
   });
 }

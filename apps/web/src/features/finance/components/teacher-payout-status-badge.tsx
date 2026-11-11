@@ -7,7 +7,7 @@ const STATUS_CLASS: Record<TeacherPayoutStatus, string> = {
   open: "border-info/25 bg-info/10 text-info",
   closed: "border-warning/30 bg-warning/10 text-warning",
   paid: "border-success/25 bg-success/10 text-success",
-  canceled: "border-border/60 bg-muted/50 text-muted-foreground line-through",
+  canceled: "border-border/60 bg-muted/50 text-muted-foreground",
 };
 
 /** Badge Prévia / Fechado / Pago do mes do professor. */
@@ -21,7 +21,7 @@ export function TeacherPayoutStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none",
+        "status-dot inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none",
         STATUS_CLASS[status],
         className,
       )}

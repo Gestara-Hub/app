@@ -28,6 +28,8 @@ export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateUser) => usersService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.users.all }),
   });
 }
@@ -37,6 +39,8 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateUser }) =>
       usersService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.users.all }),
   });
 }

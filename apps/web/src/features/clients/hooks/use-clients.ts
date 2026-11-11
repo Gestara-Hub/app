@@ -86,6 +86,8 @@ export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateClient) => clientsService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
       // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.
@@ -99,6 +101,8 @@ export function useUpdateClient() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateClient }) =>
       clientsService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
       // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.

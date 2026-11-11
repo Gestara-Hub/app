@@ -18,7 +18,7 @@ export function RecordStatusBadge({ status, className }: RecordStatusBadgeProps)
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
+        "status-dot inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
         getRecordStatusClasses(isActive),
         className,
       )}

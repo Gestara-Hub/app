@@ -367,6 +367,7 @@ function ClientRow({
 
   const content = (
     <ListRow
+      data-record-id={client.id}
       onClick={openProfile}
       mouseOnly
       actions={
@@ -534,6 +535,7 @@ function ClientCard({
 
   const card = (
     <div
+      data-record-id={client.id}
       onClick={openProfile}
       className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
     >

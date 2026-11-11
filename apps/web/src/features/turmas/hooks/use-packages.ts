@@ -39,6 +39,8 @@ export function useCreateLessonPackage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateLessonPackage) => packagesService.createPackage(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.packages.all });
       qc.invalidateQueries({ queryKey: queryKeys.audit.all });
@@ -51,6 +53,8 @@ export function useUpdateLessonPackage() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateLessonPackage }) =>
       packagesService.updatePackage(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.packages.all });
       qc.invalidateQueries({ queryKey: queryKeys.audit.all });

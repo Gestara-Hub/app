@@ -1,7 +1,7 @@
 "use client";
 
 import { useTeamWords } from "@/features/settings";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   Pencil,
@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Category, CategoryFilter, RecordStatus } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories";
+import { modalityColorMap } from "../modality-colors";
 
 interface ModalitiesListProps {
   canManage: boolean;
@@ -90,6 +91,7 @@ function ModalityRow({
 
   const content = (
     <ListRow
+      data-record-id={modality.id}
       onClick={canManage ? () => onEdit(modality) : undefined}
       canClick={canManage}
       actions={
@@ -122,12 +124,15 @@ function ModalityRow({
 
 function ModalityCard({
   modality,
+  avatarTone,
   canManage,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
   modality: Category;
+  /** Mesma cor da modalidade no Calendario (modality-colors.ts). */
+  avatarTone?: string;
   canManage: boolean;
   onEdit: (m: Category) => void;
   onInactivate: (m: Category) => void;
@@ -163,6 +168,7 @@ function ModalityCard({
 
   const card = (
     <div
+      data-record-id={modality.id}
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
       onClick={() => canManage && onEdit(modality)}
@@ -180,7 +186,7 @@ function ModalityCard({
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <InitialsAvatar name={modality.name} size="default" />
+        <InitialsAvatar name={modality.name} size="default" tone={avatarTone} />
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="min-w-0 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -253,6 +259,9 @@ export function ModalitiesList({
   };
 
   const { data, isPending, isError, refetch } = useCategories(filter);
+  // Cor de cada modalidade pela ordem de criacao de todas (a lista pode estar filtrada).
+  const { data: allModalities } = useCategories();
+  const modalityColors = useMemo(() => modalityColorMap(allModalities), [allModalities]);
   const modalities = data ?? [];
 
   const hasSearch = Boolean(filter.search);
@@ -364,6 +373,7 @@ export function ModalitiesList({
             <ModalityCard
               key={modality.id}
               modality={modality}
+              avatarTone={modalityColors.get(modality.name)?.avatar}
               canManage={canManage}
               onEdit={onEdit}
               onInactivate={onInactivate}

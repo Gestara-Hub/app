@@ -10,6 +10,7 @@ import { ThemeProvider } from "next-themes";
 import { initAnalytics } from "@/lib/analytics";
 import { reapplySavedTheme } from "@/lib/theme-accent";
 import { toast } from "@/lib/toast";
+import { highlightIdOf, highlightRecord, type HighlightMeta } from "@/lib/record-highlight";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
 import { useRefetchOnStoreChange } from "./use-refetch-on-store-change";
@@ -62,7 +63,9 @@ function handleGlobalMutationError(
 export function createQueryClient(): QueryClient {
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
-      onSuccess: () => {
+      onSuccess: (data, variables, _context, mutation) => {
+        // Item salvo pisca na lista (lib/record-highlight): so as mutacoes marcadas.
+        highlightRecord(highlightIdOf(mutation.meta?.highlight as HighlightMeta | undefined, data, variables));
         void client.invalidateQueries({ queryKey: queryKeys.audit.all });
         // Lembretes (doc product/25): pagar, vender pacote, marcar presenca,
         // mandar mensagem... quase toda escrita muda a lista. Leitura com recorte

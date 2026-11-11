@@ -90,6 +90,8 @@ export function useCreateFinanceEntry() {
   return useMutation({
     // Os anexos ja subiram no formulario (ao serem escolhidos) e vem em `payload.attachments`.
     mutationFn: ({ payload }: { payload: CreateFinancialEntry }) => financeService.createEntry(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: invalidate,
   });
 }
@@ -107,6 +109,8 @@ export function useUpdateFinanceEntry() {
       payload: UpdateFinancialEntry;
       scope: FinancialEntryUpdateScope;
     }) => financeService.updateEntry(id, payload, scope),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: invalidate,
   });
 }

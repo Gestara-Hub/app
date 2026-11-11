@@ -68,6 +68,8 @@ export function useCreateClassGroup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateClassGroup) => turmasService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
   });
 }
@@ -77,6 +79,8 @@ export function useUpdateClassGroup() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateClassGroup }) =>
       turmasService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
   });
 }

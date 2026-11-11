@@ -112,6 +112,8 @@ export function useCreateEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateEvent) => eventsService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.events.all });
       qc.invalidateQueries({ queryKey: queryKeys.audit.all });
@@ -123,6 +125,8 @@ export function useUpdateEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateEvent }) => eventsService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.events.all });
       qc.invalidateQueries({ queryKey: queryKeys.audit.all });

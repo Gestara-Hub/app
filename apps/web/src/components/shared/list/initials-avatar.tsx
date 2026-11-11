@@ -12,22 +12,30 @@ export interface InitialsAvatarProps {
   name: string;
   className?: string;
   size?: "default" | "sm" | "lg";
+  /**
+   * Cor com significado vinda de fora (ex.: a da modalidade, igual ao
+   * Calendario). Pessoas ficam neutras: a cor por pessoa foi testada em
+   * 10/11/2026 e enchia as listas de cor sem dizer nada.
+   */
+  tone?: string;
 }
 
 export function InitialsAvatar({
   name,
   className,
   size = "default",
+  tone,
 }: InitialsAvatarProps) {
   return (
     <Avatar
       size={size}
       className={cn(
-        "size-9 shrink-0 border border-border/50 bg-muted/60 text-xs font-semibold text-foreground/80 select-none",
+        "size-9 shrink-0 border text-xs font-semibold select-none",
+        tone ?? "border-border/50 bg-muted/60 text-foreground/80",
         className,
       )}
     >
-      <AvatarFallback className="bg-muted/70 text-foreground text-xs font-semibold">
+      <AvatarFallback className={cn("text-xs font-semibold", tone ? "bg-transparent text-inherit" : "bg-muted/70 text-foreground")}>
         {getInitials(name)}
       </AvatarFallback>
     </Avatar>

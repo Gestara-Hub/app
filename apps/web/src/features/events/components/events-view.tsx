@@ -80,6 +80,7 @@ function EventRow({
   const actions = eventActions(event, canManage, onEdit, onCancel);
   const row = (
     <ListRow
+      data-record-id={event.id}
       onClick={() => router.push(`/events/${event.id}`)}
       canClick
       actions={actions.length > 0 ? <ListItemActionsMenu actions={actions} title={`Ações de ${event.name}`} variant="ghost" /> : null}
@@ -128,6 +129,7 @@ function EventCard({
   const open = () => router.push(`/events/${event.id}`);
   const card = (
     <div
+      data-record-id={event.id}
       onClick={open}
       className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
     >

@@ -77,6 +77,7 @@ function PackageRow({
 
   const content = (
     <ListRow
+      data-record-id={pkg.id}
       onClick={canManage ? () => onEdit(pkg) : undefined}
       canClick={canManage}
       actions={
@@ -154,6 +155,7 @@ function PackageCard({
 
   const card = (
     <div
+      data-record-id={pkg.id}
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
       onClick={() => canManage && onEdit(pkg)}

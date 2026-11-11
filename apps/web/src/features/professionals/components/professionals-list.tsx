@@ -117,6 +117,7 @@ function ProfessionalRow({
 
   const content = (
     <ListRow
+      data-record-id={professional.id}
       onClick={canManage ? () => onEdit(professional) : undefined}
       canClick={canManage}
       actions={
@@ -245,6 +246,7 @@ function ProfessionalCard({
 
   const card = (
     <div
+      data-record-id={professional.id}
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
       onClick={() => canManage && onEdit(professional)}

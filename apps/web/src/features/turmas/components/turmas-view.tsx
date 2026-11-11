@@ -140,6 +140,7 @@ function TurmaRow({
 
   const content = (
     <ListRow
+      data-record-id={turma.id}
       onClick={() => router.push(`/classes/${turma.id}`)}
       canClick
       actions={
@@ -239,6 +240,7 @@ function TurmaCard({
 
   const card = (
     <div
+      data-record-id={turma.id}
       onClick={() => router.push(`/classes/${turma.id}`)}
       className="group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all cursor-pointer hover:border-primary/40 hover:shadow-xs"
     >

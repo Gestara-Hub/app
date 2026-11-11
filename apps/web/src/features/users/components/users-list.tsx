@@ -138,6 +138,7 @@ function UserRow(props: UserItemProps) {
 
   const content = (
     <ListRow
+      data-record-id={user.id}
       onClick={canManage ? () => onEdit(user) : undefined}
       canClick={canManage}
       actions={
@@ -191,6 +192,7 @@ function UserCard(props: UserItemProps) {
   const actions = userActions(props);
   const card = (
     <div
+      data-record-id={user.id}
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
       onClick={canManage ? () => onEdit(user) : undefined}

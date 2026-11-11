@@ -125,6 +125,7 @@ function PlanRow({
 
   const content = (
     <ListRow
+      data-record-id={plan.id}
       onClick={canManage ? () => onEdit(plan) : undefined}
       canClick={canManage}
       actions={
@@ -227,6 +228,7 @@ function PlanCard({
 
   const card = (
     <div
+      data-record-id={plan.id}
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
       onClick={() => canManage && onEdit(plan)}

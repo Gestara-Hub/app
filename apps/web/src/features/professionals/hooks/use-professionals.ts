@@ -34,6 +34,8 @@ export function useCreateProfessional() {
   return useMutation({
     mutationFn: (payload: CreateProfessional) =>
       professionalsService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.professionals.all }),
   });
@@ -44,6 +46,8 @@ export function useUpdateProfessional() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateProfessional }) =>
       professionalsService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.professionals.all }),
   });

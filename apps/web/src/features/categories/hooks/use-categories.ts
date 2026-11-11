@@ -25,6 +25,8 @@ export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateCategory) => categoriesService.create(payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.categories.all }),
   });
@@ -35,6 +37,8 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateCategory }) =>
       categoriesService.update(id, payload),
+    // Pisca o item salvo na lista (lib/record-highlight).
+    meta: { highlight: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.categories.all });
       // Pode fechar a revisao das modalidades do setup (passo do onboarding).
