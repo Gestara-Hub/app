@@ -118,7 +118,12 @@ export function AppTopbar() {
                   </AvatarFallback>
                 </Avatar>
                 {supportUnread > 0 ? (
-                  <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-destructive" aria-hidden />
+                  // Resposta do suporte: halo que pulsa devagar em volta da bolinha
+                  // (some para quem prefere menos movimento).
+                  <span className="absolute -top-0.5 -right-0.5 flex size-2.5" aria-hidden>
+                    <span className="absolute inset-0 rounded-full bg-destructive/60 motion-safe:animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                    <span className="relative size-2.5 rounded-full border-2 border-background bg-destructive" />
+                  </span>
                 ) : unseenRelease ? (
                   <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-primary" aria-hidden />
                 ) : null}

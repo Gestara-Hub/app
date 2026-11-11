@@ -300,9 +300,15 @@ export async function markSupportBotHelpedAction(threadId: string, helped: boole
   }, "support.helped");
 }
 
+/**
+ * Bolinha do menu: roda a cada 2 minutos para cada pessoa com o app aberto,
+ * entao so a sessao e a contagem (sem o `caller()`, que busca pessoa e espaco
+ * e a contagem nao usa). Tempo real do Supabase fica para depois (pendencias).
+ */
 export async function supportUnreadCountAction(): Promise<ActionResult<number>> {
   return runAction(async () => {
-    const c = await caller();
-    return rpc<number>(c.admin, "support_unread_count", { p_org: c.org, p_user: c.userId });
+    const tenant = await requireTenant();
+    if (isDemoSpace(tenant.organizationId)) return 0;
+    return rpc<number>(createSupabaseAdminClient(), "support_unread_count", { p_org: tenant.organizationId, p_user: tenant.userId });
   }, "support.unread");
 }

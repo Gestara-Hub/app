@@ -20,13 +20,18 @@ const keys = {
   thread: (id: string) => ["support", "thread", id] as const,
 };
 
-/** Nao lidos do suporte (bolinha no menu). Consulta a cada minuto; erro (demonstracao) some em silencio. */
+/**
+ * Nao lidos do suporte (bolinha no menu). Consulta a cada 2 minutos so com a
+ * aba visivel (o TanStack pausa em segundo plano) e de novo ao voltar para a
+ * aba; a resposta tambem vai por e-mail. Erro (demonstracao) some em silencio.
+ */
 export function useSupportUnread(enabled = true) {
   return useQuery({
     queryKey: keys.unread,
     queryFn: () => unwrap(supportUnreadCountAction()),
     enabled,
-    refetchInterval: 60_000,
+    refetchInterval: 2 * 60_000,
+    refetchOnWindowFocus: true,
     retry: false,
     staleTime: 30_000,
   });
