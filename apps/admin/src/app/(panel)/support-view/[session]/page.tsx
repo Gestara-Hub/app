@@ -85,8 +85,8 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
 
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <FactCard title="Termos de uso">
-          <Fact label="Aceitos pelo proprietário" value={data.owner?.termsVersion ? `versão ${data.owner.termsVersion}` : "Sem registro"} />
-          {data.owner?.termsAcceptedAt ? <Fact label="Em" value={<RelativeTime date={new Date(data.owner.termsAcceptedAt)} />} /> : null}
+          <Fact label="Versão aceita pelo proprietário" value={data.owner?.termsVersion ? `v${data.owner.termsVersion.replace(/^v/, "")}` : "Sem registro"} />
+          {data.owner?.termsAcceptedAt ? <Fact label="Aceita em" value={<RelativeTime date={new Date(data.owner.termsAcceptedAt)} />} /> : null}
         </FactCard>
         <Card>
           <CardHeader>
