@@ -232,7 +232,10 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                       </p>
                     ) : null}
                     {canReply ? (
-                      <form action={bugStatusAction} className="space-y-2">
+                      // `key` com o andamento salvo: o React limpa o formulario depois
+                      // da action e o <select> voltava ao valor da primeira montagem
+                      // ("Novo"); quem clicava de novo gravava "Novo" por cima.
+                      <form key={`${thread.bugStatus ?? "new"}:${thread.fixedIn ?? ""}`} action={bugStatusAction} className="space-y-2">
                         <input type="hidden" name="threadId" value={thread.id} />
                         <select
                           name="status"
