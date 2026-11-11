@@ -42,10 +42,10 @@ export function useAudioFeedback() {
   const playChime = useCallback(
     (type: "success" | "checkin" | "error" = "checkin") => {
       if (preferences.audioFeedbackEnabled) {
-        playAudioFeedback(type);
+        playAudioFeedback(type, preferences.checkinSound);
       }
     },
-    [preferences.audioFeedbackEnabled],
+    [preferences.audioFeedbackEnabled, preferences.checkinSound],
   );
 
   return {

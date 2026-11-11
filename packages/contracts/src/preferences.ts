@@ -1,6 +1,9 @@
 export type ThemeMode = "light" | "dark" | "system";
 export type DensityMode = "comfortable" | "compact";
 export type ListViewMode = "list" | "grid";
+/** Som ao marcar presente na chamada (09/11/2026): sintetizado no navegador, sem arquivo. */
+export type CheckinSound = "confirm" | "beep" | "bell" | "drop" | "chord" | "marimba" | "soft";
+export const CHECKIN_SOUNDS: readonly CheckinSound[] = ["confirm", "beep", "bell", "drop", "chord", "marimba", "soft"];
 
 /**
  * Tema da pessoa: so a cor de destaque desde 31/10/2026 (cor base, cantos, menu,
@@ -20,6 +23,8 @@ export interface UserPreferences {
   pageSizes?: Record<string, number>;
   defaultPageSize: number;
   audioFeedbackEnabled: boolean;
+  /** Qual som toca ao marcar presente; sem valor, a confirmacao. */
+  checkinSound?: CheckinSound;
   onboarding: {
     dismissed: boolean;
     completedStepIds: string[];
@@ -58,6 +63,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   pageSizes: {},
   defaultPageSize: 20,
   audioFeedbackEnabled: true,
+  checkinSound: "confirm",
   onboarding: {
     dismissed: false,
     completedStepIds: [],

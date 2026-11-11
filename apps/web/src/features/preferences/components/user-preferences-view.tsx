@@ -3,13 +3,14 @@
 import { useTheme } from "next-themes";
 import { toast } from "@/lib/toast";
 import { Check, Monitor, Moon, RotateCcw, Rows3, Sparkles, Sun, Volume2, VolumeX } from "lucide-react";
-import type { ThemeMode } from "@gestarahub/contracts";
+import { CHECKIN_SOUNDS, type CheckinSound, type ThemeMode } from "@gestarahub/contracts";
 import { cn } from "@/lib/utils";
 import { useIsClient } from "@/lib/use-is-client";
 import { THEME_COLORS, useThemeColor } from "@/lib/theme-accent";
-import { playAudioFeedback } from "@/lib/audio-feedback";
+import { CHECKIN_SOUND_LABELS, playAudioFeedback } from "@/lib/audio-feedback";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useUserPreferences } from "../hooks/use-user-preferences";
 
@@ -44,6 +45,9 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const theme = isClient ? preferences.theme : undefined;
   const color = isClient ? themeColor : undefined;
   const audioEnabled = isClient && preferences.audioFeedbackEnabled;
+  // Som que saiu da lista (ou nenhum salvo): fica a confirmacao, o padrao.
+  const savedSound = isClient ? preferences.checkinSound : undefined;
+  const checkinSound: CheckinSound = savedSound && CHECKIN_SOUNDS.includes(savedSound) ? savedSound : "confirm";
 
   const handleThemeChange = (mode: ThemeMode) => {
     updatePreference("theme", mode);
@@ -53,11 +57,17 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const handleAudioToggle = (enabled: boolean) => {
     updatePreference("audioFeedbackEnabled", enabled);
     if (enabled) {
-      playAudioFeedback("checkin");
+      playAudioFeedback("checkin", checkinSound);
       toast.success("Som ligado.");
     } else {
       toast.info("Som desligado.");
     }
+  };
+
+  // Escolher no select ja toca o som: a previa e a propria escolha.
+  const handleSoundChange = (sound: CheckinSound) => {
+    updatePreference("checkinSound", sound);
+    playAudioFeedback("checkin", sound);
   };
 
   const handleResetOnboarding = () => {
@@ -155,16 +165,33 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             )}
             <div>
               <p className="text-xs font-medium text-foreground">Som ao marcar presença</p>
-              <p className="text-[11px] text-muted-foreground">Um bipe discreto na lista de chamada.</p>
+              <p className="text-[11px] text-muted-foreground">Toca na lista de chamada.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => playAudioFeedback("checkin")}>
-              Testar
-            </Button>
-            <Switch checked={audioEnabled} onCheckedChange={handleAudioToggle} aria-label="Som ao marcar presença" />
-          </div>
+          <Switch checked={audioEnabled} onCheckedChange={handleAudioToggle} aria-label="Som ao marcar presença" />
         </div>
+        {audioEnabled ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs font-medium text-foreground">Som</p>
+            <div className="flex items-center gap-2">
+              <Select value={checkinSound} onValueChange={(value) => handleSoundChange(value as CheckinSound)}>
+                <SelectTrigger className="w-36 text-base md:text-sm" aria-label="Som ao marcar presença">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHECKIN_SOUNDS.map((sound) => (
+                    <SelectItem key={sound} value={sound}>
+                      {CHECKIN_SOUND_LABELS[sound]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" onClick={() => playAudioFeedback("checkin", checkinSound)}>
+                Testar
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3 border-t border-border/40 pt-4">
