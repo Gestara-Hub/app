@@ -1,11 +1,14 @@
 "use client";
 
 import { PausedTag } from "@/features/clients";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionBar } from "@/components/form";
+import { StatCard } from "@/components/shared/stat-card";
 import {
   InitialsAvatar,
   ListContainer,
@@ -32,7 +35,7 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import type { ChargeFilter, ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useUserPreferences } from "@/features/preferences";
-import { CompetencePicker } from "@/features/finance";
+import { CompetencePicker, competenceLabel } from "@/features/finance";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
 import { useCharges } from "../hooks/use-billing";
 import { NewExtraChargeDialog } from "./new-extra-charge-dialog";
@@ -46,6 +49,7 @@ import {
   STATUS_CLASS,
   STATUS_FILTERS,
   STATUS_LABEL,
+  statusLabelOf,
   ScholarshipBadge,
   WhatsAppSentBadge,
   cancelReasonOf,
@@ -63,7 +67,7 @@ import {
   dueVerb,
 } from "./charge-parts";
 import { useChargeActions } from "./use-charge-actions";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, todayISO } from "@gestarahub/core/date";
 
 interface StudentConsolidatedGroup {
   studentId: string;
@@ -153,6 +157,21 @@ function groupByStudent(charges: ChargeView[]): StudentConsolidatedGroup[] {
   );
 }
 
+/**
+ * Selo de situacao so quando diz algo que a aba nao diz (10/11/2026): em "Em
+ * atraso" todo mundo esta atrasado, em "Pagas" todo mundo pagou, e em "A
+ * receber" o normal e pendente; ali so o atrasado ganha selo.
+ */
+function statusRepeatsTab(label: string, filter: StatusFilterValue): boolean {
+  // Atraso nao tem selo na lista (11/11/2026): a data "venceu 10/11 · 1 dia" fica
+  // em vermelho. Selo em quase toda linha virava ruido.
+  if (label === STATUS_LABEL.overdue) return true;
+  if (filter === "open") return label === STATUS_LABEL.pending;
+  if (filter === "overdue") return label === STATUS_LABEL.overdue;
+  if (filter === "paid") return label === STATUS_LABEL.paid;
+  return false;
+}
+
 function studentGroupBadge(g: StudentConsolidatedGroup): {
   label: string;
   className: string;
@@ -174,7 +193,8 @@ function studentGroupBadge(g: StudentConsolidatedGroup): {
         g.charges.length > 1 && g.overdueCount < activeCount
           ? `${g.overdueCount} em atraso`
           : STATUS_LABEL.overdue,
-      className: STATUS_CLASS.overdue,
+      // Tom "vencido" (mais calmo que o vermelho cheio), como a data e o valor vencidos.
+      className: "border-overdue/25 bg-overdue/10 text-overdue",
     };
   }
   if (g.pendingCount > 0 && g.paidCount > 0) {
@@ -189,32 +209,55 @@ function studentGroupBadge(g: StudentConsolidatedGroup): {
   return { label: STATUS_LABEL.paid, className: STATUS_CLASS.paid };
 }
 
-function cleanSingleSubtitle(c: ChargeView): string {
-  const parts: string[] = [];
-  if (c.kind === "dropin") {
-    parts.push(c.className ? `Aula avulsa · ${c.className}` : "Aula avulsa");
-    parts.push(`aula em ${shortDate(c.dueDate)}`);
-  } else if (isInstallmentKind(c)) {
-    const inst = installmentLabel(c);
-    parts.push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
-    parts.push(`${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`);
-  } else {
-    if (c.className) parts.push(c.className);
-    if (c.planName) parts.push(c.planName);
-    parts.push(`${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`);
-  }
-  const reason = cancelReasonOf(c);
-  if (reason) parts.push(reason);
-  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
-  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) parts.push("link aberto");
-  if (c.status === "paid") {
-    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
-    parts.push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
-  }
-  return parts.join(" · ");
+/** Trecho do subtitulo; `overdue` pinta de vermelho (o vencimento passado). */
+interface SubtitlePart {
+  text: string;
+  overdue?: boolean;
 }
 
-function cleanGroupSubtitle(g: StudentConsolidatedGroup): string {
+function renderSubtitle(parts: SubtitlePart[]) {
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 ? " · " : null}
+      {part.overdue ? <span className="text-overdue">{part.text}</span> : part.text}
+    </Fragment>
+  ));
+}
+
+/** "venceu 10/11 · 3 dias" para a vencida (vermelho na lista); senao "vence 10/11". */
+function duePart(c: ChargeView): SubtitlePart {
+  if (c.status !== "overdue") return { text: `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}` };
+  const days = Math.max(1, differenceInCalendarDays(parseISO(todayISO()), parseISO(c.dueDate)));
+  return { text: `venceu ${shortDate(c.dueDate)} · ${plural(days, "dia", "dias")}`, overdue: true };
+}
+
+function cleanSingleSubtitle(c: ChargeView): SubtitlePart[] {
+  const parts: SubtitlePart[] = [];
+  const push = (text: string) => parts.push({ text });
+  if (c.kind === "dropin") {
+    push(c.className ? `Aula avulsa · ${c.className}` : "Aula avulsa");
+    parts.push(c.status === "overdue" ? duePart(c) : { text: `aula em ${shortDate(c.dueDate)}` });
+  } else if (isInstallmentKind(c)) {
+    const inst = installmentLabel(c);
+    push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
+    parts.push(duePart(c));
+  } else {
+    if (c.className) push(c.className);
+    if (c.planName) push(c.planName);
+    parts.push(duePart(c));
+  }
+  const reason = cancelReasonOf(c);
+  if (reason) push(reason);
+  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
+  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) push("link aberto");
+  if (c.status === "paid") {
+    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
+    push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
+  }
+  return parts;
+}
+
+function cleanGroupSubtitle(g: StudentConsolidatedGroup): SubtitlePart[] {
   const countByKind = new Map<ChargeKind, number>();
   for (const c of g.charges) {
     countByKind.set(c.kind, (countByKind.get(c.kind) ?? 0) + 1);
@@ -235,19 +278,27 @@ function cleanGroupSubtitle(g: StudentConsolidatedGroup): string {
   if (extras > 0) items.push(plural(extras, "cobrança avulsa", "cobranças avulsas"));
 
   const shown = g.charges.filter((c) => c.status !== "canceled" && c.status !== "waived");
-  const dates = Array.from(new Set(shown.map((c) => shortDate(c.dueDate))));
-  // Todas ja vencidas: "venceu"; alguma ainda por vencer: "vence".
-  const verb = shown.length > 0 && shown.every((c) => dueVerb(c.dueDate, c.status) === "venceu") ? "venceu" : "vence";
-  const datePart =
-    dates.length === 1
-      ? `${verb} ${dates[0]}`
-      : dates.length === 2
-        ? `${verb} ${dates[0]} e ${dates[1]}`
-        : dates.length > 2
-          ? `${verb} ${dates[0]}, ${dates[1]} +${dates.length - 2}`
-          : null;
+  // Vencidas e por vencer separadas (11/11/2026): "venceu 04/11" em vermelho e
+  // "vence 25/11" normal. Antes um "vence" so cobria as duas e escondia o atraso.
+  const datesOf = (list: ChargeView[]) => Array.from(new Set(list.map((c) => shortDate(c.dueDate))));
+  const datesText = (verb: string, dates: string[]) =>
+    dates.length === 0
+      ? null
+      : dates.length === 1
+        ? `${verb} ${dates[0]}`
+        : dates.length === 2
+          ? `${verb} ${dates[0]} e ${dates[1]}`
+          : `${verb} ${dates[0]}, ${dates[1]} +${dates.length - 2}`;
+  const late = shown.filter((c) => dueVerb(c.dueDate, c.status) === "venceu" && c.status !== "paid");
+  const rest = shown.filter((c) => !late.includes(c));
+  const lateText = datesText("venceu", datesOf(late));
+  const restText = datesText(rest.every((c) => dueVerb(c.dueDate, c.status) === "venceu") ? "venceu" : "vence", datesOf(rest));
 
-  return [items.join(" + "), datePart].filter(Boolean).join(" · ");
+  const parts: SubtitlePart[] = [];
+  if (items.length > 0) parts.push({ text: items.join(" + ") });
+  if (lateText) parts.push({ text: lateText, overdue: true });
+  if (restText) parts.push({ text: restText });
+  return parts;
 }
 
 function subItemTitle(c: ChargeView): string {
@@ -290,6 +341,9 @@ function useBillingFilters() {
   const kindParam = searchParams.get("kind");
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
   const allOverdue = searchParams.get("overdue") === "all";
+  // So os meses anteriores a este (link "+ R$ X de meses anteriores" do Financeiro).
+  const beforeParam = searchParams.get("before");
+  const overdueBefore = allOverdue && beforeParam && /^\d{4}-\d{2}$/.test(beforeParam) ? beforeParam : null;
 
   const update = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams(pendingQuery.current ?? window.location.search);
@@ -304,8 +358,8 @@ function useBillingFilters() {
 
   const setCompetence = (next: string) =>
     update({ month: next === currentCompetence() ? null : next, overdue: null });
-  const showAllOverdue = (on: boolean) =>
-    update({ overdue: on ? "all" : null, month: null, status: null });
+  const showAllOverdue = (on: boolean, before?: string) =>
+    update({ overdue: on ? "all" : null, before: on && before ? before : null, month: null, status: null });
   const setStatusFilter = (next: StatusFilterValue) =>
     update({ status: next === "open" ? null : next });
   const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
@@ -316,6 +370,7 @@ function useBillingFilters() {
     statusFilter,
     kindFilter,
     allOverdue,
+    overdueBefore,
     showAllOverdue,
     setCompetence,
     setStatusFilter,
@@ -329,11 +384,16 @@ function AllOverdueSummary({ charges, isLoading }: { charges: ChargeView[]; isLo
   const totalCents = charges.reduce((s, c) => s + c.amountCents, 0);
   const months = new Set(charges.map((c) => c.competence ?? c.dueDate.slice(0, 7))).size;
   const hasOverdue = charges.length > 0;
+  const thisMonth = currentCompetence();
+  const refMonthOf = (c: ChargeView) => c.competence ?? c.dueDate.slice(0, 7);
+  const thisMonthCents = charges.filter((c) => refMonthOf(c) === thisMonth).reduce((s, c) => s + c.amountCents, 0);
+  const earlierCents = charges.filter((c) => refMonthOf(c) < thisMonth).reduce((s, c) => s + c.amountCents, 0);
   return (
     <div
       className={cn(
         "rounded-xl border p-4 shadow-2xs",
-        !isLoading && hasOverdue ? "border-red-500/30 bg-red-500/5 dark:bg-red-950/10" : "border-border/70 bg-card",
+        // Cartao neutro (10/11/2026): o vermelho fica so no valor.
+        "border-border/70 bg-card",
       )}
     >
       <span className="text-xs font-medium text-muted-foreground">Em atraso até hoje</span>
@@ -352,9 +412,12 @@ function AllOverdueSummary({ charges, isLoading }: { charges: ChargeView[]; isLo
       <p className="mt-0.5 text-xs text-muted-foreground">
         {isLoading
           ? "—"
-          : hasOverdue
-            ? `${plural(charges.length, "cobrança", "cobranças")} de ${plural(months, "mês", "meses")}`
-            : "Nenhuma cobrança em atraso"}
+          : !hasOverdue
+            ? "Nenhuma cobrança em atraso"
+            : thisMonthCents > 0 && earlierCents > 0
+              ? // A composicao do total (11/11/2026): o cartao do Financeiro mostra so o do mes.
+                `${formatCents(thisMonthCents)} de ${competenceLabel(thisMonth).replace(/ de \d{4}$/, "").toLowerCase()} · ${formatCents(earlierCents)} de meses anteriores`
+              : `${plural(charges.length, "cobrança", "cobranças")} de ${plural(months, "mês", "meses")}`}
       </p>
     </div>
   );
@@ -371,6 +434,7 @@ export function BillingView() {
     statusFilter: monthStatusFilter,
     kindFilter,
     allOverdue,
+    overdueBefore,
     showAllOverdue,
     setCompetence,
     setStatusFilter,
@@ -422,7 +486,8 @@ export function BillingView() {
   const withChargeContextMenu = chargeActions.withContextMenu;
   const renderChargeActions = chargeActions.renderActions;
 
-  const list = charges ?? [];
+  const refMonth = (c: ChargeView) => c.competence ?? c.dueDate.slice(0, 7);
+  const list = overdueBefore ? (charges ?? []).filter((c) => refMonth(c) < overdueBefore) : (charges ?? []);
   const query = normalizeText(search);
   const searchMatchedList = list.filter(
     (c) =>
@@ -438,7 +503,23 @@ export function BillingView() {
     setPage(1);
   }
 
-  const studentGroups = groupByStudent(filteredList);
+  // Todos os atrasos: por mes (mais recente primeiro) e, dentro dele, por aluno,
+  // com um subtitulo "Novembro de 2026 · R$ 4.525,53" (11/11/2026).
+  const groupMonth = new Map<StudentConsolidatedGroup, string>();
+  const monthTotals = new Map<string, number>();
+  let studentGroups: StudentConsolidatedGroup[];
+  if (allOverdue) {
+    const months = [...new Set(filteredList.map(refMonth))].sort().reverse();
+    studentGroups = months.flatMap((month) => {
+      const ofMonth = filteredList.filter((c) => refMonth(c) === month);
+      monthTotals.set(month, ofMonth.reduce((sum, c) => sum + c.amountCents, 0));
+      const groups = groupByStudent(ofMonth);
+      for (const g of groups) groupMonth.set(g, month);
+      return groups;
+    });
+  } else {
+    studentGroups = groupByStudent(filteredList);
+  }
   const totalGroups = studentGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalGroups / pageSize));
   const paginatedStudentGroups = studentGroups.slice((page - 1) * pageSize, page * pageSize);
@@ -488,7 +569,32 @@ export function BillingView() {
     ...(otherTabCount > 0 || statusFilter === "other"
       ? [{ id: "other" as const, label: "Isentas e encerradas", count: otherTabCount }]
       : []),
+    // No lugar do seletor de situacao, que repetia as abas (11/11/2026).
+    { id: "all", label: "Todas", count: searchMatchedList.filter((c) => matchesStatusFilter(c, "all")).length },
   ];
+  // Filtro fino que veio por link (pendentes, canceladas, isentas, substituidas): sem aba, vira um aviso.
+  const offTabFilter = quickTabs.some((t) => t.id === statusFilter)
+    ? undefined
+    : STATUS_FILTERS.find((f) => f.value === statusFilter)?.label;
+
+  // Link do cartao (11/11/2026): aplica o filtro, marca o cartao e rola ate a
+  // lista, para a mudanca ser vista; clicar de novo volta para "A receber".
+  const scrollToList = () => {
+    window.requestAnimationFrame(() => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("billing-list")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+  };
+  const cardFilterAction = (label: string, value: StatusFilterValue) =>
+    statusFilter === value
+      ? { label: "Limpar filtro", onClick: () => setStatusFilter("open") }
+      : {
+          label,
+          onClick: () => {
+            setStatusFilter(value);
+            scrollToList();
+          },
+        };
 
   const isFutureCompetence = competence > dateInSpace().slice(0, 7);
 
@@ -498,7 +604,9 @@ export function BillingView() {
         title="Cobranças"
         description={
           allOverdue
-            ? "Cobranças em atraso de todos os meses, até hoje."
+            ? overdueBefore
+              ? `Cobranças em atraso de antes de ${competenceLabel(overdueBefore).toLowerCase()}.`
+              : "Cobranças em atraso de todos os meses, até hoje."
             : "Cobranças do mês. As mensalidades são geradas sozinhas."
         }
       >
@@ -526,161 +634,69 @@ export function BillingView() {
             allOverdue ? (
               <AllOverdueSummary charges={list} isLoading={isLoading} />
             ) : (
-              /* KPI Summary Cards */
+              /* Indicadores do mes: o mesmo cartao do Financeiro (StatCard). */
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {/* Total Ativo */}
-              <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Total ativo
-                  </span>
-                  <div className="flex size-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Wallet className="size-4" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  {isLoading ? (
-                    <Skeleton className="h-7 w-24" />
-                  ) : (
-                    <div className="text-xl font-bold tabular-nums text-foreground sm:text-2xl">
-                      {formatCents(activeTotalCents)}
-                    </div>
-                  )}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {isLoading
-                      ? "—"
-                      : waivedCount > 0
-                        ? `${plural(activeList.length, "ativa", "ativas")} · ${plural(waivedCount, "isenta", "isentas")}`
-                        : plural(activeList.length, "ativa", "ativas")}
-                  </p>
-                </div>
-              </div>
-
-              {/* Recebido */}
-              <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Recebido
-                  </span>
-                  <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle2 className="size-4" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  {isLoading ? (
-                    <Skeleton className="h-7 w-24" />
-                  ) : (
-                    <div className="text-xl font-bold tabular-nums text-emerald-600 sm:text-2xl dark:text-emerald-400">
-                      {formatCents(paidCents)}
-                    </div>
-                  )}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {isLoading ? "—" : plural(paidList.length, "paga", "pagas")}
-                  </p>
-                </div>
-              </div>
-
-              {/* Em atraso */}
-              <div
-                className={cn(
-                  "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
-                  !isLoading && overdueList.length > 0
-                    ? "border-red-500/30 bg-red-500/5 dark:bg-red-950/10"
-                    : "border-border/70 bg-card",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Em atraso
-                  </span>
-                  <div
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-md",
-                      !isLoading && overdueList.length > 0
-                        ? "bg-red-500/15 text-red-600 dark:text-red-400"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <AlertCircle className="size-4" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  {isLoading ? (
-                    <Skeleton className="h-7 w-24" />
-                  ) : (
-                    <div
-                      className={cn(
-                        "text-xl font-bold tabular-nums sm:text-2xl",
-                        overdueList.length > 0
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-foreground",
-                      )}
-                    >
-                      {formatCents(overdueCents)}
-                    </div>
-                  )}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {isLoading ? "—" : `${overdueList.length} em atraso`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Cancelado */}
-              <div
-                className={cn(
-                  "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
-                  !isLoading && canceledList.length > 0
-                    ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20"
-                    : "border-border/70 bg-card",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
+                <StatCard
+                  label="Total ativo"
+                  icon={<Wallet />}
+                  isLoading={isLoading}
+                  value={formatCents(activeTotalCents)}
+                  sub={
+                    waivedCount > 0
+                      ? `${plural(activeList.length, "ativa", "ativas")} · ${plural(waivedCount, "isenta", "isentas")}`
+                      : plural(activeList.length, "ativa", "ativas")
+                  }
+                  active={statusFilter === "all"}
+                  action={cardFilterAction("Ver todas", "all")}
+                />
+                <StatCard
+                  label="Recebido"
+                  icon={<CheckCircle2 />}
+                  iconTone="success"
+                  valueTone="success"
+                  isLoading={isLoading}
+                  value={formatCents(paidCents)}
+                  sub={plural(paidList.length, "paga", "pagas")}
+                  active={statusFilter === "paid"}
+                  action={cardFilterAction("Ver pagas", "paid")}
+                />
+                <StatCard
+                  label="Em atraso"
+                  icon={<AlertCircle />}
+                  iconTone={!isLoading && overdueList.length > 0 ? "danger" : "neutral"}
+                  valueTone={overdueList.length > 0 ? "danger" : "neutral"}
+                  isLoading={isLoading}
+                  value={formatCents(overdueCents)}
+                  sub={`${overdueList.length} em atraso`}
+                  active={statusFilter === "overdue"}
+                  action={cardFilterAction("Ver atrasadas", "overdue")}
+                />
+                <StatCard
+                  label={
+                    <span className="flex items-center gap-1.5">
                       Cancelado
+                      {!isLoading && canceledList.length > 0 ? (
+                        <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">
+                          Não cobrado
+                        </span>
+                      ) : null}
                     </span>
-                    {!isLoading && canceledList.length > 0 ? (
-                      <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">
-                        Não cobrado
-                      </span>
-                    ) : null}
-                  </div>
-                  <div
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-md",
-                      !isLoading && canceledList.length > 0
-                        ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Ban className="size-4" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  {isLoading ? (
-                    <Skeleton className="h-7 w-24" />
-                  ) : (
-                    <div
-                      className={cn(
-                        "text-xl font-bold tabular-nums sm:text-2xl",
-                        canceledList.length > 0
-                          ? "text-amber-700 dark:text-amber-400"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {formatCents(canceledCents)}
-                    </div>
-                  )}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {isLoading ? "—" : plural(canceledList.length, "cancelada", "canceladas")}
-                  </p>
-                </div>
-              </div>
+                  }
+                  icon={<Ban />}
+                  iconTone={!isLoading && canceledList.length > 0 ? "warning" : "neutral"}
+                  valueTone={canceledList.length > 0 ? "warning" : "muted"}
+                  isLoading={isLoading}
+                  value={formatCents(canceledCents)}
+                  sub={plural(canceledList.length, "cancelada", "canceladas")}
+                  active={statusFilter === "canceled"}
+                  action={cardFilterAction("Ver canceladas", "canceled")}
+                />
             </div>
           ))}
 
           {earlierOverdue.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 dark:bg-red-950/10">
+            // Aviso neutro (10/11/2026): cartao comum, vermelho so no icone e no valor.
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-2xs">
               <p className="flex items-center gap-2 text-sm">
                 <AlertCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
                 <span>
@@ -692,14 +708,15 @@ export function BillingView() {
                   em atraso de meses anteriores
                 </span>
               </p>
-              <Button variant="outline" onClick={() => showAllOverdue(true)}>
-                Ver todos os atrasos
+              {/* O aviso fala dos meses anteriores: abre so eles (11/11/2026). */}
+              <Button variant="outline" onClick={() => showAllOverdue(true, competence)}>
+                Ver atrasos anteriores
               </Button>
             </div>
           ) : null}
 
-          {/* Busca + filtros */}
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          {/* Busca + filtros (ancora: os links dos cartoes rolam ate aqui) */}
+          <div id="billing-list" className="flex scroll-mt-20 flex-col gap-2 lg:flex-row lg:items-center">
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -722,31 +739,7 @@ export function BillingView() {
                   ))}
                 </SelectContent>
               </Select>
-              {allOverdue ? null : (
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
-                >
-                  <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por situação">
-                    <SelectValue>
-                      {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_FILTERS.map((f) => {
-                      const count = list.filter((c) => matchesStatusFilter(c, f.value)).length;
-                      return (
-                        <SelectItem key={f.value} value={f.value}>
-                          <span className="flex w-full items-center justify-between gap-3">
-                            {f.label}
-                            <span className="tabular-nums text-muted-foreground">{count}</span>
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              )}
+
             </div>
           </div>
 
@@ -785,6 +778,7 @@ export function BillingView() {
               </div>
 
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                {offTabFilter ? <span className="font-medium text-foreground">Mostrando: {offTabFilter}</span> : null}
                 <span>
                   {plural(studentGroups.length, "aluno", "alunos")} ·{" "}
                   {plural(filteredList.length, "cobrança", "cobranças")}
@@ -913,7 +907,10 @@ export function BillingView() {
                 </div>
               ))
             ) : (
-              paginatedStudentGroups.map((group) => {
+              paginatedStudentGroups.map((group, index) => {
+                const month = groupMonth.get(group);
+                const previousMonth = index > 0 ? groupMonth.get(paginatedStudentGroups[index - 1]!) : undefined;
+                const row = ((group: StudentConsolidatedGroup) => {
                 // Caso 1: Aluno com 1 única cobrança na visão atual -> linha direta e limpa
                 if (group.charges.length === 1) {
                   const c = group.charges[0]!;
@@ -921,6 +918,7 @@ export function BillingView() {
                     c,
                     <ListRow
                       key={c.id}
+                      data-record-id={c.studentId}
                       className="flex-wrap gap-y-2 sm:flex-nowrap [&>div:first-child]:basis-full sm:[&>div:first-child]:basis-0 [&>div:last-child]:ml-auto"
                       actions={
                         <div className="flex items-center gap-2.5">
@@ -944,7 +942,7 @@ export function BillingView() {
                               {c.studentName}
                             </Link>
                             {c.studentPaused ? <PausedTag /> : null}
-                            {c.status === "waived" ? null : <ChargeStatusBadge charge={c} />}
+                            {c.status === "waived" || statusRepeatsTab(statusLabelOf(c), statusFilter) ? null : <ChargeStatusBadge charge={c} />}
                             <PaidViaBadge charge={c} />
                             <ScholarshipBadge charge={c} />
                             <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
@@ -952,7 +950,7 @@ export function BillingView() {
                           </div>
 
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            {cleanSingleSubtitle(c)}
+                            {renderSubtitle(cleanSingleSubtitle(c))}
                           </p>
                         </div>
                       </div>
@@ -971,8 +969,11 @@ export function BillingView() {
                 return (
                   <div
                     key={group.studentId}
-                    className="border-b border-border/60 transition-colors last:border-b-0"
+                    data-record-id={group.studentId}
+                    className="relative border-b border-border/60 transition-colors last:border-b-0"
                   >
+                    {/* Aberto: a barra fina a esquerda, como os grupos de Lembretes e a ficha do aluno (doc 07 §1.8). */}
+                    <SectionBar visible={isExpanded} />
                     <ListItemContextMenu
                       actions={[
                         {
@@ -1000,18 +1001,20 @@ export function BillingView() {
                                 {group.studentName}
                               </Link>
                               {group.studentPaused ? <PausedTag /> : null}
-                              <span
-                                className={cn(
-                                  "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none",
-                                  badge.className,
-                                )}
-                              >
-                                {badge.label}
-                              </span>
+                              {statusRepeatsTab(badge.label, statusFilter) ? null : (
+                                <span
+                                  className={cn(
+                                    "status-dot inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none",
+                                    badge.className,
+                                  )}
+                                >
+                                  {badge.label}
+                                </span>
+                              )}
                             </div>
 
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                              {cleanGroupSubtitle(group)}
+                              {renderSubtitle(cleanGroupSubtitle(group))}
                             </p>
                           </div>
                         </div>
@@ -1031,7 +1034,7 @@ export function BillingView() {
                             <p className="text-[11px] text-muted-foreground">
                               {hasPartialOverdue ? (
                                 <>
-                                  <span className="font-medium text-red-600 dark:text-red-400">
+                                  <span className="text-overdue">
                                     {formatCents(group.overdueCents)} vencido
                                   </span>
                                   {" · "}
@@ -1081,11 +1084,21 @@ export function BillingView() {
                                       {subItemTitle(c)}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
-                                      · {c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`}
+                                      {/* Vencida: "venceu 04/11 · 7 dias" em vermelho, como na linha simples. */}
+                                      ·{" "}
+                                      {c.status === "overdue" ? (
+                                        <span className="text-overdue">{duePart(c).text}</span>
+                                      ) : c.kind === "dropin" ? (
+                                        `aula em ${shortDate(c.dueDate)}`
+                                      ) : (
+                                        `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`
+                                      )}
                                       {c.status === "paid" && c.method ? ` · ${paymentMethodLabel(c.method)}` : ""}
                                       {c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue") ? " · link aberto" : ""}
                                     </span>
-                                    {c.status === "waived" ? null : <ChargeStatusBadge charge={c} size="sm" />}
+                                    {c.status === "waived" || statusRepeatsTab(statusLabelOf(c), statusFilter) ? null : (
+                                      <ChargeStatusBadge charge={c} size="sm" />
+                                    )}
                                     <PaidViaBadge charge={c} />
                                     <ScholarshipBadge charge={c} />
                                     <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
@@ -1109,6 +1122,19 @@ export function BillingView() {
                       </div>
                     ) : null}
                   </div>
+                );
+                })(group);
+                if (!month) return row;
+                return (
+                  <Fragment key={`${month}:${group.studentId}`}>
+                    {month !== previousMonth ? (
+                      <div className="flex items-baseline justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground sm:px-5">
+                        <span>{competenceLabel(month)}</span>
+                        <span className="tabular-nums">{formatCents(monthTotals.get(month) ?? 0)}</span>
+                      </div>
+                    ) : null}
+                    {row}
+                  </Fragment>
                 );
               })
             )}

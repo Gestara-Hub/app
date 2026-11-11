@@ -26,12 +26,18 @@ export const STATUS_LABEL: Record<ChargeStatus, string> = {
   waived: "Isento",
 };
 
+/**
+ * Uma cor por situacao no sistema todo (10/11/2026): pendente ambar, pago verde,
+ * em atraso vermelho, isento azul claro, cancelado e encerrado cinza. O selo
+ * leva um ponto da cor (`status-dot`, globals.css) para ler antes do texto.
+ */
 export const STATUS_CLASS: Record<ChargeStatus, string> = {
-  pending: "border-border/60 bg-muted/50 text-muted-foreground",
+  pending: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300",
   paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   overdue: "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400",
-  // Sem riscado no selo: o texto riscado ficava ilegivel (COB-25).
-  canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  // Sem riscado no selo: o texto riscado ficava ilegivel (COB-25). Cinza desde
+  // 10/11/2026 (o ambar passou a ser do pendente).
+  canceled: "border-border/60 bg-muted/50 text-muted-foreground",
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
 
@@ -91,8 +97,9 @@ export function PaidViaBadge({ charge }: { charge: ChargeView }) {
   );
 }
 
+// Neutro (10/11/2026): e informacao, nao situacao; a cor fica so para a situacao.
 const WHATSAPP_BADGE_CLASS =
-  "inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400";
+  "inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-muted/40 font-medium text-muted-foreground";
 
 const TRIGGER_LABELS: Record<string, string> = {
   billing_before_due: "Lembrete antes do vencimento",
@@ -299,7 +306,8 @@ export function ScholarshipBadge({ charge }: { charge: ChargeView }) {
           ? `Valor do plano: ${formatCents(charge.listAmountCents)}`
           : undefined
       }
-      className="inline-flex shrink-0 items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] leading-none font-medium text-sky-700 dark:text-sky-300"
+      // Neutro (10/11/2026): informacao, como o selo do WhatsApp.
+      className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] leading-none font-medium text-muted-foreground"
     >
       {full ? "Bolsista" : `Bolsa ${percent}%`}
     </span>
@@ -460,7 +468,7 @@ export function ChargeStatusBadge({ charge, size = "md" }: { charge: ChargeView;
     <span
       title={isSystemCanceled(charge) && !isReplaced(charge) ? SYSTEM_CANCELED_HINT : undefined}
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-medium leading-none",
+        "status-dot inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-medium leading-none",
         size === "sm" ? "text-[10px]" : "text-[11px]",
         statusClassOf(charge),
       )}
