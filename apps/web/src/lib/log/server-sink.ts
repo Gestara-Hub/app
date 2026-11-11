@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { APP_VERSION } from "@/config/release";
 import type { ErrorEntry } from "./index";
 
 /**
@@ -53,7 +54,7 @@ export function setErrorScope(values: ErrorScope): void {
 
 export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
   const current = scope.getStore();
-  const { error } = await createSupabaseAdminClient().rpc("record_error", {
+  const { data: isNew, error } = await createSupabaseAdminClient().rpc("record_error", {
     p_organization_id: entry.organizationId ?? current?.organizationId ?? null,
     p_fingerprint: entry.fingerprint,
     p_source: entry.source,
@@ -67,6 +68,8 @@ export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
       ...(current?.tier ? { plan: current.tier } : {}),
       ...(current?.route ? { route: current.route } : {}),
       ...(current?.startedAt ? { ms: Date.now() - current.startedAt } : {}),
+      // Versao do app (doc technical/27): erro que nasceu num deploy aparece pela versao.
+      release: APP_VERSION,
       ...(entry.context ?? {}),
     },
     p_reference: entry.reference,
@@ -74,4 +77,48 @@ export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
   });
   // Sem logError aqui: falhar ao gravar o erro nao pode gerar outro registro.
   if (error) console.error(`[log] erro não gravado no banco (código ${entry.reference}): ${error.message}`);
+  else if (isNew === true && entry.level === "error") await alertNewError(entry, current?.organizationId);
+}
+
+/** No maximo 10 alertas na hora por hora em cada servidor: uma enxurrada de erros novos vira o resumo diario. */
+const ALERT_LIMIT_PER_HOUR = 10;
+const alertTimes: number[] = [];
+
+/**
+ * Erro nunca visto em nenhum espaco: e-mail na hora para `ERROR_DIGEST_EMAIL`
+ * (doc technical/27). O mesmo erro de novo nao avisa: fica para o resumo diario.
+ * Falha no envio nao gera outro erro (mesmo motivo do `console.error` acima).
+ */
+async function alertNewError(entry: ErrorEntry, scopeOrganizationId: string | undefined): Promise<void> {
+  const to = process.env.ERROR_DIGEST_EMAIL?.trim();
+  if (!to || process.env.E2E_NOW) return;
+  const now = Date.now();
+  while (alertTimes.length > 0 && now - alertTimes[0] > 60 * 60 * 1000) alertTimes.shift();
+  if (alertTimes.length >= ALERT_LIMIT_PER_HOUR) return;
+  alertTimes.push(now);
+  try {
+    const { sendErrorDigestEmail } = await import("@/lib/email/mailersend");
+    const result = await sendErrorDigestEmail({
+      toEmail: to,
+      mode: "instant",
+      release: APP_VERSION,
+      total: 1,
+      rows: [
+        {
+          event: entry.event,
+          message: entry.message,
+          count: 1,
+          level: entry.level,
+          source: entry.source,
+          last_seen: new Date(now).toISOString(),
+          last_reference: entry.reference,
+          organization_id: entry.organizationId ?? scopeOrganizationId ?? null,
+          isNew: true,
+        },
+      ],
+    });
+    if (!result.ok) console.error(`[log] alerta de erro novo não enviado (código ${entry.reference}): ${result.error}`);
+  } catch (err) {
+    console.error(`[log] alerta de erro novo não enviado (código ${entry.reference}):`, err);
+  }
 }

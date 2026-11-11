@@ -78,6 +78,28 @@ describe("registro de erros", () => {
     expect(row.last_reference).toBe(codes[1]);
   });
 
+  it("diz se o erro nunca aconteceu em nenhum espaço (alerta na hora, doc technical/27)", async () => {
+    const fingerprint = `fp-teste-novo-${Date.now()}`;
+    const record = (organizationId: string | null, reference: string) =>
+      adminClient().rpc("record_error", {
+        p_organization_id: organizationId,
+        p_fingerprint: fingerprint,
+        p_source: "server",
+        p_level: "error",
+        p_event: "teste.novo",
+        p_message: "falhou",
+        p_stack: null,
+        p_context: {},
+        p_reference: reference,
+        p_user_id: null,
+      });
+    expect((await record(tenant.organizationId, "NEW00001")).data).toBe(true);
+    expect((await record(tenant.organizationId, "NEW00002")).data).toBe(false);
+    // Outro espaço (aqui, sem espaço) com o mesmo erro: já não é novo no sistema.
+    expect((await record(null, "NEW00003")).data).toBe(false);
+    await adminClient().from("error_logs").delete().eq("fingerprint", fingerprint);
+  });
+
   it("guarda só as 20 ocorrências mais recentes de cada erro", async () => {
     const record = (reference: string) =>
       adminClient().rpc("record_error", {

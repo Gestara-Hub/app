@@ -27,6 +27,8 @@ import logoLightImage from "@/assets/logo-light.svg";
 import logoDarkImage from "@/assets/logo-dark.svg";
 import { useCan, useHasFeature, useModel } from "@/features/auth";
 import { SidebarSubscriptionCard } from "@/features/subscription";
+import { openReleaseNotes } from "@/features/releases";
+import { APP_VERSION } from "@/config/release";
 import {
   FOOTER_NAV,
   MAIN_NAV,
@@ -335,13 +337,34 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      {footerItems.length > 0 ? (
-        <SidebarFooter className="border-t border-sidebar-border pt-2">
-          <NavMenu items={footerItems} activeHref={activeHref} />
-        </SidebarFooter>
-      ) : null}
+      <SidebarFooter className={cn("gap-1", footerItems.length > 0 && "border-t border-sidebar-border pt-2")}>
+        {footerItems.length > 0 ? <NavMenu items={footerItems} activeHref={activeHref} /> : null}
+        <SidebarVersion />
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+/**
+ * Versao do app no pe da sidebar (doc technical/27): discreta, some com a barra
+ * recolhida e abre as Novidades. Serve para o suporte ("qual versao aparece
+ * ai embaixo?") e para conferir o deploy.
+ */
+function SidebarVersion() {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (isMobile) setOpenMobile(false);
+        openReleaseNotes();
+      }}
+      className="self-start rounded-sm px-2 text-[11px] text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none group-data-[collapsible=icon]:hidden"
+      title="Ver as novidades"
+    >
+      Versão {APP_VERSION}
+    </button>
   );
 }

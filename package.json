@@ -28,6 +28,7 @@
     "admin:reset-mfa": "pnpm --filter @gestarahub/admin reset-mfa",
     "lint:admin": "pnpm --filter @gestarahub/admin lint",
     "typecheck:admin": "pnpm --filter @gestarahub/admin typecheck",
+    "release:prepare": "node apps/web/scripts/release-prepare.mjs",
     "agents:sync": "cp AGENTS.md .agents/AGENTS.md && rsync -a --delete .claude/skills/ .agents/skills/"
   }
 }

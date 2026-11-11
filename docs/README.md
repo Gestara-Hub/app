@@ -33,6 +33,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 | Comunicação e lembretes | [product/25](product/25-lembretes-e-seguranca.md), [product/13](product/13-modelo-de-negocio.md) §5 | [technical/07](technical/07-integracao-whatsapp.md) | `features/communication`, `services/communication`, `lib/whatsapp` |
 | Auditoria e registros | [technical/21](technical/21-registro-de-erros.md) | [technical/23](technical/23-historico-em-segundo-plano.md) | `features/audit`, `services/audit`, `lib/log` |
 | Painel administrativo do GestaraHub | [technical/26](technical/26-painel-admin-gestarahub.md) | [technical/26](technical/26-painel-admin-gestarahub.md), [guides/21](guides/21-painel-admin-local.md) | `apps/admin`, `supabase/migrations/…platform_schema.sql` |
+| Versão, novidades e monitoramento | [technical/27](technical/27-versao-novidades-e-monitoramento.md) | [technical/27](technical/27-versao-novidades-e-monitoramento.md), [technical/21](technical/21-registro-de-erros.md) | `config/release.ts`, `features/releases`, `app/api/health`, `scripts/release-prepare.mjs`, `lib/log/server-sink.ts` |
 | Fuso | [technical/22](technical/22-fuso-do-espaco.md) | [technical/22](technical/22-fuso-do-espaco.md) | `packages/core/src/date.ts` |
 | Desempenho | [technical/19](technical/19-desempenho-e-escala.md) | [technical/19](technical/19-desempenho-e-escala.md) | `services/world` |
 | Testes | [technical/04](technical/04-estrategia-de-testes.md) | [guides/20](guides/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
@@ -88,6 +89,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [technical/24-plano-gestarahub.md](technical/24-plano-gestarahub.md) — **Plano GestaraHub (assinatura):** contrato, matriz de recursos por plano, composição com permissões, demonstração e conta real, quem grava o plano. As regras de troca de plano estão em `product/13` §6.
 - [guides/21-painel-admin-local.md](guides/21-painel-admin-local.md) — **Painel admin no ambiente local:** como subir (`pnpm admin:setup`, `admin:create-admin`, `dev:admin`), roteiros de teste manual (fase 0 e fases 1 a 8) e os testes automáticos.
 - [technical/26-painel-admin-gestarahub.md](technical/26-painel-admin-gestarahub.md) — **Painel admin do GestaraHub (fases 0 a 8 feitas):** app `apps/admin` com login próprio; espaços, suporte via assistente, planos e cortesias, saúde, receita, comunicados, equipe, LGPD, visão de suporte e auditoria; seção 17 diz o que existe e o que falta.
+- [technical/27-versao-novidades-e-monitoramento.md](technical/27-versao-novidades-e-monitoramento.md) — **Versão, novidades e monitoramento:** versão por data (`pnpm release:prepare`), changelog técnico, Novidades no menu do avatar com ponto (sem modal), versão nos erros, alerta na hora de erro novo, `/api/health` para monitor externo e Web Vitals no PostHog.
 - [technical/25-pagamento-online.md](technical/25-pagamento-online.md) — **Pagamento online dos alunos:** Pix, link e Pix Automático (porta de pagamento, contrato, fluxos e regras).
 
 ### Guias (como fazer)

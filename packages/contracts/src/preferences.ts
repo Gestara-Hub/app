@@ -51,6 +51,8 @@ export interface UserPreferences {
     /** Dia em que a dica apareceu; depois dele, nunca mais. */
     shownAt?: string;
   };
+  /** Ultima versao de Novidades que a pessoa viu (doc technical/27); sem valor, ainda nao entrou depois das Novidades. */
+  lastSeenRelease?: string;
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
   themeStyling?: ThemeStylingPreferences;

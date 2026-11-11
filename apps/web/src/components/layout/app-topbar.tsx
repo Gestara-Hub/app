@@ -1,11 +1,11 @@
 "use client";
 
 import { useTeamWords } from "@/features/settings";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
-import { AtSign, Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
+import { AtSign, Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
 import { AccountMenuTip } from "./account-menu-tip";
 import { openHelp, useSupportUnread } from "@/features/support";
+import { onOpenReleaseNotes, ReleaseNotesSheet, useUnseenRelease } from "@/features/releases";
 
 export function AppTopbar() {
   const team = useTeamWords();
@@ -65,6 +66,11 @@ export function AppTopbar() {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accessEmailOpen, setAccessEmailOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  // Novidades ainda nao vistas: ponto discreto no avatar e no item (doc technical/27).
+  const { hasUnseen: unseenRelease, markSeen: markReleaseSeen } = useUnseenRelease();
+  // A versao no pe da sidebar tambem abre a gaveta.
+  useEffect(() => onOpenReleaseNotes(() => setReleaseNotesOpen(true)), []);
 
   return (
     <>
@@ -99,7 +105,11 @@ export function AppTopbar() {
               data-account-menu=""
             >
               <span className="sr-only">
-                {supportUnread > 0 ? `Menu do usuário (${supportUnread} resposta do suporte)` : "Menu do usuário"}
+                {supportUnread > 0
+                  ? `Menu do usuário (${supportUnread} resposta do suporte)`
+                  : unseenRelease
+                    ? "Menu do usuário (novidades)"
+                    : "Menu do usuário"}
               </span>
               <span className="relative" aria-hidden="true">
                 <Avatar className="size-8">
@@ -109,6 +119,8 @@ export function AppTopbar() {
                 </Avatar>
                 {supportUnread > 0 ? (
                   <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-destructive" aria-hidden />
+                ) : unseenRelease ? (
+                  <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-primary" aria-hidden />
                 ) : null}
               </span>
             </Button>
@@ -150,6 +162,11 @@ export function AppTopbar() {
                   {supportUnread}
                 </span>
               ) : null}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setReleaseNotesOpen(true)} className="cursor-pointer">
+              <Sparkles className="size-4" />
+              <span>Novidades</span>
+              {unseenRelease ? <span className="ml-auto size-2 rounded-full bg-primary" aria-label="Novas" /> : null}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
 
@@ -195,6 +212,7 @@ export function AppTopbar() {
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
     {googleOnly ? null : <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />}
     <AccessEmailDialog open={accessEmailOpen} onOpenChange={setAccessEmailOpen} />
+    <ReleaseNotesSheet open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen} onSeen={markReleaseSeen} />
     </>
   );
 }

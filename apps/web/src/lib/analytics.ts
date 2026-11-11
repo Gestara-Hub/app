@@ -45,6 +45,8 @@ export function initAnalytics(): void {
     capture_pageview: "history_change",
     person_profiles: "identified_only",
     enable_heatmaps: true,
+    // Velocidade de carregamento das telas (Web Vitals), por endereco ja limpo (doc technical/27).
+    capture_performance: { web_vitals: true },
     session_recording: {
       maskAllInputs: true,
       maskTextSelector: `[${ANALYTICS_MASK_ATTRIBUTE}]`,

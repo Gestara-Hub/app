@@ -1139,12 +1139,25 @@ export interface ErrorDigestItem {
   isNew: boolean;
 }
 
-/** Resumo diario dos erros (doc technical/21): para quem cuida do sistema, nao para o cliente. */
+/**
+ * Resumo diario dos erros (doc technical/21) e alerta na hora de erro nunca
+ * visto (`instant`, doc technical/27): para quem cuida do sistema, nao para o cliente.
+ */
 export async function sendErrorDigestEmail(input: {
   toEmail: string;
   rows: ErrorDigestItem[];
   total: number;
+  mode?: "daily" | "instant";
+  /** Versao do app em que o erro aconteceu (so no alerta na hora). */
+  release?: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const instant = input.mode === "instant";
+  const intro = instant
+    ? `Erro novo no sistema${input.release ? ` (versão ${input.release})` : ""}: nunca tinha acontecido antes.`
+    : `${input.total} erro(s) novos ou que voltaram nas últimas 24 horas.`;
+  const subject = instant
+    ? `GestaraHub: erro novo agora (${input.rows[0]?.source ?? ""}/${input.rows[0]?.event ?? ""})`
+    : `GestaraHub: ${input.total} erro(s) nas últimas 24 horas`;
   const apiKey = process.env.MAILERSEND_API_KEY;
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br";
   const fromName = process.env.MAILERSEND_FROM_NAME || "GestaraHub";
@@ -1152,12 +1165,12 @@ export async function sendErrorDigestEmail(input: {
     `${r.isNew ? "NOVO" : "voltou"} · ${r.count}x · ${r.source}/${r.event}${r.organization_id ? ` · espaço ${r.organization_id}` : ""}` +
     `${r.last_reference ? ` · código ${r.last_reference}` : ""}\n  ${r.message.slice(0, 300)}`;
   const text =
-    `${input.total} erro(s) novos ou que voltaram nas últimas 24 horas.\n\n` +
+    `${intro}\n\n` +
     input.rows.map(line).join("\n\n") +
     (input.total > input.rows.length ? `\n\n... e mais ${input.total - input.rows.length}.` : "") +
     "\n\nDetalhes: tabela error_logs (busque pelo código).";
   const html =
-    `<p>${input.total} erro(s) novos ou que voltaram nas últimas 24 horas.</p><ul>` +
+    `<p>${escapeHtml(intro)}</p><ul>` +
     input.rows
       .map(
         (r) =>
@@ -1182,7 +1195,7 @@ export async function sendErrorDigestEmail(input: {
       body: JSON.stringify({
         from: { email: fromEmail, name: fromName },
         to: [{ email: input.toEmail }],
-        subject: `GestaraHub: ${input.total} erro(s) nas últimas 24 horas`,
+        subject,
         html,
         text,
       }),
