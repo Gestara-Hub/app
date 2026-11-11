@@ -19,7 +19,14 @@ function LegalChangelog() {
     <LegalSection title="Histórico de versões">
       <ul>
         <li>
-          <strong>v1.1 ({LEGAL_UPDATED_AT}):</strong> identificação da empresa titular (razão social,
+          <strong>v1.2 ({LEGAL_UPDATED_AT}):</strong> dados de saúde e documentos
+          dos alunos, testes e medidas, inscrições em eventos e verificação pública
+          de certificados, assistente de ajuda, ferramenta da Meta para conectar o
+          WhatsApp, cobrança da assinatura do GestaraHub, prazos de guarda dos
+          registros e como pedir para parar as mensagens de WhatsApp.
+        </li>
+        <li>
+          <strong>v1.1 (02/11/2026):</strong> identificação da empresa titular (razão social,
           CNPJ, endereço e foro), direito de arrependimento e regras do plano anual, comunicação de
           incidentes de segurança, entrada com Google, lista dos fornecedores que tratam dados, como
           pedir a exclusão de dados e o encarregado.
@@ -217,6 +224,15 @@ export function TermsOfUse() {
           em observância ao Artigo 14 da LGPD.
         </p>
         <p>
+          <strong>Dados de Saúde e Documentos:</strong> Ao guardar na plataforma
+          atestados, questionários de saúde, exames, laudos ou medidas corporais
+          (como peso), dados pessoais sensíveis nos termos do Artigo 11 da LGPD,
+          o Contratante declara ter base legal para isso (por exemplo, a exigência
+          de aptidão física para a atividade ou o consentimento específico do
+          titular ou do responsável), coleta apenas o necessário e restringe o
+          acesso da equipe pelos perfis de permissão.
+        </p>
+        <p>
           <strong>Mensagens de WhatsApp:</strong> O envio de mensagens aos
           alunos e responsáveis pelo WhatsApp depende de autorização prévia deles
           ao Contratante, que responde pela coleta e pela guarda dessa autorização
@@ -394,11 +410,34 @@ export function PrivacyPolicy() {
           <li>
             <strong>Dados dos Alunos e Responsáveis:</strong> Nome completo, CPF,
             data de nascimento, telefone de contato, e-mail, endereço, histórico de
-            presenças e registros de mensalidades/pagamentos. O CPF identifica quem
-            paga a cobrança online: o próprio aluno, quando maior de idade, ou o
-            responsável financeiro, quando menor. <em>Finalidade:</em> controle de
-            matrícula, emissão de cobranças Pix/boleto/cartão e comunicação via
-            WhatsApp.
+            presenças, notas, graduações, inscrições em eventos e registros de
+            mensalidades/pagamentos. O CPF identifica quem paga a cobrança online:
+            o próprio aluno, quando maior de idade, ou o responsável financeiro,
+            quando menor. <em>Finalidade:</em> controle de matrícula, emissão de
+            cobranças Pix/boleto/cartão e comunicação via WhatsApp.
+          </li>
+          <li>
+            <strong>Dados de Saúde e Documentos dos Alunos:</strong> Quando o espaço
+            usa esses recursos, atestados, questionários de saúde, exames, laudos,
+            documentos de identidade, autorizações assinadas e testes e medidas
+            (como peso e tempos). São dados sensíveis (Artigo 11 da LGPD), coletados
+            pelo espaço sob a responsabilidade dele. <em>Finalidade:</em> verificar
+            a aptidão para a atividade e acompanhar a evolução do aluno. Os arquivos
+            ficam em armazenamento privado e só a equipe com permissão os abre.
+          </li>
+          <li>
+            <strong>Certificados:</strong> O certificado emitido traz um código de
+            verificação. Quem tem o código consulta na página pública de
+            verificação apenas o nome abreviado do aluno e os dados impressos no
+            próprio certificado (curso, evento ou graduação, período, carga
+            horária, frequência e data de emissão). <em>Finalidade:</em> comprovar
+            a autenticidade do documento.
+          </li>
+          <li>
+            <strong>Assinatura do GestaraHub:</strong> Quando o espaço contrata um
+            plano pago, tratamos o nome ou a razão social, o CPF ou CNPJ, o e-mail
+            e o endereço de quem paga. <em>Finalidade:</em> cobrar a assinatura,
+            pela Asaas, e emitir a nota fiscal.
           </li>
           <li>
             <strong>Dados de Conexão e Dispositivo:</strong> Endereço IP, data e
@@ -460,6 +499,17 @@ export function PrivacyPolicy() {
             troca de senha e boas-vindas), com nome e e-mail do destinatário.
           </li>
           <li>
+            <strong>Conexão do WhatsApp:</strong> Meta Platforms, pela ferramenta
+            de cadastro guiado que o gestor usa para conectar o número do espaço.
+          </li>
+          <li>
+            <strong>Assistente de ajuda:</strong> Anthropic, que gera as respostas
+            do assistente de dúvidas sobre o sistema. Recebe apenas a conversa
+            com o assistente, com CPF, CNPJ, e-mails, telefones e números longos
+            ocultados antes do envio, e não usa esse conteúdo para treinar os
+            modelos dela. Evite escrever dados de alunos nas perguntas.
+          </li>
+          <li>
             <strong>Análise de uso:</strong> PostHog, somente quando autorizado
             no aviso de cookies (seção 6).
           </li>
@@ -509,6 +559,11 @@ export function PrivacyPolicy() {
           <li>
             <strong>Cookies Analíticos:</strong> Opcionais, ativados apenas se Você
             autorizar expressamente no aviso de cookies.
+          </li>
+          <li>
+            <strong>Cookies da Meta:</strong> Carregados apenas quando o gestor
+            abre a conexão do WhatsApp, pela ferramenta da Meta, que segue a
+            política de privacidade da própria Meta. Não usamos pixel de anúncios.
           </li>
         </ul>
         {isAnalyticsConfigured ? (
@@ -590,8 +645,9 @@ export function PrivacyPolicy() {
               espaço, escreva para {SUPPORT_EMAIL} e encaminhamos o pedido.
             </li>
             <li>
-              <strong>Mensagens de WhatsApp:</strong> responda &ldquo;SAIR&rdquo; a
-              qualquer mensagem ou peça ao espaço para parar o envio.
+              <strong>Mensagens de WhatsApp:</strong> peça ao espaço que envia as
+              mensagens para parar o envio. Ele responde por interromper as
+              mensagens quando o destinatário pede.
             </li>
           </ul>
         </div>
@@ -608,6 +664,12 @@ export function PrivacyPolicy() {
             Cumprimento de obrigação legal ou regulatória (ex.: guarda de logs de
             acesso por 6 meses conforme o Marco Civil da Internet; documentos
             fiscais por 5 anos conforme o Código Tributário Nacional).
+          </li>
+          <li>
+            Registros de segurança: o histórico de alterações (auditoria) e os
+            aceites destes termos e dos termos de consentimento de menores, com
+            data, hora e IP, enquanto puderem servir de prova; o registro técnico
+            de erros, com dados pessoais ocultados, por 120 dias.
           </li>
           <li>
             Exercício regular de direitos em processo judicial, administrativo ou

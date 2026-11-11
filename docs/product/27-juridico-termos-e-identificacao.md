@@ -87,3 +87,19 @@
 3. Cláusulas novas: arrependimento, anual, incidente, Google, suboperadores com região confirmada, página de exclusão de dados (T2 a T9, M3).
 4. Consentimento de WhatsApp no cadastro e opt-out (M1, M2), junto com o envio por modelo (M5).
 5. Antes da produção: conta-pai PJ, homologação do Asaas, confirmação anual (A1, A3, A4), cadastros da Meta e do Google com as URLs.
+
+## 8. Revisão de 10/11/2026 (v1.2)
+
+Conferência do texto contra o que o sistema faz depois de 02/11. Versão `v1.2-2026-11` (todo usuário aceita de novo ao entrar), data em `LEGAL_UPDATED_AT`.
+
+| # | Lacuna | O que entrou |
+| --- | --- | --- |
+| R1 | Dados de saúde (atestado, questionário de saúde, exame, laudo) nos documentos da ficha (doc 28) e medidas como peso (doc 21 §2.4) não apareciam; são dados sensíveis (LGPD art. 11) | Privacidade §3 "Dados de Saúde e Documentos dos Alunos"; Termos §5: o espaço declara a base legal, coleta só o necessário e limita o acesso por permissão. **Vale leitura de advogado antes da produção.** |
+| R2 | A Privacidade prometia parar o WhatsApp ao responder "SAIR", mas o webhook não trata isso (M2) | Texto trocado para "peça ao espaço para parar o envio". Quando o opt-out for feito (M2), voltar o "SAIR" ao texto. |
+| R3 | Assistente de ajuda (Anthropic, `services/server/supportBot.ts`) fora da lista de fornecedores | Privacidade §5: recebe só a conversa, com CPF, CNPJ, e-mail, telefone e números longos ocultados (`maskSensitive`); nomes não são ocultados, por isso o aviso "evite escrever dados de alunos". |
+| R4 | SDK da Meta do cadastro guiado do WhatsApp grava cookies e não era citado | Privacidade §5 (fornecedor) e §7 (cookies da Meta só ao conectar o WhatsApp; sem pixel de anúncios). |
+| R5 | Verificação pública do certificado e inscrições em eventos | Privacidade §3: o que a página `/p/certificado` mostra (nome abreviado e dados do certificado). |
+| R6 | Dados de cobrança da assinatura do GestaraHub | Privacidade §3: cobrança pela Asaas e nota fiscal. |
+| R7 | Prazos de guarda dos registros | Privacidade §11: auditoria e aceites (com IP) enquanto servirem de prova; registro de erros por 120 dias (doc technical/21). |
+
+**Continua em aberto:** região dos projetos Supabase e PostHog (o padrão do PostHog no projeto é `us.i.posthog.com`); devolução do plano anual dentro dos 7 dias conferida no código; opt-out e consentimento de WhatsApp (M1, M2); itens de produção do §7 passo 5.
