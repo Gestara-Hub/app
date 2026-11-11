@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, UserPlus, Users, Wallet, XCircle } from "lucide-react";
+import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, User, UserPlus, Users, Wallet, XCircle } from "lucide-react";
 import type { EventRegistrationView, EventSession } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCancelEvent, useCancelEventRegistration, useCancelEventSession, useEvent, useEventRegistrations } from "../hooks/use-events";
-import { billingSummary, datesLabel, dayLabel, hoursLabel, occupancyLabel, sessionTimeLabel } from "../event-copy";
+import { billingSummary, datesLabel, dayLabel, hoursLabel, instructorsLabel, occupancyLabel, sessionInstructors, sessionTimeLabel } from "../event-copy";
 import { EventFormDrawer } from "./event-form-drawer";
 import { EventStatusBadge } from "./event-badges";
 import { RegisterDrawer } from "./register-drawer";
@@ -163,7 +163,7 @@ export function EventDetailView({ id }: { id: string }) {
   const meta = [
     datesLabel(event),
     hoursLabel(event.totalHours),
-    `${event.instructorName}${event.isGuestInstructor ? " (convidado)" : ""}`,
+    instructorsLabel(event.instructors),
     occupancyLabel(event),
     billingSummary(event),
     ...(event.countsForProgression ? ["Conta para a graduação"] : []),
@@ -357,9 +357,18 @@ export function EventDetailView({ id }: { id: string }) {
                     ) : null}
                   </div>
                   {!canceledDay ? (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <ClipboardList className="size-3 text-muted-foreground/60" />
-                      <span>{past || s.date === today ? "Chamada" : "Abre a chamada no dia"}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+                      {/* Mais de uma pessoa no evento: cada dia mostra quem conduz o bloco. */}
+                      {event.instructors.length > 1 ? (
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <User className="size-3 shrink-0 text-muted-foreground/60" />
+                          <span className="min-w-0 break-words">{instructorsLabel(sessionInstructors(event, s))}</span>
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1.5">
+                        <ClipboardList className="size-3 text-muted-foreground/60" />
+                        <span>{past || s.date === today ? "Chamada" : "Abre a chamada no dia"}</span>
+                      </span>
                     </div>
                   ) : null}
                 </ListRow>

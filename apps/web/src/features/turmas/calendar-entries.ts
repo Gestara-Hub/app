@@ -47,6 +47,13 @@ export function classEntry(s: ClassSessionListItem, accessibleLabel: string): Ca
   };
 }
 
+/** "Ana e Sensei Kenji (convidado)": quem conduz o bloco, convidado marcado. */
+function blockInstructors(s: EventSessionView): string {
+  const names = s.instructors.map((i) => (i.isGuest ? `${i.name} (convidado)` : i.name)).filter(Boolean);
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+}
+
 export function eventEntry(s: EventSessionView): CalendarEntry {
   return {
     id: `event:${s.id}`,
@@ -57,12 +64,13 @@ export function eventEntry(s: EventSessionView): CalendarEntry {
     start: s.start,
     end: s.end,
     modalityName: s.modalityName,
-    instructorName: s.instructorName,
+    // Quem conduz o bloco, convidado ja marcado no texto ("Ana e Kenji (convidado)").
+    instructorName: blockInstructors(s),
     isSubstitute: false,
-    isGuest: s.isGuestInstructor,
+    isGuest: false,
     occupancy: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
     isFull: false,
-    accessibleLabel: `Evento ${s.eventName}, ${s.start} às ${s.end}, ${s.instructorName}`,
+    accessibleLabel: `Evento ${s.eventName}, ${s.start} às ${s.end}, ${blockInstructors(s)}`,
   };
 }
 

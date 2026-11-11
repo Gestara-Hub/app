@@ -28,6 +28,8 @@ import {
   assertTeacherSeesEvent,
   clone,
   conductorName,
+  joinNames,
+  sessionInstructorViews,
   confirmedRegistrations,
   eventAttendancesStore,
   findEvent,
@@ -86,7 +88,8 @@ function certificateDataOf(registration: EventRegistration, event: Event): Cours
     lessonsCount: covered.length,
     workloadMinutes: totalMinutes,
     attendancePercent: covered.length > 0 ? Math.round((Math.min(present, covered.length) / covered.length) * 100) : null,
-    instructorName: conductorName(event).trim(),
+    // Quem conduziu os dias da inscricao (por dia, so os dias escolhidos).
+    instructorName: (joinNames([...new Set(covered.flatMap((d) => sessionInstructorViews(event, d).map((i) => i.name)))]) || conductorName(event)).trim(),
     ...(city ? { city } : {}),
     issuedOn: todayISO(),
   };

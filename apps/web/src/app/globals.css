@@ -682,7 +682,8 @@ html[data-vm-clients="grid"] [data-vm-skeleton="clients:list"],
 html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:list"],
 html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:list"],
 html[data-vm-plans="grid"] [data-vm-skeleton="plans:list"],
-html[data-vm-packages="grid"] [data-vm-skeleton="packages:list"] {
+html[data-vm-packages="grid"] [data-vm-skeleton="packages:list"],
+html[data-vm-events="grid"] [data-vm-skeleton="events:list"] {
   display: none !important;
 }
 
@@ -691,7 +692,8 @@ html[data-vm-clients="grid"] [data-vm-skeleton="clients:grid"],
 html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:grid"],
 html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:grid"],
 html[data-vm-plans="grid"] [data-vm-skeleton="plans:grid"],
-html[data-vm-packages="grid"] [data-vm-skeleton="packages:grid"] {
+html[data-vm-packages="grid"] [data-vm-skeleton="packages:grid"],
+html[data-vm-events="grid"] [data-vm-skeleton="events:grid"] {
   display: block !important;
 }
 
@@ -700,7 +702,8 @@ html[data-vm-clients="list"] [data-vm-skeleton="clients:grid"],
 html[data-vm-professionals="list"] [data-vm-skeleton="professionals:grid"],
 html[data-vm-modalities="list"] [data-vm-skeleton="modalities:grid"],
 html[data-vm-plans="list"] [data-vm-skeleton="plans:grid"],
-html[data-vm-packages="list"] [data-vm-skeleton="packages:grid"] {
+html[data-vm-packages="list"] [data-vm-skeleton="packages:grid"],
+html[data-vm-events="list"] [data-vm-skeleton="events:grid"] {
   display: none !important;
 }
 
@@ -709,7 +712,8 @@ html[data-vm-clients="list"] [data-vm-skeleton="clients:list"],
 html[data-vm-professionals="list"] [data-vm-skeleton="professionals:list"],
 html[data-vm-modalities="list"] [data-vm-skeleton="modalities:list"],
 html[data-vm-plans="list"] [data-vm-skeleton="plans:list"],
-html[data-vm-packages="list"] [data-vm-skeleton="packages:list"] {
+html[data-vm-packages="list"] [data-vm-skeleton="packages:list"],
+html[data-vm-events="list"] [data-vm-skeleton="events:list"] {
   display: block !important;
 }
 

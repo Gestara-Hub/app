@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useEvents } from "../hooks/use-events";
-import { datesLabel, occupancyLabel } from "../event-copy";
+import { datesLabel, instructorsShortLabel, occupancyLabel } from "../event-copy";
 import { EventStatusBadge } from "./event-badges";
 
 const MAX = 3;
@@ -54,8 +54,7 @@ export function UpcomingEventsCard({ className }: { className?: string }) {
                       <EventStatusBadge event={event} />
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      {datesLabel(event)} · {event.instructorName}
-                      {event.isGuestInstructor ? " (convidado)" : ""} · {occupancyLabel(event)}
+                      {datesLabel(event)} · {instructorsShortLabel(event.instructors)} · {occupancyLabel(event)}
                     </span>
                   </span>
                 </Link>

@@ -1034,6 +1034,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "instructor_ids": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1066,21 +1071,6 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "hasDefault": false
       },
       "modality_id": {
-        "type": "text",
-        "nullable": true,
-        "hasDefault": false
-      },
-      "instructor_id": {
-        "type": "text",
-        "nullable": true,
-        "hasDefault": false
-      },
-      "guest_instructor_name": {
-        "type": "text",
-        "nullable": true,
-        "hasDefault": false
-      },
-      "guest_instructor_origin": {
         "type": "text",
         "nullable": true,
         "hasDefault": false
@@ -1147,6 +1137,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "updated_at": {
         "type": "timestamptz",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "instructors": {
+        "type": "jsonb",
         "nullable": false,
         "hasDefault": true
       }
@@ -1812,6 +1807,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "receipt_url": {
         "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "dispute_status": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "disputed_at": {
+        "type": "timestamptz",
         "nullable": true,
         "hasDefault": false
       }

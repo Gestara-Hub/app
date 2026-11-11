@@ -30,8 +30,7 @@ const DAYS = [
 async function seminar(overrides: Partial<Parameters<typeof eventsService.create>[0]> = {}): Promise<EventView> {
   return eventsService.create({
     name: "Seminário do Sensei",
-    guestInstructorName: "Sensei Kenji",
-    guestInstructorOrigin: "Curitiba",
+    instructors: [{ id: "i-kenji", guestName: "Sensei Kenji", guestOrigin: "Curitiba" }],
     billingMode: "fixed",
     priceCents: 30000,
     maxInstallments: 3,
@@ -48,8 +47,7 @@ beforeEach(() => resetAcademy());
 describe("evento: cadastro", () => {
   it("cria com dias soltos, convidado pelo nome, situacao, horas e preco sugerido do lote", async () => {
     const event = await seminar();
-    expect(event.isGuestInstructor).toBe(true);
-    expect(event.instructorName).toBe("Sensei Kenji");
+    expect(event.instructors.map((i) => [i.name, i.isGuest, i.guestOrigin])).toEqual([["Sensei Kenji", true, "Curitiba"]]);
     expect(event.sessions).toHaveLength(3);
     expect(event.firstDate).toBe("2026-10-10");
     expect(event.lastDate).toBe("2026-10-11");
@@ -62,7 +60,8 @@ describe("evento: cadastro", () => {
   });
 
   it("exige quem conduz, ao menos um dia e o valor da forma escolhida", async () => {
-    await expect(seminar({ guestInstructorName: undefined })).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(seminar({ instructors: [] })).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(seminar({ instructors: [{ id: "i-x", guestName: "  " }] })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(seminar({ sessions: [] })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(seminar({ priceCents: undefined })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(seminar({ earlyBirdPriceCents: 40000 })).rejects.toMatchObject({ code: "VALIDATION" });
@@ -73,10 +72,8 @@ describe("evento: cadastro", () => {
 
   it("instrutor da equipe limpa o convidado; evento por dia e sem cobranca tiram o que nao vale", async () => {
     const instructor = await createInstructor("Prof Ana");
-    const event = await seminar({ instructorId: instructor.id });
-    expect(event.isGuestInstructor).toBe(false);
-    expect(event.instructorName).toBe("Prof Ana");
-    expect(event.guestInstructorName).toBeUndefined();
+    const event = await seminar({ instructors: [{ id: "i-ana", professionalId: instructor.id, guestName: "Sobra" }] });
+    expect(event.instructors.map((i) => [i.name, i.isGuest, i.guestName])).toEqual([["Prof Ana", false, undefined]]);
     const free = await seminar({ billingMode: "free" });
     expect(free.priceCents).toBeUndefined();
     expect(free.suggestedPriceCents).toBe(0);
@@ -320,8 +317,7 @@ describe("evento: certificado de participacao e relatorio (Pro)", () => {
     const row = result.data.events[0];
     expect(row.eventId).toBe(event.id);
     expect([row.stage, row.daysCount, row.confirmedCount, row.attendancePercent, row.resultCents]).toEqual(["finished", 2, 2, 50, 25000]);
-    expect(row.instructorName).toBe("Sensei Kenji");
-    expect(row.isGuestInstructor).toBe(true);
+    expect(row.instructorName).toBe("Sensei Kenji (convidado)");
     const catalog = await reportsService.getCatalog();
     expect(catalog.some((r) => r.type === "events_summary" && r.tierRequired === "pro")).toBe(true);
   });
@@ -376,8 +372,8 @@ describe("evento: chamada e calendario", () => {
   it("professor ve e faz chamada so nos eventos que conduz", async () => {
     const mine = await createInstructor("Prof Ana");
     const other = await createInstructor("Prof Bia");
-    const myEvent = await seminar({ name: "Aulão da Ana", instructorId: mine.id, capacity: undefined, sessions: [{ date: "2026-09-22", start: "09:00", end: "12:00" }] });
-    const otherEvent = await seminar({ name: "Aulão da Bia", instructorId: other.id, capacity: undefined, sessions: [{ date: "2026-09-22", start: "14:00", end: "17:00" }] });
+    const myEvent = await seminar({ name: "Aulão da Ana", instructors: [{ id: "i-ana", professionalId: mine.id }], capacity: undefined, sessions: [{ date: "2026-09-22", start: "09:00", end: "12:00" }] });
+    const otherEvent = await seminar({ name: "Aulão da Bia", instructors: [{ id: "i-bia", professionalId: other.id }], capacity: undefined, sessions: [{ date: "2026-09-22", start: "14:00", end: "17:00" }] });
     const guestEvent = await seminar({ capacity: undefined });
     const ana = await createStudent("Aluna");
     const myReg = await eventsService.register({ eventId: myEvent.id, studentId: ana.id, payment: { amountCents: 0, installments: 1, firstDueDate: "2026-09-22" } });
@@ -403,5 +399,119 @@ describe("evento: chamada e calendario", () => {
     await expect(
       eventsService.markEventAttendance({ sessionId: otherEvent.sessions[0].id, registrationId: otherReg.id, status: "present" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("evento: mais de uma pessoa conduzindo (10/11/2026)", () => {
+  const profUser = (id: string, professionalId: string, name: string) =>
+    store.users.push({
+      id,
+      organizationId: store.organization.id,
+      name,
+      email: `${id}@teste.local`,
+      profile: "professional",
+      professionalId,
+      status: "active",
+      createdAt: "2026-09-01T12:00:00.000Z",
+      updatedAt: "2026-09-01T12:00:00.000Z",
+    });
+
+  it("cada dia com quem conduz; sem escolha, todos; certificado e busca com todos", async () => {
+    const ana = await createInstructor("Prof Ana");
+    const event = await seminar({
+      capacity: undefined,
+      instructors: [
+        { id: "i-ana", professionalId: ana.id },
+        { id: "i-kenji", guestName: "Sensei Kenji", guestOrigin: "Curitiba" },
+        { id: "i-yuki", guestName: "Sensei Yuki" },
+      ],
+      sessions: [
+        { date: "2026-10-10", start: "09:00", end: "12:00", instructorIds: ["i-kenji"] },
+        { date: "2026-10-10", start: "14:00", end: "17:00", instructorIds: ["i-kenji", "i-yuki"] },
+        { date: "2026-10-11", start: "09:00", end: "12:00" },
+      ],
+    });
+    expect(event.instructors.map((i) => i.name)).toEqual(["Prof Ana", "Sensei Kenji", "Sensei Yuki"]);
+    const days = await eventsService.listSessions({ dateFrom: "2026-10-10", dateTo: "2026-10-11" });
+    expect(days.map((d) => d.instructors.map((i) => i.name).join(" + "))).toEqual([
+      "Sensei Kenji",
+      "Sensei Kenji + Sensei Yuki",
+      "Prof Ana + Sensei Kenji + Sensei Yuki",
+    ]);
+    expect((await eventsService.list({ search: "yuki" })).map((e) => e.id)).toEqual([event.id]);
+    expect((await eventsService.list({ search: "prof ana" })).map((e) => e.id)).toEqual([event.id]);
+    expect((await eventsService.list({ instructorId: ana.id })).map((e) => e.id)).toEqual([event.id]);
+  });
+
+  it("dia so pode apontar para quem esta no evento; a mesma pessoa da equipe nao entra duas vezes", async () => {
+    const ana = await createInstructor("Prof Ana");
+    await expect(
+      seminar({ sessions: [{ date: "2026-10-10", start: "09:00", end: "12:00", instructorIds: ["i-ninguem"] }] }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      seminar({ instructors: [{ id: "a1", professionalId: ana.id }, { id: "a2", professionalId: ana.id }] }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
+  it("professor ve o evento e faz chamada so nos dias que conduz", async () => {
+    const ana = await createInstructor("Prof Ana");
+    const bia = await createInstructor("Prof Bia");
+    const event = await seminar({
+      capacity: undefined,
+      instructors: [
+        { id: "i-ana", professionalId: ana.id },
+        { id: "i-bia", professionalId: bia.id },
+      ],
+      sessions: [
+        { date: "2026-09-22", start: "09:00", end: "12:00", instructorIds: ["i-ana"] },
+        { date: "2026-09-22", start: "14:00", end: "17:00", instructorIds: ["i-bia"] },
+      ],
+    });
+    const student = await createStudent("Aluna");
+    const reg = await eventsService.register({ eventId: event.id, studentId: student.id, payment: { amountCents: 0, installments: 1, firstDueDate: "2026-09-22" } });
+    profUser("usr-bia", bia.id, "Prof Bia");
+    setCurrentActor({ userId: "usr-bia", name: "Prof Bia", profile: "professional" });
+
+    expect((await eventsService.list()).map((e) => e.id)).toEqual([event.id]);
+    expect((await eventsService.listSessions({ dateFrom: "2026-09-22", dateTo: "2026-09-22" })).map((s) => s.start)).toEqual(["14:00"]);
+    await eventsService.markEventAttendance({ sessionId: event.sessions[1].id, registrationId: reg.id, status: "present" });
+    await expect(
+      eventsService.markEventAttendance({ sessionId: event.sessions[0].id, registrationId: reg.id, status: "present" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(eventsService.getSessionDetail(event.sessions[0].id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("editar: quem conduziu dia ja feito nao sai; quem sai deixa a escolha dos dias futuros", async () => {
+    const event = await seminar({
+      capacity: undefined,
+      instructors: [
+        { id: "i-kenji", guestName: "Sensei Kenji" },
+        { id: "i-yuki", guestName: "Sensei Yuki" },
+      ],
+      sessions: [
+        { date: "2026-09-20", start: "09:00", end: "12:00", instructorIds: ["i-kenji"] },
+        { date: "2026-10-10", start: "09:00", end: "12:00", instructorIds: ["i-yuki"] },
+      ],
+    });
+    await expect(eventsService.update(event.id, { instructors: [{ id: "i-yuki", guestName: "Sensei Yuki" }] })).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
+    const updated = await eventsService.update(event.id, {
+      instructors: [
+        { id: "i-kenji", guestName: "Sensei Kenji" },
+        { id: "i-taro", guestName: "Sensei Taro" },
+      ],
+    });
+    expect(updated.instructors.map((i) => i.name)).toEqual(["Sensei Kenji", "Sensei Taro"]);
+    const [done, future] = updated.sessions;
+    expect(done.instructorIds).toEqual(["i-kenji"]);
+    expect(future.instructorIds).toBeUndefined();
+    const rechosen = await eventsService.update(event.id, {
+      sessions: [
+        { id: done.id, date: done.date, start: done.start, end: done.end, instructorIds: ["i-taro"] },
+        { id: future.id, date: future.date, start: future.start, end: future.end, instructorIds: ["i-taro"] },
+      ],
+    });
+    expect(rechosen.sessions.map((s) => s.instructorIds)).toEqual([["i-kenji"], ["i-taro"]]);
   });
 });

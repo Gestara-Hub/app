@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; fica para depois o lembrete "evento amanhã" no sino e a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; ficam para depois o selo "Visitante" em Alunos, o lembrete "evento amanhã" no sino e a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -40,7 +40,7 @@ Nomes em inglês no código, como o resto. Tudo com escopo de tenant carimbado p
 
 | Entidade | Campos principais | Observações |
 | --- | --- | --- |
-| `Event` | `name`, `description?`, `modalityId?` (Category), `instructorId?` (Professional) **ou** `guestInstructorName?` + `guestInstructorOrigin?`, `capacity?`, `billingMode: "fixed" \| "per_day" \| "free"`, `priceCents?`, `maxInstallments?` (1 a 12), `dayPriceCents?`, `earlyBirdPriceCents?` + `earlyBirdUntil?` (lote, opcional), `countsForProgression?` (padrão false), `status: RecordStatus` | Situação derivada na leitura: `upcoming`, `ongoing`, `finished`, pela primeira e última data. Um dos dois instrutores é obrigatório. |
+| `Event` | `name`, `description?`, `modalityId?` (Category), `instructors` (lista de quem conduz, desde 10/11/2026: cada item `{ id, professionalId? }` da equipe **ou** `{ id, guestName, guestOrigin? }` convidado), `capacity?`, `billingMode: "fixed" \| "per_day" \| "free"`, `priceCents?`, `maxInstallments?` (1 a 12), `dayPriceCents?`, `earlyBirdPriceCents?` + `earlyBirdUntil?` (lote, opcional), `countsForProgression?` (padrão false), `status: RecordStatus` | Situação derivada na leitura: `upcoming`, `ongoing`, `finished`, pela primeira e última data. Ao menos uma pessoa em `instructors`. `EventSession.instructorIds?` diz quem conduz cada bloco (vazio = todos). |
 | `EventSession` | `eventId`, `date`, `start`, `end`, `status: scheduled \| done \| canceled` | Tabela própria, não compartilha `class_sessions`. Uma linha por dia (ou por bloco do dia, se o evento tiver manhã e tarde). |
 | `EventRegistration` | `eventId`, `clientId`, `scope: "full" \| "days"`, `sessionIds?`, `status: confirmed \| waitlist \| canceled`, `amountCents`, `installments`, `registeredAt`, `canceledAt?` | A inscrição é o "matricular" do evento. `days` só com `billingMode: per_day`. Lista de espera quando lota (regra dura, diferente da turma: vaga de evento é física). |
 | `EventAttendance` | `sessionId`, `registrationId`, `status: present \| absent`, `markedAt` | Chamada do dia. Sem "falta justificada". |
@@ -53,7 +53,7 @@ Pacote de aulas e plano de mensalidade **não** valem em evento. Evento nunca ga
 
 ### Cadastro
 
-- Nome*, datas* (ao menos uma), instrutor* (equipe ou convidado), vagas (opcional; sem vagas = ilimitado).
+- Nome*, datas* (ao menos uma), quem conduz* (uma ou mais pessoas, cada uma da equipe ou convidada), vagas (opcional; sem vagas = ilimitado).
 - Datas podem ser editadas até o dia começar; um dia já feito não muda. Cancelar um dia cancela a chamada daquele dia e avisa os inscritos (lembrete no sino, modelo de mensagem "Dia do evento cancelado").
 - Instrutor convidado não é usuário nem profissional: não entra na equipe, não recebe pagamento pelo Financeiro de professores, não tem escopo de acesso. Aparece pelo nome no card, no detalhe e no certificado.
 - Instrutor da equipe vê o evento em "Meus eventos" com o mesmo escopo das turmas (vê e faz chamada só no que conduz).
@@ -157,9 +157,9 @@ Cada fase é uma leva de commits pequenos, um assunto cada.
 
 - **Menu:** "Eventos" no Dia a dia, depois de Turmas, só no modelo de turmas (`events:view`). Rotas em `app/(app)/events` (lista, `[id]`, `sessions/[sessionId]`), guardadas por `requirePermission("events:view")`.
 - **Lista** (`EventsView`): busca pelo nome do evento ou do convidado, filtro de situação (Todos, Em breve, Em andamento, Encerrado, Cancelados), `ListSummaryBar`, linhas com nome, modalidade, selo de situação (Em andamento, Encerrado, Lotado, Cancelado), datas ("15/11 a 17/11 (3 dias)"), horas, quem conduz ("(convidado)") e a cobrança. Menu ⋮ e de contexto com Editar e Cancelar evento (`events:manage`). Vazio: guia "Nenhum evento ainda".
-- **Formulário** (`EventFormDrawer`, drawer): Nome*, Modalidade, Quem conduz (segmentado Da equipe / Convidado; convidado abre nome* e "De onde vem"), Dias* (linhas com data, início e fim, "+ Adicionar dia"; dia já feito ou cancelado aparece com cadeado e não muda), Vagas (vazio = sem limite), Cobrança em cartões (Valor fechado com Parcelas até e "Tenho preço de lote" abrindo valor e data; Por dia com valor do dia; Sem cobrança), "Conta para a graduação" e Descrição. "Adicionar"/"Salvar" e erros do serviço mapeados por campo.
+- **Formulário** (`EventFormDrawer`, drawer): Nome*, Modalidade, Quem conduz (segmentado Da equipe / Convidado; convidado abre nome* e "De onde vem"), Dias* (cabeçalho Data, Início e Fim uma vez e linhas simples separadas por divisória, sem card por linha; no celular a data fica em cima e os horários embaixo; "+ Adicionar dia"; dia já feito ou cancelado aparece com cadeado e não muda), Vagas (vazio = sem limite), Cobrança em cartões (Valor fechado com Parcelas até e "Tenho preço de lote" abrindo valor e data; Por dia com valor do dia; Sem cobrança), "Conta para a graduação" e Descrição. "Adicionar"/"Salvar" e erros do serviço mapeados por campo.
 - **Detalhe** (`EventDetailView`): "‹ Voltar", título com selo e modalidade, linha com datas, horas, quem conduz, vagas, cobrança e "Conta para a graduação"; "Inscrever" (`enrollment:manage`, só evento ativo e não encerrado) e menu ⋮ com Editar e Cancelar evento. Abas: Inscritos (confirmados e cancelados, com "Pago", "R$ x a receber", "R$ x vencido" ou "Sem cobrança" e as presenças), Espera (só quando há alguém; ação Promover) e Dias (data, horário, "Hoje", dia cancelado riscado; clicar abre a chamada; Cancelar dia só em dia futuro).
-- **Inscrever** (`RegisterDrawer`): aluno ativo que ainda não está no evento; em evento por dia, "Todos os dias" ou "Só alguns dias" com a lista de dias e o valor de cada um; pagamento com valor sugerido (lote aplicado quando vale) editável, parcelas (só valor fechado e inscrição completa) e vencimento. Evento lotado mostra o aviso e o botão vira "Pôr na espera", sem cobrança. Promover da espera reusa o drawer só com o pagamento.
+- **Inscrever** (`RegisterDrawer`, "Inscrever alunos"): vários alunos de uma vez, no mesmo seletor da matrícula em turma (`StudentMultiSelect` em `@/components/shared`: busca por nome ou telefone, chips dos escolhidos, quem já está inscrito ou na espera aparece desabilitado com o motivo). O bloco "Cobrança do aluno" (ou "Cobrança de cada aluno") segue o formato do curso: Valor, Parcelas e 1º vencimento numa linha, com "Vale para cada aluno". As inscrições saem em sequência (cada uma reavalia a lotação; quem passar da vaga vai para a espera) e o aviso resume "N inscritos e M na lista de espera", nomeando quem não entrou. Em evento por dia, "Todos os dias" ou "Só alguns dias" com a lista de dias e o valor de cada um; pagamento com valor sugerido (lote aplicado quando vale) editável, parcelas (só valor fechado e inscrição completa) e vencimento. Evento lotado mostra o aviso e o botão vira "Pôr na espera", sem cobrança. Promover da espera reusa o drawer só com o pagamento.
 - **Dia do evento** (`EventSessionView`): "‹ Voltar" para o evento, nome com selo "Evento" (cor própria, roxo), data, horário e quem conduz; "N de M presentes" e "Todos vieram"; linhas com o círculo de presença (toque marca presente, de novo desmarca), menu com Marcar falta e Desmarcar. Dia futuro: "A chamada abre no dia do evento", sem marcação. Dia cancelado: selo e sem marcação.
 - **Ainda não feito** (fases 3 a 5): aba Financeiro do evento, cards de evento no Calendário e no Painel, selo "Visitante" em Alunos, certificado e relatório, e2e.
 
@@ -186,7 +186,18 @@ A cobrança da inscrição (valor fechado com parcelas, lote, por dia, cancelame
 - **Telas:** no detalhe do evento encerrado, a linha do inscrito com presença ganha "Certificado" (`/events/[id]/certificate/[registrationId]`, com Baixar PDF na conta real ou imprimir na demonstração, e Cancelar certificado para quem gere) e o menu ⋮ ganha "Certificados" (todos num PDF pelo servidor, `/api/documents/certificates/event/[eventId]`, ou a tela `/events/[id]/certificates`). Sem o recurso, tela "Disponível no Plano Profissional".
 - **Serviço:** `events.listEventCertificateCandidates`, `getEventCertificate` (abrir emite), `issueEventCertificates` (lote) e `cancelEventCertificate` (`events:manage`); o professor só nos eventos que conduz.
 - **Relatório "Eventos e seminários"** (`events_summary`, Pro, `finance:view`): cada evento com algum dia no mês, com dias, quem conduz, situação, inscritos, presença (presenças sobre inscritos x dias feitos), arrecadado, a receber, saídas e resultado; totais no topo. PDF e CSV pelo mesmo caminho dos outros relatórios.
-- **Fora:** lembrete "evento amanhã" no sino e inscrição pública por link continuam em "Fica para depois".
+- **Fora:** selo "Visitante" em Alunos (decisão 2), lembrete "evento amanhã" no sino e inscrição pública por link continuam em "Fica para depois".
+
+## Mais de uma pessoa conduzindo (10/11/2026, decidido com o dono)
+Seminário com um sensei por dia, aulão com dois professores no mesmo bloco, um de manhã e outro à tarde.
+- **Cadastro:** "Quem conduz" é uma lista (+ Adicionar quem conduz). Cada linha é "Da equipe" (escolhe o profissional) ou "Convidado" (nome e de onde vem). A mesma pessoa da equipe não entra duas vezes.
+- **Por dia:** com duas ou mais pessoas na lista, cada dia ganha chips "Conduz:" com os nomes. Nenhum marcado = todos conduzem o bloco. Manhã e tarde continuam sendo dois blocos, cada um com sua escolha.
+- **Onde aparece:** lista, cartões e painel mostram o curto ("Kenji (convidado)", "Ana e Kenji", "Ana e mais 2"); detalhe, dia da chamada e Calendário mostram todos do bloco, convidado marcado. A busca acha por qualquer nome.
+- **Professor da equipe:** vê o evento se está na lista; no Calendário e na chamada, só os blocos que conduz.
+- **Certificado:** quem conduziu os dias da inscrição. **Relatório:** todos, convidado marcado.
+- **Editar:** quem conduziu um dia já feito não sai da lista (o dia guarda quem conduziu). Quem sai deixa a escolha dos dias que ainda vão acontecer.
+- **Banco:** `events.instructors` (jsonb) e `event_sessions.instructor_ids` (jsonb), migração 94. Sem tabela nova, como `event_registrations.session_ids`. As colunas de uma pessoa só (`instructor_id`, `guest_instructor_*`) saíram depois de copiadas para a lista.
+- **Financeiro:** sem mudança; o cachê de cada convidado é uma saída ligada ao evento.
 
 ## Decisões (09/11/2026)
 

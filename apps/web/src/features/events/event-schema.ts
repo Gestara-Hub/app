@@ -2,17 +2,36 @@ import { z } from "zod";
 
 /**
  * Schema do formulario de evento (doc product/29). Mensagens alinhadas ao
- * eventsService. Dias soltos (data, inicio e fim), quem conduz (equipe ou
- * convidado) e a forma de cobranca com o lote opcional.
+ * eventsService. Dias soltos (data, inicio, fim e quem conduz o bloco), a
+ * lista de quem conduz (equipe ou convidado, uma ou mais pessoas) e a forma
+ * de cobranca com o lote opcional.
  */
+const instructorSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["team", "guest"]),
+  professionalId: z.string().optional(),
+  guestName: z.string().trim().optional(),
+  guestOrigin: z.string().trim().optional(),
+});
 export const eventFormSchema = z
   .object({
     name: z.string().trim().min(1, "Informe o nome do evento."),
     modalityId: z.string().optional(),
-    conductor: z.enum(["team", "guest"]),
-    instructorId: z.string().optional(),
-    guestInstructorName: z.string().trim().optional(),
-    guestInstructorOrigin: z.string().trim().optional(),
+    instructors: z
+      .array(instructorSchema)
+      .min(1, "Informe quem conduz o evento.")
+      .superRefine((list, ctx) => {
+        const seen = new Set<string>();
+        list.forEach((item, i) => {
+          if (item.kind === "team") {
+            if (!item.professionalId) ctx.addIssue({ code: "custom", path: [i, "professionalId"], message: "Escolha quem conduz." });
+            else if (seen.has(item.professionalId)) ctx.addIssue({ code: "custom", path: [i, "professionalId"], message: "Essa pessoa já está na lista." });
+            else seen.add(item.professionalId);
+          } else if (!item.guestName) {
+            ctx.addIssue({ code: "custom", path: [i, "guestName"], message: "Informe o nome do convidado." });
+          }
+        });
+      }),
     capacity: z.number().int("As vagas precisam ser um número inteiro.").min(1, "Informe ao menos 1 vaga.").nullish(),
     billingMode: z.enum(["fixed", "per_day", "free"]),
     priceCents: z.number().int().min(0).nullish(),
@@ -30,6 +49,8 @@ export const eventFormSchema = z
           date: z.string().min(1, "Informe a data."),
           start: z.string().min(1, "Informe o início."),
           end: z.string().min(1, "Informe o fim."),
+          /** Quem conduz o bloco (ids da lista); vazio = todos. */
+          instructorIds: z.array(z.string()),
           locked: z.boolean().optional(),
         }),
       )
@@ -41,14 +62,6 @@ export const eventFormSchema = z
           }
         });
       }),
-  })
-  .refine((data) => data.conductor !== "team" || Boolean(data.instructorId), {
-    path: ["instructorId"],
-    message: "Escolha quem conduz o evento.",
-  })
-  .refine((data) => data.conductor !== "guest" || Boolean(data.guestInstructorName), {
-    path: ["guestInstructorName"],
-    message: "Informe o nome do convidado.",
   })
   .refine((data) => data.billingMode !== "fixed" || (data.priceCents ?? 0) > 0, {
     path: ["priceCents"],
@@ -76,7 +89,7 @@ export type EventFormValues = z.infer<typeof eventFormSchema>;
 /** Inscricao: aluno, dias (por dia) e pagamento. */
 export const registerFormSchema = z
   .object({
-    studentId: z.string().min(1, "Escolha o aluno."),
+    studentIds: z.array(z.string()).min(1, "Escolha ao menos um aluno."),
     scope: z.enum(["full", "days"]),
     sessionIds: z.array(z.string()),
     amountCents: z.number().int().min(0, "Informe um valor válido.").nullish(),

@@ -15,7 +15,7 @@ import type {
 import { eventStage } from "@gestarahub/core/events";
 import { isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
-import { apiError, newId, nowIso, readOp, textIncludes, writeOp } from "@/services/world/ops";
+import { apiError, newId, nowIso, readOp, textIncludes, validationError, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
@@ -29,8 +29,11 @@ import {
   eventsStore,
   findEvent,
   findSession,
+  assertTeacherConductsSession,
+  instructorViews,
   registrationsOf,
   sessionsOf,
+  teacherConductsSession,
   teacherSeesEvent,
   todayISO,
 } from "./eventShared";
@@ -54,6 +57,7 @@ function newSession(eventId: Id, input: CreateEventSession, ts: string): EventSe
     start: input.start,
     end: input.end,
     status: "scheduled",
+    ...(input.instructorIds?.length ? { instructorIds: [...new Set(input.instructorIds)] } : {}),
     createdAt: ts,
     updatedAt: ts,
   };
@@ -82,10 +86,11 @@ export const eventsService = {
       let result = eventsStore();
       if (filter?.search) {
         const term = filter.search;
-        result = result.filter((e) => textIncludes(e.name, term) || textIncludes(e.guestInstructorName ?? "", term));
+        // Nome do evento ou de qualquer pessoa que conduz (equipe ou convidado).
+        result = result.filter((e) => textIncludes(e.name, term) || instructorViews(e).some((i) => textIncludes(i.name, term)));
       }
       if (filter?.status) result = result.filter((e) => e.status === filter.status);
-      if (filter?.instructorId) result = result.filter((e) => e.instructorId === filter.instructorId);
+      if (filter?.instructorId) result = result.filter((e) => e.instructors.some((i) => i.professionalId === filter.instructorId));
       if (filter?.modalityId) result = result.filter((e) => e.modalityId === filter.modalityId);
       const teacherId = actorTeacherId();
       if (teacherId !== undefined) result = result.filter((e) => teacherSeesEvent(e, teacherId));
@@ -124,13 +129,17 @@ export const eventsService = {
   listSessions(filter: { dateFrom: DateISO; dateTo: DateISO }): Promise<EventSessionView[]> {
     return readOp(async () => {
       const teacherId = actorTeacherId();
-      const visible = new Set(
+      const visible = new Map(
         eventsStore()
           .filter((e) => e.status === "active" && teacherSeesEvent(e, teacherId))
-          .map((e) => e.id),
+          .map((e) => [e.id, e]),
       );
+      // O professor ve no Calendario so os blocos que conduz.
       const sessions = eventSessionsStore()
-        .filter((s) => visible.has(s.eventId) && s.status !== "canceled" && s.date >= filter.dateFrom && s.date <= filter.dateTo)
+        .filter((s) => {
+          const event = visible.get(s.eventId);
+          return Boolean(event) && s.status !== "canceled" && s.date >= filter.dateFrom && s.date <= filter.dateTo && teacherConductsSession(event!, s, teacherId);
+        })
         .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
       return clone(sessions.map(toSessionView));
     });
@@ -173,7 +182,7 @@ export const eventsService = {
   getSessionDetail(sessionId: Id): Promise<EventSessionDetail> {
     return readOp(async () => {
       const session = findSession(sessionId);
-      assertTeacherSeesEvent(findEvent(session.eventId));
+      assertTeacherConductsSession(findEvent(session.eventId), session, "Você só vê os dias que conduz.");
       return clone(sessionDetailOf(session));
     });
   },
@@ -183,7 +192,7 @@ export const eventsService = {
       const { sessions, ...rest } = input;
       const payload = normalizeEvent(rest);
       validateEvent(payload);
-      validateSessions(sessions ?? []);
+      validateSessions(sessions ?? [], payload.instructors);
       const ts = nowIso();
       const event: Event = {
         ...payload,
@@ -217,12 +226,33 @@ export const eventsService = {
       }
       const { sessions, ...rest } = payload;
       const next = normalizeEvent({ ...current, ...rest });
-      validateEvent(next);
+      validateEvent(next, current);
       const ts = nowIso();
+      const today = todayISO();
+      const existingDays = sessionsOf(id);
+      const isLocked = (s: EventSession) => s.status === "canceled" || s.date <= today;
+      // Quem ja conduziu um dia feito (ou cancelado) nao sai da lista: o dia guarda quem conduziu.
+      const nextIds = new Set(next.instructors.map((i) => i.id));
+      for (const s of existingDays) {
+        if (!isLocked(s)) continue;
+        const gone = (s.instructorIds ?? []).find((iid) => !nextIds.has(iid));
+        if (gone) {
+          const name = instructorViews(current).find((i) => i.id === gone)?.name || "Essa pessoa";
+          throw validationError([
+            { field: "instructors", message: `${name} conduziu o dia ${brDate(s.date)}, que já aconteceu, e não pode sair do evento.` },
+          ]);
+        }
+      }
       if (sessions) {
-        validateSessions(sessions);
-        const today = todayISO();
-        const existing = sessionsOf(id);
+        // Dia ja feito vem como esta: quem conduziu fica, mesmo fora da escolha nova.
+        validateSessions(
+          sessions.map((input) => {
+            const found = input.id ? existingDays.find((s) => s.id === input.id) : undefined;
+            return found && isLocked(found) ? { ...input, instructorIds: found.instructorIds } : input;
+          }),
+          next.instructors,
+        );
+        const existing = existingDays;
         const keptIds = new Set(sessions.map((s) => s.id).filter(Boolean));
         for (const s of existing) {
           if (keptIds.has(s.id)) continue;
@@ -244,13 +274,26 @@ export const eventsService = {
           }
           // Dia ja feito ou cancelado fica como esta.
           if (found.status === "canceled" || found.date <= today) continue;
-          if (found.date !== input.date || found.start !== input.start || found.end !== input.end) {
+          const chosen = [...new Set(input.instructorIds ?? [])];
+          const sameChoice = chosen.length === (found.instructorIds ?? []).length && chosen.every((iid) => (found.instructorIds ?? []).includes(iid));
+          if (found.date !== input.date || found.start !== input.start || found.end !== input.end || !sameChoice) {
             found.date = input.date;
             found.start = input.start;
             found.end = input.end;
+            if (chosen.length) found.instructorIds = chosen;
+            else delete found.instructorIds;
             found.updatedAt = ts;
           }
         }
+      }
+      // Quem saiu da lista sai da escolha dos dias que ainda vao acontecer.
+      for (const s of sessionsOf(id)) {
+        if (isLocked(s) || !s.instructorIds?.length) continue;
+        const kept = s.instructorIds.filter((iid) => nextIds.has(iid));
+        if (kept.length === s.instructorIds.length) continue;
+        if (kept.length) s.instructorIds = kept;
+        else delete s.instructorIds;
+        s.updatedAt = ts;
       }
       Object.assign(current, next, { id, organizationId: current.organizationId, unitId: current.unitId, updatedAt: ts });
       auditLogService.record({

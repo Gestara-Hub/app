@@ -3,6 +3,7 @@ import { firstDayOfCompetence, lastDayOfCompetence } from "@gestarahub/core/fina
 import { dateInSpace } from "@gestarahub/core/date";
 import { activeDays, eventStage } from "@gestarahub/core/events";
 import { store } from "@/services/world/store";
+import { instructorViews, joinNames } from "../events/eventShared";
 import { assertFeature } from "../subscription/subscriptionService";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
@@ -37,14 +38,13 @@ export async function buildEventsSummary({ competence, periodLabel }: ReportCont
       const receivedCents = sum(charges.filter((c) => c.status === "paid").map((c) => c.amountCents));
       const paidIncome = sum(entries.filter((e) => e.type === "income" && e.status === "paid").map((e) => e.amountCents));
       const paidExpenses = sum(entries.filter((e) => e.type === "expense" && e.status === "paid").map((e) => e.amountCents));
-      const instructor = event.instructorId ? store.professionals.find((p) => p.id === event.instructorId)?.name : event.guestInstructorName;
       return {
         eventId: event.id,
         name: event.name,
         ...(days[0] ? { firstDate: days[0].date, lastDate: days[days.length - 1].date } : {}),
         daysCount: days.length,
-        instructorName: instructor ?? "",
-        isGuestInstructor: !event.instructorId,
+        // "Ana e Kenji (convidado)": todos que conduzem, convidado marcado.
+        instructorName: joinNames(instructorViews(event).map((i) => (i.isGuest ? `${i.name} (convidado)` : i.name))),
         stage: event.status === "canceled" ? ("canceled" as const) : eventStage(days, today),
         confirmedCount: confirmed.length,
         waitlistCount: regs.filter((r) => r.status === "waitlist").length,

@@ -11,13 +11,14 @@ import type {
 import { activeDays, earlyBirdActive, eventStage, eventTotalHours, suggestedRegistrationPrice } from "@gestarahub/core/events";
 import { store } from "@/services/world/store";
 import {
-  conductorName,
   confirmedRegistrations,
   eventAttendancesStore,
   findEvent,
+  instructorViews,
   modalityName,
   registrationCoversDay,
   registrationsOf,
+  sessionInstructorViews,
   sessionsOf,
   studentName,
   todayISO,
@@ -35,8 +36,7 @@ export function toEventView(event: Event): EventView {
   return {
     ...event,
     modalityName: modalityName(event.modalityId),
-    instructorName: conductorName(event),
-    isGuestInstructor: !event.instructorId,
+    instructors: instructorViews(event),
     sessions,
     firstDate: active[0]?.date,
     lastDate: active[active.length - 1]?.date,
@@ -72,8 +72,7 @@ export function toSessionView(session: EventSession): EventSessionView {
   return {
     ...session,
     eventName: event.name,
-    instructorName: conductorName(event),
-    isGuestInstructor: !event.instructorId,
+    instructors: sessionInstructorViews(event, session),
     modalityName: modalityName(event.modalityId),
     confirmedCount: confirmedRegistrations(event.id).filter((r) => registrationCoversDay(r, session.id)).length,
   };

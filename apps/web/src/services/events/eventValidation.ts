@@ -3,6 +3,7 @@ import type {
   CreateEvent,
   CreateEventSession,
   Event,
+  EventInstructor,
   EventRegistrationPayment,
   Id,
 } from "@gestarahub/contracts";
@@ -27,13 +28,7 @@ export function normalizeEvent<T extends Partial<EventPayload>>(payload: T): T {
   const next: Partial<EventPayload> = { ...payload };
   if (typeof next.name === "string") next.name = next.name.trim();
   if (typeof next.description === "string") next.description = next.description.trim() || undefined;
-  if (typeof next.guestInstructorName === "string") next.guestInstructorName = next.guestInstructorName.trim() || undefined;
-  if (typeof next.guestInstructorOrigin === "string") next.guestInstructorOrigin = next.guestInstructorOrigin.trim() || undefined;
-  // Equipe ou convidado, nunca os dois.
-  if (next.instructorId) {
-    next.guestInstructorName = undefined;
-    next.guestInstructorOrigin = undefined;
-  }
+  if (Array.isArray(next.instructors)) next.instructors = next.instructors.map(normalizeInstructor);
   if (next.billingMode && next.billingMode !== "fixed") {
     next.priceCents = undefined;
     next.maxInstallments = undefined;
@@ -48,15 +43,50 @@ export function normalizeEvent<T extends Partial<EventPayload>>(payload: T): T {
   return next as T;
 }
 
-export function validateEvent(payload: EventPayload): void {
+/** Cada pessoa e da equipe ou convidada, nunca as duas; textos limpos. */
+function normalizeInstructor(instructor: EventInstructor): EventInstructor {
+  const guestName = typeof instructor.guestName === "string" ? instructor.guestName.trim() || undefined : undefined;
+  const guestOrigin = typeof instructor.guestOrigin === "string" ? instructor.guestOrigin.trim() || undefined : undefined;
+  if (instructor.professionalId) return { id: instructor.id, professionalId: instructor.professionalId };
+  return { id: instructor.id, ...(guestName ? { guestName } : {}), ...(guestOrigin ? { guestOrigin } : {}) };
+}
+
+/**
+ * Quem conduz: ao menos uma pessoa; da equipe ativa ou convidado com nome;
+ * a mesma pessoa da equipe nao entra duas vezes. `known` sao os profissionais
+ * que ja estavam no evento (inativado depois continua valendo nele).
+ */
+function validateInstructors(instructors: EventInstructor[] | undefined, fields: ApiErrorField[], known: Set<string>): void {
+  const list = instructors ?? [];
+  if (list.length === 0) {
+    fields.push({ field: "instructors", message: "Informe quem conduz o evento." });
+    return;
+  }
+  const seenIds = new Set<string>();
+  const seenPros = new Set<string>();
+  list.forEach((instructor, i) => {
+    const field = `instructors.${i}`;
+    if (!instructor.id || seenIds.has(instructor.id)) fields.push({ field: `${field}.id`, message: "Linha repetida em quem conduz." });
+    seenIds.add(instructor.id);
+    if (instructor.professionalId) {
+      const pro = store.professionals.find((p) => p.id === instructor.professionalId);
+      if (!pro || (pro.status !== "active" && !known.has(pro.id))) {
+        fields.push({ field: `${field}.professionalId`, message: `${teamWords().title} não encontrado ou inativo.` });
+      } else if (seenPros.has(pro.id)) {
+        fields.push({ field: `${field}.professionalId`, message: `${pro.name} já está em quem conduz.` });
+      }
+      seenPros.add(instructor.professionalId);
+    } else if (!instructor.guestName) {
+      fields.push({ field: `${field}.guestName`, message: "Informe o nome do convidado." });
+    }
+  });
+}
+
+export function validateEvent(payload: EventPayload, current?: Pick<Event, "instructors">): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name) fields.push({ field: "name", message: "Informe o nome do evento." });
-  if (!payload.instructorId && !payload.guestInstructorName) {
-    fields.push({ field: "instructorId", message: `Escolha alguém da equipe ou informe o nome do convidado.` });
-  }
-  if (payload.instructorId && !store.professionals.some((p) => p.id === payload.instructorId && p.status === "active")) {
-    fields.push({ field: "instructorId", message: `${teamWords().title} não encontrado ou inativo.` });
-  }
+  const known = new Set((current?.instructors ?? []).map((i) => i.professionalId).filter((id): id is string => Boolean(id)));
+  validateInstructors(payload.instructors, fields, known);
   if (payload.modalityId && !store.categories.some((c) => c.id === payload.modalityId)) {
     fields.push({ field: "modalityId", message: "Modalidade não encontrada." });
   }
@@ -91,12 +121,19 @@ export function validateEvent(payload: EventPayload): void {
   if (fields.length) throw validationError(fields);
 }
 
-/** Ao menos um dia, datas reais, fim depois do inicio e sem dois blocos se cruzando. */
-export function validateSessions(sessions: CreateEventSession[]): void {
+/**
+ * Ao menos um dia, datas reais, fim depois do inicio, sem dois blocos se
+ * cruzando e quem conduz o dia dentro da lista do evento.
+ */
+export function validateSessions(sessions: CreateEventSession[], instructors: EventInstructor[] = []): void {
   const fields: ApiErrorField[] = [];
+  const instructorIds = new Set(instructors.map((i) => i.id));
   if (!sessions.length) fields.push({ field: "sessions", message: "Informe ao menos um dia do evento." });
   sessions.forEach((s, i) => {
     const field = `sessions.${i}`;
+    if ((s.instructorIds ?? []).some((id) => !instructorIds.has(id))) {
+      fields.push({ field: `${field}.instructorIds`, message: "Quem conduz o dia precisa estar em quem conduz o evento." });
+    }
     if (!isIsoDate(s.date)) fields.push({ field: `${field}.date`, message: "Informe a data do dia." });
     if (!TIME.test(s.start) || !TIME.test(s.end)) fields.push({ field: `${field}.start`, message: "Informe o horário no formato HH:mm." });
     else if (s.end <= s.start) fields.push({ field: `${field}.end`, message: "O fim precisa ser depois do início." });

@@ -2,7 +2,7 @@ import type { EventAttendance, EventAttendanceStatus, EventSessionDetail, Id } f
 import { apiError, newId, nowIso, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import {
-  assertTeacherSeesEvent,
+  assertTeacherConductsSession,
   clone,
   confirmedRegistrations,
   eventAttendancesStore,
@@ -22,7 +22,7 @@ import { sessionDetailOf } from "./eventViews";
 function applyMark(sessionId: Id, registrationId: Id, status: EventAttendanceStatus): void {
   const session = findSession(sessionId);
   const event = findEvent(session.eventId);
-  assertTeacherSeesEvent(event, "Você só faz a chamada nos eventos que conduz.");
+  assertTeacherConductsSession(event, session);
   if (session.status === "canceled") throw apiError("VALIDATION", "Este dia foi cancelado.", { httpStatus: 409 });
   if (session.date > todayISO()) {
     throw apiError("VALIDATION", "A chamada só pode ser feita no dia do evento ou depois.", { httpStatus: 422 });
@@ -70,7 +70,7 @@ export const eventAttendanceService = {
   clearEventAttendance(input: { sessionId: Id; registrationId: Id }): Promise<EventSessionDetail> {
     return writeOp(async () => {
       const session = findSession(input.sessionId);
-      assertTeacherSeesEvent(findEvent(session.eventId), "Você só faz a chamada nos eventos que conduz.");
+      assertTeacherConductsSession(findEvent(session.eventId), session);
       store.eventAttendances = eventAttendancesStore().filter(
         (a) => !(a.sessionId === input.sessionId && a.registrationId === input.registrationId),
       );

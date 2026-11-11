@@ -14,8 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
+import { useAudioFeedback } from "@/features/preferences";
 import { useClearEventAttendance, useEventSession, useMarkEventAttendance, useMarkManyEventAttendance } from "../hooks/use-events";
-import { dayLabel, sessionTimeLabel } from "../event-copy";
+import { dayLabel, instructorsLabel, sessionInstructors, sessionTimeLabel } from "../event-copy";
 import { EventKindBadge } from "./event-badges";
 
 /** Dia do evento: chamada (presente ou ausente) de quem esta inscrito nele. */
@@ -26,6 +27,8 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
   const markMut = useMarkEventAttendance();
   const markManyMut = useMarkManyEventAttendance();
   const clearMut = useClearEventAttendance();
+  // Mesmo som da chamada das turmas (Preferências → Sons), na hora do toque.
+  const { playChime } = useAudioFeedback();
   const busy = markMut.isPending || markManyMut.isPending || clearMut.isPending;
 
   if (isError) {
@@ -57,6 +60,7 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
 
   const fail = (error: unknown) => toast.error(getErrorMessage(error, "Não foi possível marcar a chamada."));
   const setMark = async (r: EventRosterEntry, status: "present" | "absent" | undefined) => {
+    if (status === "present") playChime("checkin");
     try {
       if (status) await markMut.mutateAsync({ sessionId: session.id, registrationId: r.registrationId, status });
       else await clearMut.mutateAsync({ sessionId: session.id, registrationId: r.registrationId });
@@ -65,6 +69,7 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
     }
   };
   const allCame = async () => {
+    if (pendingEntries.length > 0) playChime("checkin");
     try {
       await markManyMut.mutateAsync({ sessionId: session.id, registrationIds: pendingEntries.map((r) => r.registrationId), status: "present" });
     } catch (error) {
@@ -72,7 +77,7 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
     }
   };
 
-  const meta = [dayLabel(session.date), sessionTimeLabel(session), `${event.instructorName}${event.isGuestInstructor ? " (convidado)" : ""}`];
+  const meta = [dayLabel(session.date), sessionTimeLabel(session), instructorsLabel(sessionInstructors(event, session))].filter(Boolean);
 
   return (
     <>

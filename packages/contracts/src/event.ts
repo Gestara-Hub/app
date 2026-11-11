@@ -25,6 +25,21 @@ export type EventRegistrationScope = "full" | "days";
 export type EventRegistrationStatus = "confirmed" | "waitlist" | "canceled";
 export type EventAttendanceStatus = "present" | "absent";
 
+/**
+ * Uma pessoa que conduz o evento (10/11/2026: mais de uma por evento):
+ * alguem da equipe (`professionalId`) ou um convidado pelo nome.
+ */
+export interface EventInstructor {
+  /** Id da linha na lista do evento: os dias apontam para ele (`EventSession.instructorIds`). */
+  id: Id;
+  /** Da equipe. Ausente = convidado (`guestName`). */
+  professionalId?: Id;
+  /** Convidado so pelo nome: nao vira profissional nem usuario. */
+  guestName?: string;
+  /** De onde vem o convidado ("Academia X, Curitiba"). */
+  guestOrigin?: string;
+}
+
 export interface Event {
   id: Id;
   organizationId: Id;
@@ -32,12 +47,8 @@ export interface Event {
   name: string;
   description?: string;
   modalityId?: Id; // = Category (modalidade)
-  /** Instrutor da equipe. Ausente = convidado (`guestInstructorName`). */
-  instructorId?: Id;
-  /** Convidado so pelo nome: nao vira profissional nem usuario. */
-  guestInstructorName?: string;
-  /** De onde vem o convidado ("Academia X, Curitiba"). */
-  guestInstructorOrigin?: string;
+  /** Quem conduz (ao menos um): equipe e convidados, na ordem do cadastro. */
+  instructors: EventInstructor[];
   /** Vagas. Ausente = sem limite. Lotou: inscricao entra na lista de espera (regra dura). */
   capacity?: number;
   billingMode: EventBillingMode;
@@ -68,11 +79,13 @@ export interface EventSession {
   end: TimeISO;
   status: EventSessionStatus;
   cancelReason?: string;
+  /** Quem conduz este bloco (ids de `Event.instructors`). Ausente ou vazio = todos. */
+  instructorIds?: Id[];
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
 
-export type CreateEventSession = Pick<EventSession, "date" | "start" | "end"> & { id?: Id };
+export type CreateEventSession = Pick<EventSession, "date" | "start" | "end" | "instructorIds"> & { id?: Id };
 
 export type CreateEvent = Omit<Event, "id" | "status" | "canceledAt" | "cancelReason" | "createdAt" | "updatedAt" | TenantScopeFields> & {
   /** Ao menos um dia. */
@@ -143,11 +156,16 @@ export interface EventAttendance {
 
 // --- Leituras -----------------------------------------------------------------
 
-export interface EventView extends Event {
+/** Quem conduz, com o nome resolvido (profissional da equipe ou convidado). */
+export interface EventInstructorView extends EventInstructor {
+  name: string;
+  isGuest: boolean;
+}
+
+export interface EventView extends Omit<Event, "instructors"> {
   modalityName?: string;
-  /** Nome de quem conduz: o profissional da equipe ou o convidado. */
-  instructorName: string;
-  isGuestInstructor: boolean;
+  /** Quem conduz o evento, na ordem do cadastro. */
+  instructors: EventInstructorView[];
   sessions: EventSession[];
   /** Primeiro e ultimo dia nao cancelados (ausentes se todos cancelados). */
   firstDate?: DateISO;
@@ -230,8 +248,8 @@ export interface EventCertificatesBatch {
 
 export interface EventSessionView extends EventSession {
   eventName: string;
-  instructorName: string;
-  isGuestInstructor: boolean;
+  /** Quem conduz este bloco (os escolhidos no dia ou, sem escolha, todos do evento). */
+  instructors: EventInstructorView[];
   modalityName?: string;
   confirmedCount: number;
 }

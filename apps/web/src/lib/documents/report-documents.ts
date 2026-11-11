@@ -561,7 +561,7 @@ function eventsSummary(data: EventsReportData, competence: string): DocumentMode
           cells: {
             name: e.name,
             period: `${period(e)} (${e.daysCount} ${e.daysCount === 1 ? "dia" : "dias"})`,
-            instructor: `${e.instructorName}${e.isGuestInstructor ? " (convidado)" : ""}`,
+            instructor: e.instructorName,
             stage: EVENT_STAGE_LABEL[e.stage],
             confirmed: e.confirmedCount,
             attendance: e.attendancePercent,

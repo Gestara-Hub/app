@@ -286,8 +286,8 @@ export interface EventsReportData {
     firstDate?: DateISO;
     lastDate?: DateISO;
     daysCount: number;
+    /** Todos que conduzem, convidado marcado ("Ana e Kenji (convidado)"). */
     instructorName: string;
-    isGuestInstructor: boolean;
     stage: "upcoming" | "ongoing" | "finished" | "canceled";
     confirmedCount: number;
     waitlistCount: number;

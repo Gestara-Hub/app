@@ -32,7 +32,7 @@ describe("eventos no banco", () => {
     const admin = adminClient();
     const event = await call<EventView>("events.create", {
       name: "Seminário do Sensei",
-      guestInstructorName: "Sensei Kenji",
+      instructors: [{ id: "i-kenji", guestName: "Sensei Kenji" }],
       billingMode: "fixed",
       priceCents: 30000,
       maxInstallments: 3,
