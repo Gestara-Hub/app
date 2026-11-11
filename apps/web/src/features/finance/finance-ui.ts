@@ -1,6 +1,4 @@
 import type { ChargeKind, FinanceOverdueToDate, FinancialEntryDisplayStatus } from "@gestarahub/contracts";
-import { formatCents } from "@gestarahub/core/format";
-import { competenceLabel } from "./lib";
 
 /** "2026-09-10" -> "10/09" (sem Date, evita o bug de UTC). */
 export function shortDate(date: string): string {
@@ -30,34 +28,27 @@ export function billingHref(
 /** Cobrancas em atraso de todos os meses (a divida nao some na virada do mes). */
 export const ALL_OVERDUE_BILLING_HREF = "/classes/billing?overdue=all";
 
+/** Atrasos so de antes do mes (a linha "+ R$ X de meses anteriores" do Resumo). */
+export function earlierOverdueBillingHref(competence: string): string {
+  return `${ALL_OVERDUE_BILLING_HREF}&before=${competence}`;
+}
+
 /**
  * Onde esta o atraso acumulado, quando ha meses anteriores: "R$ 150,00 deste
  * mes · R$ 370,00 de outubro" (2+ meses anteriores: "de meses anteriores").
  * So o mes atual (ou nada atrasado antes dele): null.
  */
-export function overdueBreakdownText(overdue: FinanceOverdueToDate, competence: string): string | null {
-  const earlier = overdue.incomeByCompetence.filter((m) => m.competence < competence);
-  if (earlier.length === 0) return null;
-  const current = overdue.incomeByCompetence
-    .filter((m) => m.competence === competence)
-    .reduce((sum, m) => sum + m.amountCents, 0);
-  const earlierCents = earlier.reduce((sum, m) => sum + m.amountCents, 0);
-  const [year] = competence.split("-");
-  const monthName = (c: string) => {
-    const label = competenceLabel(c).toLowerCase();
-    return c.startsWith(`${year}-`) ? label.replace(/ de \d{4}$/, "") : label;
-  };
-  const earlierText =
-    earlier.length === 1
-      ? `${formatCents(earlierCents)} de ${monthName(earlier[0].competence)}`
-      : `${formatCents(earlierCents)} de meses anteriores`;
-  return current > 0 ? `${formatCents(current)} deste mês · ${earlierText}` : earlierText;
+/** Atraso de meses anteriores ao mes de referencia (em centavos). */
+export function overdueEarlierCents(overdue: FinanceOverdueToDate | undefined, competence: string): number {
+  return (overdue?.incomeByCompetence ?? []).filter((m) => m.competence < competence).reduce((sum, m) => sum + m.amountCents, 0);
 }
+
 
 /** Classes do badge de status (tokens do tema). */
 export const ENTRY_STATUS_CLASS: Record<FinancialEntryDisplayStatus, string> = {
-  pending: "border-border/60 bg-muted/50 text-muted-foreground",
+  // Mesmas cores das cobrancas (10/11/2026): pendente ambar, cancelado cinza e sem riscado.
+  pending: "border-warning/30 bg-warning/10 text-warning",
   paid: "border-success/25 bg-success/10 text-success",
   overdue: "border-destructive/25 bg-destructive/10 text-destructive",
-  canceled: "border-warning/30 bg-warning/10 text-warning line-through",
+  canceled: "border-border/60 bg-muted/50 text-muted-foreground",
 };

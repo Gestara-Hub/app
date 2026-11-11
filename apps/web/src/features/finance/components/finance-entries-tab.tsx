@@ -3,7 +3,7 @@
 import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import {
   AlertTriangle,
@@ -21,7 +21,6 @@ import {
   RotateCw,
   Tags,
   Trash2,
-  Users,
   Wallet,
 } from "lucide-react";
 import type {
@@ -90,7 +89,7 @@ type TypeFilter = "all" | FinancialEntryType;
 type StatusFilter = "all" | FinancialEntryDisplayStatus;
 
 const TYPE_FILTER_LABEL: Record<TypeFilter, string> = {
-  all: "Todos os tipos",
+  all: "Todos",
   income: "Entradas",
   expense: "Saídas",
 };
@@ -105,7 +104,7 @@ function StatusBadge({ status }: { status: FinancialEntryDisplayStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        "status-dot inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
         ENTRY_STATUS_CLASS[status],
       )}
     >
@@ -114,13 +113,21 @@ function StatusBadge({ status }: { status: FinancialEntryDisplayStatus }) {
   );
 }
 
-/** "42 pagas · 5 pendentes · 2 atrasadas" do agregado de cobrancas. */
-function chargeCountsLabel(counts: NonNullable<FinanceEntryView["chargeCounts"]>): string {
-  const parts: string[] = [];
-  if (counts.paid > 0) parts.push(plural(counts.paid, "paga", "pagas"));
-  if (counts.pending > 0) parts.push(plural(counts.pending, "pendente", "pendentes"));
-  if (counts.overdue > 0) parts.push(plural(counts.overdue, "atrasada", "atrasadas"));
-  return parts.join(" · ");
+/**
+ * "42 pagas · 5 pendentes · 2 atrasadas" do agregado de cobrancas. As atrasadas
+ * no tom de vencido, no lugar do selo "Atrasado" da linha (11/11/2026).
+ */
+function chargeCountsLabel(counts: NonNullable<FinanceEntryView["chargeCounts"]>) {
+  const parts: { text: string; overdue?: boolean }[] = [];
+  if (counts.paid > 0) parts.push({ text: plural(counts.paid, "paga", "pagas") });
+  if (counts.pending > 0) parts.push({ text: plural(counts.pending, "pendente", "pendentes") });
+  if (counts.overdue > 0) parts.push({ text: plural(counts.overdue, "atrasada", "atrasadas"), overdue: true });
+  return parts.map((part, i) => (
+    <span key={part.text}>
+      {i > 0 ? " · " : null}
+      <span className={cn(part.overdue && "text-overdue")}>{part.text}</span>
+    </span>
+  ));
 }
 
 /** Kind da linha agregada ("charges:<kind>:<competence>"). */
@@ -174,9 +181,10 @@ export function FinanceEntriesTab({
   );
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
 
+  // Tipo filtrado aqui (nao no servico): as abas Todos/Entradas/Saidas mostram a
+  // contagem de cada uma (11/11/2026).
   const filter: FinancialEntryFilter = {
     competence,
-    ...(typeFilter !== "all" ? { type: typeFilter } : {}),
     ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     ...(categoryFilter !== "all" ? { categoryId: categoryFilter } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
@@ -199,7 +207,14 @@ export function FinanceEntriesTab({
   const deleteMut = useDeleteFinanceEntry();
   const endMut = useEndFinanceRecurrence();
 
-  const rows = data ?? [];
+  const router = useRouter();
+  const allRows = data ?? [];
+  const typeCounts = {
+    all: allRows.length,
+    income: allRows.filter((r) => r.type === "income").length,
+    expense: allRows.filter((r) => r.type === "expense").length,
+  };
+  const rows = typeFilter === "all" ? allRows : allRows.filter((r) => r.type === typeFilter);
   const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(
@@ -236,7 +251,30 @@ export function FinanceEntriesTab({
 
   const active = rows.filter((r) => r.status !== "canceled");
   const incomeTotal = active.filter((r) => r.type === "income").reduce((s, r) => s + r.amountCents, 0);
+  // Recebido e a receber, com as palavras do Resumo (11/11/2026): o total de
+  // entradas misturava pago e aberto e parecia o "Entrou".
+  const incomeReceived = active
+    .filter((r) => r.type === "income")
+    .reduce((s, r) => s + (r.source === "charge" ? (r.chargePaidCents ?? 0) : r.status === "paid" ? r.amountCents : 0), 0);
+  const incomeToReceive = incomeTotal - incomeReceived;
   const expenseTotal = active.filter((r) => r.type === "expense").reduce((s, r) => s + r.amountCents, 0);
+  const expensePaid = active.filter((r) => r.type === "expense" && r.status === "paid").reduce((s, r) => s + r.amountCents, 0);
+  const expenseToPay = expenseTotal - expensePaid;
+  // Faixa de totais: so o que vale para a aba (com "Entradas", sem as saidas).
+  const totals: { label: string; cents: number; tone?: "success" }[] = [
+    ...(typeFilter !== "expense"
+      ? [
+          { label: "Recebido", cents: incomeReceived, tone: "success" as const },
+          { label: "A receber", cents: incomeToReceive },
+        ]
+      : []),
+    ...(typeFilter !== "income"
+      ? [
+          { label: "Pago", cents: expensePaid },
+          { label: "A pagar", cents: expenseToPay },
+        ]
+      : []),
+  ];
 
   const openCreate = () => {
     if (onCreateEntry) {
@@ -392,18 +430,14 @@ export function FinanceEntriesTab({
     const actions = actionsFor(row);
 
     let meta: ReactNode;
-    let trailing: ReactNode = null;
+    // Linha que abre outra tela (11/11/2026): a linha inteira e o link, com so a
+    // seta a direita (o texto "Ver em Cobranças" se repetia em toda linha).
+    let rowHref: string | null = null;
+    let rowHrefLabel = "";
     if (row.source === "charge" && row.chargeCounts) {
       meta = <span>{chargeCountsLabel(row.chargeCounts)}</span>;
-      trailing = (
-        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
-          <Link href={billingHref(competence, { kind: chargeKindOf(row) })} aria-label="Ver em Cobranças">
-            {/* No celular so o icone: o texto tomava metade da linha. */}
-            <span className="max-sm:hidden">Ver em Cobranças</span>
-            <ChevronRight className="size-3.5" />
-          </Link>
-        </Button>
-      );
+      rowHref = billingHref(competence, { kind: chargeKindOf(row) });
+      rowHrefLabel = "Ver em Cobranças";
     } else if (row.source === "online_fee") {
       // Taxas do pagamento online: so leitura, com atalho para o extrato dos recebimentos.
       meta = (
@@ -413,14 +447,8 @@ export function FinanceEntriesTab({
           <span>parceiro e GestaraHub</span>
         </>
       );
-      trailing = (
-        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
-          <Link href="/online-payments" aria-label="Ver recebimentos online">
-            <span className="max-sm:hidden">Ver recebimentos</span>
-            <ChevronRight className="size-3.5" />
-          </Link>
-        </Button>
-      );
+      rowHref = "/online-payments";
+      rowHrefLabel = "Ver recebimentos online";
     } else if (row.source === "teacher_payout") {
       meta = (
         <>
@@ -429,14 +457,8 @@ export function FinanceEntriesTab({
           <span>{row.status === "paid" && row.paidAt ? "pago" : `vence ${shortDate(row.dueDate)}`}</span>
         </>
       );
-      trailing = (
-        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
-          <Link href={financeHref("professores", competence)} aria-label={`Ver ${team.lowerPlural}`}>
-            <Users className="size-3.5" />
-            <span className="max-sm:hidden">{`Ver ${team.lowerPlural}`}</span>
-          </Link>
-        </Button>
-      );
+      rowHref = financeHref("professores", competence);
+      rowHrefLabel = `Ver ${team.lowerPlural}`;
     } else {
       meta = (
         <>
@@ -477,10 +499,18 @@ export function FinanceEntriesTab({
     const content = (
       <ListRow
         key={row.id}
+        data-record-id={row.id}
         aria-label={row.description}
+        {...(rowHref ? { onClick: () => router.push(rowHref), mouseOnly: true } : {})}
         actions={
           <>
-            {trailing}
+            {rowHref ? (
+              <Button asChild variant="ghost" size="icon-sm" title={rowHrefLabel}>
+                <Link href={rowHref} aria-label={rowHrefLabel}>
+                  <ChevronRight className="size-4" />
+                </Link>
+              </Button>
+            ) : null}
             {actions.length > 0 ? (
               <ListItemActionsMenu
                 actions={actions}
@@ -513,18 +543,30 @@ export function FinanceEntriesTab({
               <p className={cn("break-words text-sm font-medium text-foreground", canceled && "text-muted-foreground line-through")}>
                 {row.description}
               </p>
-              <StatusBadge status={row.status} />
+              {/* Agregado de cobrancas: sem selo; a linha de baixo ja conta pagas, pendentes e atrasadas. */}
+              {row.source === "charge" ? null : <StatusBadge status={row.status} />}
             </div>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">{meta}</p>
           </div>
-          <span
-            className={cn(
-              "shrink-0 text-sm font-semibold tabular-nums",
-              canceled ? "text-muted-foreground line-through" : isIncome ? "text-success" : "text-foreground",
-            )}
-          >
-            {isIncome ? "+" : "−"} {formatCents(row.amountCents)}
-          </span>
+          {/* Valor neutro (11/11/2026): verde so no que entrou de fato (lancamento
+              pago); o agregado de cobrancas mostra embaixo quanto ja foi recebido. */}
+          <div className="shrink-0 text-right">
+            <span
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                canceled
+                  ? "text-muted-foreground line-through"
+                  : isIncome && row.source !== "charge" && row.status === "paid"
+                    ? "text-success"
+                    : "text-foreground",
+              )}
+            >
+              {isIncome ? "+" : "−"} {formatCents(row.amountCents)}
+            </span>
+            {row.source === "charge" && (row.chargePaidCents ?? 0) > 0 ? (
+              <p className="text-[11px] tabular-nums text-success">{formatCents(row.chargePaidCents ?? 0)} recebido</p>
+            ) : null}
+          </div>
         </div>
       </ListRow>
     );
@@ -584,24 +626,6 @@ export function FinanceEntriesTab({
           aria-label="Buscar lançamento"
         />
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <Select
-            value={typeFilter}
-            onValueChange={(v) => {
-              setTypeFilter(v as TypeFilter);
-              setCategoryFilter("all");
-            }}
-          >
-            <SelectTrigger className="sm:w-auto sm:min-w-40" aria-label="Filtrar por tipo">
-              <SelectValue>{TYPE_FILTER_LABEL[typeFilter]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(TYPE_FILTER_LABEL) as TypeFilter[]).map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_FILTER_LABEL[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
             <SelectTrigger className="sm:w-auto sm:min-w-40" aria-label="Filtrar por status">
               <SelectValue>{statusFilterLabel(statusFilter)}</SelectValue>
@@ -683,6 +707,47 @@ export function FinanceEntriesTab({
         ) : null}
       </div>
 
+      {/* Tipo em abas com contagem, como em Cobranças (11/11/2026). */}
+      <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-border/70 bg-muted/30 p-1">
+        {(Object.keys(TYPE_FILTER_LABEL) as TypeFilter[]).map((t) => {
+          const isActive = typeFilter === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => {
+                setTypeFilter(t);
+                setCategoryFilter("all");
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                isActive ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span>{TYPE_FILTER_LABEL[t]}</span>
+              <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                {isPending ? "–" : typeCounts[t]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Totais da lista (mudam com os filtros): faixa propria, numero em tamanho de texto. */}
+      {!isPending && rows.length > 0 ? (
+        <div className="flex flex-wrap gap-x-8 gap-y-2 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-2xs">
+          {totals.map((t) => (
+            <div key={t.label} className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t.label}</p>
+              <p className={cn("text-base font-semibold tabular-nums", t.tone === "success" ? "text-success" : "text-foreground")}>
+                {formatCents(t.cents)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
         <ListSummaryBar
           count={rows.length}
@@ -693,20 +758,14 @@ export function FinanceEntriesTab({
           onClearFilters={clearFilters}
           className={cn("flex items-center gap-3", isFetching && !isPending && "opacity-70")}
         />
-        {!isPending && rows.length > 0 ? (
-          <span className="tabular-nums">
-            Entradas <span className="font-medium text-success">{formatCents(incomeTotal)}</span>
-            {" · "}
-            Saídas <span className="font-medium text-foreground">{formatCents(expenseTotal)}</span>
-          </span>
-        ) : null}
       </div>
 
       <ListContainer emptyState={emptyState}>
         {isPending ? <EntriesSkeleton /> : paginatedRows.map(renderRow)}
       </ListContainer>
 
-      {!isPending && rows.length > 0 && (
+      {/* Paginacao so com mais de uma pagina: com uma, repetia a contagem de cima. */}
+      {!isPending && rows.length > pageSize && (
         <PaginationBar
           screenKey="finance"
           page={page}

@@ -313,6 +313,6 @@ test("Resumo: o que entrou, o que saiu e as bolsas concedidas na visão avançad
   await expect(card("Entrou")).toContainText("Todas as mensalidades recebidas");
   await expect(card("Saiu")).toContainText("R$ 210,00");
 
-  await page.getByRole("button", { name: "Avançada" }).click();
-  await expect(page.getByText("Bolsas concedidas:").locator("..")).toContainText("R$ 150,00");
+  // Tela unica desde 11/11/2026: bolsas no pe das entradas por categoria.
+  await expect(page.getByText("Bolsas concedidas", { exact: true }).locator("..")).toContainText("R$ 150,00");
 });

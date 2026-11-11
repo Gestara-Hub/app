@@ -19,4 +19,3 @@ export {
   type FinanceTab,
 } from "./lib";
 export { FINANCE_BENEFITS } from "./benefits";
-export type { SummaryViewMode } from "./components/finance-summary-tab";

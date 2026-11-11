@@ -5,7 +5,7 @@ Onde: /finance
 Guia: /finance
 + botão "Escolher mês": Escolha o mês que quer analisar.
 + aba "Resumo": Mostra entradas, saídas e o resultado do mês.
-+ texto "Ações rápidas do dia a dia": Atalhos para lançar, ver cobranças e a folha de quem dá aula.
++ texto "Saldo do mês": Quanto sobrou depois do que entrou e saiu.
 Em Financeiro, a aba Resumo mostra entradas, saídas e resultado do mês. Escolha o mês no topo.
 
 ## Lançamentos

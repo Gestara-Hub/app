@@ -1690,8 +1690,8 @@
         },
         {
           "kind": "texto",
-          "label": "Ações rápidas do dia a dia",
-          "text": "Atalhos para lançar, ver cobranças e a folha de quem dá aula."
+          "label": "Saldo do mês",
+          "text": "Quanto sobrou depois do que entrou e saiu."
         }
       ]
     }
