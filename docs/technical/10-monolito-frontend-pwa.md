@@ -32,13 +32,13 @@ Data: 2026-10-19.
 ## Como ficou a instalação (04/11/2026)
 
 - **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/dashboard`, tela cheia (`standalone`), fundo e barra no quase preto da marca (#18181B, o fundo do ícone desde 05/11/2026).
-- **Ícones** em `apps/web/public/icons`, gerados de `src/assets/icon.svg`:
-  - `icon-192/512`: quadrado com cantos arredondados e G em 80%, para o computador e o Android sem corte.
-  - `icon-maskable-192/512`: quadrado cheio com o G em 72%, para caber no corte em círculo do Android (área segura de 80%: o ponto mais distante do G fica a 38,7% do lado, contra 40% de limite).
-  - `apple-touch-icon.png` (180, sem transparência): o iPhone só aceita PNG e arredonda sozinho, G em 80%.
+- **Ícones** em `apps/web/public/icons`, gerados de `src/assets/icon.svg` por `pnpm --filter @gestarahub/web icons:build` (`scripts/gen-app-icons.mjs`, usa o `sharp` do Next). Margens no padrão de cada sistema desde 10/11/2026 (antes o G ocupava 72% a 80% e ficava colado na borda, e no Android parecia cortado):
+  - `icon-192/512` (computador e Android sem recorte): quadrado com cantos arredondados (22%) e G em 60% do lado.
+  - `icon-maskable-192/512` (Android recorta em círculo, gota ou quadrado): fundo cheio e G em 56%, dentro da área segura de 80% com folga.
+  - `apple-touch-icon.png` (180, sem transparência; o iPhone arredonda sozinho): fundo cheio e G em 60%.
 - **Metadados** em `app/layout.tsx`: ícone do iPhone, `appleWebApp` (abre sem a barra do Safari) e a cor da barra do sistema por tema.
 - **Ainda não feito:** service worker de cache e tela offline. O Chrome instala sem ele. Os outros recursos estão em "Recursos do PWA para depois".
-- Ao trocar o ícone, gerar os PNGs de novo a partir do SVG e conferir nos três cortes (quadrado do iPhone, círculo e gota do Android).
+- Ao trocar o ícone, rodar `icons:build` e conferir nos três cortes (quadrado do iPhone, círculo e gota do Android). O app já instalado guarda o ícone antigo: para ver o novo, remover da tela de início e instalar de novo.
 
 ### Sugestão de instalação (04/11/2026)
 
