@@ -201,3 +201,12 @@ Revisão das notificações com o usuário. Até aqui os três tons do sino (inf
 2. **Resolver no sistema** (**feita 09/11/2026**): chamada de ontem em aberto, documentos no Painel, presentes sem certificado.
 3. **Falar com alguém** (**feita 09/11/2026**, sem o plano do aluno vencendo, que não tem base no modelo): evento amanhã (modelo `event_reminder`), visitante para virar aluno, curso terminando.
 4. Docs 11, 13, 25 e 29 e os testes de regra (`reminders.test.ts`, `bell-alerts.test.ts`) a cada fase.
+
+## Lista dos lembretes mais enxuta (10/11/2026)
+
+- Na gaveta do sino, só o primeiro grupo abre sozinho; no Painel, todos começam fechados.
+- Cada grupo mostra 5 itens e "Ver mais N"; acima de 20, "e mais N" e o link da tela completa, como antes.
+- O resumo de nomes aparece só com o grupo fechado. Nas cobranças e nos pagamentos o resumo é o valor e fica sempre.
+- Título, nomes e o número do sino contam só o que falta fazer ("1 aniversariante na semana" quando o outro já recebeu parabéns).
+- O feito hoje fica no lugar, com a confirmação em verde (não pula de posição enquanto se envia em sequência). O feito em outro dia vai para o fim, apagado, sob "Já feitos".
+- Boas-vindas: a data do cadastro virou subtítulo ("Cadastrados ontem", "Cadastrados há 3 dias") em vez de repetir em cada linha.

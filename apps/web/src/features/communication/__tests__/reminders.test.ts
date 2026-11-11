@@ -62,7 +62,7 @@ describe("motor de lembretes", () => {
       { today: TODAY },
     );
     const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
-    expect(byKey.event_tomorrow).toMatchObject({ level: "info", title: "2 inscritos para avisar do evento de amanhã", pending: 1 });
+    expect(byKey.event_tomorrow).toMatchObject({ level: "info", title: "1 inscrito para avisar do evento de amanhã", pending: 1 });
     expect(byKey.event_tomorrow.items[0]).toMatchObject({ trigger: "event_reminder", values: { evento: "Seminário", dia: "23/09", horario: "09:00 às 12:00" }, phone: "11977770000" });
     expect(byKey.event_tomorrow.items[1].done).toBe("Avisado hoje");
     // Visitante: so 7 dias depois do evento; a mensagem e a de chamar de volta, com o nome do evento.
@@ -190,7 +190,7 @@ describe("motor de lembretes", () => {
     expect(byKey.birthday.pending).toBe(1);
     expect(byKey.absence.items[0]).toMatchObject({ trigger: "absence_alert" });
     expect(byKey.absence.items[0].detail).toMatch(/^3 faltas seguidas · desde .+ · Adulto$/);
-    expect(byKey.birthday.title).toBe("2 aniversariantes na semana");
+    expect(byKey.birthday.title).toBe("1 aniversariante na semana"); // o já feito não conta no título
     expect(byKey.packages.items[0]).toMatchObject({ trigger: "package_ending", values: { pacote: "Pacote 10 aulas" } });
     expect(pendingReminders(groups)).toBe(3);
   });
@@ -227,5 +227,27 @@ describe("motor de lembretes", () => {
     expect(byKey.level_up.items[0]).toMatchObject({ trigger: "level_up", values: { nivel: "Faixa Azul · 1º grau" } });
     expect(byKey.payment_received.items.map((i) => i.chargeId)).toEqual(["ch-paga"]);
     expect(byKey.payment_received.items[0].values.referencia).toBe("mensalidade de setembro");
+  });
+
+  it("boas-vindas: data como subtítulo, feito em outro dia no fim e fora do título", () => {
+    const groups = buildReminders(
+      sources({
+        students: [
+          { id: "c-feita", name: "Feita", createdAt: "2026-09-21T12:00:00.000Z" },
+          { id: "c-ontem", name: "Ontem", createdAt: "2026-09-21T13:00:00.000Z" },
+          { id: "c-antes", name: "Antes", createdAt: "2026-09-19T12:00:00.000Z" },
+        ],
+        logs: [{ trigger: "welcome_student", clientId: "c-feita", sentAt: "2026-09-21T15:00:00.000Z" }],
+      }),
+      { today: TODAY },
+    );
+    const welcome = groups.find((g) => g.key === "welcome")!;
+    expect(welcome.title).toBe("2 alunos novos para dar boas-vindas");
+    expect(welcome.detail).toBe("Ontem, Antes");
+    expect(welcome.items.map((i) => [i.studentName, i.section, i.detail, Boolean(i.done)])).toEqual([
+      ["Ontem", "Cadastrados ontem", "", false],
+      ["Antes", "Cadastrados há 3 dias", "", false],
+      ["Feita", "Cadastrados ontem", "", true],
+    ]);
   });
 });

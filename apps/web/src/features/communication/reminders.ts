@@ -99,6 +99,8 @@ export interface ReminderItem {
   doneToday?: boolean;
   /** Tarefa interna ("Resolver no sistema"): abre esta tela em vez do WhatsApp. */
   href?: string;
+  /** Subtitulo que agrupa itens seguidos na lista ("Ontem", "Há 3 dias"): a data sai do `detail`. */
+  section?: string;
 }
 
 export interface ReminderGroup {
@@ -144,6 +146,10 @@ const BILLING_TRIGGERS = new Set<MessageTrigger>([
 
 const localDay = (iso: string) => dateInSpace(iso);
 const ddmm = (date: DateISO) => format(parseISO(date), "dd/MM");
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 function namesLine(names: string[]): string {
   const shown = names.slice(0, 3).join(", ");
@@ -226,18 +232,23 @@ function group(
   detail: (items: ReminderItem[]) => string,
   href?: string,
 ): ReminderGroup | null {
-  const pending = items.filter((i) => !i.done).length;
+  const todo = items.filter((i) => !i.done);
+  const pending = todo.length;
   // Tudo feito: some, menos no dia em que foi feito (a pessoa ve o "Avisado hoje").
   if (pending === 0 && !items.some((i) => i.doneToday)) return null;
-  // Na ordem de importancia; o ja feito fica no lugar (marcado), sem pular de posicao.
-  const ordered = items;
+  // Na ordem de importancia. O feito hoje fica no lugar (marcado), sem pular de
+  // posicao enquanto a pessoa envia; o feito em outro dia vai para o fim (10/11/2026).
+  const doneBefore = items.filter((i) => i.done && !i.doneToday);
+  const ordered = [...items.filter((i) => !i.done || i.doneToday), ...doneBefore];
   const shown = ordered.slice(0, MAX_ITEMS_PER_GROUP);
+  // Titulo e nomes contam so o que falta fazer ("1 aniversariante", nao os 2 da semana).
+  const counted = pending > 0 ? todo : items;
   return {
     key,
     category,
     level: GROUP_LEVEL[key],
-    title: title(items.length),
-    detail: detail(items),
+    title: title(counted.length),
+    detail: detail(counted),
     items: shown,
     hidden: ordered.length - shown.length,
     pending,
@@ -378,7 +389,9 @@ export function buildReminders(
         studentName: s.name,
         trigger: "welcome_student",
         values: {},
-        detail: `Cadastrado ${relativeDateLabel(localDay(s.createdAt))}`,
+        // A data vira subtitulo na lista ("Ontem", "Há 3 dias"), sem repetir em cada linha.
+        detail: "",
+        section: capitalize(`Cadastrados ${relativeDateLabel(localDay(s.createdAt), { today })}`),
         ...doneFields(sent, today, "Boas-vindas enviadas"),
       };
     })
