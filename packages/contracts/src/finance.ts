@@ -472,6 +472,8 @@ export interface FinanceEntryView {
   recurrenceActive?: boolean;
   /** Agregado de cobrancas: contagens por status. */
   chargeCounts?: { paid: number; pending: number; overdue: number };
+  /** Agregado de cobrancas: quanto ja foi pago (o resto e "a receber"). */
+  chargePaidCents?: number;
   /** Pagamento de professor (source = "teacher_payout"). */
   professionalId?: Id;
   payoutId?: Id;

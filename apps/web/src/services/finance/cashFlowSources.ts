@@ -133,6 +133,8 @@ export function cashFlowItems(): CashFlowItem[] {
       status: chargeStatus(c),
       paidAt: c.status === "paid" ? c.paidAt : undefined,
       categoryId: chargeCategoryId(c.kind),
+      // Mes de referencia da cobranca, igual a Cobrancas e Lancamentos.
+      competence: chargeCompetence(c),
     });
   }
   for (const e of store.financialEntries) {

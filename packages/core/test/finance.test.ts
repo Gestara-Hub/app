@@ -438,6 +438,16 @@ describe("summarizeCashFlow", () => {
     assert.equal(summarizeCashFlow(items, "2026-11", "2026-11-01").incomePaidCents, 0);
   });
 
+  it("a receber e atraso usam o mês de referência quando o item tem (cobrança pós-paga)", () => {
+    // Mensalidade de setembro que vence em 10/10: é de setembro, não de outubro.
+    const items = [item({ amountCents: 4000, dueDate: "2026-10-10", competence: "2026-09" })];
+    assert.equal(summarizeCashFlow(items, "2026-10", today).incomeForecastCents, 0);
+    const sept = summarizeCashFlow(items, "2026-09", today);
+    assert.equal(sept.incomeForecastCents, 4000);
+    assert.equal(sept.incomeOverdueCents, 4000);
+    assert.deepEqual(summarizeOverdueToDate(items, today).incomeByCompetence, [{ competence: "2026-09", amountCents: 4000 }]);
+  });
+
   it("status paid sem paidAt não entra em nada", () => {
     const s = summarizeCashFlow([item({ status: "paid" })], "2026-10", today);
     assert.equal(s.incomePaidCents, 0);

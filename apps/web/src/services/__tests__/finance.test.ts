@@ -398,6 +398,19 @@ describe("lista de lançamentos", () => {
     expect(rows.filter((r) => r.source === "charge")).toEqual([]);
     expect((await financeService.getSummary("2026-09")).incomeForecastCents).toBe(0);
   });
+
+  it("inscrição em evento entra em Lançamentos e o total bate com o Resumo", async () => {
+    const plan = await createPlan("monthly", 15000);
+    await enrollStudent({ plan, name: "Ana", startDate: "2026-09-01", strategy: "full_cycle" });
+    const base = store.charges[0];
+    // Cobranca de evento do mesmo mes (forcada no store para isolar a regra).
+    store.charges.push({ ...base, id: "ch-evento", kind: "event", amountCents: 25000 });
+    const rows = (await financeService.listEntries({ competence: "2026-09" })).filter((r) => r.source === "charge");
+    expect(rows.map((r) => r.description)).toContain("Eventos e seminários de setembro");
+    const summary = await financeService.getSummary("2026-09");
+    const listed = rows.reduce((sum, r) => sum + r.amountCents, 0);
+    expect(listed).toBe(summary.incomePaidCents + summary.incomeForecastCents);
+  });
 });
 
 describe("lançamentos manuais", () => {

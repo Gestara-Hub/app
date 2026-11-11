@@ -1,4 +1,5 @@
 import type {
+  ChargeKind,
   FinanceCategoryTotal,
   FinanceEntryView,
   FinanceMonthPoint,
@@ -21,7 +22,7 @@ import { cashFlowItems, chargeCompetence, onlineFeesInCompetence, openPreviews, 
 import { clone, currentCompetence, monthName, todayISO } from "./financeHelpers";
 import { ensureMaterialized } from "./financeRecurrenceService";
 import { categoryName, systemCategoryId } from "./financeStore";
-import { chargeAggregateRow, payoutRow, toEntryView } from "./financeViews";
+import { CHARGE_ROW_TITLE, chargeAggregateRow, payoutRow, toEntryView } from "./financeViews";
 
 export const cashFlowService = {
   /** Cartoes do Resumo da competencia (fontes da secao 4.1; atrasado conforme secao 14). */
@@ -130,7 +131,9 @@ export const cashFlowService = {
       const rows: FinanceEntryView[] = [];
 
       const charges = store.charges.filter((c) => chargeCompetence(c) === competence);
-      for (const kind of ["membership", "dropin", "extra", "course", "package"] as const) {
+      // Todo kind de cobranca (CHARGE_ROW_TITLE), inclusive "event": a lista fixa
+      // deixou as inscricoes de evento fora e o total nao batia com o Resumo (11/11/2026).
+      for (const kind of Object.keys(CHARGE_ROW_TITLE) as ChargeKind[]) {
         const row = chargeAggregateRow(kind, competence, charges.filter((c) => c.kind === kind));
         if (row) rows.push(row);
       }

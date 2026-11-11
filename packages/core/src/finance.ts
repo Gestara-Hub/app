@@ -149,6 +149,16 @@ export interface CashFlowItem {
   status: FinancialEntryDisplayStatus;
   paidAt?: string;
   categoryId?: Id;
+  /**
+   * Mes de referencia (cobranca de aluno: a competencia, que pode ser diferente
+   * do mes do vencimento). Sem ele, o mes do vencimento.
+   */
+  competence?: string;
+}
+
+/** Mes a que o item pertence para "a receber" e "atraso" (11/11/2026): o de referencia. */
+function referenceCompetence(item: CashFlowItem): string {
+  return item.competence ?? competenceOf(item.dueDate);
 }
 
 function isPaid(item: CashFlowItem): boolean {
@@ -161,9 +171,10 @@ function isOpen(item: CashFlowItem): boolean {
 
 /**
  * Cartoes do Resumo de uma competencia:
- * - entrou/saiu: pagos com `paidAt` (data local) na competencia;
- * - a receber/a pagar: vencimento na competencia e ainda em aberto;
- * - atrasado: em aberto com vencimento na competencia e antes de hoje.
+ * - entrou/saiu: pagos com `paidAt` (data local) na competencia (caixa);
+ * - a receber/a pagar: do mes de referencia e ainda em aberto (o mesmo recorte
+ *   de Cobrancas e Lancamentos, 11/11/2026);
+ * - atrasado: em aberto do mes de referencia e vencido antes de hoje.
  */
 export function summarizeCashFlow(
   items: readonly CashFlowItem[],
@@ -187,7 +198,7 @@ export function summarizeCashFlow(
       else summary.expensePaidCents += item.amountCents;
       continue;
     }
-    if (!isOpen(item) || competenceOf(item.dueDate) !== competence) continue;
+    if (!isOpen(item) || referenceCompetence(item) !== competence) continue;
     if (income) summary.incomeForecastCents += item.amountCents;
     else summary.expenseForecastCents += item.amountCents;
     if (item.status === "overdue" || item.dueDate < today) {
@@ -214,7 +225,7 @@ export function summarizeOverdueToDate(items: readonly CashFlowItem[], today: Da
     }
     result.incomeCents += item.amountCents;
     result.incomeCount += 1;
-    const competence = competenceOf(item.dueDate);
+    const competence = referenceCompetence(item);
     byCompetence.set(competence, (byCompetence.get(competence) ?? 0) + item.amountCents);
   }
   result.incomeByCompetence = [...byCompetence.entries()]

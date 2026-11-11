@@ -63,9 +63,11 @@ export function chargeAggregateRow(
   if (active.length === 0) return null;
   const counts = { paid: 0, pending: 0, overdue: 0 };
   let amountCents = 0;
+  let paidCents = 0;
   for (const c of active) {
     amountCents += c.amountCents;
     const status = chargeStatus(c);
+    if (status === "paid") paidCents += c.amountCents;
     if (status === "paid") counts.paid += 1;
     else if (status === "overdue") counts.overdue += 1;
     else counts.pending += 1;
@@ -89,6 +91,7 @@ export function chargeAggregateRow(
     dueDate,
     status,
     chargeCounts: counts,
+    chargePaidCents: paidCents,
   };
 }
 
