@@ -159,6 +159,15 @@ export function useOnlineCheckout(chargeId: Id | null) {
 }
 
 /** Codigos em aberto do espaco: o "Lembrar no WhatsApp" manda o link junto. */
+/** Estornos e contestacoes avisados pelo parceiro (sino, topo e modal; doc product/25). */
+export function useDisputedOnlinePayments(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.onlinePayments.disputed,
+    queryFn: () => onlinePaymentsService.listDisputed(),
+    enabled,
+  });
+}
+
 export function useAwaitingOnlinePayments(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.onlinePayments.awaiting,

@@ -94,6 +94,7 @@ export type UpdatePersonDocument = Partial<Pick<PersonDocument, "kind" | "title"
 export interface ExpiringPersonDocument {
   id: Id;
   ownerKind: PersonDocumentOwnerKind;
+  kind: PersonDocumentKind;
   ownerId: Id;
   ownerName: string;
   label: string;

@@ -130,6 +130,32 @@
   }
 }
 
+/* Sino (doc product/25): pulsa 3 vezes quando ha item de atencao novo desde a ultima abertura. */
+@keyframes bell-pulse {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-12deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bell-pulse > svg {
+    animation: bell-pulse 0.9s ease-in-out 3;
+    transform-origin: 50% 10%;
+  }
+}
+
 @keyframes attention-ring {
   0% {
     box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent);

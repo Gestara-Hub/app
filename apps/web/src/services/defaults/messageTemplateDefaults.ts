@@ -209,6 +209,14 @@ function manualMessageTemplates(
       content: `Oi, {aluno}! Foi muito bom ter você na aula experimental. Que tal continuar com a gente? Me conta o que achou e te ajudo a escolher a turma e o plano.${tone.closing}`,
       availableVariables: ["{aluno}", "{empresa}"],
     }),
+    manual("event-reminder", {
+      trigger: "event_reminder",
+      category: "administrative",
+      title: "Evento amanhã",
+      description: "Para os inscritos, na véspera do evento",
+      content: "Oi, {aluno}! Amanhã tem {evento} na {empresa}, {dia} às {horario}. Te esperamos!",
+      availableVariables: ["{aluno}", "{evento}", "{dia}", "{horario}", "{empresa}"],
+    }),
     manual("payment-received", {
       trigger: "payment_received",
       category: "billing",

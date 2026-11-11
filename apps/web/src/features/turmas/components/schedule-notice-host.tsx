@@ -53,6 +53,7 @@ export function ScheduleNoticeHost() {
             group: {
               key: "schedule_change",
               category: "notice",
+              level: "info",
               title: `Novo horário de ${request.className}`,
               detail: request.slotsText,
               items,

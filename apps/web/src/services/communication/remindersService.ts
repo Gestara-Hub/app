@@ -1,5 +1,16 @@
-import type { ChargeView, Id, MessageTrigger, ReminderSources } from "@gestarahub/contracts";
-import { format, subDays } from "date-fns";
+import type {
+  ChargeView,
+  Id,
+  MessageTrigger,
+  ReminderCourseEnding,
+  ReminderEventCertificates,
+  ReminderEventTomorrow,
+  ReminderOpenRollCall,
+  ReminderSources,
+  ReminderVisitor,
+} from "@gestarahub/contracts";
+import { addDays, format, subDays } from "date-fns";
+import { hasEnded } from "@gestarahub/core/billing";
 import { can } from "@/lib/permissions";
 import { getCurrentActor } from "@/services/world/actor";
 import { readOp } from "@/services/world/ops";
@@ -9,7 +20,13 @@ import { studentPackagesService } from "../billing/studentPackagesService";
 import { attendanceService } from "../classes/attendanceService";
 import { levelsOf } from "../clients/studentSummaryRules";
 import { trialStudents } from "../clients/clientTrials";
-import { actorTeacherId } from "../classes/teacherScope";
+import { actorTeacherId, teacherSeesSession } from "../classes/teacherScope";
+import { sessionIdsInRange } from "../classes/classSlices";
+import { enrollmentsOn, parseSessionId } from "../classes/classShared";
+import { activeDays, eventStage } from "@gestarahub/core/events";
+import { confirmedRegistrations, eventAttendancesStore, eventSessionsStore, eventsStore, registrationCoversDay, teacherSeesEvent } from "../events/eventShared";
+import { expiringDocuments } from "../personDocuments/personDocumentsService";
+import { tenantHasFeature } from "../subscription/subscriptionService";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
 import { messageGuardian } from "@gestarahub/core/payer";
@@ -34,6 +51,7 @@ export const REMINDER_TRIGGERS: MessageTrigger[] = [
   "level_up",
   "payment_received",
   "trial_follow_up",
+  "event_reminder",
 ];
 
 /** Mensagens consideradas (atraso volta a lembrar depois de 7 dias; 60 cobre a semana do aniversario e o pacote). */
@@ -132,7 +150,177 @@ export const remindersService = {
         today,
       ).filter((t) => t.stage === "trial");
 
-      return { canBilling, students, charges, packages, absenceStreaks, promotions, trials, logs, templates };
+      return {
+        canBilling,
+        students,
+        charges,
+        packages,
+        absenceStreaks,
+        promotions,
+        trials,
+        logs,
+        templates,
+        openRollCalls: openRollCallsOf(today, teacherId),
+        documents: expiringDocuments(),
+        eventCertificates: eventCertificatesOf(today, actor?.profile),
+        eventsTomorrow: eventsTomorrowOf(today, teacherId, visible),
+        visitors: visitorsOf(today, visible),
+        coursesEnding: coursesEndingOf(today, teacherId, visible),
+      };
     });
   },
 };
+
+/**
+ * Chamadas de ontem em aberto (doc product/25, "Resolver no sistema"): aulas de
+ * turma ativa com matriculados na data e dias de evento com inscritos, sem
+ * nenhuma marcacao. O professor so ve as dele (titular ou substituto).
+ */
+function openRollCallsOf(today: string, teacherId: Id | undefined): ReminderOpenRollCall[] {
+  const yesterday = format(subDays(new Date(`${today}T12:00:00`), 1), "yyyy-MM-dd");
+  const out: ReminderOpenRollCall[] = [];
+  const marked = new Set(store.attendances.map((a) => a.sessionId));
+  const groups = store.classGroups.filter((g) => g.status === "active");
+  for (const sessionId of sessionIdsInRange(groups, yesterday, yesterday)) {
+    if (marked.has(sessionId)) continue;
+    const parsed = parseSessionId(sessionId);
+    const g = parsed ? groups.find((x) => x.id === parsed.classGroupId) : undefined;
+    if (!parsed || !g || !teacherSeesSession(g, sessionId, teacherId)) continue;
+    const expected = enrollmentsOn(g.id, yesterday).length;
+    if (expected === 0) continue;
+    const slot = g.meetingSlots.find((s) => s.start === parsed.start);
+    out.push({
+      id: sessionId,
+      kind: "class",
+      title: g.name,
+      date: yesterday,
+      start: parsed.start,
+      end: slot?.end ?? parsed.start,
+      studentsCount: expected,
+      href: `/classes/sessions/${encodeURIComponent(sessionId)}`,
+    });
+  }
+  const eventMarked = new Set(eventAttendancesStore().map((a) => a.sessionId));
+  for (const day of eventSessionsStore()) {
+    if (day.date !== yesterday || day.status === "canceled" || eventMarked.has(day.id)) continue;
+    const event = eventsStore().find((e) => e.id === day.eventId);
+    if (!event || event.status !== "active" || !teacherSeesEvent(event, teacherId)) continue;
+    const expected = confirmedRegistrations(event.id).filter((r) => registrationCoversDay(r, day.id)).length;
+    if (expected === 0) continue;
+    out.push({
+      id: day.id,
+      kind: "event",
+      title: event.name,
+      date: yesterday,
+      start: day.start,
+      end: day.end,
+      studentsCount: expected,
+      href: `/events/sessions/${encodeURIComponent(day.id)}`,
+    });
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, "pt-BR"));
+}
+
+/** Dias de evento amanha com os inscritos confirmados que os cobrem (doc product/25, fase 3). */
+function eventsTomorrowOf(today: string, teacherId: Id | undefined, visible: (id: Id) => boolean): ReminderEventTomorrow[] {
+  const tomorrow = format(addDays(new Date(`${today}T12:00:00`), 1), "yyyy-MM-dd");
+  const out: ReminderEventTomorrow[] = [];
+  for (const day of eventSessionsStore()) {
+    if (day.date !== tomorrow || day.status === "canceled") continue;
+    const event = eventsStore().find((e) => e.id === day.eventId);
+    if (!event || event.status !== "active" || !teacherSeesEvent(event, teacherId)) continue;
+    const studentIds = confirmedRegistrations(event.id)
+      .filter((r) => registrationCoversDay(r, day.id) && visible(r.studentId))
+      .filter((r) => store.clients.find((c) => c.id === r.studentId)?.status === "active")
+      .map((r) => r.studentId);
+    if (studentIds.length === 0) continue;
+    out.push({ sessionId: day.id, eventId: event.id, eventName: event.name, date: day.date, start: day.start, end: day.end, studentIds });
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start));
+}
+
+/** O aluno tem algum vinculo fixo: matricula ativa, plano ou pacote em uso. */
+function hasOngoingTie(studentId: Id): boolean {
+  if (store.enrollments.some((e) => e.studentId === studentId && e.status === "active")) return true;
+  const client = store.clients.find((c) => c.id === studentId);
+  if (client?.planId) return true;
+  return (store.studentPackages ?? []).some((p) => p.studentId === studentId && p.status === "active");
+}
+
+/**
+ * Visitantes para virar aluno (doc product/25, fase 3; decisao 2 do doc 29):
+ * aluno ativo sem matricula, plano ou pacote, com inscricao confirmada em evento
+ * ja terminado ha 7 dias ou mais. O motor decide quando lembrar e se ja chamou.
+ */
+function visitorsOf(today: string, visible: (id: Id) => boolean): ReminderVisitor[] {
+  const out = new Map<Id, ReminderVisitor>();
+  for (const event of eventsStore()) {
+    if (event.status !== "active") continue;
+    const days = activeDays(eventSessionsStore().filter((s) => s.eventId === event.id));
+    if (eventStage(days, today) !== "finished" || days.length === 0) continue;
+    const endedOn = days[days.length - 1].date;
+    for (const r of confirmedRegistrations(event.id)) {
+      if (!visible(r.studentId) || hasOngoingTie(r.studentId)) continue;
+      if (store.clients.find((c) => c.id === r.studentId)?.status !== "active") continue;
+      const current = out.get(r.studentId);
+      if (!current || current.endedOn < endedOn) out.set(r.studentId, { studentId: r.studentId, eventName: event.name, endedOn });
+    }
+  }
+  return [...out.values()];
+}
+
+/** Dias antes do fim do curso em que o aluno sem outro vinculo entra no lembrete. */
+const COURSE_ENDING_DAYS = 15;
+
+/**
+ * Curso terminando (doc product/25, fase 3): turma `course` ativa com fim nos
+ * proximos 15 dias e aluno matriculado nela sem outra turma em andamento, plano
+ * ou pacote. O professor so as dele.
+ */
+function coursesEndingOf(today: string, teacherId: Id | undefined, visible: (id: Id) => boolean): ReminderCourseEnding[] {
+  const limit = format(addDays(new Date(`${today}T12:00:00`), COURSE_ENDING_DAYS), "yyyy-MM-dd");
+  const out: ReminderCourseEnding[] = [];
+  for (const g of store.classGroups) {
+    if (g.status !== "active" || g.billingMode !== "course" || !g.endDate || g.endDate < today || g.endDate > limit) continue;
+    if (teacherId !== undefined && g.instructorId !== teacherId) continue;
+    for (const e of store.enrollments) {
+      if (e.classGroupId !== g.id || e.status !== "active" || !visible(e.studentId)) continue;
+      const client = store.clients.find((c) => c.id === e.studentId);
+      if (!client || client.status !== "active" || client.planId) continue;
+      const otherOngoing = store.enrollments.some(
+        (o) => o.studentId === e.studentId && o.status === "active" && o.classGroupId !== g.id && !hasEnded(store.classGroups.find((x) => x.id === o.classGroupId) ?? {}, today),
+      );
+      if (otherOngoing || (store.studentPackages ?? []).some((p) => p.studentId === e.studentId && p.status === "active")) continue;
+      out.push({ studentId: e.studentId, classGroupId: g.id, className: g.name, endDate: g.endDate });
+    }
+  }
+  return out.sort((a, b) => a.endDate.localeCompare(b.endDate));
+}
+
+/**
+ * Eventos terminados com presentes sem certificado (doc product/25; Pro, recurso
+ * `certificates`): quem ve eventos (o professor: so os dele).
+ */
+function eventCertificatesOf(today: string, profile: Parameters<typeof can>[0] | undefined): ReminderEventCertificates[] {
+  if (!tenantHasFeature("certificates") || (profile && !can(profile, "events:view"))) return [];
+  const teacherId = actorTeacherId();
+  const issued = new Set((store.issuedCertificates ?? []).filter((c) => c.kind === "event").map((c) => c.eventRegistrationId));
+  const present = new Set(eventAttendancesStore().filter((a) => a.status === "present").map((a) => a.registrationId));
+  const out: ReminderEventCertificates[] = [];
+  for (const event of eventsStore()) {
+    if (event.status !== "active" || !teacherSeesEvent(event, teacherId)) continue;
+    const days = activeDays(eventSessionsStore().filter((s) => s.eventId === event.id));
+    if (eventStage(days, today) !== "finished") continue;
+    const presentRegs = confirmedRegistrations(event.id).filter((r) => present.has(r.id));
+    const without = presentRegs.filter((r) => !issued.has(r.id)).length;
+    if (without === 0) continue;
+    out.push({
+      eventId: event.id,
+      eventName: event.name,
+      presentTotal: presentRegs.length,
+      presentWithout: without,
+      href: `/events/${event.id}/certificates`,
+    });
+  }
+  return out.sort((a, b) => a.eventName.localeCompare(b.eventName, "pt-BR"));
+}

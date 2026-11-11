@@ -255,46 +255,54 @@ export const personDocumentsServiceImpl = {
    * o atestado renovado tira o aviso do antigo.
    */
   listExpiring(): Promise<ExpiringPersonDocument[]> {
-    return readOp(async () => {
-      const today = dateInSpace();
-      const seesAllStudents = actorCan("clients:view");
-      const teacherStudents = !seesAllStudents && actorCan("clients:view_own") ? teacherStudentIds(actorTeacherId()) : undefined;
-      const seesStudents = seesAllStudents || teacherStudents !== undefined;
-      const seesTeam = actorCan("team:manage");
-
-      const latest = new Map<string, PersonDocument>();
-      for (const doc of documentsStore()) {
-        if (!doc.expiresOn) continue;
-        const ownerId = ownerIdOf(doc);
-        if (doc.ownerKind === "client") {
-          if (!seesStudents || (teacherStudents && !teacherStudents.has(ownerId))) continue;
-          if (store.clients.find((c) => c.id === ownerId)?.status !== "active") continue;
-        } else {
-          if (!seesTeam) continue;
-          if (store.professionals.find((p) => p.id === ownerId)?.status !== "active") continue;
-        }
-        const key = `${doc.ownerKind}:${ownerId}:${documentExpiryGroupKey(doc.ownerKind, doc.kind, doc.title)}`;
-        const current = latest.get(key);
-        if (!current || (current.expiresOn ?? "") < doc.expiresOn) latest.set(key, doc);
-      }
-
-      const out: ExpiringPersonDocument[] = [];
-      for (const doc of latest.values()) {
-        const { expiry, daysToExpire } = documentExpiry(doc.expiresOn, today);
-        if ((expiry !== "expiring" && expiry !== "expired") || daysToExpire === undefined || !doc.expiresOn) continue;
-        const ownerId = ownerIdOf(doc);
-        out.push({
-          id: doc.id,
-          ownerKind: doc.ownerKind,
-          ownerId,
-          ownerName: ownerName(doc.ownerKind, ownerId),
-          label: documentLabel(doc.ownerKind, doc.kind, doc.title),
-          expiresOn: doc.expiresOn,
-          expiry,
-          daysToExpire,
-        });
-      }
-      return out.sort((a, b) => a.daysToExpire - b.daysToExpire);
-    });
+    return readOp(async () => expiringDocuments());
   },
 };
+
+/**
+ * Documentos vencendo (30 dias) ou vencidos, de alunos e instrutores ativos que
+ * quem pede pode ver; por pessoa e tipo vale so o de validade mais longa. Usado
+ * pela lista da ficha e pelos lembretes (doc product/25, "Resolver no sistema").
+ */
+export function expiringDocuments(): ExpiringPersonDocument[] {
+  const today = dateInSpace();
+  const seesAllStudents = actorCan("clients:view");
+  const teacherStudents = !seesAllStudents && actorCan("clients:view_own") ? teacherStudentIds(actorTeacherId()) : undefined;
+  const seesStudents = seesAllStudents || teacherStudents !== undefined;
+  const seesTeam = actorCan("team:manage");
+
+  const latest = new Map<string, PersonDocument>();
+  for (const doc of documentsStore()) {
+    if (!doc.expiresOn) continue;
+    const ownerId = ownerIdOf(doc);
+    if (doc.ownerKind === "client") {
+      if (!seesStudents || (teacherStudents && !teacherStudents.has(ownerId))) continue;
+      if (store.clients.find((c) => c.id === ownerId)?.status !== "active") continue;
+    } else {
+      if (!seesTeam) continue;
+      if (store.professionals.find((p) => p.id === ownerId)?.status !== "active") continue;
+    }
+    const key = `${doc.ownerKind}:${ownerId}:${documentExpiryGroupKey(doc.ownerKind, doc.kind, doc.title)}`;
+    const current = latest.get(key);
+    if (!current || (current.expiresOn ?? "") < doc.expiresOn) latest.set(key, doc);
+  }
+
+  const out: ExpiringPersonDocument[] = [];
+  for (const doc of latest.values()) {
+    const { expiry, daysToExpire } = documentExpiry(doc.expiresOn, today);
+    if ((expiry !== "expiring" && expiry !== "expired") || daysToExpire === undefined || !doc.expiresOn) continue;
+    const ownerId = ownerIdOf(doc);
+    out.push({
+      id: doc.id,
+      ownerKind: doc.ownerKind,
+      kind: doc.kind,
+      ownerId,
+      ownerName: ownerName(doc.ownerKind, ownerId),
+      label: documentLabel(doc.ownerKind, doc.kind, doc.title),
+      expiresOn: doc.expiresOn,
+      expiry,
+      daysToExpire,
+    });
+  }
+  return out.sort((a, b) => a.daysToExpire - b.daysToExpire);
+}

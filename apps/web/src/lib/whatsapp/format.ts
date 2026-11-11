@@ -16,6 +16,7 @@ export const MANUAL_MESSAGE_TRIGGERS: readonly MessageTrigger[] = [
   "payment_received",
   "level_up",
   "trial_follow_up",
+  "event_reminder",
   "class_canceled",
   "schedule_change",
   "holiday_notice",

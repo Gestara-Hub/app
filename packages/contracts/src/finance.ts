@@ -267,6 +267,17 @@ export interface AcceptedOnlineMethods {
   boleto: boolean;
 }
 export type OnlinePaymentStatus = "awaiting" | "paid" | "expired" | "canceled";
+/**
+ * Estorno ou contestacao avisados pelo parceiro depois do pagamento (doc
+ * product/25, urgencia): a cobranca continua paga no app; o dono e avisado no
+ * sino, no topo e numa modal, e decide o que fazer.
+ */
+export type OnlinePaymentDisputeStatus =
+  | "refund_in_progress"
+  | "refunded"
+  | "chargeback_requested"
+  | "chargeback_dispute"
+  | "chargeback_reversal_pending";
 
 export interface OnlinePayment {
   id: Id;
@@ -288,6 +299,9 @@ export interface OnlinePayment {
   fundsReleased?: boolean; // valor ja disponivel (cartao: pago antes, liberado ~32 dias depois)
   netAmountCents?: number; // valor liquido que a academia recebe (valor - tarifa - split)
   receiptUrl?: string; // comprovante do pagamento no provedor (webhook do Asaas)
+  /** Estorno ou contestacao avisados pelo parceiro (ultimo aviso) e quando. */
+  disputeStatus?: OnlinePaymentDisputeStatus;
+  disputedAt?: DateTimeISO;
   feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
   canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
   expiresAt: DateTimeISO;

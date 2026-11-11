@@ -32,6 +32,10 @@ export interface UserPreferences {
   dismissedAlertKeys: string[];
   /** Lembretes adiados ou ignorados (doc product/25): chave -> "yyyy-MM-dd" ou "never". */
   reminderSnoozes?: Record<string, string>;
+  /** Itens de atencao e urgencia que estavam no sino na ultima vez que ele foi aberto (o sino pulsa so com item novo). */
+  bellSeenKeys?: string[];
+  /** Avisos urgentes cuja modal ja foi vista ("Ciente"): uma vez por item e por pessoa. */
+  urgentSeenKeys?: string[];
   /** Aviso da verificacao em duas etapas (doc product/25, secao 5). */
   securityPrompt?: {
     /** Primeiro dia no app (conta os 7 dias de uso). */

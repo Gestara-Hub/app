@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ChargeKind, OnlinePayment } from "@gestarahub/contracts";
+import type { ChargeKind, OnlinePayment, OnlinePaymentDisputeStatus } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { chargeLabelOf, competenceLabelOf, PAID_METHOD_LABEL } from "../server/paymentPage";
 import { recordSystemAudit } from "../server/systemAudit";
@@ -36,6 +36,39 @@ export async function auditOnlinePaymentConflict(
     action: "updated",
     target: { type: "charge", id: payment.chargeId, label: `${what} de ${name}` },
     predicate: `recebeu ${formatCents(payment.amountCents)} online de ${name}, mas a cobrança ${state}: devolva ao aluno ou combine o uso do valor`,
+  });
+}
+
+export const DISPUTE_LABEL: Record<OnlinePaymentDisputeStatus, string> = {
+  refund_in_progress: "estorno em andamento",
+  refunded: "estorno",
+  chargeback_requested: "contestação pedida",
+  chargeback_dispute: "contestação em disputa",
+  chargeback_reversal_pending: "reversão da contestação pendente",
+};
+
+/**
+ * Estorno ou contestacao avisados pelo parceiro: na Auditoria uma vez por aviso.
+ * A cobranca fica paga; o dono decide (doc product/25, urgencia).
+ */
+export async function auditOnlinePaymentDispute(admin: SupabaseClient, payment: OnlinePayment): Promise<void> {
+  if (!payment.organizationId || !payment.disputeStatus) return;
+  const { data: charge } = await admin
+    .from("charges")
+    .select("kind, description, student_id")
+    .eq("id", payment.chargeId)
+    .maybeSingle();
+  const { data: student } = charge?.student_id
+    ? await admin.from("clients").select("name").eq("id", charge.student_id).maybeSingle()
+    : { data: null };
+  const name = String(student?.name ?? "aluno");
+  const what = charge ? chargeLabelOf(charge.kind as ChargeKind, (charge.description as string | null) ?? null) : "Cobrança";
+  await recordSystemAudit(admin, "webhook.asaas", {
+    organizationId: payment.organizationId,
+    action: "updated",
+    target: { type: "charge", id: payment.chargeId, label: `${what} de ${name}` },
+    predicate: `avisou ${DISPUTE_LABEL[payment.disputeStatus]} no pagamento online de ${name} (${formatCents(payment.amountCents)}); a cobrança continua paga até você decidir`,
+    security: true,
   });
 }
 

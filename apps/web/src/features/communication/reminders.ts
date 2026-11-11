@@ -7,6 +7,7 @@ import { selectEndingPackages } from "@/lib/package-ending";
 import { chargeReminder, packageRemainingText } from "./message-values";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
 import { needsTrialFollowUp } from "@gestarahub/core/trials";
+import { documentExpiryText } from "@gestarahub/core/person-documents";
 import { BIRTHDAY_LATE_DAYS, PAYMENT_WINDOW_DAYS, WELCOME_WINDOW_DAYS, paidReference } from "./message-suggestions";
 
 /**
@@ -36,8 +37,44 @@ export type ReminderGroupKey =
   /** Aviso a uma turma (mudanca de horario): montado na hora, fora do motor. */
   | "schedule_change"
   /** Mensagem avulsa para varios alunos: montada na hora, fora do motor. */
-  | "broadcast";
-export type ReminderCategory = "billing" | "relationship" | "notice";
+  | "broadcast"
+  /** Resolver no sistema (09/11/2026): tarefas internas, sem WhatsApp. */
+  | "roll_call"
+  | "documents"
+  | "event_certificates"
+  /** Falar com alguem (09/11/2026, fase 3). */
+  | "event_tomorrow"
+  | "visitor_follow_up"
+  | "course_ending";
+/** `task`: "Resolver no sistema" (abre uma tela), as outras sao "Falar com alguem" (WhatsApp). */
+export type ReminderCategory = "billing" | "relationship" | "notice" | "task";
+/**
+ * Nivel com comportamento (doc product/25, "Níveis, urgência e novos lembretes"):
+ * `info` so conta no sino; `warning` conta e faz o sino pulsar; `danger` e dos
+ * avisos do espaco (lembrete de aluno nunca passa de `warning`).
+ */
+export type ReminderLevel = "info" | "warning" | "danger";
+
+export const GROUP_LEVEL: Record<ReminderGroupKey, ReminderLevel> = {
+  overdue: "warning",
+  due_today: "warning",
+  due_soon: "info",
+  packages: "warning",
+  absence: "warning",
+  birthday: "info",
+  welcome: "info",
+  level_up: "info",
+  payment_received: "info",
+  trial_follow_up: "warning",
+  schedule_change: "info",
+  broadcast: "info",
+  roll_call: "info",
+  documents: "warning",
+  event_certificates: "warning",
+  event_tomorrow: "info",
+  visitor_follow_up: "warning",
+  course_ending: "warning",
+};
 
 export interface ReminderItem {
   /** Chave estavel (adiar/ignorar): `<grupo>:<cobranca ou aluno>`. */
@@ -60,11 +97,14 @@ export interface ReminderItem {
   done?: string;
   /** Feito hoje: o grupo fica na tela ate o fim do dia (a confirmacao nao some no clique). */
   doneToday?: boolean;
+  /** Tarefa interna ("Resolver no sistema"): abre esta tela em vez do WhatsApp. */
+  href?: string;
 }
 
 export interface ReminderGroup {
   key: ReminderGroupKey;
   category: ReminderCategory;
+  level: ReminderLevel;
   title: string;
   detail: string;
   /** Os primeiros `MAX_ITEMS_PER_GROUP`, na ordem de importancia; o resto fica em `hidden`. */
@@ -89,6 +129,8 @@ export const MAX_ITEMS_PER_GROUP = 20;
 
 /** Atraso: lembra de novo depois disto sem pagamento. */
 export const OVERDUE_REMIND_AGAIN_DAYS = 7;
+/** Visitante de evento: dias depois do evento para oferecer turma (igual ao experimental). */
+export const VISITOR_FOLLOW_UP_DAYS = 7;
 /** Sem prazo no modelo: avisa 3 dias antes do vencimento. */
 const DEFAULT_BEFORE_DUE_DAYS = 3;
 
@@ -193,6 +235,7 @@ function group(
   return {
     key,
     category,
+    level: GROUP_LEVEL[key],
     title: title(items.length),
     detail: detail(items),
     items: shown,
@@ -411,6 +454,108 @@ export function buildReminders(
     .filter(keep)
     .map(withPhone);
 
+  // --- Resolver no sistema: chamada de ontem, documentos e certificados ------
+  const rollCalls = (src.openRollCalls ?? [])
+    .map(
+      (r): ReminderItem => ({
+        key: `roll_call:${r.id}`,
+        studentId: r.id,
+        studentName: r.title,
+        trigger: "manual_broadcast",
+        values: {},
+        detail: `${r.kind === "event" ? "Evento · " : ""}${ddmm(r.date)}, ${r.start} às ${r.end} · ${plural(r.studentsCount, "aluno", "alunos")}`,
+        href: r.href,
+      }),
+    )
+    .filter(keep);
+  const documents = (src.documents ?? [])
+    .map(
+      (d): ReminderItem => ({
+        key: `document:${d.id}:${d.expiry}`,
+        studentId: d.ownerId,
+        studentName: `${d.label} de ${d.ownerName}`,
+        trigger: "manual_broadcast",
+        values: {},
+        detail: `${documentExpiryText(d.daysToExpire) ?? ""} (${ddmm(d.expiresOn)})`,
+        href: d.ownerKind === "client" ? `/clients/${d.ownerId}?tab=documents` : "/team",
+      }),
+    )
+    .filter(keep);
+  const eventCertificates = (src.eventCertificates ?? [])
+    .map(
+      (e): ReminderItem => ({
+        key: `event_certificates:${e.eventId}`,
+        studentId: e.eventId,
+        studentName: e.eventName,
+        trigger: "manual_broadcast",
+        values: {},
+        detail: `${e.presentWithout} de ${plural(e.presentTotal, "presente", "presentes")} sem certificado`,
+        href: e.href,
+      }),
+    )
+    .filter(keep);
+
+  // --- Falar com alguem: evento amanha, visitante, curso terminando ------------
+  const eventTomorrow = (src.eventsTomorrow ?? [])
+    .flatMap((day) =>
+      day.studentIds.map((studentId): ReminderItem => {
+        const sent = lastSent(
+          src.logs,
+          (log) => log.trigger === "event_reminder" && log.clientId === studentId && localDay(log.sentAt) >= today,
+        );
+        return {
+          key: `event_tomorrow:${day.sessionId}:${studentId}`,
+          studentId,
+          studentName: studentName.get(studentId) ?? "",
+          trigger: "event_reminder",
+          values: { evento: day.eventName, dia: ddmm(day.date), horario: `${day.start} às ${day.end}` },
+          detail: `${day.eventName} · ${ddmm(day.date)}, ${day.start} às ${day.end}`,
+          ...doneFields(sent, today),
+        };
+      }),
+    )
+    .filter(keep)
+    .map(withPhone);
+
+  const visitors = (src.visitors ?? [])
+    .map((v): ReminderItem | null => {
+      const days = differenceInCalendarDays(parseISO(today), parseISO(v.endedOn));
+      if (days < VISITOR_FOLLOW_UP_DAYS) return null;
+      const name = studentName.get(v.studentId) ?? "";
+      const sent = lastSent(
+        src.logs,
+        (log) => log.trigger === "trial_follow_up" && log.clientId === v.studentId && localDay(log.sentAt) >= v.endedOn,
+      );
+      return {
+        key: `visitor_follow_up:${v.studentId}:${v.endedOn}`,
+        studentId: v.studentId,
+        studentName: name,
+        trigger: "trial_follow_up",
+        values: {},
+        content: `Oi, ${name}! Foi muito bom ter você no ${v.eventName}. Que tal continuar com a gente? Me conta o que achou e te ajudo a escolher a turma e o plano.`,
+        detail: `${v.eventName} · ${relativeDateLabel(v.endedOn)}`,
+        ...doneFields(sent, today, "Chamado"),
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
+  const coursesEnding = (src.coursesEnding ?? [])
+    .map((c): ReminderItem => {
+      const name = studentName.get(c.studentId) ?? "";
+      return {
+        key: `course_ending:${c.classGroupId}:${c.studentId}`,
+        studentId: c.studentId,
+        studentName: name,
+        trigger: "manual_broadcast",
+        values: {},
+        content: `Oi, ${name}! Seu curso ${c.className} termina em ${ddmm(c.endDate)}. Quer continuar com a gente em outra turma? Me conta e te ajudo a escolher.`,
+        detail: `${c.className} · termina ${ddmm(c.endDate)}`,
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
   const names = (items: ReminderItem[]) => namesLine(items.map((i) => i.studentName));
   // Atraso: o total e de quantos meses (a divida nao some na virada do mes).
   const overdueMonths = new Set(
@@ -450,10 +595,27 @@ export function buildReminders(
       "/clients?trial=trial",
     ),
     group("payment_received", "relationship", paymentReceived, (n) => plural(n, "pagamento para agradecer", "pagamentos para agradecer"), moneyDetail),
+    group("event_tomorrow", "notice", eventTomorrow, (n) => plural(n, "inscrito para avisar do evento de amanhã", "inscritos para avisar do evento de amanhã"), names),
+    group("visitor_follow_up", "relationship", visitors, (n) => plural(n, "visitante para oferecer turma", "visitantes para oferecer turma"), names),
+    group("course_ending", "relationship", coursesEnding, (n) => plural(n, "aluno com curso terminando", "alunos com curso terminando"), names),
+    // Resolver no sistema
+    group("roll_call", "task", rollCalls, (n) => plural(n, "chamada de ontem em aberto", "chamadas de ontem em aberto"), names),
+    group("documents", "task", documents, (n) => plural(n, "documento para renovar", "documentos para renovar"), names),
+    group("event_certificates", "task", eventCertificates, (n) => plural(n, "evento com presentes sem certificado", "eventos com presentes sem certificado"), names),
   ].filter((g): g is ReminderGroup => g !== null);
 }
 
 /** Pendencias de todos os grupos (o numero do sino). */
 export function pendingReminders(groups: ReminderGroup[]): number {
   return groups.reduce((sum, g) => sum + g.pending, 0);
+}
+
+/**
+ * Chaves dos itens de atencao ou urgencia ainda pendentes (o sino pulsa quando
+ * alguma e nova desde a ultima abertura). Os itens ja feitos ficam de fora.
+ */
+export function attentionReminderKeys(groups: ReminderGroup[]): string[] {
+  return groups
+    .filter((g) => g.level !== "info")
+    .flatMap((g) => g.items.filter((i) => !i.done).map((i) => i.key));
 }

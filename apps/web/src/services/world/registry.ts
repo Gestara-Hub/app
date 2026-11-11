@@ -175,7 +175,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     load: async () => (await import("../onlinePayments")).onlinePaymentsServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../onlinePayments/onlinePaymentSlices")).onlinePaymentSlices,
     permissions: {
-      ...all(["listForCharge", "listAwaiting", "getCheckout"], VIEW_BILLING),
+      ...all(["listForCharge", "listAwaiting", "listDisputed", "getCheckout"], VIEW_BILLING),
       ...all(["createForCharge", "cancelForCharge"], MANAGE_BILLING),
     },
     noRetry: ["createForCharge"],

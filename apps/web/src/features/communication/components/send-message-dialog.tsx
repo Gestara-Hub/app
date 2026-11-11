@@ -152,6 +152,7 @@ function SendMessageForm({
       onSequence({
         key: "broadcast",
         category: "notice",
+        level: "info",
         title: `Mensagem para ${plural(chosenClients.length, "aluno", "alunos")}`,
         detail: "Mensagem avulsa",
         items: chosenClients.map((c) => ({

@@ -41,6 +41,11 @@ export interface DocumentKindInfo<K extends PersonDocumentKind = PersonDocumentK
  * Tipos do aluno, na ordem da selecao. Fonte unica: o banco nao lista os tipos
  * (migracao 85); acrescentar um tipo e uma linha aqui, o contrato e o icone.
  */
+/** Documento de saude (LGPD, dado sensivel): vencido num aluno ativo e urgencia (doc product/25). */
+export function isHealthDocumentKind(kind: string): boolean {
+  return CLIENT_DOCUMENT_KINDS.some((k) => k.value === kind && k.group === "Saúde");
+}
+
 export const CLIENT_DOCUMENT_KINDS: DocumentKindInfo<ClientDocumentKind>[] = [
   { value: "medical_certificate", label: "Atestado médico", group: "Saúde", expires: true, title: "none" },
   { value: "health_questionnaire", label: "Ficha de anamnese ou PAR-Q", group: "Saúde", expires: true, title: "none" },

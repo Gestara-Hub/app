@@ -71,6 +71,8 @@ export type MessageTrigger =
   | "level_up"
   /** Aluno experimental que nao voltou: chamar de volta (09/11/2026). */
   | "trial_follow_up"
+  /** Inscrito num evento que acontece amanha (doc product/29 e 25, 09/11/2026). */
+  | "event_reminder"
   | "class_canceled"
   | "schedule_change"
   | "holiday_notice"

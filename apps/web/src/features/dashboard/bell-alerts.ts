@@ -1,5 +1,6 @@
-import type { ExpiringPersonDocument, Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
-import { formatDate, plural } from "@gestarahub/core/format";
+import type { ExpiringPersonDocument, OnlinePayment, Organization, Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
+import { isHealthDocumentKind } from "@gestarahub/core/person-documents";
+import { formatCents, formatDate, plural } from "@gestarahub/core/format";
 import { documentExpiryText } from "@gestarahub/core/person-documents";
 import { planNoticeFor } from "@gestarahub/core/subscription-plan";
 import { PLAN_SETTINGS_HREF } from "@/components/shared/feature-locked";
@@ -13,12 +14,17 @@ import { isPinnedPlanNotice, planNoticeCopy } from "@/lib/plan-notice-copy";
  */
 export interface BellAlert {
   key: string;
-  kind: "plan" | "messages" | "documents";
+  kind: "plan" | "messages" | "documents" | "payments";
   title: string;
   text: string;
+  /** Nivel (doc product/25, "Níveis, urgência e novos lembretes"): info so conta; warning pulsa; danger pulsa e fica fixo no topo. */
   tone: "info" | "warning" | "danger";
   href: string;
   action: string;
+  /** Urgente: tambem no aviso fixo do topo ate resolver. */
+  pinned?: boolean;
+  /** Afeta o funcionamento do espaco: modal uma vez por item (dono e gerente). */
+  modal?: boolean;
 }
 
 /**
@@ -103,14 +109,71 @@ export const MAX_DOCUMENT_BELL_ALERTS = 5;
 export function documentBellAlerts(documents: ExpiringPersonDocument[] | undefined): BellAlert[] {
   return (documents ?? []).slice(0, MAX_DOCUMENT_BELL_ALERTS).map((doc) => {
     const when = documentExpiryText(doc.daysToExpire) ?? "";
+    // Documento de saude vencido de aluno ativo: urgente (fica fixo no topo); os demais, atencao.
+    const healthExpired = doc.expiry === "expired" && doc.ownerKind === "client" && isHealthDocumentKind(doc.kind);
     return {
       key: `document:${doc.id}:${doc.expiry}`,
       kind: "documents",
       title: `${doc.label} de ${doc.ownerName}`,
       text: `${when} (${formatDate(doc.expiresOn)}).`,
-      tone: doc.expiry === "expired" ? "danger" : "warning",
+      tone: healthExpired ? "danger" : "warning",
       href: doc.ownerKind === "client" ? `/clients/${doc.ownerId}?tab=documents` : "/team",
       action: "Ver",
+      ...(healthExpired ? { pinned: true } : {}),
     };
   });
+}
+
+export const DISPUTE_TITLE: Record<NonNullable<OnlinePayment["disputeStatus"]>, string> = {
+  refund_in_progress: "Estorno em andamento",
+  refunded: "Pagamento estornado",
+  chargeback_requested: "Contestação de pagamento",
+  chargeback_dispute: "Contestação em disputa",
+  chargeback_reversal_pending: "Reversão de contestação pendente",
+};
+
+/**
+ * Estorno ou contestacao avisados pelo parceiro (doc product/25, urgencia): a
+ * cobranca continua paga no app; o dono decide. Urgente: sino, topo e modal.
+ */
+export function disputeBellAlerts(payments: OnlinePayment[] | undefined, studentNameOf: (chargeId: string) => string | undefined): BellAlert[] {
+  return (payments ?? [])
+    .filter((p) => p.disputeStatus)
+    .sort((a, b) => (b.disputedAt ?? "").localeCompare(a.disputedAt ?? ""))
+    .map((p) => {
+      const status = p.disputeStatus as NonNullable<OnlinePayment["disputeStatus"]>;
+      const who = studentNameOf(p.chargeId);
+      return {
+        key: `dispute:${p.id}:${status}`,
+        kind: "payments",
+        title: `${DISPUTE_TITLE[status]}${who ? ` · ${who}` : ""}`,
+        text: `${formatCents(p.amountCents)}. A cobrança continua paga no GestaraHub; veja com o parceiro e decida o que fazer.`,
+        tone: "danger",
+        href: "/online-payments",
+        action: "Ver recebimentos",
+        pinned: true,
+        modal: true,
+      };
+    });
+}
+
+/**
+ * Pagamento online recusado ou bloqueado pelo parceiro (doc product/25, urgencia):
+ * os alunos deixam de conseguir pagar pelo Pix e pelo link.
+ */
+type OnlinePaymentsSettings = NonNullable<NonNullable<Organization["settings"]>["onlinePayments"]>;
+
+export function gatewayRejectedBellAlert(settings: OnlinePaymentsSettings | undefined): BellAlert | null {
+  if (!settings?.enabled || settings.gatewayStatus !== "rejected") return null;
+  return {
+    key: "payments:gateway:rejected",
+    kind: "payments",
+    title: "Pagamento online recusado pelo parceiro",
+    text: "Os alunos não conseguem pagar pelo Pix ou pelo link até você regularizar a conta.",
+    tone: "danger",
+    href: "/online-payments",
+    action: "Ver recebimentos",
+    pinned: true,
+    modal: true,
+  };
 }

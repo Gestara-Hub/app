@@ -193,7 +193,7 @@ describe("modelos de mensagem", () => {
 
   it("modelos sumidos sao recriados com o texto padrao", async () => {
     store.messageTemplates = [];
-    expect(await communicationService.listTemplates()).toHaveLength(15);
+    expect(await communicationService.listTemplates()).toHaveLength(16);
   });
 
   it("modelo novo da plataforma entra no espaço antigo sem apagar os que ele já tem", async () => {

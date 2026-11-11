@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ReminderSources } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { buildReminders, pendingReminders } from "../reminders";
+import { attentionReminderKeys, buildReminders, pendingReminders } from "../reminders";
 
 /** Motor de lembretes (doc product/25): regra pura, com dados montados a mao. */
 
@@ -23,6 +23,12 @@ const charge = (id: string, over: Record<string, unknown>) =>
 function sources(over: Partial<ReminderSources> = {}): ReminderSources {
   return {
     canBilling: true,
+    openRollCalls: [],
+    documents: [],
+    eventCertificates: [],
+    eventsTomorrow: [],
+    visitors: [],
+    coursesEnding: [],
     students: [
       { id: "c-ana", name: "Ana", phone: "11977770000", birthDate: "2000-09-22", createdAt: "2026-01-05T12:00:00.000Z" },
       { id: "c-bia", name: "Bia", phone: "11988880000", birthDate: "2001-09-19", createdAt: "2026-01-05T12:00:00.000Z" },
@@ -42,6 +48,75 @@ function sources(over: Partial<ReminderSources> = {}): ReminderSources {
 const keys = (groups: ReturnType<typeof buildReminders>) => groups.map((g) => g.key);
 
 describe("motor de lembretes", () => {
+  it("falar com alguém: evento amanhã, visitante depois de 7 dias e curso terminando", () => {
+    const groups = buildReminders(
+      sources({
+        eventsTomorrow: [{ sessionId: "d1", eventId: "ev1", eventName: "Seminário", date: "2026-09-23", start: "09:00", end: "12:00", studentIds: ["c-ana", "c-bia"] }],
+        visitors: [
+          { studentId: "c-ana", eventName: "Workshop", endedOn: "2026-09-10" },
+          { studentId: "c-bia", eventName: "Workshop", endedOn: "2026-09-20" },
+        ],
+        coursesEnding: [{ studentId: "c-caio", classGroupId: "g1", className: "Confeitaria", endDate: "2026-09-30" }],
+        logs: [{ trigger: "event_reminder", clientId: "c-bia", sentAt: "2026-09-22T08:00:00.000Z" }],
+      }),
+      { today: TODAY },
+    );
+    const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
+    expect(byKey.event_tomorrow).toMatchObject({ level: "info", title: "2 inscritos para avisar do evento de amanhã", pending: 1 });
+    expect(byKey.event_tomorrow.items[0]).toMatchObject({ trigger: "event_reminder", values: { evento: "Seminário", dia: "23/09", horario: "09:00 às 12:00" }, phone: "11977770000" });
+    expect(byKey.event_tomorrow.items[1].done).toBe("Avisado hoje");
+    // Visitante: so 7 dias depois do evento; a mensagem e a de chamar de volta, com o nome do evento.
+    expect(byKey.visitor_follow_up).toMatchObject({ level: "warning", title: "1 visitante para oferecer turma" });
+    expect(byKey.visitor_follow_up.items[0]).toMatchObject({ studentName: "Ana", trigger: "trial_follow_up" });
+    expect(byKey.visitor_follow_up.items[0].content).toContain("no Workshop");
+    expect(byKey.course_ending.items[0]).toMatchObject({ studentName: "Caio", detail: "Confeitaria · termina 30/09", trigger: "manual_broadcast" });
+    expect(byKey.course_ending.items[0].content).toContain("Confeitaria termina em 30/09");
+  });
+
+  it("resolver no sistema: chamada de ontem, documento vencendo e presentes sem certificado viram tarefas com tela", () => {
+    const groups = buildReminders(
+      sources({
+        openRollCalls: [
+          { id: "g1~2026-09-21~19:00", kind: "class", title: "Jiu-Jitsu adulto", date: "2026-09-21", start: "19:00", end: "20:00", studentsCount: 8, href: "/classes/sessions/g1~2026-09-21~19:00" },
+        ],
+        documents: [
+          { id: "d1", ownerKind: "client", kind: "medical_certificate", ownerId: "c-ana", ownerName: "Ana", label: "Atestado médico", expiresOn: "2026-09-30", expiry: "expiring", daysToExpire: 8 },
+        ],
+        eventCertificates: [{ eventId: "ev1", eventName: "Seminário", presentTotal: 5, presentWithout: 3, href: "/events/ev1/certificates" }],
+      }),
+      { today: TODAY },
+    );
+    const tasks = groups.filter((g) => g.category === "task");
+    expect(tasks.map((g) => `${g.key} ${g.level} ${g.title}`)).toEqual([
+      "roll_call info 1 chamada de ontem em aberto",
+      "documents warning 1 documento para renovar",
+      "event_certificates warning 1 evento com presentes sem certificado",
+    ]);
+    expect(tasks[0].items[0]).toMatchObject({ studentName: "Jiu-Jitsu adulto", detail: "21/09, 19:00 às 20:00 · 8 alunos", href: "/classes/sessions/g1~2026-09-21~19:00" });
+    expect(tasks[1].items[0]).toMatchObject({ studentName: "Atestado médico de Ana", href: "/clients/c-ana?tab=documents" });
+    expect(tasks[2].items[0].detail).toBe("3 de 5 presentes sem certificado");
+    // Tarefa adiada some como qualquer lembrete.
+    const snoozed = buildReminders(sources({ eventCertificates: [{ eventId: "ev1", eventName: "Seminário", presentTotal: 5, presentWithout: 3, href: "/x" }] }), {
+      today: TODAY,
+      snoozes: { "event_certificates:ev1": "never" },
+    });
+    expect(snoozed.some((g) => g.key === "event_certificates")).toBe(false);
+  });
+
+  it("nível por grupo: cobrança em atraso e faltas são atenção; aniversário e a vencer são só informação", () => {
+    const groups = buildReminders(
+      sources({
+        charges: [charge("c1", { status: "overdue", dueDate: "2026-09-10" }), charge("c2", { dueDate: "2026-09-24" })],
+      }),
+      { today: TODAY },
+    );
+    const level = Object.fromEntries(groups.map((g) => [g.key, g.level]));
+    expect(level.overdue).toBe("warning");
+    expect(level.due_soon).toBe("info");
+    expect(level.birthday).toBe("info");
+    expect(attentionReminderKeys(groups)).toEqual(["overdue:c1"]);
+  });
+
   it("grupo grande: mostra 20, conta todos e diz quantos ficaram de fora", () => {
     const many = Array.from({ length: 45 }, (_, i) => charge(`ch-${i}`, { status: "overdue", dueDate: "2026-09-01", amountCents: 100 }));
     const [overdue] = buildReminders(sources({ charges: many, students: [] }), { today: TODAY });

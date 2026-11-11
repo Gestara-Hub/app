@@ -83,3 +83,68 @@ describe("aviso da franquia de mensagens no sino", () => {
     expect(quotaBellAlert(undefined)).toBeNull();
   });
 });
+
+// Niveis e urgencia (doc product/25, "Níveis, urgência e novos lembretes", 09/11/2026).
+import type { ExpiringPersonDocument, OnlinePayment } from "@gestarahub/contracts";
+import { disputeBellAlerts, documentBellAlerts, gatewayRejectedBellAlert } from "../bell-alerts";
+import { newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
+
+const PAID: OnlinePayment = {
+  id: "op-1",
+  chargeId: "ch-1",
+  method: "pix",
+  amountCents: 15000,
+  status: "paid",
+  expiresAt: "2026-09-30T00:00:00.000Z",
+  createdAt: "2026-09-20T12:00:00.000Z",
+} as OnlinePayment;
+
+describe("urgência: estorno, contestação e parceiro", () => {
+  it("estorno ou contestação: urgente, fixo no topo e com modal, com o aluno e o valor", () => {
+    const alerts = disputeBellAlerts(
+      [
+        { ...PAID, disputeStatus: "refunded", disputedAt: "2026-09-21T10:00:00.000Z" },
+        { ...PAID, id: "op-2", chargeId: "ch-2", disputeStatus: "chargeback_requested", disputedAt: "2026-09-22T10:00:00.000Z" },
+        { ...PAID, id: "op-3" },
+      ],
+      (chargeId) => (chargeId === "ch-1" ? "Ana" : undefined),
+    );
+    expect(alerts.map((a) => a.title)).toEqual(["Contestação de pagamento", "Pagamento estornado · Ana"]);
+    expect(alerts[1]).toMatchObject({ tone: "danger", pinned: true, modal: true, href: "/online-payments" });
+    expect(alerts[1].text).toContain("R$ 150,00".replace(" ", " "));
+  });
+
+  it("pagamento online recusado pelo parceiro: urgente; aprovado ou desligado, nada", () => {
+    expect(gatewayRejectedBellAlert({ enabled: true, gatewayStatus: "rejected" } as never)).toMatchObject({ tone: "danger", pinned: true, modal: true });
+    expect(gatewayRejectedBellAlert({ enabled: true, gatewayStatus: "approved" } as never)).toBeNull();
+    expect(gatewayRejectedBellAlert({ enabled: false, gatewayStatus: "rejected" } as never)).toBeNull();
+  });
+
+  it("documento de saúde vencido de aluno: urgente e fixo; os demais, atenção", () => {
+    const doc = (over: Partial<ExpiringPersonDocument>): ExpiringPersonDocument => ({
+      id: "d1",
+      ownerKind: "client",
+      kind: "medical_certificate",
+      ownerId: "c1",
+      ownerName: "Ana",
+      label: "Atestado médico",
+      expiresOn: "2026-09-10",
+      expiry: "expired",
+      daysToExpire: -12,
+      ...over,
+    });
+    expect(documentBellAlerts([doc({})])[0]).toMatchObject({ tone: "danger", pinned: true });
+    expect(documentBellAlerts([doc({ kind: "liability_waiver", label: "Termo" })])[0]).toMatchObject({ tone: "warning" });
+    expect(documentBellAlerts([doc({ expiry: "expiring", daysToExpire: 5 })])[0].pinned).toBeUndefined();
+  });
+});
+
+describe("pulsar do sino", () => {
+  it("pulsa só com chave nova desde a última abertura; abrir guarda as atuais", () => {
+    expect(newAttentionKeys(["a", "b"], undefined)).toEqual(["a", "b"]);
+    expect(newAttentionKeys(["a", "b"], ["a"])).toEqual(["b"]);
+    expect(newAttentionKeys(["a"], ["a", "b"])).toEqual([]);
+    expect(seenKeysAfterOpening(["a", "a", "b"])).toEqual(["a", "b"]);
+    expect(seenKeysAfterOpening(Array.from({ length: 400 }, (_, i) => `k${i}`))).toHaveLength(300);
+  });
+});

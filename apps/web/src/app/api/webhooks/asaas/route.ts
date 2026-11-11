@@ -11,13 +11,15 @@ import {
 import { settleAsaasPayment } from "@/services/onlinePayments/asaasSettlement";
 import {
   expireOnlinePaymentInDb,
+  markOnlinePaymentDisputeInDb,
   cancelOnlinePaymentByGatewayIdInDb,
 } from "@/services/onlinePayments/onlinePaymentsWebhook";
 import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { OnlinePaymentDisputeStatus } from "@gestarahub/contracts";
 import { logError, logWarn, reportError } from "@/lib/log";
 import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgroundRuns";
-import { auditOnlinePaymentConflict, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
+import { auditOnlinePaymentConflict, auditOnlinePaymentDispute, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
 import { safeEqual } from "@/lib/security/webhook-signature";
 
 export async function POST(req: Request) {
@@ -143,15 +145,39 @@ async function handleEvent(
     return { status: "processed", outcome: "pagamento de aluno: código removido" };
   }
 
-  // Estorno e contestacao: o app ainda nao muda a cobranca sozinho (decisao de produto em aberto,
-  // docs/pendencias.md). Fica no registro de erros para a equipe ver em Saude e falar com o dono.
-  if (event === "PAYMENT_REFUNDED" || event === "PAYMENT_REFUND_IN_PROGRESS" || event.startsWith("PAYMENT_CHARGEBACK")) {
-    logWarn(`[Asaas Webhook] ${event} no pagamento ${payment.id}: a cobrança continua como paga no GestaraHub; falar com o dono do espaço.`);
-    return { status: "ignored", outcome: `${event}: sem tratamento automático (avisar o dono)` };
+  // Estorno e contestacao (doc product/25, urgencia): o app grava o aviso no pagamento
+  // e avisa o dono (Auditoria, sino, topo e modal); a cobranca continua paga ate ele decidir.
+  const dispute = disputeStatusOf(event);
+  if (dispute) {
+    const disputed = await markOnlinePaymentDisputeInDb(payment.id, "asaas", dispute);
+    if (!disputed) {
+      logWarn(`[Asaas Webhook] ${event} no pagamento ${payment.id} sem pagamento pago correspondente no GestaraHub.`);
+      return { status: "ignored", outcome: `${event}: pagamento não encontrado` };
+    }
+    await auditOnlinePaymentDispute(admin, disputed);
+    return { status: "processed", organizationId: disputed.organizationId, outcome: `pagamento de aluno: ${dispute} (dono avisado)` };
   }
 
   // Outros eventos (ex: PAYMENT_CREATED) sao reconhecidos sem erro.
   return { status: "ignored", outcome: event };
+}
+
+/** Evento do parceiro -> situacao de estorno ou contestacao gravada no pagamento. */
+function disputeStatusOf(event: string): OnlinePaymentDisputeStatus | null {
+  switch (event) {
+    case "PAYMENT_REFUNDED":
+      return "refunded";
+    case "PAYMENT_REFUND_IN_PROGRESS":
+      return "refund_in_progress";
+    case "PAYMENT_CHARGEBACK_REQUESTED":
+      return "chargeback_requested";
+    case "PAYMENT_CHARGEBACK_DISPUTE":
+      return "chargeback_dispute";
+    case "PAYMENT_AWAITING_CHARGEBACK_REVERSAL":
+      return "chargeback_reversal_pending";
+    default:
+      return null;
+  }
 }
 
 /**

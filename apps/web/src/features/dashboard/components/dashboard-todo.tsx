@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowUpCircle,
+  ClipboardList,
   ArrowUpRight,
   Award,
   BellOff,
@@ -27,6 +28,8 @@ import { InitialsAvatar } from "@/components/shared/list";
 import { ListItemActionsMenu, type ListItemAction } from "@/components/shared/list-item-actions-menu";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { SectionBar } from "@/components/form";
 import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
@@ -74,44 +77,72 @@ function TodoRow({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  return (
-    <li>
-      <div className="flex items-center gap-3 px-4 py-2.5">
-        <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", tone)} aria-hidden>
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{detail}</p>
-        </div>
-        {href ? (
+  const lead = (
+    <>
+      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", tone)} aria-hidden>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+      </div>
+    </>
+  );
+  if (href) {
+    return (
+      <li>
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          {lead}
           <Button variant="outline" className="shrink-0 gap-1 text-xs" asChild>
             <Link href={href}>
               {action}
               <ArrowUpRight className="size-3.5" />
             </Link>
           </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="shrink-0 gap-1 text-xs"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            {action}
-            <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-          </Button>
-        )}
-      </div>
-      {children && open ? (
-        <div className="space-y-2.5 border-t border-border/60 bg-muted/20 px-4 py-3">
-          {toolbar}
-          <ul className="space-y-2.5">{children}</ul>
-          {footer}
         </div>
-      ) : null}
-    </li>
+      </li>
+    );
+  }
+  // Abre e fecha como as secoes da ficha do aluno (doc 07 §1.8, 10/11/2026): a
+  // linha inteira e o botao, so a seta a direita; aberta, ganha fundo e a barra
+  // fina a esquerda, e a lista desliza.
+  return (
+    <Collapsible asChild open={open} onOpenChange={setOpen}>
+      <li
+        className={cn(
+          "relative transition-colors duration-300",
+          open && "bg-[color-mix(in_oklab,var(--muted)_40%,var(--card))] dark:bg-[color-mix(in_oklab,var(--muted)_25%,var(--card))]",
+        )}
+      >
+        <SectionBar visible={open} />
+        <button
+          type="button"
+          className={cn(
+            "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
+            open ? "hover:bg-muted/60" : "hover:bg-muted/40",
+          )}
+          aria-expanded={open}
+          aria-label={`${open ? "Fechar" : action} ${title}`}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {lead}
+          <span className="flex size-9 shrink-0 items-center justify-center" aria-hidden>
+            <ChevronDown
+              className={cn("size-4 text-muted-foreground transition-transform duration-300", open && "rotate-180 text-foreground")}
+            />
+          </span>
+        </button>
+        {children ? (
+          <CollapsibleContent>
+            <div className="space-y-2.5 px-4 pt-1 pb-3">
+              {toolbar}
+              <ul className="space-y-2.5">{children}</ul>
+              {footer}
+            </div>
+          </CollapsibleContent>
+        ) : null}
+      </li>
+    </Collapsible>
   );
 }
 
@@ -180,6 +211,13 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   payment_received: { icon: <HandCoins className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   schedule_change: { icon: <CalendarClock className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   broadcast: { icon: <MessageCircle className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  // Resolver no sistema (doc product/25): tarefas internas, abrem uma tela.
+  event_tomorrow: { icon: <Ticket className="size-4" />, tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
+  visitor_follow_up: { icon: <UserRoundSearch className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  course_ending: { icon: <CalendarClock className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  roll_call: { icon: <ClipboardList className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  documents: { icon: <FileText className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  event_certificates: { icon: <Award className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
 };
 
 const ALERT_TONE: Record<BellAlert["tone"], string> = {
@@ -196,6 +234,7 @@ function whatsAppLabel(item: ReminderItem): string {
   if (item.trigger === "level_up") return `Parabenizar ${item.studentName} pelo avanço no WhatsApp`;
   if (item.trigger === "welcome_student") return `Dar boas-vindas a ${item.studentName} no WhatsApp`;
   if (item.trigger === "trial_follow_up") return `Chamar ${item.studentName} de volta no WhatsApp`;
+  if (item.trigger === "event_reminder") return `Avisar ${item.studentName} do evento de amanhã no WhatsApp`;
   if (item.chargeId) return `Cobrar ${item.studentName} no WhatsApp`;
   return `Mandar mensagem para ${item.studentName} no WhatsApp`;
 }
@@ -276,7 +315,7 @@ export function DashboardTodo({
           detail={group.detail}
           action="Ver"
           toolbar={
-            group.pending >= 2 && canMessage ? (
+            group.category !== "task" && group.pending >= 2 && canMessage ? (
               <Button
                 type="button"
                 variant="outline"
@@ -305,7 +344,11 @@ export function DashboardTodo({
         >
           {group.items.map((item) => (
             <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
-              {canMessage ? (
+              {item.href ? (
+                <Button asChild variant="outline" className="shrink-0 text-xs">
+                  <Link href={item.href}>{group.key === "roll_call" ? "Fazer chamada" : group.key === "event_certificates" ? "Emitir" : "Abrir"}</Link>
+                </Button>
+              ) : canMessage ? (
                 <WhatsAppButton
                   label={whatsAppLabel(item)}
                   done={Boolean(item.done)}

@@ -1,22 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useModel } from "@/features/auth";
-import { useWhatsAppConnection } from "@/features/communication";
-import { useSubscription } from "@/features/settings";
+import { useWhatsAppConnection, useReminders } from "@/features/communication";
+import { useOrganization, useSubscription } from "@/features/settings";
 import { useExpiringDocuments } from "@/features/person-documents";
+import { useCharges, useDisputedOnlinePayments } from "@/features/turmas";
+import { useUserPreferences } from "@/features/preferences";
 import { seesPlanNotices } from "@/lib/plan-notice-copy";
+import { attentionReminderKeys } from "@/features/communication";
 import {
+  disputeBellAlerts,
+  documentBellAlerts,
+  gatewayRejectedBellAlert,
   planBellAlert,
   quotaBellAlert,
   whatsappPendingConnectionBellAlert,
-  documentBellAlerts,
   type BellAlert,
 } from "../bell-alerts";
+import { newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -24,7 +31,10 @@ import { dateInSpace } from "@gestarahub/core/date";
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
  * tocar, a mesma lista do painel num painel lateral. Some sem pendencia. So no
  * modelo de turmas, para quem manda mensagem e para o professor (so os alunos dele).
- * Dono e gerente veem tambem os avisos do plano e da franquia de mensagens.
+ * Dono e gerente veem tambem os avisos do espaco (plano, franquia, pagamento online).
+ *
+ * Niveis (doc product/25, "Níveis, urgência e novos lembretes"): o sino pulsa
+ * tres vezes quando ha item de atencao ou urgencia novo desde a ultima abertura.
  */
 export function RemindersBell() {
   const can = useCan();
@@ -33,42 +43,76 @@ export function RemindersBell() {
   return <RemindersBellButton />;
 }
 
-/** Avisos do plano e da franquia, so para quem ve os avisos do plano. */
+/** Avisos do espaco (plano, franquia, pagamento online, documentos), conforme quem ve. */
 export function useBellAlerts(today: string): BellAlert[] {
   const eligible = seesPlanNotices(useCurrentUser().profile);
   const can = useCan();
   const { data: subscription } = useSubscription();
+  const { data: organization } = useOrganization();
   const { data: connection } = useWhatsAppConnection(eligible);
   // Documentos vencendo: quem ve os alunos (ou os dele) ou gerencia a equipe.
   const seesDocuments = can("clients:view") || can("clients:view_own") || can("team:manage");
   const { data: expiring } = useExpiringDocuments(seesDocuments);
+  // Estorno e contestacao: quem ve cobrancas (dono e gerente).
+  const seesPayments = eligible && can("billing:view");
+  const { data: disputed } = useDisputedOnlinePayments(seesPayments);
+  const { data: charges } = useCharges(undefined, seesPayments && (disputed ?? []).length > 0);
+  const studentNameOf = (chargeId: string) => (charges ?? []).find((c) => c.id === chargeId)?.studentName;
   const planAlerts = eligible
     ? [
         planBellAlert(subscription, today),
+        gatewayRejectedBellAlert(organization?.settings?.onlinePayments),
         whatsappPendingConnectionBellAlert(connection),
         quotaBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)
     : [];
-  return [...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
+  return [...(seesPayments ? disputeBellAlerts(disputed, studentNameOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
 }
 
 function RemindersBellButton() {
   const today = dateInSpace();
   const alerts = useBellAlerts(today);
+  const reminders = useReminders(today);
   const count = useReminderCount(today) + alerts.length;
   const [open, setOpen] = useState(false);
+  const { preferences, updatePreferences } = useUserPreferences();
+
+  // Chaves de atencao ou urgencia de agora; novas desde a ultima abertura fazem o sino pulsar.
+  const attentionKeys = useMemo(
+    () => [...alerts.filter((a) => a.tone !== "info").map((a) => a.key), ...attentionReminderKeys(reminders.groups)],
+    [alerts, reminders.groups],
+  );
+  const fresh = useMemo(() => newAttentionKeys(attentionKeys, preferences.bellSeenKeys), [attentionKeys, preferences.bellSeenKeys]);
+  const [pulseId, setPulseId] = useState(0);
+  const pulsedFor = useRef<string>("");
+  useEffect(() => {
+    if (open || fresh.length === 0) return;
+    // Pulsa uma vez por conjunto novo (ao entrar e quando chega outro na sessao), nao a cada render.
+    const signature = fresh.join("|");
+    if (pulsedFor.current === signature) return;
+    pulsedFor.current = signature;
+    setPulseId((n) => n + 1);
+  }, [fresh, open]);
+
+  function openBell() {
+    setOpen(true);
+    // Visto: o que esta no sino agora deixa de ser novo.
+    if (fresh.length > 0) updatePreferences({ bellSeenKeys: seenKeysAfterOpening(attentionKeys) });
+  }
+
   if (count === 0 && !open) return null;
   const label = plural(count, "lembrete pendente", "lembretes pendentes");
   return (
     <>
       <Button
+        key={pulseId}
         type="button"
         variant="ghost"
         size="icon"
-        className="relative"
+        className={cn("relative", pulseId > 0 && fresh.length > 0 && !open && "bell-pulse")}
         title={label}
-        aria-label={`Lembretes: ${label}`}
-        onClick={() => setOpen(true)}
+        aria-label={`Lembretes: ${label}${fresh.length > 0 ? `, ${plural(fresh.length, "novo", "novos")}` : ""}`}
+        onClick={openBell}
       >
         <Bell className="size-4" />
         {count > 0 ? (

@@ -59,6 +59,10 @@ export const onlineChargesService = {
       return clone(store.onlinePayments.filter((p) => p.status === "awaiting" && p.expiresAt > now));
     });
   },
+  /** Pagamentos com estorno ou contestacao avisados pelo parceiro (doc product/25, urgencia). */
+  listDisputed(): Promise<OnlinePayment[]> {
+    return readOp(() => clone(store.onlinePayments.filter((p) => Boolean(p.disputeStatus))));
+  },
   /** Dados do dialogo "Cobrar online": aluno, telefone e os pagamentos da cobranca. */
   getCheckout(chargeId: Id): Promise<OnlineChargeCheckout> {
     return readOp(async () => {

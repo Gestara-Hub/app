@@ -16,6 +16,7 @@ import { organizationModelById } from "@/mocks/store";
 import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import { WhatsAppConfirmHost } from "@/features/communication";
 import { PlanNoticeBanner } from "@/features/subscription";
+import { UrgentNoticesHost } from "@/features/dashboard";
 import { AnnouncementBanner, CrumbTracker, HelpHost, SupportHost } from "@/features/support";
 import { UserPreferencesProvider } from "@/features/preferences";
 import {
@@ -79,6 +80,7 @@ export default async function AppLayout({
               <AppTopbar />
               <AnnouncementBanner />
               <PlanNoticeBanner />
+              <UrgentNoticesHost />
               <Suspense fallback={null}>
                 <OnboardingTopBanner />
                 <DiscoveryNextStepBar />

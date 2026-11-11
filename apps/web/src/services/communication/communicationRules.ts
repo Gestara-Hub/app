@@ -108,6 +108,7 @@ export const TRIGGER_CATEGORY: Record<MessageTrigger, MessageCategory> = {
   package_ending: "retention",
   level_up: "retention",
   trial_follow_up: "retention",
+  event_reminder: "administrative",
   class_canceled: "administrative",
   schedule_change: "administrative",
   holiday_notice: "administrative",

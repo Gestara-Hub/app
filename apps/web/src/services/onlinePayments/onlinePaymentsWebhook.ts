@@ -1,4 +1,4 @@
-import type { OnlinePayment } from "@gestarahub/contracts";
+import type { OnlinePayment, OnlinePaymentDisputeStatus } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cancelGatewayPayment, subaccountKeyOf } from "./gateway";
 import { chargeMethodOf, mapRowToOnlinePayment } from "./onlinePaymentsRows";
@@ -175,6 +175,31 @@ export async function expireOnlinePaymentInDb(
   return !error;
 }
 
+
+/**
+ * Estorno ou contestacao avisados pelo parceiro (doc product/25, urgencia): grava
+ * o ultimo aviso no pagamento pago. A cobranca continua paga; o dono ve no sino,
+ * no topo e numa modal e decide. Devolve o pagamento para a auditoria.
+ */
+export async function markOnlinePaymentDisputeInDb(
+  gatewayPaymentId: string,
+  provider: string | undefined,
+  status: OnlinePaymentDisputeStatus,
+): Promise<OnlinePayment | null> {
+  const adminClient = createSupabaseAdminClient();
+  let query = adminClient
+    .from("online_payments")
+    .update({ dispute_status: status, disputed_at: new Date().toISOString() })
+    .eq("gateway_payment_id", gatewayPaymentId)
+    .eq("status", "paid");
+  if (provider) query = query.eq("gateway_provider", provider);
+  const { data, error } = await query.select("*").maybeSingle();
+  if (error) {
+    logError("[onlinePayments] Erro ao registrar o estorno ou a contestação:", error);
+    return null;
+  }
+  return data ? mapRowToOnlinePayment(data) : null;
+}
 
 export async function cancelOnlinePaymentByGatewayIdInDb(
   gatewayPaymentId: string,

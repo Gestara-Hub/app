@@ -42,6 +42,14 @@ const reminderSources: MethodSlice = async (_args, load) => {
     load.all("sessionOverrides"),
     // Experimentais sem voltar: as reservas `trial` (matriculas e pacotes ja vem com o resto).
     load.where("reservations", "kind", ["trial"]),
+    // Resolver no sistema (doc product/25): dias de evento, inscricoes e chamadas de ontem,
+    // documentos da ficha e certificados emitidos (presentes sem certificado).
+    load.all("events"),
+    load.all("eventSessions"),
+    load.all("eventRegistrations"),
+    load.all("eventAttendances"),
+    load.all("personDocuments"),
+    load.all("issuedCertificates"),
   ]);
 };
 
