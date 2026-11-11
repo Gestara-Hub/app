@@ -14,6 +14,8 @@ import {
   sendAccessEmailCodeAction,
   type AccessEmailStatus,
 } from "@/app/(auth)/email-change-actions";
+import { focusField } from "@/lib/form-errors";
+import { isValidEmail } from "@/lib/email-format";
 
 type Field = "newEmail" | "password" | "code";
 
@@ -42,6 +44,13 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
   const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
   const [sendingCode, startSendingCode] = useTransition();
   const [error, setError] = useState<{ message: string; field?: Field } | null>(null);
+  // Erro de um campo: o foco vai para ele (doc 07 §2.10).
+  useEffect(() => {
+    if (!error?.field) return;
+    const ids: Partial<Record<Field, string>> = { newEmail: "access-new-email", code: "access-code", password: "access-password" };
+    const id = ids[error.field];
+    if (id) focusField(id);
+  }, [error]);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -70,6 +79,7 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
     event.preventDefault();
     setError(null);
     if (!newEmail.trim()) return setError({ message: "Informe o novo e-mail.", field: "newEmail" });
+    if (!isValidEmail(newEmail)) return setError({ message: "Informe um e-mail válido.", field: "newEmail" });
     if (usesCode && code.length !== 6) return setError({ message: "Digite os 6 números do e-mail.", field: "code" });
     if (!usesCode && !password) return setError({ message: "Informe sua senha atual.", field: "password" });
     startTransition(async () => {
@@ -137,6 +147,13 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
     );
   }
 
+  // Erro de um campo: logo abaixo dele, como nos outros formularios (FieldShell).
+  const fieldError = error?.field ? (
+    <p id="access-error" role="alert" className="text-xs text-destructive">
+      {error.message}
+    </p>
+  ) : null;
+
   return (
     <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <DialogBody className="space-y-4">
@@ -149,10 +166,15 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
             autoComplete="email"
             placeholder="Informe o novo e-mail"
             value={newEmail}
-            onChange={(event) => setNewEmail(event.target.value)}
+            onChange={(event) => {
+              setNewEmail(event.target.value);
+              if (error?.field === "newEmail") setError(null);
+            }}
             disabled={pending}
             aria-invalid={error?.field === "newEmail" || undefined}
+            aria-describedby={error?.field === "newEmail" ? "access-error" : undefined}
           />
+          {error?.field === "newEmail" ? fieldError : null}
         </div>
         {usesCode ? (
           <div className="space-y-1.5">
@@ -174,11 +196,16 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
               maxLength={6}
               placeholder="000000"
               value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(event) => {
+                setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error?.field === "code") setError(null);
+              }}
               disabled={pending}
               aria-invalid={error?.field === "code" || undefined}
+              aria-describedby={error?.field === "code" ? "access-error" : undefined}
               className="font-mono tracking-[0.3em]"
             />
+            {error?.field === "code" ? fieldError : null}
             <p className="text-xs text-muted-foreground">
               {codeSentTo
                 ? `Enviamos o código para ${codeSentTo}. Vale por 10 minutos.`
@@ -195,16 +222,22 @@ function AccessEmailForm({ onClose }: { onClose: () => void }) {
               autoComplete="current-password"
               placeholder="Confirme com sua senha"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (error?.field === "password") setError(null);
+              }}
               disabled={pending}
               aria-invalid={error?.field === "password" || undefined}
+              aria-describedby={error?.field === "password" ? "access-error" : undefined}
             />
+            {error?.field === "password" ? fieldError : null}
             <p className="text-xs text-muted-foreground">
               Mandamos um link para o novo e-mail. O atual recebe um aviso quando a troca for feita.
             </p>
           </div>
         )}
-        {error ? (
+        {/* Erro sem campo (ex.: falha geral) fica no fim; o de um campo vai embaixo dele. */}
+        {error && !error.field ? (
           <p role="alert" className="text-sm text-destructive">
             {error.message}
           </p>

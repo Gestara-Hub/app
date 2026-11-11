@@ -28,6 +28,7 @@ import {
   useRestorePrimaryInstructor,
   useSubstituteInstructor,
 } from "../hooks/use-turmas";
+import { focusField } from "@/lib/form-errors";
 
 interface SubstituteInstructorDialogProps {
   open: boolean;
@@ -68,6 +69,7 @@ function SubstituteInstructorForm({
     e.preventDefault();
     if (!instructorId) {
       toast.error(`Selecione o ${team.lower} substituto.`);
+      focusField("substitute-instructor");
       return;
     }
 

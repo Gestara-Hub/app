@@ -28,6 +28,8 @@ import {
   signInWithPasswordAction,
   type ValidateSignupTokenResult,
 } from "../signup-actions";
+import { focusField } from "@/lib/form-errors";
+import { isValidEmail } from "@/lib/email-format";
 
 interface LoginFormProps {
   from: string;
@@ -74,6 +76,8 @@ export function LoginForm({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  // Campo do erro de senha: embaixo dele; sem campo (erro do servidor), no fim.
+  const [passwordErrorField, setPasswordErrorField] = useState<"new" | "confirm" | null>(null);
   const [isCreatingAccount, startCreateTransition] = useTransition();
 
   // Estado de reenvio quando o link expirou (tokenState.status === "expired")
@@ -90,6 +94,8 @@ export function LoginForm({
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  // Campos vazios no ultimo "Entrar": ficam marcados (borda vermelha) ate a pessoa digitar.
+  const [missingLoginFields, setMissingLoginFields] = useState({ email: false, password: false });
   const [isSigningIn, startSignInTransition] = useTransition();
 
   // Acesso de demonstracao (espaco de demonstracao no banco)
@@ -102,13 +108,18 @@ export function LoginForm({
     const handleCreatePassword = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setPasswordError(null);
+      setPasswordErrorField(null);
 
       if (!isPasswordLongEnough(newPassword)) {
         setPasswordError(PASSWORD_TOO_SHORT_MESSAGE);
+        setPasswordErrorField("new");
+        focusField("signup-new-password");
         return;
       }
       if (newPassword !== confirmPassword) {
         setPasswordError("As senhas não conferem. Digite a mesma senha nos dois campos.");
+        setPasswordErrorField("confirm");
+        focusField("signup-confirm-password");
         return;
       }
 
@@ -188,6 +199,8 @@ export function LoginForm({
               }}
               placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
               autoComplete="new-password"
+              aria-invalid={(passwordError && passwordErrorField === "new") || undefined}
+              aria-describedby={passwordError && passwordErrorField === "new" ? "signup-password-error" : undefined}
               required
               disabled={isCreatingAccount}
               className="pr-10"
@@ -202,6 +215,11 @@ export function LoginForm({
               {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
+          {passwordError && passwordErrorField === "new" ? (
+            <p id="signup-password-error" role="alert" className="text-xs text-destructive">
+              {passwordError}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">
@@ -222,6 +240,8 @@ export function LoginForm({
               }}
               placeholder="Repita a senha escolhida"
               autoComplete="new-password"
+              aria-invalid={(passwordError && passwordErrorField === "confirm") || undefined}
+              aria-describedby={passwordError && passwordErrorField === "confirm" ? "signup-password-error" : undefined}
               required
               disabled={isCreatingAccount}
               className="pr-10"
@@ -238,9 +258,14 @@ export function LoginForm({
               {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
+          {passwordError && passwordErrorField === "confirm" ? (
+            <p id="signup-password-error" role="alert" className="text-xs text-destructive">
+              {passwordError}
+            </p>
+          ) : null}
         </div>
 
-        {passwordError ? (
+        {passwordError && !passwordErrorField ? (
           <p role="alert" className="text-sm text-destructive">
             {passwordError}
           </p>
@@ -401,6 +426,17 @@ export function LoginForm({
   const handlePasswordSignIn = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoginError(null);
+    // Campo obrigatorio vazio: avisa e poe o foco nele, sem ir ao servidor (10/11/2026).
+    // E-mail vazio ou fora do formato (algo@dominio.tld) e erro do campo, nao do servidor.
+    const emailMissing = !loginEmail.trim() || !isValidEmail(loginEmail);
+    const passwordMissing = !loginPassword;
+    if (emailMissing || passwordMissing) {
+      // A mensagem vai embaixo de cada campo vazio (nao no fim do formulario).
+      setMissingLoginFields({ email: emailMissing, password: passwordMissing });
+      document.getElementById(emailMissing ? "login-email" : "login-password")?.focus();
+      return;
+    }
+    setMissingLoginFields({ email: false, password: false });
 
     startSignInTransition(async () => {
       const result = await signInWithPasswordAction({
@@ -416,6 +452,10 @@ export function LoginForm({
       }
       if (!result.ok) {
         setLoginError(result.message);
+        // E-mail ou senha errados: volta para a senha, ja selecionada para digitar de novo.
+        const passwordInput = document.getElementById("login-password") as HTMLInputElement | null;
+        passwordInput?.focus();
+        passwordInput?.select();
         return;
       }
 
@@ -520,12 +560,20 @@ export function LoginForm({
             onChange={(e) => {
               setLoginEmail(e.target.value);
               if (loginError) setLoginError(null);
+              if (missingLoginFields.email) setMissingLoginFields((m) => ({ ...m, email: false }));
             }}
             placeholder="seu@email.com"
             autoComplete="email"
+            aria-invalid={missingLoginFields.email || undefined}
+            aria-describedby={missingLoginFields.email ? "login-email-error" : loginError ? "login-error" : undefined}
             required
             disabled={isSigningIn}
           />
+          {missingLoginFields.email ? (
+            <p id="login-email-error" role="alert" className="text-xs text-destructive">
+              {loginEmail.trim() ? "Informe um e-mail válido." : "Informe seu e-mail."}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">
@@ -551,9 +599,12 @@ export function LoginForm({
               onChange={(e) => {
                 setLoginPassword(e.target.value);
                 if (loginError) setLoginError(null);
+                if (missingLoginFields.password) setMissingLoginFields((m) => ({ ...m, password: false }));
               }}
               placeholder="Digite sua senha"
               autoComplete="current-password"
+              aria-invalid={missingLoginFields.password || undefined}
+              aria-describedby={missingLoginFields.password ? "login-password-error" : loginError ? "login-error" : undefined}
               required
               disabled={isSigningIn}
               className="pr-10"
@@ -568,10 +619,15 @@ export function LoginForm({
               {showLoginPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
+          {missingLoginFields.password ? (
+            <p id="login-password-error" role="alert" className="text-xs text-destructive">
+              Informe sua senha.
+            </p>
+          ) : null}
         </div>
 
         {loginError ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p id="login-error" role="alert" className="text-sm text-destructive">
             {loginError}
           </p>
         ) : null}

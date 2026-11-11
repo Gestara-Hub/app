@@ -37,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAssessmentSheet, useSetGrades } from "../hooks/use-grades";
 import { passingLabel, pointsLabel } from "./grade-ui";
+import { focusFirstInvalid } from "@/lib/form-errors";
 
 /** Rascunho de uma linha: `raw` e o texto digitado ou a letra/apto escolhido. */
 interface Draft {
@@ -121,6 +122,7 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
     if (nextErrors.size > 0) {
       setErrors(nextErrors);
       toast.error("Confira as notas destacadas.");
+      focusFirstInvalid();
       return;
     }
     if (changed.length === 0) {
@@ -136,6 +138,7 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
       if (fields.length > 0) {
         setErrors(new Map(fields.map((f) => [f.field.replace(/^grades\./, ""), f.message])));
         toast.error("Confira as notas destacadas.");
+        focusFirstInvalid();
       } else {
         toast.error(getErrorMessage(error, "Não foi possível salvar as notas."));
       }

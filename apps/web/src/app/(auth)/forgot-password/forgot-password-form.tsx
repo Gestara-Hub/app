@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requestPasswordResetAction } from "../password-reset-actions";
+import { focusField } from "@/lib/form-errors";
+import { isValidEmail } from "@/lib/email-format";
 
 /** Pede o link de nova senha. A resposta nao diz se o e-mail tem conta. */
 export function ForgotPasswordForm({ initialEmail }: { initialEmail?: string }) {
@@ -19,10 +21,18 @@ export function ForgotPasswordForm({ initialEmail }: { initialEmail?: string }) 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    if (!email.trim() || !isValidEmail(email)) {
+      setError(email.trim() ? "Informe um e-mail válido." : "Informe seu e-mail.");
+      focusField("forgot-email");
+      return;
+    }
     startTransition(async () => {
       const result = await requestPasswordResetAction({ email });
       if (result.ok) setSentTo(email.trim());
-      else setError(result.message);
+      else {
+        setError(result.message);
+        focusField("forgot-email");
+      }
     });
   };
 

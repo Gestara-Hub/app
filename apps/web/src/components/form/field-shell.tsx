@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 import { useDialogDirty } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ interface FieldShellProps {
   hint?: string;
   error?: string;
   required?: boolean;
+  /** Campo com erro mostrado pelo proprio controle (sem `error` aqui): so marca para o foco ao salvar. */
+  invalid?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -50,6 +52,15 @@ export function RequiredMark() {
   );
 }
 
+/** O que pode receber o foco dentro do campo (o primeiro da ordem da tela). */
+const FOCUSABLE = [
+  "input:not([type=hidden]):not([disabled])",
+  "textarea:not([disabled])",
+  "select:not([disabled])",
+  "button:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 export function FieldShell({
   id,
   label,
@@ -57,6 +68,7 @@ export function FieldShell({
   hint,
   error,
   required,
+  invalid,
   className,
   children,
 }: FieldShellProps) {
@@ -77,8 +89,28 @@ export function FieldShell({
     if (dirtyRegistry && source) dirtyRegistry.update(source, isDirty);
   }, [dirtyRegistry, source, isDirty]);
 
+  // Foco no primeiro campo com erro ao salvar (10/11/2026, doc 07 §2.10). O RHF
+  // ja foca o campo que tem `ref`; isto cobre os controles proprios (lista de
+  // dias, chips, horarios, aceite) e garante a ordem da tela: so o primeiro
+  // campo com erro do formulario age, e so se o foco ainda nao esta nele.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hasError = Boolean(error) || Boolean(invalid);
+  const errorRef = useRef(hasError);
+  useEffect(() => {
+    errorRef.current = hasError;
+  }, [hasError]);
+  const submitCount = form?.formState?.submitCount ?? 0;
+  useEffect(() => {
+    if (submitCount === 0 || !errorRef.current) return;
+    const root = rootRef.current;
+    const formEl = root?.closest("form");
+    if (!root || !formEl || formEl.querySelector("[data-field-error]") !== root) return;
+    if (document.activeElement && root.contains(document.activeElement)) return;
+    root.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+  }, [submitCount]);
+
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div ref={rootRef} data-field-error={hasError ? "" : undefined} className={cn("space-y-1.5", className)}>
       {label ? (
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor={id} className="text-sm">

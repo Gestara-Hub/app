@@ -282,9 +282,8 @@ export function ProfessionalForm({
     if (!isClasses && !isEdit && unit && !form.formState.isDirty) {
       const openDays = (unit.businessHours ?? []).filter((d) => !d.closed);
       if (openDays.length > 0) {
-        form.setValue("workingHours", getDefaultWorkingHours(unit), {
-          shouldDirty: false,
-        });
+        // Sugestao vira o valor inicial: nao conta como alteracao (doc 07 §2.8).
+        form.resetField("workingHours", { defaultValue: getDefaultWorkingHours(unit) });
       }
     }
   }, [unit, isEdit, form, isClasses]);

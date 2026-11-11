@@ -73,7 +73,7 @@ test.describe("Configurações: Área do espaço", () => {
       // A nova turma ja abre com as vagas da area.
       await page.goto("/classes");
       await page.getByRole("button", { name: "Nova turma" }).first().click();
-      await expect(page.getByRole("dialog", { name: "Nova turma" }).getByLabel("Capacidade (vagas)")).toHaveValue(
+      await expect(page.getByRole("dialog", { name: "Nova turma" }).getByLabel("Vagas", { exact: true })).toHaveValue(
         String(area.capacity),
       );
 

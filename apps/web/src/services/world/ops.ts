@@ -1,4 +1,4 @@
-import type { DateTimeISO, Id } from "@gestarahub/contracts";
+import type { DateTimeISO } from "@gestarahub/contracts";
 import { inServerWorld } from "./store";
 
 /**
@@ -12,20 +12,7 @@ import { inServerWorld } from "./store";
 export { apiError, networkError, notFoundError, validationError } from "@gestarahub/core/api-error";
 export { normalizeText, phoneIncludes, textIncludes } from "@/lib/text";
 
-export function newId(): Id {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  // Sem randomUUID (http na rede local): UUID v4 com getRandomValues.
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r =
-      typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function"
-        ? crypto.getRandomValues(new Uint8Array(1))[0] & 15
-        : (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+export { newId } from "@/lib/new-id";
 
 export function nowIso(): DateTimeISO {
   return new Date().toISOString();

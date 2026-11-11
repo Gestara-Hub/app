@@ -19,7 +19,9 @@ import {
   InputText,
   SegmentedChoiceField,
   SelectField,
+  SectionBar,
   SwitchField,
+  toggleSectionClass,
   fieldAria,
 } from "@/components/form";
 import { BeltBadge } from "@/components/shared/belt-badge";
@@ -141,7 +143,7 @@ const LEVEL_COLORS = BELT_COLORS.filter((c) => c !== "slate");
 const NO_COLOR = "none";
 /** Campo de idade compacto, sem as setinhas do input numerico. */
 const AGE_INPUT_CLASS =
-  "h-7 w-16 px-2 text-base tabular-nums md:text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "h-9 w-16 px-2 text-base tabular-nums md:h-7 md:text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 type TemplateKey = Exclude<ProgressionTrackTemplateKey, "custom">;
 const ALL_TEMPLATE_KEYS = Object.keys(PROGRESSION_TEMPLATES) as TemplateKey[];
@@ -551,7 +553,8 @@ export function ModalityForm({
           </div>
 
           {/* Bloco da trilha de progresso (titulo conforme a area) */}
-          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
+          <div className={toggleSectionClass(track.enabled)}>
+            <SectionBar visible={track.enabled} />
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Award className="size-4 text-primary shrink-0" />
@@ -614,7 +617,8 @@ export function ModalityForm({
 
                 {/* Barra destacada de resumo da regra + botão Personalizar com pulso temporário */}
                 {/* No celular empilha: regra em cima (texto inteiro), botao embaixo. */}
-                <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-background px-2.5 py-2 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+                {/* Direto no bloco ligado, sem outro card dentro (doc 07 §2.9). */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-w-0">
                     <span className="font-medium text-muted-foreground shrink-0">
                       Regra atual:
@@ -667,7 +671,7 @@ export function ModalityForm({
                           if (isTemplateKey(val)) void applyTemplate(val);
                         }}
                       >
-                        <SelectTrigger className="h-8 w-full bg-background text-xs">
+                        <SelectTrigger className="h-9 w-full bg-background text-base md:h-8 md:text-xs">
                           <SelectValue>
                             {track.templateKey && track.templateKey !== "custom"
                               ? (PROGRESSION_TEMPLATES[track.templateKey]?.label ?? "Personalizado")
@@ -718,7 +722,7 @@ export function ModalityForm({
                             }))
                           }
                         >
-                          <SelectTrigger className="h-8 w-full flex-1 bg-background text-xs min-w-0">
+                          <SelectTrigger className="h-9 w-full min-w-0 flex-1 bg-background text-base md:h-8 md:text-xs">
                             <SelectValue>
                               {CRITERIA_TYPE_LABELS[track.criteriaType]}
                             </SelectValue>
@@ -759,7 +763,7 @@ export function ModalityForm({
                                   ),
                                 }))
                               }
-                              className="h-8 bg-background pr-11 text-xs tabular-nums"
+                              className="h-9 bg-background pr-11 text-base tabular-nums md:h-8 md:text-xs"
                             />
                             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
                               aulas
@@ -786,7 +790,7 @@ export function ModalityForm({
                                   ),
                                 }))
                               }
-                              className="h-8 bg-background pr-12 text-xs tabular-nums"
+                              className="h-9 bg-background pr-12 text-base tabular-nums md:h-8 md:text-xs"
                             />
                             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
                               meses
@@ -802,7 +806,7 @@ export function ModalityForm({
                         <label className="text-[11px] font-medium text-muted-foreground">
                           {levelPluralWord} da trilha ({track.levels.length})
                         </label>
-                        <label className="ml-auto mr-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground sm:mr-2">
                           <Switch
                             checked={showAges}
                             onCheckedChange={(checked) => {
@@ -826,13 +830,14 @@ export function ModalityForm({
                           type="button"
                           variant="outline"
                           onClick={addStep}
-                          className="px-2 text-[11px]"
+                          className="hidden px-2 text-[11px] sm:inline-flex"
                         >
                           <Plus className="size-3" />
                           Adicionar {levelWord.toLowerCase()}
                         </Button>
                       </div>
-                    <div className="divide-y divide-border/60 rounded-lg border bg-background overflow-hidden">
+                    {/* Celular: faixas direto no bloco (sem caixa dentro da caixa); computador: lista com borda. */}
+                    <div className="divide-y divide-border/60 sm:overflow-hidden sm:rounded-lg sm:border sm:bg-background">
                       {track.levels.map((step, index) => (
                         <div
                           key={step.id}
@@ -865,14 +870,16 @@ export function ModalityForm({
                             setDragOverIndex(null);
                           }}
                           className={cn(
-                            "flex flex-wrap items-center gap-1.5 px-2 py-1.5 transition-colors",
+                            // Celular: linha 1 = arrastar, ordem, nome e lixeira; linha 2 = cor e graus; idade embaixo.
+                            // Computador: tudo numa linha na ordem do codigo (sm:order-none).
+                            "flex flex-wrap items-center gap-x-1.5 gap-y-2 py-2.5 transition-colors sm:gap-y-1.5 sm:px-2 sm:py-1.5",
                             draggedIndex === index
                               ? "bg-primary/10 opacity-80"
                               : "hover:bg-muted/25",
                           )}
                         >
                           <span
-                            className="inline-flex items-center gap-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground shrink-0"
+                            className="order-1 inline-flex shrink-0 cursor-grab items-center gap-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing sm:order-none"
                             title="Arraste para reordenar"
                           >
                             <GripVertical className="size-3.5" />
@@ -889,7 +896,7 @@ export function ModalityForm({
                             onDragStart={(e) => e.stopPropagation()}
                             draggable={false}
                             placeholder={vocabulary.levelName}
-                            className="h-7 min-w-[130px] flex-1 border-transparent bg-transparent px-2 text-xs shadow-none hover:border-input focus:border-input focus:bg-background"
+                            className="order-2 h-9 min-w-0 flex-1 border-input bg-background px-2 text-base shadow-none hover:border-input focus:border-input focus:bg-background sm:order-none sm:min-w-[130px] md:h-7 md:border-transparent md:bg-transparent md:text-xs"
                           />
 
                           {isBelt ? (
@@ -899,7 +906,7 @@ export function ModalityForm({
                               <PopoverTrigger asChild>
                                 <button
                                   type="button"
-                                  className="inline-flex h-7 w-30 shrink-0 items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 text-xs shadow-2xs transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  className="order-5 inline-flex h-9 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 text-base shadow-2xs transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:order-none sm:w-30 sm:flex-none sm:shrink-0 md:h-7 md:text-xs"
                                   title="Selecionar até 2 cores (1ª Faixa, 2ª Ponta)"
                                 >
                                   <span className="inline-flex items-center gap-1.5 min-w-0">
@@ -1077,7 +1084,7 @@ export function ModalityForm({
                                     })
                                   }
                                 >
-                                  <SelectTrigger className="h-7 w-25 shrink-0 text-xs px-2">
+                                  <SelectTrigger className="order-6 h-9 min-w-0 flex-1 px-2 text-base sm:order-none sm:w-25 sm:flex-none sm:shrink-0 md:h-7 md:text-xs">
                                     <SelectValue>
                                       {step.maxSubLevels === 0
                                         ? zeroLabel
@@ -1109,7 +1116,7 @@ export function ModalityForm({
                                 })
                               }
                             >
-                              <SelectTrigger className="h-7 w-30 shrink-0 text-xs px-2" aria-label="Cor do nível">
+                              <SelectTrigger className="order-5 h-9 min-w-0 flex-1 px-2 text-base sm:order-none sm:w-30 sm:flex-none sm:shrink-0 md:h-7 md:text-xs" aria-label="Cor do nível">
                                 <SelectValue>
                                   <span className="inline-flex items-center gap-1.5">
                                     {step.color ? (
@@ -1150,7 +1157,7 @@ export function ModalityForm({
                             type="button"
                             variant="ghost"
                             size="icon-xs"
-                            className="shrink-0 text-destructive/80 hover:text-destructive"
+                            className="order-3 shrink-0 text-destructive/80 hover:text-destructive sm:order-none"
                             disabled={track.levels.length <= 1}
                             onClick={() => removeStep(index)}
                             aria-label={`Remover ${levelWord.toLowerCase()}`}
@@ -1158,9 +1165,12 @@ export function ModalityForm({
                             <Trash2 className="size-3.5" />
                           </Button>
 
+                          {/* Quebra de linha so no celular: cor e graus descem para a 2a linha. */}
+                          <span aria-hidden className="order-4 h-0 basis-full sm:hidden" />
+
                           {/* Faixa etaria em linha propria (sem espremer a linha do nivel) */}
                           {showAges ? (
-                            <div className="flex basis-full items-center gap-2 pb-0.5 pl-9 text-xs text-muted-foreground">
+                            <div className="order-7 flex basis-full items-center gap-2 pb-0.5 text-xs text-muted-foreground sm:order-none sm:pl-9">
                               <span className="font-medium">Idade</span>
                               <Input
                                 type="number"
@@ -1202,6 +1212,10 @@ export function ModalityForm({
                         </div>
                       ))}
                     </div>
+                    <Button type="button" variant="outline" onClick={addStep} className="sm:hidden">
+                      <Plus className="size-4" />
+                      Adicionar {levelWord.toLowerCase()}
+                    </Button>
                     </div>
                   </div>
                 ) : null}
@@ -1210,7 +1224,8 @@ export function ModalityForm({
           </div>
 
           {/* Avaliacoes e notas (doc 21 §2.1) */}
-          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
+          <div className={toggleSectionClass(assessmentsOn)}>
+            <SectionBar visible={assessmentsOn} />
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <ClipboardCheck className="size-4 text-primary shrink-0" />
@@ -1324,7 +1339,8 @@ export function ModalityForm({
           </div>
 
           {/* Testes e medidas (doc 21 §2.4, fase B) */}
-          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
+          <div className={toggleSectionClass(measurementsOn)}>
+            <SectionBar visible={measurementsOn} />
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Ruler className="size-4 text-primary shrink-0" />

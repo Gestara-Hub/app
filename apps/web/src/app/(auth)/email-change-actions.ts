@@ -17,6 +17,7 @@ import {
   confirmEmailChange,
   createEmailChangeToken,
   discardEmailChangeToken,
+  isValidEmail,
   normalizeEmail,
 } from "@/services/server/emailChange";
 import { discardEmailCode, issueEmailCode, verifyEmailCode } from "@/services/server/twoFactor";
@@ -155,6 +156,10 @@ export async function requestAccessEmailChangeAction(input: {
   }
 
   const currentEmail = user.email ?? "";
+  // Formato do e-mail antes da senha: "asdasd" respondia "Senha incorreta" (10/11/2026).
+  if (!isValidEmail(normalizeEmail(input.newEmail))) {
+    return { ok: false, message: "Informe um e-mail válido.", field: "newEmail" };
+  }
   if (isGoogleOnlyUser(user)) {
     const code = (input.code ?? "").replace(/\s/g, "");
     if (!/^\d{6}$/.test(code)) return { ok: false, message: "Digite os 6 números do e-mail.", field: "code" };

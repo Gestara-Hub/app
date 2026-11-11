@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
 import { useSubscriptionCheckout } from "../hooks/use-subscription-checkout";
 import { logWarn } from "@/lib/log";
+import { focusField } from "@/lib/form-errors";
+import { isValidEmail } from "@/lib/email-format";
 
 interface SubscriptionCheckoutDialogProps {
   open: boolean;
@@ -138,12 +140,19 @@ function SubscriptionCheckoutContent({
 
     if (!customerName.trim() || !customerEmail.trim()) {
       toast.error("Por favor, informe seu nome e e-mail.");
+      focusField(!customerName.trim() ? "custName" : "custEmail");
+      return;
+    }
+    if (!isValidEmail(customerEmail)) {
+      toast.error("Informe um e-mail válido para recibos e faturas.");
+      focusField("custEmail");
       return;
     }
 
     const cleanDoc = customerCpfCnpj.replace(/\D/g, "");
     if (cleanDoc.length < 11) {
       toast.error("Informe um CPF ou CNPJ válido para a emissão da cobrança.");
+      focusField("custDoc");
       return;
     }
 
@@ -161,11 +170,13 @@ function SubscriptionCheckoutContent({
       const cleanCard = cardNumber.replace(/\D/g, "");
       if (cleanCard.length < 13) {
         toast.error("Informe um número de cartão de crédito válido.");
+        focusField("cardNumber");
         return;
       }
       const parts = cardExpiry.split("/");
       if (parts.length !== 2 || !parts[0] || !parts[1]) {
         toast.error("Informe a validade no formato MM/AA.");
+        focusField("cardExpiry");
         return;
       }
       creditCardPayload = {

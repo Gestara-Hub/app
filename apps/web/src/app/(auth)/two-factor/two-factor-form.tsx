@@ -15,6 +15,7 @@ import {
   sendSignInEmailCodeAction,
   verifyTwoFactorSignInAction,
 } from "../two-factor-actions";
+import { focusField } from "@/lib/form-errors";
 
 /**
  * Codigo de 6 numeros do aplicativo ou do e-mail; ao acertar, entra no app.
@@ -89,6 +90,7 @@ export function TwoFactorForm({
       if (!result.ok) {
         setError(result.message);
         setCode("");
+        focusField("two-factor-code");
         return;
       }
       settingsService.hydrateTenant({

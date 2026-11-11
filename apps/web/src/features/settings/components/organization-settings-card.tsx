@@ -1,7 +1,7 @@
 "use client";
 
 import { isPossiblePhone } from "@gestarahub/core/phone";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BRAZIL_TIME_ZONES, resolveSpaceTimeZone, timeZoneForState } from "@gestarahub/core/date";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
@@ -144,10 +144,18 @@ function GeneralForm({
   const state = useWatch({ control: form.control, name: "address.state" });
 
   // Sem fuso escolhido, segue o estado do endereco (pode trocar, ex.: Noronha).
+  // Acompanha enquanto o campo mostra a ultima sugestao (doc 07 §2.8: o
+  // `isDirty` do RHF marcava o fuso sugerido como editado e ele parava de
+  // acompanhar, salvando o fuso do estado anterior). Vai com `shouldDirty`
+  // para o fuso sugerido ser salvo junto com o endereco.
+  const lastSuggestedZone = useRef(form.getValues("timeZone"));
   useEffect(() => {
-    if (organization.settings?.timeZone || form.getFieldState("timeZone").isDirty) return;
+    if (organization.settings?.timeZone) return;
+    if (form.getValues("timeZone") !== lastSuggestedZone.current) return;
     const suggested = timeZoneForState(state);
-    if (suggested && suggested !== form.getValues("timeZone")) form.setValue("timeZone", suggested);
+    if (!suggested || suggested === lastSuggestedZone.current) return;
+    lastSuggestedZone.current = suggested;
+    form.setValue("timeZone", suggested, { shouldDirty: true });
   }, [state, organization.settings?.timeZone, form]);
 
   // Telefone salvo que nao e telefone (ja aconteceu: 16 digitos): avisa ao abrir.

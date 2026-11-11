@@ -31,6 +31,7 @@ import {
   startTotpEnrollmentAction,
   type TrustedDeviceItem,
 } from "@/app/(auth)/two-factor-actions";
+import { focusFirstInvalid } from "@/lib/form-errors";
 
 type Status = { app: boolean; email: boolean; maskedEmail: string; recoveryLeft: number };
 
@@ -257,6 +258,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
         return;
       }
       setError(result.message);
+      focusFirstInvalid();
     });
   };
 
@@ -277,6 +279,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 : await disableTwoFactorAction({ code, method: view.method });
       if (!result.ok) {
         setError(result.message);
+      focusFirstInvalid();
         setCode("");
         return;
       }

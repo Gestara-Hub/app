@@ -26,4 +26,5 @@ export { PaymentMethodField } from "./payment-method-field";
 export { DialogFormFooter } from "./dialog-form-footer";
 export { AddressFields } from "./address-fields";
 export { CollapsibleSection } from "./collapsible-section";
+export { FormSection, SectionBar, toggleSectionClass } from "./form-section";
 

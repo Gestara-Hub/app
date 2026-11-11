@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/log";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
+import { isValidEmail } from "@/lib/email-format";
 
 /**
  * Troca do e-mail de acesso pela propria pessoa (migracao 87, 05/11/2026).
@@ -14,17 +15,13 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 
 export const EMAIL_CHANGE_TTL_MS = 60 * 60 * 1000;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const hashToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
 
 export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
-export function isValidEmail(email: string): boolean {
-  return EMAIL_PATTERN.test(email);
-}
+export { isValidEmail };
 
 /**
  * O e-mail ja e de acesso de outra conta (login ou convite em aberto) em

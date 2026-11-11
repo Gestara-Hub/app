@@ -15,6 +15,7 @@ import { format, addDays } from "date-fns";
 import {
   ComboboxField,
   DateField,
+  FormSection,
   FieldShell,
   InputCurrency,
   InputNumber,
@@ -429,7 +430,7 @@ function MeetingSlotsEditor({
   const allSelectedDaysCount = blocks.flatMap((b) => b.days).length;
 
   return (
-    <FieldShell label="Encontros e Horários" required>
+    <FieldShell label="Encontros e Horários" required invalid={Boolean(error)}>
       <div className="space-y-2.5">
         {blocks.map((block, index) => {
           const isMain = index === 0;
@@ -741,23 +742,27 @@ export function TurmaForm({
 
     const currentStartDate = form.getValues("startDate");
     const openDate = getInitialStartDate(unit);
-    if (currentStartDate !== openDate && !form.formState.dirtyFields.startDate) {
-      form.setValue("startDate", openDate);
+    // Sugestao vira o novo valor inicial (resetField): nao conta como edicao
+    // da pessoa e nao trava as sugestoes seguintes (doc 07 §2.8).
+    if (currentStartDate !== openDate && !form.getFieldState("startDate").isDirty) {
+      form.resetField("startDate", { defaultValue: openDate });
     }
 
     const currentSlots = form.getValues("meetingSlots") ?? [];
-    if (currentSlots.length === 0 && !form.formState.dirtyFields.meetingSlots) {
+    if (currentSlots.length === 0 && !form.getFieldState("meetingSlots").isDirty) {
       const weekday = weekdayOf(openDate);
       const times = getUnitTimesForWeekday(weekday, unit, classDefaults.durationMinutes);
       const dayConfig = unit.businessHours.find((b) => b.weekday === weekday);
       if (!dayConfig || !dayConfig.closed) {
-        form.setValue("meetingSlots", [
-          {
-            weekday,
-            start: times.start,
-            end: times.end,
-          },
-        ]);
+        form.resetField("meetingSlots", {
+          defaultValue: [
+            {
+              weekday,
+              start: times.start,
+              end: times.end,
+            },
+          ],
+        });
       }
     }
   }, [unit, isEdit, form, classDefaults.durationMinutes]);
@@ -780,9 +785,9 @@ export function TurmaForm({
       (currentSlots.length === 1 && currentSlots[0].weekday === oldWeekday);
 
     if (isSingleDefaultSlot) {
-      form.setValue(
-        "meetingSlots",
-        isNewDayOpen
+      // Horario sugerido para o novo dia: valor inicial, nao edicao (doc 07 §2.8).
+      form.resetField("meetingSlots", {
+        defaultValue: isNewDayOpen
           ? [
               {
                 weekday: newWeekday,
@@ -791,7 +796,7 @@ export function TurmaForm({
               },
             ]
           : [],
-      );
+      });
     }
   }, [startDate, unit, isEdit, form, classDefaults.durationMinutes]);
 
@@ -846,7 +851,7 @@ export function TurmaForm({
     const before = getUnitTimesForWeekday(slot.weekday, unit, previous);
     if (before.start !== slot.start || before.end !== slot.end) return;
     const after = getUnitTimesForWeekday(slot.weekday, unit, classDefaults.durationMinutes);
-    form.setValue("meetingSlots", [{ ...slot, end: after.end }]);
+    form.resetField("meetingSlots", { defaultValue: [{ ...slot, end: after.end }] });
   }, [classDefaults.capacity, classDefaults.durationMinutes, isEdit, form, unit]);
   const isCourse = billingMode === "course";
 
@@ -1023,140 +1028,149 @@ export function TurmaForm({
           isPage ? "overflow-visible" : "overflow-hidden"
         )}
       >
-        <FormBodyWrapper className={isPage ? "space-y-6 p-6" : "space-y-4"}>
-          <InputText<TurmaFormValues>
-          name="name"
-          label="Nome da turma"
-          placeholder="Informe o nome da turma"
-          required
-          disabled={pending}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ComboboxField<TurmaFormValues>
-            name="modalityId"
-            label="Modalidade"
-            placeholder="Selecione a modalidade"
-            searchPlaceholder="Filtrar modalidade..."
-            emptyMessage="Nenhuma modalidade encontrada."
-            options={categoryOptions}
-            required
-            disabled={pending}
-            hint={inactiveModality ? "Modalidade inativa. Reative ou escolha outra." : undefined}
-          />
-          <ComboboxField<TurmaFormValues>
-            name="instructorId"
-            label={team.title}
-            placeholder={
-              !modalityId
-                ? "Escolha a modalidade antes"
-                : instructorOptions.length === 0
-                  ? `Sem ${team.lower} nesta modalidade`
-                  : `Selecione o ${team.lower}`
-            }
-            searchPlaceholder={`Filtrar ${team.lower}...`}
-            emptyMessage={`Nenhum ${team.lower} encontrado.`}
-            options={instructorOptions}
-            required
-            disabled={pending || !modalityId || instructorOptions.length === 0}
-            hint={inactiveInstructor ? `${team.title} inativo. Escolha outro para as próximas aulas.` : undefined}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <InputNumber<TurmaFormValues>
-            name="capacity"
-            label="Capacidade (vagas)"
-            min={1}
-            hint={overCapacityHint}
-            required
-            disabled={pending}
-          />
-          <DateField<TurmaFormValues>
-            name="startDate"
-            label="Data de início da turma"
-            hint={startDateHint}
-            required
-            disabled={pending}
-          />
-        </div>
-
-        {/* A dica de cada forma fica no proprio cartao (sem repetir abaixo). */}
-        <FieldShell label="Cobrança">
-          <div className="space-y-3">
-            <SegmentedChoiceField<TurmaFormValues>
-              name="billingMode"
-              ariaLabel="Cobrança"
-              options={BILLING_MODE_OPTIONS}
-              variant="cards"
+        <FormBodyWrapper className={isPage ? "space-y-8 p-6 sm:space-y-4" : "space-y-8 sm:space-y-4"}>
+          {/* Mesma ordem do cadastro de evento (doc 07 §2.9): sobre, quem conduz, quando, vagas e cobranca. */}
+          <FormSection title="Sobre a turma">
+            <InputText<TurmaFormValues>
+              name="name"
+              label="Nome da turma"
+              placeholder="Informe o nome da turma"
+              required
               disabled={pending}
             />
-            {isCourse ? (
-              <div className="grid grid-cols-1 gap-4 rounded-lg border bg-muted/15 p-3.5 sm:grid-cols-2">
-                <InputCurrency<TurmaFormValues>
-                  name="coursePriceCents"
-                  label="Valor do curso"
-                  required
-                  disabled={pending}
-                />
-                <SelectField<TurmaFormValues>
-                  name="courseMaxInstallments"
-                  label="Parcelas até"
-                  options={MAX_INSTALLMENT_OPTIONS}
-                  clearable={false}
-                  disabled={pending}
-                />
-                <DateField<TurmaFormValues>
-                  name="endDate"
-                  label="Termina em"
-                  hint="Curso tem data para acabar."
-                  required
-                  disabled={pending}
-                />
-              </div>
-            ) : null}
-          </div>
-        </FieldShell>
-
-        {billingMode === "free" ? null : (
-          <div className={cn("space-y-3", allowDropin && "rounded-lg border p-3.5 bg-muted/15")}>
-            <SwitchField<TurmaFormValues>
-              name="allowDropin"
-              label="Permitir alunos avulsos nesta turma"
-              hint="Permite inscrever alunos em aula avulsa (paga) nesta turma. A aula experimental é sempre permitida."
+            <ComboboxField<TurmaFormValues>
+              name="modalityId"
+              label="Modalidade"
+              placeholder="Selecione a modalidade"
+              searchPlaceholder="Filtrar modalidade..."
+              emptyMessage="Nenhuma modalidade encontrada."
+              options={categoryOptions}
+              required
               disabled={pending}
+              hint={inactiveModality ? "Modalidade inativa. Reative ou escolha outra." : undefined}
             />
+          </FormSection>
 
-            {allowDropin ? (
-              <InputCurrency<TurmaFormValues>
-                name="sessionPriceCents"
-                label="Valor da aula avulsa / diária"
+          <FormSection title="Quem conduz">
+            <ComboboxField<TurmaFormValues>
+              name="instructorId"
+              label={team.title}
+              placeholder={
+                !modalityId
+                  ? "Escolha a modalidade antes"
+                  : instructorOptions.length === 0
+                    ? `Sem ${team.lower} nesta modalidade`
+                    : `Selecione o ${team.lower}`
+              }
+              searchPlaceholder={`Filtrar ${team.lower}...`}
+              emptyMessage={`Nenhum ${team.lower} encontrado.`}
+              options={instructorOptions}
+              required
+              disabled={pending || !modalityId || instructorOptions.length === 0}
+              hint={inactiveInstructor ? `${team.title} inativo. Escolha outro para as próximas aulas.` : undefined}
+            />
+          </FormSection>
+
+          <FormSection title="Quando">
+            <div className="sm:w-1/2 sm:pr-2">
+              <DateField<TurmaFormValues>
+                name="startDate"
+                label="Data de início da turma"
+                hint={startDateHint}
                 required
                 disabled={pending}
               />
-            ) : null}
-          </div>
-        )}
-
-        <Controller
-          control={form.control}
-          name="meetingSlots"
-          render={({ field, fieldState }) => (
-            <MeetingSlotsEditor
-              value={field.value}
-              onChange={field.onChange}
-              disabled={pending}
-              error={fieldState.error?.message}
-              unit={unit}
-              startDate={startDate}
-              endDate={endDate}
-              instructor={selectedInstructor}
-              otherGroups={activeGroups}
-              currentGroupId={turma?.id}
-              defaultDuration={classDefaults.durationMinutes}
+            </div>
+            <Controller
+              control={form.control}
+              name="meetingSlots"
+              render={({ field, fieldState }) => (
+                <MeetingSlotsEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={pending}
+                  error={fieldState.error?.message}
+                  unit={unit}
+                  startDate={startDate}
+                  endDate={endDate}
+                  instructor={selectedInstructor}
+                  otherGroups={activeGroups}
+                  currentGroupId={turma?.id}
+                  defaultDuration={classDefaults.durationMinutes}
+                />
+              )}
             />
-          )}
-        />
+          </FormSection>
+
+          <FormSection title="Vagas e cobrança">
+            <div className="sm:w-1/2 sm:pr-2">
+              <InputNumber<TurmaFormValues>
+                name="capacity"
+                label="Vagas"
+                min={1}
+                hint={overCapacityHint}
+                required
+                disabled={pending}
+              />
+            </div>
+            {/* A dica de cada forma fica no proprio cartao (sem repetir abaixo). */}
+            <FieldShell label="Cobrança">
+              <div className="space-y-3">
+                <SegmentedChoiceField<TurmaFormValues>
+                  name="billingMode"
+                  ariaLabel="Cobrança"
+                  options={BILLING_MODE_OPTIONS}
+                  variant="cards"
+                  disabled={pending}
+                />
+                {isCourse ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <InputCurrency<TurmaFormValues>
+                      name="coursePriceCents"
+                      label="Valor do curso"
+                      required
+                      disabled={pending}
+                    />
+                    <SelectField<TurmaFormValues>
+                      name="courseMaxInstallments"
+                      label="Parcelas até"
+                      options={MAX_INSTALLMENT_OPTIONS}
+                      clearable={false}
+                      disabled={pending}
+                    />
+                    <DateField<TurmaFormValues>
+                      name="endDate"
+                      label="Termina em"
+                      hint="Curso tem data para acabar."
+                      required
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </FieldShell>
+            {billingMode === "free" ? null : (
+              <div className="space-y-3">
+                <SwitchField<TurmaFormValues>
+                  name="allowDropin"
+                  label="Permitir alunos avulsos nesta turma"
+                  hint="Permite inscrever alunos em aula avulsa (paga) nesta turma. A aula experimental é sempre permitida."
+                  disabled={pending}
+                />
+
+                {allowDropin ? (
+                  <div className="sm:w-1/2 sm:pr-2">
+                    <InputCurrency<TurmaFormValues>
+                      name="sessionPriceCents"
+                      label="Valor da aula avulsa / diária"
+                      required
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </FormSection>
         </FormBodyWrapper>
 
         {isPage ? (

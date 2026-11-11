@@ -411,14 +411,16 @@ export function ClientForm({
   useEffect(() => {
     if (orgSettings && !orgSettingsLoadedRef.current && !client) {
       orgSettingsLoadedRef.current = true;
-      if (orgSettings.midMonthStrategy) {
-        form.setValue("billingStrategy", orgSettings.midMonthStrategy);
+      // Padroes do espaco viram o valor inicial (resetField), nao uma edicao:
+      // senao contavam como alteracao e travavam outras sugestoes (doc 07 §2.8).
+      if (orgSettings.midMonthStrategy && !form.getFieldState("billingStrategy").isDirty) {
+        form.resetField("billingStrategy", { defaultValue: orgSettings.midMonthStrategy });
       }
-      if (orgSettings.billingTiming) {
-        form.setValue("cyclePaymentTiming", orgSettings.billingTiming);
+      if (orgSettings.billingTiming && !form.getFieldState("cyclePaymentTiming").isDirty) {
+        form.resetField("cyclePaymentTiming", { defaultValue: orgSettings.billingTiming });
       }
-      if (orgSettings.defaultDueDay) {
-        form.setValue("dueDay", orgSettings.defaultDueDay);
+      if (orgSettings.defaultDueDay && !form.getFieldState("dueDay").isDirty) {
+        form.resetField("dueDay", { defaultValue: orgSettings.defaultDueDay });
       }
       // A area vem da mesma organizacao: corrige o padrao se ainda nao mexeram.
       const mode = defaultPaymentMode({ isClasses, areaBillingMode });

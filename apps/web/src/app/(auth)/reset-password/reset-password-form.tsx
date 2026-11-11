@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { completePasswordResetAction } from "../password-reset-actions";
 import { rememberPasswordReset } from "@/features/auth";
+import { focusField } from "@/lib/form-errors";
 
 /** Nova senha pelo link do e-mail; depois, o login ja vem com o e-mail preenchido. */
 export function ResetPasswordForm({ token, email }: { token: string; email: string }) {
@@ -19,14 +20,27 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Campo do erro: embaixo dele; sem campo (link vencido, falha do servidor), no fim.
+  const [errorField, setErrorField] = useState<"password" | "confirm" | null>(null);
   const [expired, setExpired] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    if (!isPasswordLongEnough(password)) return setError(PASSWORD_TOO_SHORT_MESSAGE);
-    if (password !== confirm) return setError("As senhas não são iguais.");
+    setErrorField(null);
+    if (!isPasswordLongEnough(password)) {
+      setError(PASSWORD_TOO_SHORT_MESSAGE);
+      setErrorField("password");
+      focusField("reset-password");
+      return;
+    }
+    if (password !== confirm) {
+      setError("As senhas não são iguais.");
+      setErrorField("confirm");
+      focusField("reset-confirm");
+      return;
+    }
     startTransition(async () => {
       const result = await completePasswordResetAction({ token, password });
       if (result.ok) {
@@ -71,6 +85,8 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
             }}
             placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
             autoComplete="new-password"
+            aria-invalid={(error && errorField === "password") || undefined}
+            aria-describedby={error && errorField === "password" ? "reset-field-error" : undefined}
             required
             disabled={pending}
             className="pr-10"
@@ -85,6 +101,11 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
             {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
+        {error && errorField === "password" ? (
+          <p id="reset-field-error" role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-1.5">
@@ -104,12 +125,19 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
           }}
           placeholder="Repita a nova senha"
           autoComplete="new-password"
+          aria-invalid={(error && errorField === "confirm") || undefined}
+          aria-describedby={error && errorField === "confirm" ? "reset-field-error" : undefined}
           required
           disabled={pending}
         />
+        {error && errorField === "confirm" ? (
+          <p id="reset-field-error" role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
       </div>
 
-      {error ? (
+      {error && !errorField ? (
         <p role="alert" className="text-sm text-destructive">
           {error}{" "}
           {expired ? (

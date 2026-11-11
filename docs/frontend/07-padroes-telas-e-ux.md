@@ -58,6 +58,13 @@ Toda aba ou tela de listagem deve conter:
   2. `"Editar"` (ícone `Pencil`).
   3. Ações de ciclo de vida separadas por `separator: true`: `"Inativar"` / `"Reativar"` (`Power`) ou `"Cancelar"` / `"Excluir"` (`Trash2`, `variant: "destructive"`).
 
+**Menu enxuto: até 6 itens na primeira camada (09/11/2026, decidido com o dono).**
+- A linha divisória antes das destrutivas é automática: o componente põe a linha antes da primeira ação com `destructive: true`, que fica sempre no fim.
+- Ações do mesmo assunto vão para um submenu (`children` em `ListItemAction`). Submenu com uma ação só vira a própria ação; vazio some.
+- **"Acompanhamento ›"** agrupa Registros de aula, Faixa/Nível, Notas e Testes e medidas na lista de Alunos e nos alunos da turma; na chamada da aula, Faixa/Nível e Notas ("Registrar aula" e a presença ficam na primeira camada, porque são o uso de toda aula).
+- O que a ficha já resolve não se repete na lista: "Vender pacote" e "Cancelar pacote" saíram do menu da lista de Alunos (ficam em "Plano e pacotes" da ficha e no ⋮ do topo da ficha).
+- Lista de Alunos fica com: Abrir ficha, Enviar WhatsApp, Enviar autorização (só pendente), Acompanhamento ›, Nova cobrança, Editar cadastro, Inativar/Reativar.
+
 **Lista de Alunos sem cobrança (30/10/2026, a pedido):** a linha e o cartão mostram nome, situação, termo pendente, evolução e contato. Plano, bolsa, pausa e pacote ficam na ficha do aluno.
 
 ### 1.5. Altura dos Botões: uma só (17/10/2026)
@@ -86,6 +93,11 @@ Layout aprovado na prévia ("B refinado", versão Sanfona) para a ficha (`/clien
 - **Sanfona em vez de abas**: uma lista com borda, uma linha por seção (título + resumo de uma linha + seta), fechadas por padrão; `?tab=<id>` abre uma. Cada seção abre o painel completo que já existia. Sem cartões de KPI: os números viram os resumos ("3 em aberto · R$ 270,00 · 1 atrasada"). Seção aberta (05/11/2026): a seção inteira (título e conteúdo) ganha fundo (`bg-muted/40`, `dark:bg-muted/25`) e uma barra fina à esquerda que para antes da borda, para ver onde cada seção começa e termina, mesmo com duas abertas seguidas; título em negrito e respiro no fim. Abrir e fechar deslizam (`Collapsible` de `@/components/ui/collapsible`: altura com leve fade, 320 ms ao abrir e 240 ms ao fechar; fundo, barra e seta acompanham; sem animação com movimento reduzido). O `CollapsibleSection` dos formulários (cadastro de aluno e de instrutor) segue o mesmo comportamento desde 05/11/2026: continua em cartões separados com ícone e selos, mas a parte aberta ganha o mesmo fundo, a barra, o negrito e o deslize.
 - **Plano e pacotes (30/10/2026, a pedido):** seção logo abaixo de Turmas, só para quem vê cobranças (`billing:view`). O resumo fica em destaque (texto normal, não cinza): "Plano Inicial · R$ 130,00/mês · vence dia 27", "Pacote 10 aulas · 8 aulas restantes", "Bolsista integral" ou "Sem mensalidade". Aberta (`student-plan-panel.tsx`): nome do plano e valor grandes, a linha de situação, vencimento, pagamento e Pix Automático com "Trocar plano" (abre o cadastro), a bolsa e os pacotes (`StudentPackagesPanel` compacto: em uso com a barra do saldo, encerrados em "Mostrar encerrados", renovar e cancelar no ⋮). Substituiu a seção "Pacotes" e o cartão "Mensalidade" do Cadastro; `?tab=packages` abre ela.
 - **Cadastro sem cartões (30/10/2026 e 07/11/2026, a pedido):** grade de até 3 colunas, sem título repetido nem segundo "Editar", só os campos preenchidos; o que falta vira "Falta e-mail e nascimento · Completar cadastro". Responsáveis na grade (sempre para menor). Menor de idade mostra a autorização LGPD: "Registrar termo impresso" abre diálogo explicativo (Art. 14 LGPD, retenção da folha física na recepção e seleção do responsável que assinou); caso tenha sido registrado por engano, permite "Desfazer registro" com confirmação para voltar a pendente; "Baixar termo" permite gerar o PDF. Enviar e copiar o link pelo WhatsApp ficam no aviso do topo.
+
+### 1.9. Carregamento da rota: `loading.tsx` (09/11/2026)
+As páginas de `(app)` são dinâmicas (sessão e `requirePermission` no server). Sem `loading.tsx`, o Next só troca de tela quando a página inteira chega do servidor; em rede lenta (3G) o clique fica parado alguns segundos. `app/(app)/loading.tsx` resolve: ele vem no prefetch e a troca é imediata.
+- **Barra fina no topo em todas as telas** (decidido com o dono): a mesma `list-refresh-bar` da lista ao atualizar (`globals.css`), presa no topo da janela, correndo de um lado para o outro até a página chegar. Aparece só depois de 250 ms (troca rápida não mostra nada) e fica parada com movimento reduzido. Depois, o skeleton de cada tela entra normalmente.
+- Sem casca com formato de tela: uma casca de lista prometeria um formato que painel, detalhe e calendário não têm. Uma casca própria por tela só se o teste em 3G mostrar que o vazio incomoda numa tela muito aberta.
 
 ---
 
@@ -175,6 +187,7 @@ Todos os modais de cadastro e edição usam **exclusivamente** este trio de labe
 
 ### 2.5. Anexo de Arquivos (`FileDropField`)
 - Use `FileDropField` (`@/components/form`) para anexar um ou mais arquivos: área de arrastar e soltar (ou clicar; no celular, "Toque para escolher"), lista com miniatura da imagem, tipo (`PDF`, `PNG`), tamanho e botão de remover. O valor no RHF é `File[]` (padrão `[]`), com `name`, `type` (MIME) e `size` de cada arquivo.
+- **Câmera no celular (10/11/2026):** sem botão próprio. Tocar na área já oferece a câmera no iPhone e no Android (testado pelo dono); um botão "Tirar foto" chegou a ser feito e saiu no mesmo dia.
 - As regras (`accept` com MIME exato, curinga `image/*` ou extensão `.pdf`; `maxSizeBytes`; `maxFiles`; `acceptLabel`) vão no campo **e** no schema: `filesSchema(regras)` de `@/lib/files`, para a lista marcar em vermelho o mesmo arquivo que o Zod recusa. Arquivo repetido (mesmo nome, tamanho e data) não duplica. Fora de formulário, use `FileDropzone` (controlado por `value`/`onChange`).
 - Comprovante de pagamento: `RECEIPT_FILE_RULES` (imagem ou PDF, até 4 MB cada, no máximo 5; teto de 4 MB para todo envio, `MAX_UPLOAD_BYTES`, com um arquivo por requisição, desde 04/11/2026), já aplicado no `PaymentDialog`. Por enquanto os arquivos não são enviados (ver `docs/technical/05-modulo-financeiro.md`, seção 10).
 
@@ -205,6 +218,39 @@ Formulário de cadastro e edição abre em drawer (`Sheet` à direita). O rodap�
 - Exemplos: `sell-package-dialog.tsx`, `plan-form.tsx`, `components/shared/payment-dialog.tsx`.
 - Em 22/10/2026 também viraram drawer: matricular da lista de espera (curso), editar mensagem automática, ativar conta de recebimento, transferir saldo (Pix), pagamento do mês do professor e nova série recorrente. Em 31/10/2026, adicionar aluno na aula (avulsa, pacote ou experimental): tipos um por linha com marcador, valor da avulsa como linha só de leitura (vem da turma). Também em 31/10/2026, trocar o instrutor da aula (resumo da aula, substituto, motivo; "Restaurar titular" no rodapé quando há substituto). Continuam modal: ações de um ou dois campos, janelas empilhadas sobre um drawer (gerenciar categorias, termos de intermediação, nova meta), fluxos guiados e telas só de leitura.
 
+### 2.8. Valor sugerido que acompanha outro campo (10/11/2026)
+Quando um campo é preenchido pelo sistema e acompanha outro (valor da inscrição pelos dias escolhidos, modo de pagamento pelo plano), **não use `form.getFieldState(campo).isDirty`** para saber se a pessoa mexeu nele. O react-hook-form recalcula os campos "editados" comparando tudo com os valores iniciais: depois que o sistema troca o valor, qualquer mudança em outro campo marca este como editado, e a sugestão para de acompanhar.
+- Bug real: na inscrição de evento por dia, "Só alguns dias" punha R$ 0 (nenhum dia marcado), o primeiro dia marcado travava a sugestão em zero e as inscrições saíam sem cobrança.
+- Vale para todo formulário: o `FieldShell` lê `formState.isDirty` (aviso de descartar), e isso liga o recálculo do react-hook-form em todos.
+- **Regra para valor posto pelo sistema:**
+  - Não deve contar como alteração (padrões do espaço, horário sugerido, disponibilidade da unidade): `form.resetField(campo, { defaultValue })`. O valor sugerido vira o novo inicial, e o `isDirty` daquele campo volta a ser confiável. Exemplos: `turma-form.tsx`, `client-form.tsx`, `professional-form.tsx`, `activate-subaccount-dialog.tsx`.
+  - Precisa acompanhar outro campo e ser salvo (fuso pelo estado nas Configurações, valor da inscrição pelos dias): guarde a última sugestão num `useRef` e só troque se o campo ainda mostra ela; use `shouldDirty: true` quando a tela salva só o que mudou. Exemplos: `organization-settings-card.tsx`, `register-drawer.tsx`.
+  - Nunca `setValue` sem `shouldDirty` seguido de uma checagem de `isDirty` do mesmo campo.
+- Revisão de 10/11/2026 (todos os formulários de `apps/web` e `apps/admin`): corrigidos inscrição de evento (valor), Configurações (fuso), nova turma (data e horários sugeridos, duração), novo profissional (disponibilidade) e novo aluno (padrões de cobrança). Já estavam certos: modo de pagamento do aluno, forma de cobrança e vagas da turma, endereço da conta de recebimento, telas de certificado e regras de cobrança.
+- Dinheiro zerado num evento pago pede confirmação ("Inscrever sem cobrança?"), para cortesia ser sempre de propósito.
+
+
+### 2.9. Cadastros longos em blocos (10/11/2026, decidido com o dono)
+Formulário longo se divide em seções (`FormSection` de `@/components/form`) com **o mesmo visual da seção aberta da ficha do aluno** (`CollapsibleSection`, §1.8): borda fina, fundo suave (a mesma cor da ficha: `muted` a 40%, no escuro 25%, misturado com `--card`, para ficar igual também no tema escuro, onde o card é mais claro que o fundo) e a barra fina à esquerda que para antes da borda. Sem título visível e sem abrir/fechar (`title` só para leitor de tela); os blocos se separam pelo espaço entre eles (`space-y-4` no corpo). **No celular (abaixo de `sm`) a seção perde a caixa** (sem borda, fundo, barra nem padding) e os grupos se separam por `space-y-8`: a caixa comia a largura e os campos ficavam espremidos (pedido do dono, 10/11/2026). Seção com interruptor mantém a borda no celular, com padding menor (`p-3`). Campos de texto e selects ganham fundo próprio dentro do bloco. Histórico (10/11/2026): título em maiúsculas com linha pesou; só espaço ficou sem contexto; ícone com título não agradou; fundo cinza sem borda; o dono escolheu o visual da ficha. No evento, o campo "Quem conduz" tem rótulo. Dentro da seção não vai outro card (valores do curso e do evento ficam direto no bloco).
+- **Quando usar seção (critério, 10/11/2026, decidido com o dono):** a barra lateral sempre quer dizer "este bloco está em uso".
+  - **Formulário curto** (um assunto, até uns 6 campos: lançamento, cobrança avulsa, pacote, avaliação, usuário, serviço, bloqueio, inscrição): campos soltos, sem seção.
+  - **Formulário longo com grupos fixos** (Nova turma, Novo evento): `FormSection`, sempre com fundo e barra.
+  - **Partes que se ligam ou abrem**: só borda quando desligada ou fechada; fundo e barra quando ligada ou aberta. Seção que abre: `CollapsibleSection` (cadastro de aluno e de profissional). Seção com interruptor: `toggleSectionClass(ligada)` + `<SectionBar visible={ligada} />` (Nova modalidade: trilha de níveis, avaliações, testes e medidas).
+  - Fora do critério: telas de Configurações (padrão próprio de blocos e barra de salvar) e avisos destacados (ex.: "Liberar acesso ao sistema" no profissional).
+
+- **Nova turma e Novo evento seguem a mesma ordem:** Sobre (nome, modalidade; no evento, descrição recolhida em "+ Adicionar descrição") → Quem conduz → Quando (turma: data de início e encontros; evento: dias) → Vagas e cobrança (vagas, forma de cobrança e valores, avulsos na turma, "Conta para a graduação" no evento).
+- Campo não fica ao lado de outro só para fechar a linha: "Vagas" e "Data de início" ficam cada um no seu bloco, com meia largura.
+- Mesmos nomes nos dois: "Vagas" (antes "Capacidade (vagas)" na turma) e "Quem conduz".
+- Quem conduz no evento: o seletor "Da equipe / Convidado" em cima e o campo embaixo; com duas pessoas ou mais, uma por linha numa lista com borda e lixeira.
+
+
+### 2.10. Foco no campo com erro (10/11/2026, decidido com o dono)
+Ao salvar com campo obrigatório vazio ou inválido, **o foco vai para o primeiro campo com erro, na ordem da tela**, em todo formulário.
+- **Formulário com react-hook-form:** automático. O RHF foca o campo que tem `ref` (os campos de `@/components/form` passam o `ref`); o `FieldShell` cobre os controles próprios (lista de dias, chips, horários, aceite): ao salvar, o primeiro `FieldShell` com erro do formulário foca o primeiro controle dentro dele. Controle que mostra o erro sozinho passa `invalid` ao `FieldShell` (ex.: "Encontros e Horários" da turma).
+- **Erro que volta do servidor por campo:** `handleFormApiError` marca e foca o primeiro.
+- **Formulário fora do RHF** (login, criar e trocar senha, verificação em duas etapas, consentimento, código do certificado, troca de e-mail de acesso, assinatura, adicionar aluno na aula, substituto, notas): `focusField(id)` ou `focusFirstInvalid()` de `@/lib/form-errors`, na ordem da tela. **O erro de um campo fica logo abaixo dele** (como o `FieldShell`), também fora do RHF: login ("Informe seu e-mail." / "Informe sua senha."), criar senha e nova senha (tamanho e "senhas não são iguais"), E-mail de acesso. Só o erro sem campo (senha errada, link vencido, falha do servidor) fica no fim. Senha errada no login volta o foco para a senha, selecionada.
+- No celular o foco abre o teclado, mas só depois do toque em salvar (não é foco automático ao abrir, que continua proibido, §3.2).
+
 ## 3. Usabilidade Mobile (iOS Safari & iOS/Android Chrome)
 
 O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As seguintes regras técnicas evitam bugs clássicos de WebKit / WKWebView (Chrome e Safari no iOS):
@@ -234,7 +280,8 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 
 ### 3.5. `crypto.randomUUID()` em Redes Locais (`http://192.168.x.x`)
 - Ao testar o app pelo celular via IP da rede local (`http://192.168.1.x:3000`), os navegadores mobile classificam a página como contexto não-seguro (`window.isSecureContext === false`) e deixam `crypto.randomUUID` como `undefined` (embora `crypto.getRandomValues` continue disponível).
-- **Regra**: Nunca chame `crypto.randomUUID()` diretamente no código da aplicação ou dos serviços; use sempre `newId(prefix)` de `@/mocks/helpers.ts`, que possui fallback UUID v4 via `crypto.getRandomValues`.
+- **Regra**: Nunca chame `crypto.randomUUID()` diretamente no código da aplicação ou dos serviços; use `newId()` (`@/lib/new-id` nas telas, `@/services/world/ops` nos serviços), que tem fallback UUID v4 via `crypto.getRandomValues`.
+- **Abrir o `pnpm dev` no celular (10/11/2026):** mesmo Wi-Fi, `http://<IP do computador>:3200`. O navegador não fala com o Supabase direto (login, dados e anexos passam pelo servidor do Next, que alcança o `127.0.0.1`), então o Supabase local não precisa de ajuste. O `next.config.ts` libera sozinho os IPs da rede em `allowedDevOrigins` a cada subida do servidor. Cookies de sessão e o CSP só exigem HTTPS em produção. Não funciona por IP: entrar com Google (o retorno do OAuth é o `localhost`) e links de e-mail (`NEXT_PUBLIC_APP_URL`); use e-mail e senha. A câmera do anexo só abre no celular de verdade. **Instalar como app no Android pede HTTPS:** pelo IP (`http://`) o Chrome só oferece "Criar atalho" (o iPhone instala mesmo em `http`). Para testar a instalação no Android: um túnel HTTPS (Cloudflare Tunnel ou ngrok, já liberados em `allowedDevOrigins`) ou, no Chrome do celular, `chrome://flags` → "Insecure origins treated as secure" com `http://<IP>:3200`. Em produção (HTTPS) instala normal.
 
 ---
 
@@ -300,6 +347,7 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Gravação por partes:** `updateOrganization` junta `settings` com o que já está salvo; cada aba manda só as suas chaves (Geral o fuso, Cobrança as regras).
 - **Certificado:** "Quem assina" escolhe entre professor da turma, nome do espaço ou outro nome (ninguém digita `{professor}` ou `{empresa}`). "Voltar ao texto padrão", no bloco Texto, volta o título e o texto no rascunho, com confirmação; quem grava é a barra.
 - **Aparência:** tema (claro, escuro ou do sistema), cor de destaque (um cinza só, "Padrão") e som. Cor base, cantos, menu lateral (escuro), fonte e estilo ficam fixos no CSS (`lib/theme-accent.ts`); sem Google Fonts na política de segurança.
+- **Som da chamada (09/11/2026, a pedido):** com o som ligado, um select escolhe entre 7 sons, cada um com um jeito claro: Confirmação (padrão: duas notas rápidas subindo, o "deu certo" mais reconhecível), Bipe (o som de antes), Sino, Gota, Acorde, Marimba e Suave. Ding, Duplo, Pop e Bolha saíram por soarem parecidos com outros; som salvo que saiu da lista volta para a Confirmação; escolher já toca o som, e "Testar" repete. Os sons são sintetizados no navegador (`lib/audio-feedback.ts`, sem arquivo) e a escolha fica em `UserPreferences.checkinSound`, por pessoa.
 - **Abas segmentadas (`PageTabs`):** o contorno de foco aparece só pelo teclado.
 
 ## Relatórios: catálogo em lista (01/11/2026, decidido com o dono)

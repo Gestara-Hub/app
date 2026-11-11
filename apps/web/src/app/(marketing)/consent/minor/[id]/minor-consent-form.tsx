@@ -19,6 +19,7 @@ import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { focusField } from "@/lib/form-errors";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { confirmMinorConsentAction } from "@/services/legalConsent/actions";
@@ -55,12 +56,15 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreed) {
-      setHasError(true);
-      return;
-    }
+    // Na ordem da tela: o nome vem antes do aceite; o foco vai para o que falta.
     if (!guardianName.trim()) {
       toast.error("Informe seu nome completo como responsável.");
+      focusField("guardian-name");
+      return;
+    }
+    if (!agreed) {
+      setHasError(true);
+      focusField("minor-agree");
       return;
     }
 

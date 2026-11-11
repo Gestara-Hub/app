@@ -28,6 +28,19 @@ All wrap `FieldShell` (label + error). NOTE: clicking the label must NOT open th
 - Build the payload, call the mutation (**/web-data**). On error: `getFieldErrors(error)` → `form.setError(field, {message})`; else toast `getErrorMessage(error, "…")`.
 - Footer: `DialogFooter` with Cancelar (`DialogClose`) + submit ("Criar…/Salvar alterações").
 
+## Values the system fills in (suggested, defaults, following another field) — CRITICAL
+`FieldShell` reads `formState.isDirty`, so RHF recomputes `dirtyFields` against the defaults in every form:
+a value written with `setValue` (no `shouldDirty`) becomes "dirty" on the next change in ANY other field.
+Never gate a suggestion on `getFieldState(x).isDirty` / `dirtyFields.x` after a programmatic `setValue`
+(real bug 2026-11-10: event registration amount froze at R$ 0, registrations saved with no charge).
+- Suggestion that is not a user edit (space defaults, unit hours, suggested slot): `form.resetField(x, { defaultValue })`.
+- Suggestion that follows another field and must be saved (amount by days, time zone by state): keep the
+  last suggested value in a `useRef`; update only while the field still shows it; `shouldDirty: true` when the
+  screen saves only `dirtyFields`. References: `register-drawer.tsx`, `organization-settings-card.tsx`.
+- Money field at 0 on a paid flow: soft-confirm ("…sem cobrança?") before submitting.
+- Repro without React: `createFormControl` from react-hook-form + `control._proxyFormState.isDirty = true`.
+Rule and history: `docs/frontend/07-padroes-telas-e-ux.md` §2.8.
+
 ## Soft-confirm ("regra mole")
 Never hard-block avoidable-mistake cases (past date, lunch break, destructive). Open an `AlertDialog`
 "…mesmo assim?" and proceed on confirm. Reference: `appointment-form.tsx` (`confirmPast`/`confirmBreak`),

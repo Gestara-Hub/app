@@ -6,6 +6,7 @@ import { normalizeCertificateCode } from "@gestarahub/core/certificate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { focusField } from "@/lib/form-errors";
 
 /** Campo do codigo: aceita minusculas e sem tracos; vai para a pagina do certificado. */
 export function CertificateCodeForm() {
@@ -18,6 +19,7 @@ export function CertificateCodeForm() {
     const code = normalizeCertificateCode(value);
     if (!code) {
       setError("O código tem o formato GH-XXXX-XXXX.");
+      focusField("certificate-code");
       return;
     }
     router.push(`/p/certificado/${code}`);

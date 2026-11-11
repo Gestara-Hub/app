@@ -130,7 +130,7 @@ async function expectFormDefaults(page: Page, billing: BillingMode, capacity: nu
   for (const other of Object.values(CLASS_BILLING_LABEL).filter((l) => l !== CLASS_BILLING_LABEL[billing])) {
     await expect(form.getByRole("radio", { name: startsWith(other) })).toHaveAttribute("aria-checked", "false");
   }
-  await expect(form.getByLabel("Capacidade (vagas)")).toHaveValue(String(capacity));
+  await expect(form.getByLabel("Vagas", { exact: true })).toHaveValue(String(capacity));
   // Sem horario de funcionamento: comeca as 19:00 com a duracao da area.
   await expect(form.getByLabel("Início do encontro")).toHaveValue("19:00");
   await expect(form.getByLabel("Fim do encontro")).toHaveValue(endTime(durationMinutes));
