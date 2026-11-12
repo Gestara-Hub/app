@@ -358,6 +358,8 @@ O que saiu: PostHog só baixa depois do aceite de cookies; a configuração do Z
 
 ### Servidor e memória
 
+- **Login e perfil ao mesmo tempo (12/11/2026):** toda chamada passa por `requireTenant` (`services/server/tenant.ts`), que conferia o login no Auth do Supabase e só depois buscava a linha do usuário no banco. Agora a linha é buscada junto, pelo id da sessão local (o cookie, renovado antes se vencido, uma vez só). A segurança não muda: o RLS confere o token no banco, e a linha só vale se for da pessoa que o `getUser` confirmou; se não for, busca de novo pelo id certo. Ganha uma ida ao banco em sequência por chamada (na Vercel em `gru1` com o Supabase em São Paulo, algo como 10 a 40 ms). Teste: `tenant-parallel.test.ts` (ordem das idas, sessão local com outro id, Auth sem usuário, sem sessão).
+
 - Repetição em conflito com espera aleatória de 25 a 150 ms (antes repetia na hora e batia de novo).
 - Cache do espaço limitado a 150 mil linhas (antes 400 mil, mais de 300 MB por instância); `WORLD_CACHE_MAX_ROWS` ajusta pelo ambiente.
 - Um cliente administrativo do Supabase por processo, em vez de dezenas por chamada.

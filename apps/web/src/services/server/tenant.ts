@@ -49,12 +49,42 @@ export function isTransientAuthError(error: unknown): boolean {
   return false;
 }
 
+const USER_ROW_FIELDS =
+  "id, auth_user_id, organization_id, profile, professional_id, organizations(status, settings, subscription, units(address))";
+
+function userRowOf(client: TenantClient, authUserId: string) {
+  return client
+    .from("users")
+    .select(USER_ROW_FIELDS)
+    .or(`auth_user_id.eq.${authUserId},id.eq.${authUserId}`)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+}
+
+/** A linha do usuario e a da pessoa que o Auth confirmou. */
+function rowBelongsTo(row: { id?: unknown; auth_user_id?: unknown } | null, authUserId: string): boolean {
+  return Boolean(row) && (String(row?.auth_user_id ?? "") === authUserId || String(row?.id ?? "") === authUserId);
+}
+
 export async function requireTenant(): Promise<TenantContext> {
   const client = await createSupabaseServerClient();
+  // Login e perfil ao mesmo tempo (12/11/2026): antes, a linha do usuario so
+  // era buscada depois da resposta do Auth (duas idas seguidas por chamada).
+  // A sessao local (do cookie, renovada aqui se vencida, uma vez so) da o id
+  // para a busca; o RLS confere o token no banco, e a linha so vale se for da
+  // pessoa que o `getUser` confirmou. Se nao for, busca de novo pelo id certo.
   const {
-    data: { user },
-    error: authError,
-  } = await client.auth.getUser();
+    data: { session },
+  } = await client.auth.getSession();
+  const claimedId = session?.user?.id;
+  const [
+    {
+      data: { user },
+      error: authError,
+    },
+    early,
+  ] = await Promise.all([client.auth.getUser(), claimedId ? userRowOf(client, claimedId) : Promise.resolve(null)]);
   // Falha passageira do servico de login (rede, sobrecarga, limite): nao e
   // sessao vencida. Antes virava "Sua sessão expirou" e mandava para o login
   // (pico de 100 chamadas simultaneas, 11/11/2026); agora pede para tentar de novo.
@@ -62,14 +92,9 @@ export async function requireTenant(): Promise<TenantContext> {
   if (!user || isPlatformAdminUser(user)) throw unauthorized();
   if ((await secondFactorState(client, user)) === "missing") throw missingSecondFactor();
 
-  const { data: row, error } = await client
-    .from("users")
-    .select("id, organization_id, profile, professional_id, organizations(status, settings, subscription, units(address))")
-    .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-  if (error || !row) throw unauthorized();
+  const { data: row, error } =
+    early && !early.error && rowBelongsTo(early.data, user.id) ? early : await userRowOf(client, user.id);
+  if (error || !row || !rowBelongsTo(row, user.id)) throw unauthorized();
 
   const profile = row.profile as UserProfile;
   const organization = (row.organizations ?? null) as {
