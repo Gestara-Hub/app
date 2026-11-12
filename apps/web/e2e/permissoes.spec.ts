@@ -6,6 +6,8 @@ import {
   openProfileSection,
   profileAlert,
   profileSection,
+  openRowMenu,
+  rowMenuAction,
   seedAcademy,
   student,
   test,
@@ -139,17 +141,16 @@ test.describe("professor", () => {
     await loginAsUser(page, PROF, PROF_LINK);
     // So na turma dele (a da Paula nao abre para o professor).
     await page.goto("/classes/cg-own");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await openRowMenu(page, "Aluno Alfa", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Cancelar matrícula" })).toHaveCount(0);
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await page.getByRole("menuitem", { name: "Notas", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Notas" });
     await expect(dialog).toContainText("Prova Carlos");
     await expect(dialog).toContainText("8");
     await page.keyboard.press("Escape");
 
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-own~2026-09-21~17:00")}`);
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova Carlos");
   });
 
@@ -197,8 +198,7 @@ test.describe("atendente", () => {
 
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova Carlos");
   });
 

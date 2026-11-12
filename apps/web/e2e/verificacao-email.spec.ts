@@ -26,7 +26,7 @@ async function signOut(page: Page) {
 async function signInWithPassword(page: Page) {
   const owner = currentAcademy().owner;
   await page.getByLabel("E-mail").fill(owner.email);
-  await page.getByLabel("Senha", { exact: true }).fill(owner.password);
+  await page.getByRole("textbox", { name: "Senha", exact: true }).fill(owner.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
 }
 

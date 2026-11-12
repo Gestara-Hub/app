@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, openRowMenu, readAcademy, rowMenuAction, seedAcademy, student, test } from "./fixtures";
 import {
   ADULT,
   MODULES_TRACK,
@@ -174,7 +174,7 @@ test.describe("modalidade", () => {
     await expect(assessmentsTab(page)).toHaveCount(0);
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await openRowMenu(page, "Aluno Alfa", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Registros de aula" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Notas" })).toHaveCount(0);
     const stored = ((await readAcademy()).assessments ?? []).length;
@@ -268,9 +268,10 @@ test.describe("avaliações da turma", () => {
     await page.goto("/audit");
     await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
     await page.getByRole("option", { name: "Avaliação", exact: true }).click();
+    // A linha da auditoria abre com maiuscula ("Criou a avaliação ...").
     const list = page.getByRole("main");
-    await expect(list.getByText(/criou a avaliação/).first()).toBeVisible();
-    await expect(list.getByText(/lançou as notas de Prova oral da turma Inglês Noite/)).toBeVisible();
+    await expect(list.getByText(/criou a avaliação/i).first()).toBeVisible();
+    await expect(list.getByText(/lançou as notas de Prova oral da turma Inglês Noite/i)).toBeVisible();
   });
 });
 
@@ -511,8 +512,7 @@ test.describe("boletim 'Notas'", () => {
     await seedSchool(page, { extra: reportCardWorld });
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     const dialog = page.getByRole("dialog", { name: "Notas" });
     const picker = dialog.getByRole("tablist", { name: "Modalidade" });
     await expect(picker.getByRole("tab")).toHaveText(["Inglês", "Teoria Musical"]);
@@ -530,8 +530,7 @@ test.describe("boletim 'Notas'", () => {
     await seedSchool(page, { extra: reportCardWorld });
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Beta", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Beta", "Notas");
     const dialog = page.getByRole("dialog", { name: "Notas" });
     // Beta so tem Ingles: sem a troca de modalidade.
     await expect(dialog.getByRole("tablist", { name: "Modalidade" })).toHaveCount(0);
@@ -546,14 +545,12 @@ test.describe("boletim 'Notas'", () => {
   test("pela lista da turma, pela chamada e pela ficha do aluno", async ({ page }) => {
     await seedSchool(page, { extra: reportCardWorld });
     await page.goto(CLASS_URL);
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     await expectAlfaReportCard(page.getByRole("dialog", { name: "Notas" }));
     await page.keyboard.press("Escape");
 
     await page.goto(`/classes/sessions/${encodeURIComponent(SESSION)}`);
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     await expectAlfaReportCard(page.getByRole("dialog", { name: "Notas" }));
     await page.keyboard.press("Escape");
 
@@ -575,19 +572,19 @@ test.describe("boletim 'Notas'", () => {
     });
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await openRowMenu(page, "Aluno Alfa", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Registros de aula" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Notas" })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
     await page.goto(CLASS_URL);
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await openRowMenu(page, "Aluno Alfa", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Registros de aula" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Notas" })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
     await page.goto(`/classes/sessions/${encodeURIComponent(SESSION)}`);
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await openRowMenu(page, "Aluno Alfa", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Módulos" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Notas" })).toHaveCount(0);
     await page.keyboard.press("Escape");
@@ -616,8 +613,7 @@ test.describe("boletim 'Notas'", () => {
 
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Beta", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Beta", "Notas");
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova do módulo 1");
   });
 });
@@ -672,8 +668,7 @@ test.describe("fase A: soma dos pontos, recuperação e frequência mínima (31/
 
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     const card = page.getByRole("dialog", { name: "Notas" });
     const total = card.locator("div.rounded-lg").filter({ hasText: "Total" }).first();
     await expect(total).toContainText("8");
@@ -713,8 +708,7 @@ test.describe("fase A: soma dos pontos, recuperação e frequência mínima (31/
 
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     const card = page.getByRole("dialog", { name: "Notas" });
     await expect(card.locator("div.rounded-lg").filter({ hasText: "Média geral" }).first()).toContainText("7");
     await expect(
@@ -735,8 +729,7 @@ test.describe("fase A: soma dos pontos, recuperação e frequência mínima (31/
     });
     await skipClientsCoachmark(page);
     await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Notas" }).click();
+    await rowMenuAction(page, "Aluno Alfa", "Notas");
     const card = page.getByRole("dialog", { name: "Notas" });
     await expect(card).toContainText("Frequência mínima 75%");
     await expect(card).toContainText("Nota acima da mínima");

@@ -163,7 +163,8 @@ test.describe("aula", () => {
     await page.goto(SESSION_PAST);
     await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
-    await expect(dialog).toContainText("Esta turma não aceita aula avulsa.");
+    // Sem aluno com pacote, so a experimental; a turma sem avulso e dita na frase (11/11/2026).
+    await expect(dialog).toContainText("Entra como experimental. Turma sem aula avulsa.");
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: /Experimental/ })).toHaveAttribute("aria-pressed", "true");
   });

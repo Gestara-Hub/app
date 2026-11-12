@@ -155,7 +155,7 @@ async function exportCsv(page: Page) {
 const catalog = (page: Page) => page.getByTestId("reports-catalog");
 
 test.describe("catálogo", () => {
-  test("grátis: 8 relatórios, os de gestão travados no Pro", { tag: "@smoke" }, async ({ page }) => {
+  test("grátis: 10 relatórios, os de gestão travados no Pro", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page);
     await page.goto("/reports");
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
@@ -164,7 +164,11 @@ test.describe("catálogo", () => {
       await expect(page.getByRole("heading", { level: 2, name: group })).toBeVisible();
     }
     await expect(catalog(page).getByRole("button", { name: /^Abrir / })).toHaveCount(6);
-    await expect(catalog(page).getByRole("button", { name: /^Ver no Plano Profissional: / })).toHaveCount(2);
+    // Pro: DRE, Retencao, Aulas experimentais e Eventos e seminarios (relatorio de eventos, 09/11/2026).
+    await expect(catalog(page).getByRole("button", { name: /^Ver no Plano Profissional: / })).toHaveCount(4);
+    for (const title of ["DRE gerencial", "Retenção de alunos", "Aulas experimentais", "Eventos e seminários"]) {
+      await expect(catalog(page).getByRole("button", { name: `Ver no Plano Profissional: ${title}` })).toBeVisible();
+    }
     await expect(page.getByPlaceholder("Buscar relatório")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Escolher mês/ })).toHaveCount(0);
     await expect(main(page).getByText("DRE gerencial", { exact: true })).toBeVisible();
@@ -180,7 +184,7 @@ test.describe("catálogo", () => {
   test("Pro libera todos e abre o relatório escolhido no catálogo", async ({ page }) => {
     await seedReports(page, { pro: true });
     await page.goto("/reports");
-    await expect(catalog(page).getByRole("button", { name: /^Abrir / })).toHaveCount(8);
+    await expect(catalog(page).getByRole("button", { name: /^Abrir / })).toHaveCount(10);
     await expect(catalog(page).getByRole("button", { name: /^Ver no Plano Profissional: / })).toHaveCount(0);
     await page.getByRole("button", { name: "Abrir Aniversariantes do mês" }).click();
     await expect(main(page)).toContainText("Aniversariantes de setembro");

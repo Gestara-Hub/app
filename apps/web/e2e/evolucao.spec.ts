@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, rowMenuAction, seedAcademy, student, test } from "./fixtures";
 
 /**
  * Evolucao do aluno: modal de Graduacao (jornada, graduar, ponto de partida)
@@ -54,8 +54,7 @@ async function openFromClients(page: Page, name: string, item: "Graduação" | "
   // Sem o destaque "Lista ou cards" (aparece uma vez com 3+ alunos e cobre a tela).
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
   await page.goto("/clients");
-  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
-  await page.getByRole("menuitem", { name: item }).click();
+  await rowMenuAction(page, name, item);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   return dialog;

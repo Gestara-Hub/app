@@ -1,4 +1,15 @@
-import { expect, openProfileSection, pageAction, profileSection, seedAcademy, skipWelcome, student, test } from "./fixtures";
+import {
+  expect,
+  expectOverdueRow,
+  openProfileSection,
+  pageAction,
+  profileSection,
+  seedAcademy,
+  skipWelcome,
+  statusTab,
+  student,
+  test,
+} from "./fixtures";
 import {
   charge,
   contextMenuItems,
@@ -137,11 +148,13 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
     },
   });
   await page.goto("/classes/billing?status=all&kind=extra");
-  await expect(rowOf(page, "Aluno Atrasado")).toContainText("Atrasado");
+  // Sem selo "Atrasado" (10/11/2026): a data vencida fica em vermelho.
+  await expectOverdueRow(rowOf(page, "Aluno Atrasado"), "05/09");
   await expect(rowOf(page, "Aluno Aberto")).toContainText("Pendente");
 
   // Cartoes do mes: R$ 260 ativos, R$ 50 em atraso.
-  const card = (title: string) => page.locator("div.rounded-xl.shadow-2xs").filter({ has: page.getByText(title, { exact: true }) });
+  // O rotulo do cartao "Cancelado" traz a etiqueta "Não cobrado" ao lado: compara pelo comeco do texto.
+  const card = (title: string) => page.locator("div.rounded-xl.shadow-2xs").filter({ hasText: new RegExp(`^${title}`) });
   await expect(card("Total ativo")).toContainText("R$ 260,00");
   await expect(card("Total ativo")).toContainText("3 ativas");
   await expect(card("Em atraso")).toContainText("R$ 50,00");
@@ -204,14 +217,16 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
   await expect(reopen).toContainText("A cobrança de Aluno Atrasado (R$ 50,00) volta a compor o total a receber.");
   await reopen.getByRole("button", { name: "Reabrir cobrança" }).click();
   await expect(page.getByText("Cobrança reaberta.")).toBeVisible();
-  await expect(canceled).toContainText("Atrasado");
+  await expectOverdueRow(canceled, "05/09");
+  await expect(canceled).not.toContainText("Cancelado");
   await expect(canceled).not.toContainText("Aluno ganhou desconto");
 
-  // Filtro de situacao com contagem; "Canceladas" vazio mostra o aviso e limpa.
-  await pickSelect(page, "Filtrar por situação", /Atrasadas/);
+  // Aba de situacao com contagem; "Canceladas" (so pelo link) vazio mostra o aviso e limpa.
+  await expect(statusTab(page, "Em atraso")).toHaveText(/1$/);
+  await statusTab(page, "Em atraso").click();
   await expect(page).toHaveURL(/status=overdue/);
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
-  await pickSelect(page, "Filtrar por situação", /Canceladas/);
+  await page.goto("/classes/billing?status=canceled&kind=extra");
   await expect(page.getByText("Nenhuma cobrança com esta situação no mês.")).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros" }).first().click();
   await expect(page).not.toHaveURL(/status=|kind=/);
@@ -236,7 +251,7 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
   // So mensalidades: com a avulsa no mesmo mes, o aluno vira uma linha consolidada.
   await page.goto("/classes/billing?status=all&kind=membership");
-  await expect(rowOf(page, "Aluno Saindo").filter({ hasText: "Mensal Jiu-Jitsu" })).toContainText("Atrasado");
+  await expectOverdueRow(rowOf(page, "Aluno Saindo").filter({ hasText: "Mensal Jiu-Jitsu" }), "20/09");
   await waitForTenant(page, (t) => t.charges.some((c: { kind: string }) => c.kind === "membership"));
 
   await page.goto("/clients");

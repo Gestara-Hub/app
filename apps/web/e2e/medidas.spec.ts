@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, openProfileSection, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, openProfileSection, openRowMenu, rowMenuAction, seedAcademy, student, test } from "./fixtures";
 import { skipClientsCoachmark } from "./ficha-notas-fixtures";
 
 /**
@@ -44,8 +44,7 @@ async function seedMeasured(page: Page, opts: { history?: boolean } = {}) {
 async function openFromList(page: Page) {
   await skipClientsCoachmark(page);
   await page.goto("/clients");
-  await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Testes e medidas" }).click();
+  await rowMenuAction(page, "Aluno Alfa", "Testes e medidas");
   const dialog = page.getByRole("dialog", { name: "Testes e medidas" });
   await expect(dialog).toContainText("Aluno Alfa");
   return dialog;
@@ -148,7 +147,7 @@ test("sem modalidade com medidas, o item some do menu do aluno", async ({ page }
   });
   await skipClientsCoachmark(page);
   await page.goto("/clients");
-  await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+  await openRowMenu(page, "Aluno Alfa", { followUp: true });
   await expect(page.getByRole("menuitem", { name: "Notas" }).or(page.getByRole("menuitem").first())).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Testes e medidas" })).toHaveCount(0);
 });

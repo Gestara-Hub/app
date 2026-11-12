@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { expect, expectActiveTab, expectOverdueRow, monthPicker, seedAcademy, statusTab, student, test } from "./fixtures";
 
 // Fluxos longos (login + varias telas): com o `pnpm dev` ocupado, 30 s nao bastam.
 test.describe.configure({ timeout: 60_000 });
@@ -35,7 +35,7 @@ test("cancelar com motivo sugerido mostra o motivo na linha; reabrir limpa", asy
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
   await page.goto("/classes/billing?status=all");
   const row = rowOf(page, "Aluno A20");
-  await expect(row).toContainText("Atrasado");
+  await expectOverdueRow(row, "20/09");
 
   await rowAction(page, "Aluno A20", "Cancelar cobrança");
   const confirm = page.getByRole("alertdialog", { name: "Cancelar a cobrança?" });
@@ -50,7 +50,8 @@ test("cancelar com motivo sugerido mostra o motivo na linha; reabrir limpa", asy
   await row.getByRole("button", { name: "Reverter" }).click();
   await page.getByRole("alertdialog", { name: "Reabrir cobrança?" }).getByRole("button", { name: "Reabrir cobrança" }).click();
   await expect(page.getByText("Cobrança reaberta.")).toBeVisible();
-  await expect(row).toContainText("Atrasado");
+  await expectOverdueRow(row, "20/09");
+  await expect(row).not.toContainText("Cancelado");
   await expect(row).not.toContainText("Plano errado");
 });
 
@@ -73,10 +74,16 @@ test("bolsista integral pelo cadastro: linha \"Bolsista\", sem valor a cobrar e 
   await expect(page.getByRole("button", { name: "Ações de Aluna Bolsista" })).toHaveCount(0);
   await expect(page.getByText("0 ativas · 1 isenta")).toBeVisible();
 
-  await pickFilter(page, "Filtrar por situação", "Isentas");
-  await expect(page).toHaveURL(/status=waived/);
+  // Sem o seletor de situacao (11/11/2026): a isenta fica na aba "Isentas e encerradas".
+  await statusTab(page, "Isentas e encerradas").click();
+  await expect(page).toHaveURL(/status=other/);
   await expect(row).toBeVisible();
-  await pickFilter(page, "Filtrar por situação", "Pendentes");
+  // Filtro fino pelo link: so isentas mostra a linha; so pendentes, nao.
+  await page.goto("/classes/billing?status=waived");
+  await expect(page.getByText("Mostrando: Isentas", { exact: true })).toBeVisible();
+  await expect(row).toBeVisible();
+  await page.goto("/classes/billing?status=pending");
+  await expect(page.getByText("Mostrando: Pendentes", { exact: true })).toBeVisible();
   await expect(row).toHaveCount(0);
 });
 
@@ -141,7 +148,7 @@ test("trocar o plano substitui a cobrança em aberto; \"Substituídas\" mostra a
 
   await page.getByRole("button", { name: "Mostrar" }).click();
   await expect(page).toHaveURL(/status=replaced/);
-  await expect(page.getByRole("combobox", { name: "Filtrar por situação" })).toHaveText("Substituídas");
+  await expect(page.getByText("Mostrando: Substituídas", { exact: true })).toBeVisible();
   await expect(row).toContainText("Substituída");
   await expect(row).toContainText("Mensal Jiu-Jitsu");
   await expect(row).not.toContainText("Mensal Plus");
@@ -159,13 +166,20 @@ test("filtros de situação e tipo vão para a URL e voltam com \"Limpar filtros
       ]),
   });
   await page.goto("/classes/billing?status=overdue");
-  await expect(page.getByRole("combobox", { name: "Filtrar por situação" })).toHaveText("Atrasadas");
+  await expectActiveTab(page, "Em atraso");
   await expect(rowOf(page, "Aluno Atrasado")).toBeVisible();
   await expect(rowOf(page, "Aluno Em Dia")).toHaveCount(0);
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
 
-  await pickFilter(page, "Filtrar por situação", "Pendentes");
-  await expect(page).toHaveURL(/status=pending/);
+  // Aba "Todas" vai para a URL e mostra as duas.
+  await statusTab(page, "Todas").click();
+  await expect(page).toHaveURL(/status=all/);
+  await expect(rowOf(page, "Aluno Atrasado")).toBeVisible();
+  await expect(rowOf(page, "Aluno Em Dia")).toBeVisible();
+
+  // Filtro fino (so pendentes) vem pelo link, sem aba propria.
+  await page.goto("/classes/billing?status=pending");
+  await expect(page.getByText("Mostrando: Pendentes", { exact: true })).toBeVisible();
   await expect(rowOf(page, "Aluno Em Dia")).toBeVisible();
   await expect(rowOf(page, "Aluno Atrasado")).toHaveCount(0);
 
@@ -211,9 +225,9 @@ test("filtro de situação abre direto pela URL em outro mês", async ({ page })
   });
   // Agosto ja passou: a mensalidade dele nasce ao abrir o mes e esta atrasada.
   await page.goto("/classes/billing?month=2026-08&status=overdue");
-  await expect(page.getByRole("button", { name: "Escolher mês (Agosto de 2026)" })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Filtrar por situação" })).toHaveText("Atrasadas");
-  await expect(rowOf(page, "Aluno Agosto")).toContainText("vence 01/08");
+  await expect(monthPicker(page, "Agosto de 2026")).toBeVisible();
+  await expectActiveTab(page, "Em atraso");
+  await expectOverdueRow(rowOf(page, "Aluno Agosto"), "01/08");
   await expect(rowOf(page, "Aluno Setembro")).toHaveCount(0);
 });
 

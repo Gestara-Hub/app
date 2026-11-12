@@ -1,4 +1,4 @@
-import { classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, expectOverdueRow, readAcademy, seedAcademy, student, test } from "./fixtures";
 import {
   TS,
   charge,
@@ -167,7 +167,7 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await page.goto("/classes/billing?status=all&kind=course");
   // Setembro: a vencida (15/09) continua em aberto, atrasada.
   await expect(rowOf(page, "Aluna Meio")).toContainText("parcela 2 de 4");
-  await expect(rowOf(page, "Aluna Meio")).toContainText("Atrasado");
+  await expectOverdueRow(rowOf(page, "Aluna Meio"), "15/09");
   await stepMonth(page, "prev", "2026-08");
   await expect(rowOf(page, "Aluna Meio")).toContainText("Pago");
   await stepMonth(page, "next", "2026-09");
@@ -181,8 +181,10 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await expect(page.getByRole("menu")).toHaveCount(0);
   await stepMonth(page, "next", "2026-11");
   await expect(rowOf(page, "Aluna Meio")).toContainText("Encerrado");
-  // Canceladas pelo sistema entram em "Canceladas" (nao sao substituidas).
-  await pickSelect(page, "Filtrar por situação", /Canceladas/);
+  // Canceladas pelo sistema entram em "Canceladas" (nao sao substituidas); filtro fino so pelo link.
+  await page.goto("/classes/billing?month=2026-11&status=canceled&kind=course");
+  await expect(page.getByText("Mostrando: Canceladas e encerradas", { exact: true })).toBeVisible();
+  await expect(rowOf(page, "Aluna Meio")).toContainText("Encerrado");
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
 });
 

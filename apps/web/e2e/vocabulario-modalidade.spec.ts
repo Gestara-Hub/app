@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, openRowMenu, rollCallRow, rowMenuAction, seedAcademy, student, test } from "./fixtures";
 
 /**
  * As palavras da evolucao seguem a trilha de cada modalidade, nao a area do
@@ -55,8 +55,7 @@ async function openFromClients(page: Page, name: string, item: string): Promise<
   // Sem o destaque "Lista ou cards" (aparece uma vez com 3+ alunos e cobre a tela).
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
   await page.goto("/clients");
-  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
-  await page.getByRole("menuitem", { name: item, exact: true }).click();
+  await rowMenuAction(page, name, item);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   return dialog;
@@ -133,7 +132,7 @@ test.describe("vocabulário pela modalidade", () => {
     await page.goto(`/classes/sessions/${encodeURIComponent(PILATES_SESSION)}`);
     // Nivel em texto na linha do aluno (so faixa usa o selo colorido).
     await expect(rollCallRow(page, "Aluna Pilates")).toContainText("Iniciante");
-    await page.getByRole("button", { name: "Ações de Aluna Pilates", exact: true }).click();
+    await openRowMenu(page, "Aluna Pilates", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Graduação" })).toHaveCount(0);
     await page.getByRole("menuitem", { name: "Níveis", exact: true }).click();
     const dialog = page.getByRole("dialog");

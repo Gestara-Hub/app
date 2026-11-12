@@ -6,6 +6,8 @@ import {
   openProfileSection,
   profileSection,
   rollCallRow,
+  openRowMenu,
+  rowMenuAction,
   seedAcademy,
   student,
   test,
@@ -96,8 +98,7 @@ const evolutionCard = (page: Page, name: string) =>
 async function openFromClients(page: Page, name: string, item: string): Promise<Locator> {
   await skipClientsCoachmark(page);
   await page.goto("/clients");
-  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
-  await page.getByRole("menuitem", { name: item, exact: true }).click();
+  await rowMenuAction(page, name, item);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   return dialog;
@@ -135,9 +136,11 @@ test.describe("palavras da trilha em espaço misto", () => {
     await skipClientsCoachmark(page);
     await page.goto("/clients");
     const items = async (name: string) => {
-      await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
+      // Graduacao e afins ficam no submenu "Acompanhamento" (09/11/2026).
+      await openRowMenu(page, name, { followUp: true });
       const texts = await page.getByRole("menuitem").allTextContents();
       await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
       return texts;
     };
     // As modalidades chegam do banco depois da lista: espera a palavra da trilha.
@@ -250,7 +253,7 @@ test.describe("registros de aula e metas", () => {
     await page.goto(`/classes/sessions/${encodeURIComponent(MUSIC_SESSION)}`);
     // A chamada de Violao fala em modulos: o nivel em texto e "Módulos" no menu do aluno.
     await expect(rollCallRow(page, "Aluno Violão")).toContainText("Módulo Básico");
-    await page.getByRole("button", { name: "Ações de Aluno Violão", exact: true }).click();
+    await openRowMenu(page, "Aluno Violão", { followUp: true });
     await expect(page.getByRole("menuitem", { name: "Módulos", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Registrar a aula" }).click();

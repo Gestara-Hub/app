@@ -103,6 +103,11 @@ test.describe("envio assistido de vários lugares", () => {
     await dialog.getByLabel("Nome").fill("Diego Novo");
     await dialog.getByLabel("Telefone (WhatsApp)").fill("11955554444");
     await dialog.getByRole("radio", { name: /^Não paga mensalidade/ }).click();
+    // Chave de boas-vindas no topo do cadastro (04/11/2026): comeca desligada; ligada, o aviso oferece o envio.
+    const welcome = dialog.getByRole("switch", { name: "Enviar boas-vindas no WhatsApp" });
+    await expect(welcome).not.toBeChecked();
+    await welcome.click();
+    await expect(welcome).toBeChecked();
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Aluno criado com sucesso.")).toBeVisible();
 
@@ -183,32 +188,23 @@ test.describe("envio assistido de vários lugares", () => {
 });
 
 test.describe("modelos de mensagem", () => {
-  test("editar o aniversário mostra a prévia, valida vazio e cancelar descarta", async ({ page }) => {
+  test("configurar o aniversário mostra a prévia preenchida, sem editar o texto", async ({ page }) => {
     await seedComm(page);
     await page.goto("/communication");
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre a
+    // previa com as variaveis preenchidas, sem campo de texto; no envio assistido so "Fechar".
     const card = page.getByRole("group", { name: "Aniversário", exact: true });
-    await card.getByRole("button", { name: "Editar texto" }).click();
+    await card.getByRole("button", { name: "Configurar modelo" }).click();
     const dialog = page.getByRole("dialog", { name: "Aniversário" });
-    const text = dialog.getByLabel("Texto");
-    await text.fill("");
-    await dialog.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Escreva o texto da mensagem.")).toBeVisible();
-
-    await text.fill("Feliz aniversário, {aluno}! Equipe {empresa} 🎂");
-    await expect(dialog).toContainText("Feliz aniversário, Ana Souza! Equipe Academia X 🎂");
-    await dialog.getByRole("button", { name: "Cancelar" }).click();
-    const discard = page.getByRole("alertdialog");
-    if (await discard.isVisible().catch(() => false)) {
-      await discard.getByRole("button", { name: /Descartar/ }).click();
-    }
+    await expect(dialog).toContainText("Como o aluno recebe");
+    await expect(dialog).toContainText("Ana Souza");
+    await expect(dialog).toContainText("Academia X");
+    await expect(dialog).not.toContainText("{");
+    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Salvar" })).toHaveCount(0);
+    // O "Fechar" do rodape (o X do canto tem o mesmo nome).
+    await dialog.getByRole("button", { name: "Fechar", exact: true }).first().click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByText("Feliz aniversário, Ana Souza!")).toHaveCount(0);
-
-    await card.getByRole("button", { name: "Editar texto" }).click();
-    await dialog.getByLabel("Texto").fill("Feliz aniversário, {aluno}! Equipe {empresa} 🎂");
-    await dialog.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Mensagem salva.")).toBeVisible();
-    await expect(card).toContainText("Feliz aniversário, Ana Souza! Equipe Academia X 🎂");
   });
 
   test("atendente vê os modelos e o histórico sem editar nem enviar", async ({ page }) => {
@@ -219,8 +215,8 @@ test.describe("modelos de mensagem", () => {
     await loginAsUser(page, ATTENDANT);
     await page.goto("/communication");
     await expect(page.getByText("Em atraso", { exact: true })).toBeVisible();
-    // Editar os modelos e de quem gerencia a comunicacao; enviar, nao.
-    await expect(page.getByRole("button", { name: "Editar texto" })).toHaveCount(0);
+    // Configurar os modelos e de quem gerencia a comunicacao; enviar, nao.
+    await expect(page.getByRole("button", { name: "Configurar modelo" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Nova mensagem" })).toBeVisible();
     await openTab(page, "Histórico");
     await expect(page.getByRole("button", { name: /^Mensagem para / })).toHaveCount(3);

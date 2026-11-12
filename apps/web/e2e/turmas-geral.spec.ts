@@ -82,7 +82,7 @@ test.describe("cadastro de turma", () => {
     await expect(dialog.getByRole("combobox", { name: /Instrutor/ })).toContainText("Paula Souza");
     await dialog.getByLabel("Início do encontro").fill("20:00");
     await dialog.getByLabel("Fim do encontro").fill("21:00");
-    await dialog.getByLabel("Vagas", { exact: true }).fill("12");
+    await dialog.getByRole("spinbutton", { name: "Vagas", exact: true }).fill("12");
     await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText('Turma "Yoga Noite" criada com sucesso.')).toBeVisible();
     await expect(dialog).toBeHidden();
@@ -111,7 +111,7 @@ test.describe("cadastro de turma", () => {
     await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 10 alunos");
     await pageAction(page, "Mais ações da turma", "Editar turma");
     const edit = page.getByRole("dialog");
-    await edit.getByLabel("Vagas", { exact: true }).fill("20");
+    await edit.getByRole("spinbutton", { name: "Vagas", exact: true }).fill("20");
     await edit.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
     await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 20 alunos");
@@ -141,7 +141,7 @@ test.describe("cadastro de turma", () => {
     await page.goto("/classes/cg-1");
     await pageAction(page, "Mais ações da turma", "Editar turma");
     const edit = page.getByRole("dialog");
-    await edit.getByLabel("Vagas", { exact: true }).fill("15");
+    await edit.getByRole("spinbutton", { name: "Vagas", exact: true }).fill("15");
     await edit.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
     await page.waitForTimeout(1000);

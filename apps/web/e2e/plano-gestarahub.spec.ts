@@ -114,6 +114,11 @@ test("o plano renova em 24/09 (Pix): aviso no sino, não fixo no topo", async ({
 test("faltam 2 dias para voltar ao Grátis: aviso fixo no topo", async ({ page }) => {
   await seedPlan(page, { ...PRO, renewsOn: "2026-09-19", nextDueDate: "2026-09-19" });
   await page.goto("/dashboard");
+  // Urgencia (09/11/2026, doc product/25): abre uma vez a modal; "Ciente" fecha e o aviso fixo continua.
+  const urgent = page.getByRole("alertdialog", { name: "Faltam 2 dias para o plano voltar ao Grátis" });
+  await expect(urgent).toContainText("Pague a renovação de 19/09 para manter o Plano Profissional.");
+  await urgent.getByRole("button", { name: "Ciente" }).click();
+  await expect(urgent).toHaveCount(0);
   const notice = page.getByRole("status").filter({ hasText: "Faltam 2 dias para o plano voltar ao Grátis" });
   await expect(notice).toBeVisible();
   await expect(notice.getByRole("link", { name: "Ver o plano" })).toHaveAttribute("href", "/settings?tab=plano");

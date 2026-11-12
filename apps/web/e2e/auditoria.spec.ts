@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, pageAction, seedAcademy, student, test } from "./fixtures";
 import { gradedSettings, loginAsUser, modality, user } from "./ficha-notas-fixtures";
 import { TS, pick, waitWorld, type Tenant } from "./geral-fixtures";
 
@@ -121,9 +121,9 @@ test.describe("eventos das ações principais", () => {
     await pay.getByRole("button", { name: "Registrar pagamento" }).click();
     await expect(page.getByText("Pagamento registrado (Dinheiro).")).toBeVisible();
 
-    await page.goto("/clients");
-    await page.getByRole("button", { name: "Ações de Aluna Pacote", exact: true }).last().click();
-    await page.getByRole("menuitem", { name: "Vender pacote" }).click();
+    // "Vender pacote" saiu do ⋮ da lista de Alunos (09/11/2026): fica no ⋮ do topo da ficha.
+    await page.goto("/clients/c-p");
+    await pageAction(page, "Mais ações do aluno", "Vender pacote");
     const sell = page.getByRole("dialog", { name: "Vender pacote" });
     await pick(page, sell, "Pacote", "10 aulas");
     await sell.getByRole("button", { name: "Adicionar" }).click();
@@ -268,7 +268,9 @@ test.describe("tela de auditoria", () => {
     await page.goto("/audit");
     await auditRow(page, "Ana Ribeiro atualizou o plano Mensal Jiu-Jitsu").click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("Atualizou · Plano");
+    // Acao e alvo viraram selos separados (01/11/2026).
+    await expect(dialog).toContainText("Atualizou");
+    await expect(dialog).toContainText("Plano");
     await expect(dialog).toContainText("Alvo");
     await expect(dialog).toContainText("Mensal Jiu-Jitsu");
     await expect(dialog).toContainText("Alterações");

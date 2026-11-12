@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { expect, monthPicker, seedAcademy, statCard, student, test } from "./fixtures";
 
 // Fluxos longos (login + varias telas): com o `pnpm dev` ocupado, 30 s nao bastam.
 test.describe.configure({ timeout: 60_000 });
@@ -91,7 +91,7 @@ test.describe("lançamentos", () => {
     await page.getByRole("tab", { name: "Resumo" }).click();
     await expect(page).toHaveURL(/tab=resumo/);
     await expect(page).toHaveURL(/month=2026-10/);
-    await expect(page.getByText("+ R$ 1.500,00 a pagar até o fim do mês")).toBeVisible();
+    await expect(statCard(page, "Saiu")).toContainText("+ R$ 1.500,00 a pagar");
   });
 
   test("marcar pago exige a forma e desfazer pede confirmação; depois não exclui mais", { tag: "@smoke" }, async ({ page }) => {
@@ -201,13 +201,13 @@ test.describe("lançamentos", () => {
 test("seletor de mês: \"Hoje\" só fora do mês atual e o mês vai para a URL", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/finance?tab=lancamentos");
-  const picker = page.getByRole("button", { name: "Escolher mês (Setembro de 2026)" });
+  const picker = monthPicker(page, "Setembro de 2026");
   await expect(picker).toContainText("Atual");
   await expect(page.getByRole("button", { name: "Hoje" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Próximo mês" }).click();
   await expect(page).toHaveURL(/month=2026-10/);
-  await expect(page.getByRole("button", { name: "Escolher mês (Outubro de 2026)" })).not.toContainText("Atual");
+  await expect(monthPicker(page, "Outubro de 2026")).not.toContainText("Atual");
 
   await page.getByRole("button", { name: "Hoje" }).click();
   await expect(page).toHaveURL(/month=2026-09/);
@@ -221,7 +221,7 @@ test("seletor de mês: \"Hoje\" só fora do mês atual e o mês vai para a URL",
   await page.getByRole("tab", { name: "Instrutores" }).click();
   await expect(page).toHaveURL(/tab=professores/);
   await expect(page).toHaveURL(/month=2026-12/);
-  await expect(page.getByRole("button", { name: "Escolher mês (Dezembro de 2026)" })).toBeVisible();
+  await expect(monthPicker(page, "Dezembro de 2026")).toBeVisible();
 });
 
 test("professor: regra, ajuste, fechar o mês, pagar via Pix e desfazer", { tag: "@smoke" }, async ({ page }) => {
@@ -306,11 +306,10 @@ test("Resumo: o que entrou, o que saiu e as bolsas concedidas na visão avançad
     },
   });
   await page.goto("/finance");
-  const card = (title: string) =>
-    page.locator("div.rounded-2xl").filter({ has: page.getByText(title, { exact: true }) });
+  const card = (title: string) => statCard(page, title);
   await expect(card("Saldo do mês")).toContainText("R$ 290,00");
   await expect(card("Entrou")).toContainText("R$ 500,00");
-  await expect(card("Entrou")).toContainText("Todas as mensalidades recebidas");
+  await expect(card("Entrou")).toContainText("Tudo recebido");
   await expect(card("Saiu")).toContainText("R$ 210,00");
 
   // Tela unica desde 11/11/2026: bolsas no pe das entradas por categoria.

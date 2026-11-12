@@ -4,9 +4,11 @@ import {
   classGroup,
   enrollment,
   expect,
+  expectOverdueRow,
   openProfileSection,
   profileSection,
   pageAction,
+  rollCallName,
   rollCallRow,
   seedAcademy,
   test,
@@ -46,12 +48,6 @@ const SESSION = "cg-p~2026-09-21~17:00"; // segunda passada: a chamada esta aber
 async function openClients(page: Page) {
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
   await page.goto("/clients");
-}
-
-/** Menu ⋮ do aluno na lista (a linha tambem e um botao com o mesmo nome). */
-async function clientAction(page: Page, name: string, action: string) {
-  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).last().click();
-  await page.getByRole("menuitem", { name: action }).click();
 }
 
 /** Aulas restantes de um pacote do aluno, lidas do mundo gravado. */
@@ -186,8 +182,13 @@ test.describe("venda", () => {
         ];
       },
     });
+    // "Vender pacote" saiu do ⋮ da lista de Alunos (09/11/2026): fica no ⋮ do topo da ficha.
     await openClients(page);
-    await clientAction(page, "Aluna Pacote", "Vender pacote");
+    await expect(page.getByRole("button", { name: "Ações de Aluna Pacote", exact: true }).last()).toBeVisible();
+    expect(await openMenuItemsLast(page, "Aluna Pacote")).not.toContain("Vender pacote");
+    await page.keyboard.press("Escape");
+    await page.goto("/clients/c-1");
+    await pageAction(page, "Mais ações do aluno", "Vender pacote");
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await expect(dialog).toContainText("Pacote de aulas para Aluna Pacote.");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
@@ -206,7 +207,9 @@ test.describe("venda", () => {
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
     await expect(dialog).toBeHidden();
+    await waitForTenant(page, (t) => t.charges.filter((c: { kind: string }) => c.kind === "package").length === 3);
     // A lista de alunos nao mostra plano nem pacote (ficam na ficha, 30/10/2026).
+    await openClients(page);
     const row = page.locator("div.group").filter({ hasText: "Aluna Pacote" });
     await expect(row.first()).toBeVisible();
     await expect(row.first()).not.toContainText("Restam 10 de 10");
@@ -229,13 +232,18 @@ test.describe("venda", () => {
     await waitForTenant(page, (t) => t.charges.some((c: { kind: string; status: string }) => c.kind === "package" && c.status === "paid"));
 
     // Cancelar o pacote (nenhuma aula usada): as em aberto saem, a paga fica.
-    await openClients(page);
-    await clientAction(page, "Aluna Pacote", "Cancelar pacote");
+    // "Cancelar pacote" fica no ⋮ do pacote, em Plano e pacotes da ficha.
+    await page.goto("/clients/c-1");
+    const packages = await openProfileSection(page, "Plano e pacotes");
+    await expect(packages).toContainText("Restam 10 de 10");
+    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Cancelar pacote" }).click();
     const cancel = page.getByRole("alertdialog", { name: "Cancelar pacote?" });
-    await expect(cancel).toContainText("O pacote 10 aulas de Aluna Pacote é cancelado. As cobranças em aberto dele também; as pagas ficam.");
+    // Na ficha o aluno ja e o da tela: a frase nao repete o nome.
+    await expect(cancel).toContainText("O pacote 10 aulas é cancelado. As cobranças em aberto dele também; as pagas ficam.");
     await cancel.getByRole("button", { name: "Cancelar pacote" }).click();
     await expect(page.getByText("Pacote cancelado.")).toBeVisible();
-    await expect(row.first()).not.toContainText("Restam 10 de 10");
+    await expect(packages).not.toContainText("Restam 10 de 10");
     await waitForTenant(page, (t) => t.studentPackages[0]?.status === "canceled");
 
     await page.goto("/classes/billing?status=all&kind=package");
@@ -268,13 +276,17 @@ test.describe("venda", () => {
         ];
       },
     });
-    await openClients(page);
     // O saldo fica na ficha (a lista de Alunos nao mostra pacote desde 30/10/2026).
-    // Com aula usada, o pacote nao cancela (o item nem aparece).
-    await page.getByRole("button", { name: "Ações de Aluno Renova", exact: true }).last().click();
-    await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toBeVisible();
+    // Com aula usada, o pacote nao cancela: o ⋮ do pacote so tem ver aulas e renovar.
+    await page.goto("/clients/c-1?tab=packages");
+    const current = await openProfileSection(page, "Plano e pacotes");
+    await expect(current).toContainText("Restam 3 de 10");
+    await page.getByRole("button", { name: "Ações do pacote 10 aulas", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Renovar" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Cancelar pacote" })).toHaveCount(0);
-    await page.getByRole("menuitem", { name: "Vender pacote" }).click();
+    await page.keyboard.press("Escape");
+    // Vender pelo ⋮ do topo da ficha (saiu do ⋮ da lista de Alunos em 09/11/2026).
+    await pageAction(page, "Mais ações do aluno", "Vender pacote");
 
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await pickCombobox(page, dialog, "Pacote", "10 aulas");
@@ -356,29 +368,29 @@ test.describe("chamada", () => {
 
     // Presenca gasta; tocar de novo (com gente a marcar) desmarca e devolve.
     await sete.click();
-    await expect(sete).toHaveAccessibleName("Aluno Sete: Presente");
+    await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Presente"));
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await sete.click();
-    await expect(sete).toHaveAccessibleName("Aluno Sete: sem marcação");
+    await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "sem marcação"));
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Falta sem justificativa gasta; trocar para justificada devolve.
     await attendanceAction(page, "Aluno Sete", "Marcar falta");
-    await expect(sete).toHaveAccessibleName("Aluno Sete: Faltou");
+    await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Faltou"));
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await attendanceAction(page, "Aluno Sete", "Justificar falta");
-    await expect(sete).toHaveAccessibleName("Aluno Sete: Justificada");
+    await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Justificada"));
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Pacote em que a falta nao gasta.
     await attendanceAction(page, "Aluna Falta Livre", "Marcar falta");
-    await expect(rollCallRow(page, "Aluna Falta Livre")).toHaveAccessibleName("Aluna Falta Livre: Faltou");
+    await expect(rollCallRow(page, "Aluna Falta Livre")).toHaveAccessibleName(rollCallName("Aluna Falta Livre", "Faltou"));
     await expect(rosterRow(page, "Aluna Falta Livre")).toContainText("5 de 10");
 
     // A ultima aula: gasta nesta chamada, o selo continua dizendo que foi a ultima.
     const last = rollCallRow(page, "Aluna Última");
     await last.click();
-    await expect(last).toHaveAccessibleName("Aluna Última: Presente");
+    await expect(last).toHaveAccessibleName(rollCallName("Aluna Última", "Presente"));
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 10);
 
@@ -386,9 +398,9 @@ test.describe("chamada", () => {
     // ("Todos vieram" so aparece enquanto ninguem foi marcado presente.)
     await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
     await rollCallRow(page, "Aluno Sem").click();
-    await expect(rollCallRow(page, "Aluno Sem")).toHaveAccessibleName("Aluno Sem: Presente");
+    await expect(rollCallRow(page, "Aluno Sem")).toHaveAccessibleName(rollCallName("Aluno Sem", "Presente"));
     await rollCallRow(page, "Aluno Vencido").click();
-    await expect(rollCallRow(page, "Aluno Vencido")).toHaveAccessibleName("Aluno Vencido: Presente");
+    await expect(rollCallRow(page, "Aluno Vencido")).toHaveAccessibleName(rollCallName("Aluno Vencido", "Presente"));
     await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await waitForTenant(page, (t) => t.attendances.length === 5);
     expect(await remainingOf(page, "sp-v")).toBe(10);
@@ -398,7 +410,7 @@ test.describe("chamada", () => {
 
     // Desmarcar a ultima aula devolve o saldo (com a chamada concluida, desmarcar e pelo menu).
     await attendanceAction(page, "Aluna Última", "Desmarcar");
-    await expect(last).toHaveAccessibleName("Aluna Última: sem marcação");
+    await expect(last).toHaveAccessibleName(rollCallName("Aluna Última", "sem marcação"));
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 9);
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
   });
@@ -440,7 +452,7 @@ test.describe("chamada", () => {
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
     await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
-    await expect(dialog).toContainText("Inscreva um aluno como aula avulsa, pelo pacote ou experimental para o dia 21/09/2026.");
+    await expect(dialog).toContainText("Aula de segunda-feira, 21/09. Entra como aula avulsa, pacote ou experimental.");
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toBeVisible();
 
     // Na avulsa, escolher quem tem pacote troca para "Pacote".
@@ -491,9 +503,9 @@ test.describe("chamada", () => {
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
     await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
-    await expect(dialog).toContainText(
-      "Esta turma não aceita aula avulsa. Inscreva um aluno pelo pacote ou como experimental para o dia 21/09/2026.",
-    );
+    await expect(dialog).toContainText("Aula de segunda-feira, 21/09.");
+    // Turma sem avulso: a frase continua certa e avisa (corrigido em 11/11/2026).
+    await expect(dialog).toContainText("Entra como pacote ou experimental. Turma sem aula avulsa.");
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: /Pacote/ })).toBeVisible();
     await expect(dialog.getByRole("button", { name: /Experimental/ })).toBeVisible();
@@ -517,7 +529,7 @@ test("Cobranças > Pacotes: compra à vista com a linha, pagar e desfazer", asyn
   const row = rowOf(page, "Aluna Vista");
   await expect(row).toContainText("Pacote 10 aulas");
   await expect(row).not.toContainText("parcela");
-  await expect(row).toContainText("Atrasado");
+  await expectOverdueRow(row, "20/09");
   await menuAction(page, "Aluna Vista", "Marcar pago");
   const pay = page.getByRole("dialog", { name: "Registrar pagamento" });
   await pay.getByRole("radio", { name: "Pix" }).click();
@@ -525,7 +537,7 @@ test("Cobranças > Pacotes: compra à vista com a linha, pagar e desfazer", asyn
   await expect(row).toContainText("pago via Pix");
   await row.getByRole("button", { name: "Desfazer pagamento" }).click();
   await page.getByRole("alertdialog", { name: "Desfazer pagamento?" }).getByRole("button", { name: "Desfazer pagamento" }).click();
-  await expect(row).toContainText("Atrasado");
+  await expectOverdueRow(row, "20/09");
   // Cancelar a cobranca nao cancela o pacote (o saldo continua).
   await menuAction(page, "Aluna Vista", "Cancelar cobrança");
   await page.getByRole("alertdialog").getByRole("button", { name: "Cancelar cobrança" }).click();
@@ -574,10 +586,14 @@ test.describe("Dashboard: pacotes acabando", () => {
 
   const todoCard = (page: Page) =>
     page.locator("[data-slot=card]").filter({ has: page.getByText("Lembretes", { exact: true }) });
+  const packagesRow = (page: Page) =>
+    todoCard(page).getByRole("listitem").filter({ has: page.getByText(/^\d+ pacotes? acabando$/) }).first();
 
   test("enviar em sequência: um aluno por vez com a mensagem pronta, pular e o painel marca o avisado", async ({ page }) => {
     await seedEnding(page);
-    const row = todoCard(page).getByRole("listitem").filter({ has: page.getByText("4 pacotes acabando") }).first();
+    // O titulo conta so o que falta (10/11/2026): muda ao avisar, entao a linha e achada pelo assunto.
+    const row = packagesRow(page);
+    await expect(row).toContainText("4 pacotes acabando");
     await row.getByRole("button", { name: "Ver" }).click();
     await row.getByRole("button", { name: "Enviar em sequência (4)" }).click();
     const sheet = page.getByRole("dialog", { name: "Enviar em sequência" });
@@ -598,12 +614,13 @@ test.describe("Dashboard: pacotes acabando", () => {
     await sheet.getByRole("button", { name: "Concluir" }).click();
 
     await expect(row.locator("ul li").nth(0)).toContainText("Avisado hoje");
+    await expect(row).toContainText("3 pacotes acabando");
     await expect(todoCard(page)).toContainText("3 pendências");
   });
 
   test("lista na ordem certa, avisa pelo WhatsApp (\"Avisado hoje\") e vender tira o aluno da lista", async ({ page }) => {
     await seedEnding(page);
-    const row = todoCard(page).getByRole("listitem").filter({ has: page.getByText("4 pacotes acabando") }).first();
+    const row = packagesRow(page);
     await expect(row).toContainText("4 pacotes acabando");
     await row.getByRole("button", { name: "Ver" }).click();
     const lines = row.locator("ul li");
@@ -624,6 +641,7 @@ test.describe("Dashboard: pacotes acabando", () => {
     expect(link.phone).toBe("5511955554444");
     expect(link.text).toBe("Oi, Aluna Última! Sobre seu pacote 10 aulas na Academia X: resta 1 aula. Quer renovar e seguir treinando?");
     await expect(lines.nth(3)).toContainText("Avisado hoje");
+    await expect(row).toContainText("3 pacotes acabando");
     const expired = await openedWhatsApp(page, () =>
       row.getByRole("button", { name: "Avisar Aluna Venceu no WhatsApp" }).click(),
     );
@@ -637,7 +655,17 @@ test.describe("Dashboard: pacotes acabando", () => {
     await expect(dialog).toContainText("saldo de 4 aulas será somado a este novo pacote (total de 14 aulas)");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
-    await expect(todoCard(page)).toContainText("3 pacotes acabando");
+    // Sai da lista; dos 3 que ficam, 2 ja foram avisados hoje: falta so a Aluna Acabou.
+    await expect(lines).toHaveCount(3);
+    await expect(row).toContainText("1 pacote acabando");
     await expect(todoCard(page)).not.toContainText("Aluno Vence");
   });
 });
+
+/** Itens do menu ⋮ do aluno na lista de Alunos (a linha tambem e um botao com o mesmo nome: usa o ultimo). */
+async function openMenuItemsLast(page: Page, name: string): Promise<string[]> {
+  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).last().click();
+  const items = page.getByRole("menuitem");
+  await expect(items.first()).toBeVisible();
+  return (await items.allInnerTexts()).map((t) => t.trim());
+}

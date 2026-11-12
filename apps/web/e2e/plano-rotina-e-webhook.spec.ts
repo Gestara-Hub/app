@@ -78,6 +78,11 @@ test.describe("rotina diária do plano", () => {
 
     // O dono ve o aviso no topo e o passo no histórico, marcado como automático.
     await page.goto("/dashboard");
+    // Urgencia (09/11/2026, doc product/25): a modal abre uma vez; depois de "Ciente", o aviso fixo fica.
+    const urgent = page.getByRole("alertdialog", { name: "Seu plano voltou ao Grátis" });
+    await expect(urgent).toBeVisible();
+    await urgent.getByRole("button", { name: "Ciente" }).click();
+    await expect(urgent).toHaveCount(0);
     await expect(page.getByRole("status").filter({ hasText: "Seu plano voltou ao Grátis" })).toBeVisible();
     await page.goto("/settings?tab=plano");
     const panel = page.locator("#settings-panel-plano");

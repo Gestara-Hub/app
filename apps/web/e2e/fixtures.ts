@@ -218,7 +218,7 @@ export async function loginAsAcademyUser(
 export async function signInWithForm(page: Page): Promise<void> {
   academy ??= await createAcademy();
   await page.getByLabel("E-mail").fill(academy.owner.email);
-  await page.getByLabel("Senha", { exact: true }).fill(academy.owner.password);
+  await page.getByRole("textbox", { name: "Senha", exact: true }).fill(academy.owner.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
 }
 
@@ -345,12 +345,21 @@ export function enrollment(id: string, classGroupId: string, studentId: string) 
   return { id, classGroupId, studentId, status: "active", enrolledAt: TS };
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
  * Linha do aluno na chamada da aula: um botao "{Aluno}: {marcacao}" ("sem
  * marcação", "Presente", "Faltou" ou "Justificada"). Tocar marca presenca.
+ * A marcacao vem num trecho `sr-only`: o Chrome do sistema (157) poe um espaco antes dos
+ * dois pontos no nome acessivel ("Aluno Sete : Presente"), por isso a regex.
  */
 export function rollCallRow(page: Page, name: string): Locator {
-  return page.getByRole("button", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: `) });
+  return page.getByRole("button", { name: new RegExp(`^${escapeRegExp(name)}\\s?: `) });
+}
+
+/** Nome acessivel da linha da chamada com a marcacao (aceita o espaco antes dos dois pontos). */
+export function rollCallName(name: string, mark: string): RegExp {
+  return new RegExp(`^${escapeRegExp(name)}\\s?: ${escapeRegExp(mark)}$`);
 }
 
 /** Falta, justificativa e desmarcar ficam no menu ⋮ do aluno na chamada. */
@@ -413,4 +422,68 @@ export async function skipWelcome(page: Page, org = "org-academia-x"): Promise<v
     (key) => localStorage.setItem(key, JSON.stringify({ seen: true, dismissed: false, tours: {} })),
     `gestarahub:onboarding:${org}`,
   );
+}
+
+/**
+ * Botao do seletor de mes ("Escolher mês (Setembro de 2026)"). O leitor de tela
+ * junta os trechos com espaco ("Escolher mês ( Setembro de 2026 )"), por isso a regex.
+ */
+export function monthPicker(page: Page, label: string): Locator {
+  return page.getByRole("button", { name: new RegExp(`^Escolher mês \\(\\s*${label}\\s*\\)`) });
+}
+
+/**
+ * Cobranca em atraso numa linha de Cobrancas: o selo "Atrasado" saiu da lista
+ * (10/11/2026) e a data vencida "venceu DD/MM · N dias" fica em vermelho.
+ */
+export async function expectOverdueRow(row: Locator, due?: string): Promise<void> {
+  await expect(row.locator(".text-overdue").filter({ hasText: due ? `venceu ${due}` : "venceu" }).first()).toBeVisible();
+}
+
+/**
+ * Aba de situacao da lista de Cobrancas ("A receber", "Em atraso", "Pagas",
+ * "Isentas e encerradas", "Todas"); o nome traz a contagem ao lado. Substituiu o
+ * seletor "Filtrar por situação" (11/11/2026); filtro fino so por `?status=`.
+ */
+export function statusTab(page: Page, label: string): Locator {
+  return page.getByRole("button", { name: new RegExp(`^${label} \\d+$`) });
+}
+
+/** A aba de situacao marcada (fundo claro com sombra). */
+export async function expectActiveTab(page: Page, label: string): Promise<void> {
+  await expect(statusTab(page, label)).toHaveClass(/bg-background/);
+}
+
+/** Cartao de indicador do topo (StatCard, 11/11/2026) pelo rotulo. */
+export function statCard(page: Page, title: string): Locator {
+  return page.locator("div.rounded-xl.shadow-2xs").filter({ has: page.getByText(title, { exact: true }) });
+}
+
+/**
+ * Abre o menu ⋮ de uma linha ("Ações de {nome}"). Com `followUp`, abre tambem
+ * o submenu "Acompanhamento ›" (09/11/2026: registros, graduacao, notas e
+ * testes saem da primeira camada nas listas de Alunos, da turma e da chamada;
+ * doc 07 §1.4). Submenu com um item so vira o proprio item, sem seta.
+ */
+export async function openRowMenu(page: Page, name: string, opts: { followUp?: boolean } = {}): Promise<void> {
+  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
+  await expect(page.getByRole("menu").first()).toBeVisible();
+  if (!opts.followUp) return;
+  const trigger = page.getByRole("menuitem", { name: "Acompanhamento", exact: true });
+  if ((await trigger.count()) === 0) return;
+  await trigger.click();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+}
+
+/**
+ * Escolhe uma acao no menu ⋮ da linha; se ela nao esta na primeira camada,
+ * procura dentro de "Acompanhamento ›".
+ */
+export async function rowMenuAction(page: Page, name: string, item: string | RegExp): Promise<void> {
+  await openRowMenu(page, name);
+  const target = page.getByRole("menuitem", typeof item === "string" ? { name: item, exact: true } : { name: item });
+  if ((await target.count()) === 0) {
+    await page.getByRole("menuitem", { name: "Acompanhamento", exact: true }).click();
+  }
+  await target.click();
 }

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, skipWelcome, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, expectOverdueRow, seedAcademy, skipWelcome, student, test } from "./fixtures";
 import type { Tenant } from "./geral-fixtures";
 
 /**
@@ -125,7 +125,7 @@ test("lembretes: uma linha por tipo, com o contador de pendências", { tag: "@sm
   await expect(overdue).toContainText("Aluno A20");
   await overdue.getByRole("link", { name: "Abrir em Cobranças" }).click();
   await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
-  await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
+  await expectOverdueRow(page.locator("div.group").filter({ hasText: "Aluno A20" }));
 });
 
 test("3 faltas seguidas em turmas diferentes: 'Sentimos sua falta' pelo WhatsApp e 'Avisado hoje'", async ({
@@ -288,6 +288,8 @@ test("sem pendências o bloco não aparece", async ({ page }) => {
       t.clients = [student("c-a", "Aluno Em Dia", { planId: undefined })];
       t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
       t.enrollments = [enrollment("e-1", "cg-1", "c-a")];
+      // Chamada de ontem feita: chamada em aberto virou lembrete (09/11/2026, doc product/25).
+      t.attendances = [absence("c-a", "cg-1~2026-09-21~17:00", "present")];
     },
   });
   await skipWelcome(page);

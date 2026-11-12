@@ -190,10 +190,12 @@ test.describe("cadastro de usuários (proprietário)", () => {
 });
 
 test.describe("menu e rotas por perfil (academia)", () => {
+  // "Eventos" entrou no menu em 09/11/2026 (doc product/29): todos os perfis veem (events:view).
   const ALL_CLASSES = [
     "Painel",
     "Calendário",
     "Turmas",
+    "Eventos",
     "Alunos",
     "Comunicação",
     "Cobranças",
@@ -225,7 +227,9 @@ test.describe("menu e rotas por perfil (academia)", () => {
     await page.goto("/classes");
     await expect
       .poll(() => navLinks(page))
-      .toEqual(sorted(["Calendário", "Turmas", "Alunos", "Comunicação", "Cobranças", "Relatórios", "Planos e pacotes", "Equipe"]));
+      .toEqual(
+        sorted(["Calendário", "Turmas", "Eventos", "Alunos", "Comunicação", "Cobranças", "Relatórios", "Planos e pacotes", "Equipe"]),
+      );
     // Sem Dashboard, a primeira tela do perfil e o Calendario.
     for (const route of ["/dashboard", "/finance", "/classes/modalities", "/users", "/audit", "/settings"]) {
       await page.goto(route);
@@ -238,11 +242,11 @@ test.describe("menu e rotas por perfil (academia)", () => {
     await expect(page.getByRole("button", { name: "Novo plano" })).toHaveCount(0);
   });
 
-  test("profissional: só Calendário e Turmas", async ({ page }) => {
+  test("profissional: só Calendário, Turmas e Eventos", async ({ page }) => {
     await seedTeam(page);
     await loginAsUser(page, PROF, PROF_LINK);
     await page.goto("/classes/calendar");
-    await expect.poll(() => navLinks(page)).toEqual(sorted(["Calendário", "Turmas"]));
+    await expect.poll(() => navLinks(page)).toEqual(sorted(["Calendário", "Turmas", "Eventos"]));
     for (const route of ["/dashboard", "/clients", "/classes/billing", "/classes/plans", "/team", "/reports", "/communication", "/users"]) {
       await page.goto(route);
       await expect.poll(() => pathOf(page), { message: route }).toBe("/classes/calendar");

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, editWorld, enrollment, expect, pageAction, seedAcademy, student, test } from "./fixtures";
+import { classGroup, editWorld, enrollment, expect, expectOverdueRow, monthPicker, pageAction, seedAcademy, student, test } from "./fixtures";
 
 /** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
@@ -38,7 +38,7 @@ test.describe("cadastro e geração de mensalidades", () => {
 
     // Setembro (mes atual): depois do uso, nada a cobrar ainda.
     await page.goto("/classes/billing?status=all");
-    await expect(page.getByRole("button", { name: "Escolher mês (Setembro de 2026)" })).toBeVisible();
+    await expect(monthPicker(page, "Setembro de 2026")).toBeVisible();
     await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
 
     await page.getByRole("button", { name: "Próximo mês" }).click();
@@ -59,7 +59,8 @@ test.describe("operações de cobrança", () => {
 
   test("marcar pago exige a forma de pagamento e desfazer pede confirmação", { tag: "@smoke" }, async ({ page }) => {
     const row = rowOf(page, "Aluno A20");
-    await expect(row).toContainText("Atrasado");
+    // Sem selo "Atrasado" na lista (10/11/2026): a data vencida fica em vermelho.
+    await expectOverdueRow(row, "20/09");
     await rowAction(page, "Aluno A20", "Marcar pago");
     await payWith(page, "Pix");
     await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { BASE_URL, classGroup, expect, readAcademy, student } from "./fixtures";
+import { BASE_URL, classGroup, expect, monthPicker, readAcademy, student } from "./fixtures";
 
 /**
  * Ajudantes dos testes de dinheiro (dinheiro-*.spec.ts): cobrancas de todos os
@@ -228,5 +228,5 @@ const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Jul
 export async function stepMonth(page: Page, dir: "next" | "prev", target: string) {
   const [y, m] = target.split("-").map(Number);
   await page.getByRole("button", { name: dir === "next" ? "Próximo mês" : "Mês anterior" }).click();
-  await expect(page.getByRole("button", { name: `Escolher mês (${MONTHS[m - 1]} de ${y})` })).toBeVisible();
+  await expect(monthPicker(page, `${MONTHS[m - 1]} de ${y}`)).toBeVisible();
 }

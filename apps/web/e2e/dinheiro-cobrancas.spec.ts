@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, expect, expectOverdueRow, seedAcademy, statusTab, student, test } from "./fixtures";
 import {
   TS,
   charge,
@@ -91,17 +91,18 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
 
   // Linha de cada tipo.
   await expect(rowOf(page, "Aluno Mensal")).toContainText("Mensal Jiu-Jitsu");
-  await expect(rowOf(page, "Aluno Mensal")).toContainText("vence 20/09");
-  await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");
+  // Vencida: sem selo "Atrasado" (10/11/2026), "venceu 20/09 · 2 dias" em vermelho.
+  await expectOverdueRow(rowOf(page, "Aluno Mensal"), "20/09");
   const dropin = rowOf(page, "Aluno Avulso");
   await expect(dropin).toContainText("Aula avulsa");
   await expect(dropin).toContainText("Jiu-Jitsu Adulto");
-  await expect(dropin).toContainText("aula em 21/09");
+  // Aula avulsa vencida mostra o vencimento (o dia da aula) em vermelho, como as outras.
+  await expectOverdueRow(dropin, "21/09");
   await expect(rowOf(page, "Aluna Extra")).toContainText("Kimono");
   await expect(rowOf(page, "Aluna Extra")).toContainText("parcela 2 de 3");
   await expect(rowOf(page, "Aluna Curso")).toContainText("Curso Confeitaria");
   await expect(rowOf(page, "Aluna Curso")).toContainText("parcela 2 de 4");
-  await expect(rowOf(page, "Aluna Curso")).toContainText("Atrasado");
+  await expectOverdueRow(rowOf(page, "Aluna Curso"), "15/09");
   await expect(rowOf(page, "Aluno Pacote")).toContainText("Pacote 10 aulas");
   await expect(rowOf(page, "Aluno Pacote")).toContainText("vence 28/09");
   await expect(rowOf(page, "Aluno Cancelado")).toContainText("Cobrança duplicada");
@@ -157,27 +158,31 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   await pickSelect(page, "Filtrar por tipo", "Todos os tipos");
   await expect(page).not.toHaveURL(/kind=/);
 
-  // Situação: isentas, canceladas (sem as substituidas) e substituidas.
-  await pickSelect(page, "Filtrar por situação", /^Isentas( \d+)?$/);
-  await expect(page).toHaveURL(/status=waived/);
+  // Situação: isentas, canceladas (sem as substituidas) e substituidas. Sem o
+  // seletor (11/11/2026), o filtro fino vem pelo link e aparece como "Mostrando".
+  await page.goto("/classes/billing?status=waived");
+  await expect(page.getByText("Mostrando: Isentas", { exact: true })).toBeVisible();
   await expect(rowOf(page, "Aluna Bolsista")).toBeVisible();
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
-  await pickSelect(page, "Filtrar por situação", /Canceladas/);
+  await page.goto("/classes/billing?status=canceled");
+  await expect(page.getByText("Mostrando: Canceladas e encerradas", { exact: true })).toBeVisible();
   await expect(rowOf(page, "Aluno Cancelado")).toBeVisible();
   await expect(rowOf(page, "Aluno Trocou")).toHaveCount(0);
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
-  await pickSelect(page, "Filtrar por situação", /Substituídas/);
-  await expect(page).toHaveURL(/status=replaced/);
+  await page.goto("/classes/billing?status=replaced");
+  await expect(page.getByText("Mostrando: Substituídas", { exact: true })).toBeVisible();
   const replaced = rowOf(page, "Aluno Trocou");
   await expect(replaced).toContainText("Substituída");
   await expect(replaced).toContainText("Substituída pela troca de plano");
   await expect(replaced.getByRole("button")).toHaveCount(0);
   expect(await contextMenuItems(page, replaced)).toEqual([]);
-  await pickSelect(page, "Filtrar por situação", /Atrasadas/);
+  await statusTab(page, "Em atraso").click();
+  await expect(page).toHaveURL(/status=overdue/);
   await expect(rowOf(page, "Aluna Curso")).toBeVisible();
   await expect(rowOf(page, "Aluno Mensal")).toBeVisible();
   await expect(rowOf(page, "Aluno Pacote")).toHaveCount(0);
-  await pickSelect(page, "Filtrar por situação", /Todos os status/);
+  await statusTab(page, "Todas").click();
+  await expect(page).toHaveURL(/status=all/);
 
   // O aviso "Mostrar" abre as substituidas.
   await page.getByRole("button", { name: "Mostrar" }).click();
@@ -413,7 +418,7 @@ test.describe("Pro", () => {
       },
     });
     await page.goto("/classes/billing?status=all");
-    await expect(rowOf(page, "Aluno Automático")).toContainText("Atrasado");
+    await expectOverdueRow(rowOf(page, "Aluno Automático"), "20/09");
     await waitForTenant(page, (t) => t.charges.length === 1);
 
     await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
@@ -482,10 +487,10 @@ test.describe("Dashboard: cobranças em atraso", () => {
     await row.getByRole("button", { name: "Ver" }).click();
     await row.getByRole("link", { name: "Abrir em Cobranças" }).click();
     await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
-    // Em Cobranças, as tres atrasadas.
-    await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");
-    await expect(rowOf(page, "Aluna Kimono")).toContainText("Atrasado");
-    await expect(rowOf(page, "Aluno Curso")).toContainText("Atrasado");
+    // Em Cobranças, as tres atrasadas (data vencida em vermelho, sem selo desde 10/11/2026).
+    await expectOverdueRow(rowOf(page, "Aluno Mensal"), "20/09");
+    await expectOverdueRow(rowOf(page, "Aluna Kimono"), "12/09");
+    await expectOverdueRow(rowOf(page, "Aluno Curso"), "15/09");
     await expect(page.getByText(/(^|· )3 cobranças$/)).toBeVisible();
   });
 

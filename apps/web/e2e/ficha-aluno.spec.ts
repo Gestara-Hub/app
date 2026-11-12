@@ -897,7 +897,7 @@ test.describe("seções", () => {
 });
 
 test.describe("comunicação", () => {
-  test("modelos 'Lembrete de cobrança' e 'Pacote acabando': prévia com as variáveis e texto editado", async ({ page }) => {
+  test("modelos 'Lembrete de cobrança' e 'Pacote acabando': prévia com as variáveis e texto fixo", async ({ page }) => {
     await seedProfile(page);
     await page.goto("/communication");
     const card = (title: string) => page.getByRole("group", { name: title, exact: true });
@@ -911,17 +911,14 @@ test.describe("comunicação", () => {
     const ending = card("Pacote acabando");
     await expect(ending).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
 
-    await ending.getByRole("button", { name: "Editar texto" }).click();
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre so a
+    // prévia com as variaveis preenchidas, sem campo de texto nem chips de variavel.
+    await ending.getByRole("button", { name: "Configurar modelo" }).click();
     const dialog = page.getByRole("dialog", { name: "Pacote acabando" });
-    // Chips das variaveis do modelo, com nomes simples.
-    await expect(dialog.getByRole("button", { name: "+ Nome do pacote" })).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "+ Aulas e validade" })).toBeVisible();
-    await dialog.getByLabel("Texto").fill("{aluno}, seu pacote {pacote}: {restante}. Renova?");
-    await expect(dialog).toContainText("Ana Souza, seu pacote 10 aulas: resta 1 aula. Renova?");
-    await dialog.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Mensagem salva.")).toBeVisible();
-    await page.reload();
-    await expect(card("Pacote acabando")).toContainText("Ana Souza, seu pacote 10 aulas: resta 1 aula. Renova?");
+    await expect(dialog).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
+    await expect(dialog).not.toContainText("{");
+    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "+ Nome do pacote" })).toHaveCount(0);
   });
 
   test("'Lembrar no WhatsApp' de uma avulsa pela ficha usa o 'Lembrete de cobrança' e entra em Mensagens", async ({

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { editWorld, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { editWorld, expect, expectOverdueRow, readAcademy, seedAcademy, student, test } from "./fixtures";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5 e
@@ -69,7 +69,8 @@ test.describe("envio assistido (grátis)", () => {
   }) => {
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/classes/billing?status=all");
-    await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
+    // Sem selo "Atrasado" desde 10/11/2026: a data vencida fica vermelha.
+    await expectOverdueRow(page.locator("div.group").filter({ hasText: "Aluno A20" }));
 
     const link = await openedWhatsApp(page, () => chargeAction(page, "Aluno A20", "Lembrar no WhatsApp"));
     expect(link.origin).toBe("https://api.whatsapp.com/send");
@@ -150,28 +151,28 @@ test.describe("envio assistido (grátis)", () => {
     await expect(row).toContainText("Aberto no WhatsApp");
   });
 
-  test("texto do modelo editado persiste e é usado no lembrete", async ({ page }) => {
-    test.slow(); // tres telas e um reload
+  test("modelo com texto fixo: prévia preenchida e o mesmo texto no lembrete", async ({ page }) => {
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/communication");
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre a
+    // prévia com as variaveis preenchidas, sem campo de texto.
     const card = page.getByRole("group", { name: "Em atraso", exact: true });
-    await card.getByRole("button", { name: "Editar texto" }).click();
+    await card.getByRole("button", { name: "Configurar modelo" }).click();
     const dialog = page.getByRole("dialog", { name: "Em atraso" });
-    const text = dialog.getByLabel("Texto");
-    await text.fill("{aluno}, sua mensalidade de {valor} venceu em {vencimento}. 🥋");
-    // Previa com os valores de exemplo.
-    await expect(dialog).toContainText("Ana Souza, sua mensalidade de R$ 150,00 venceu em 10/11. 🥋");
-    await dialog.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Mensagem salva.")).toBeVisible();
+    await expect(dialog).toContainText("Ana Souza");
+    await expect(dialog).not.toContainText("{");
+    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
+    await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
-    await page.reload();
-    await expect(page.getByText("Ana Souza, sua mensalidade de R$ 150,00 venceu em 10/11. 🥋")).toBeVisible();
-
+    // O lembrete da cobranca atrasada sai com o mesmo modelo, com os dados do aluno.
     await page.goto("/classes/billing?status=all");
-    await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
+    await expectOverdueRow(page.locator("div.group").filter({ hasText: "Aluno A20" }));
     const link = await openedWhatsApp(page, () => chargeAction(page, "Aluno A20", "Lembrar no WhatsApp"));
-    expect(link.text).toBe("Aluno A20, sua mensalidade de R$ 55,00 venceu em 20/09. 🥋");
+    expect(link.text).toContain("Aluno A20");
+    expect(link.text).toContain("R$ 55,00");
+    expect(link.text).toContain("20/09");
+    expect(link.text).not.toContain("{");
   });
 
   test("aluno sem WhatsApp com DDD não abre o WhatsApp", async ({ page }) => {

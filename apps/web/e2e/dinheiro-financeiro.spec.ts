@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, test } from "./fixtures";
+import { classGroup, enrollment, expect, expectOverdueRow, seedAcademy, statCard, statusTab, test } from "./fixtures";
 import {
   ORG,
   TS,
@@ -11,7 +11,6 @@ import {
   noPlan,
   packageClass,
   pickField,
-  pickSelect,
   rowOf,
   stepMonth,
   studentPackage,
@@ -51,25 +50,31 @@ function septemberMoney(t: Record<string, unknown>) {
   ];
 }
 
-/** A linha do lancamento na aba Lancamentos (ListRow com aria-label = descricao). */
-const entryRow = (page: Page, description: string) => page.locator(`div.group[aria-label="${description}"]`);
+/**
+ * A linha do lancamento na aba Lancamentos pela descricao. O agregado de
+ * cobrancas virou linha clicavel (11/11/2026) e nao leva mais o aria-label.
+ */
+const entryRow = (page: Page, description: string) =>
+  page.locator("div.group").filter({ has: page.getByText(description, { exact: true }) });
 
 test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho para Cobranças", async ({ page }) => {
   await seedAcademy(page, { extra: septemberMoney });
   await page.goto("/finance?tab=lancamentos");
 
+  // Sem selo de situacao no agregado (11/11/2026): as contagens dizem a situacao
+  // e a linha de baixo mostra quanto ja foi recebido.
   const rows: [string, string, string, string][] = [
-    ["Mensalidades de setembro", "R$ 300,00", "1 paga · 1 atrasada", "Atrasado"],
-    ["Aulas avulsas de setembro", "R$ 40,00", "1 paga", "Pago"],
-    ["Cobranças avulsas de setembro", "R$ 350,00", "1 paga · 1 pendente", "Pendente"],
-    ["Cursos de setembro", "R$ 400,00", "1 paga · 1 atrasada", "Atrasado"],
-    ["Pacotes de aulas de setembro", "R$ 500,00", "1 paga", "Pago"],
+    ["Mensalidades de setembro", "R$ 300,00", "1 paga · 1 atrasada", "R$ 150,00 recebido"],
+    ["Aulas avulsas de setembro", "R$ 40,00", "1 paga", "R$ 40,00 recebido"],
+    ["Cobranças avulsas de setembro", "R$ 350,00", "1 paga · 1 pendente", "R$ 100,00 recebido"],
+    ["Cursos de setembro", "R$ 400,00", "1 paga · 1 atrasada", "R$ 200,00 recebido"],
+    ["Pacotes de aulas de setembro", "R$ 500,00", "1 paga", "R$ 500,00 recebido"],
   ];
-  for (const [description, amount, counts, status] of rows) {
+  for (const [description, amount, counts, received] of rows) {
     const row = entryRow(page, description);
     await expect(row).toContainText(amount);
     await expect(row).toContainText(counts);
-    await expect(row).toContainText(status);
+    await expect(row).toContainText(received);
     await expect(row.getByRole("link", { name: "Ver em Cobranças" })).toBeVisible();
   }
   // A cobranca cancelada nao entra (a avulsa soma so R$ 350).
@@ -78,19 +83,20 @@ test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho
   // O atalho abre Cobranças no mes e no tipo da linha.
   await entryRow(page, "Cursos de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
   await expect(page).toHaveURL(/\/classes\/billing\?month=2026-09&kind=course$/);
-  // Cobranças abre em "A receber": so a parcela atrasada; a paga aparece em "Todos os status".
-  await expect(rowOf(page, "Aluno 5")).toContainText("Atrasado");
+  // Cobranças abre em "A receber": so a parcela atrasada; a paga aparece em "Todas".
+  await expectOverdueRow(rowOf(page, "Aluno 5"), "15/09");
   await expect(rowOf(page, "Aluno 4")).toHaveCount(0);
-  await pickSelect(page, "Filtrar por situação", /Todos os status/);
+  await statusTab(page, "Todas").click();
   await expect(rowOf(page, "Aluno 4")).toContainText("Curso Confeitaria");
-  await expect(rowOf(page, "Aluno 5")).toContainText("Atrasado");
+  await expectOverdueRow(rowOf(page, "Aluno 5"), "15/09");
   await expect(page.getByText(/(^|· )2 cobranças$/)).toBeVisible();
 
   await page.goto("/finance?tab=lancamentos");
   await entryRow(page, "Pacotes de aulas de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
   await expect(page).toHaveURL(/kind=package/);
   // O pacote esta pago: fora de "A receber".
-  await pickSelect(page, "Filtrar por situação", /Todos os status/);
+  await expect(rowOf(page, "Aluno 5")).toHaveCount(0);
+  await statusTab(page, "Todas").click();
   await expect(rowOf(page, "Aluno 5")).toContainText("Pacote 10 aulas");
 
   // As categorias automaticas nao aparecem no gerenciador de categorias de entrada.
@@ -107,7 +113,7 @@ test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho
 test("Resumo: o que entrou no mês soma todos os tipos pelo dia do pagamento", async ({ page }) => {
   await seedAcademy(page, { extra: septemberMoney });
   await page.goto("/finance");
-  const card = (title: string) => page.locator("div.rounded-2xl").filter({ has: page.getByText(title, { exact: true }) });
+  const card = (title: string) => statCard(page, title);
   await expect(card("Entrou")).toContainText("R$ 1.140,00");
   await expect(card("Saldo do mês")).toContainText("R$ 1.140,00");
 });
@@ -219,7 +225,9 @@ test.describe("relatórios", () => {
     });
     await page.goto("/reports?type=course_summary&period=2026-09");
     const doc = page.locator("main");
-    await expect(doc.getByRole("heading", { name: "Cursos" })).toBeVisible();
+    // O topo da tela (h1) e o documento (h2) levam o nome do relatorio: confere os dois.
+    await expect(doc.getByRole("heading", { name: "Cursos", level: 1 })).toBeVisible();
+    await expect(doc.getByRole("heading", { name: "Cursos", level: 2 })).toBeVisible();
     const kpi = (label: string) => doc.locator("div.rounded-lg").filter({ has: page.getByText(label, { exact: true }) }).first();
     await expect(kpi("Contratado")).toContainText("R$ 1.000,00");
     await expect(kpi("Recebido")).toContainText("R$ 600,00");
