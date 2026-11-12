@@ -38,6 +38,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 | Desempenho | [technical/19](technical/19-desempenho-e-escala.md) | [technical/19](technical/19-desempenho-e-escala.md) | `services/world` |
 | Testes | [technical/04](technical/04-estrategia-de-testes.md) | [guides/20](guides/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
 | Ambiente local | [guides/16](guides/16-ambiente-local.md) | [guides/16](guides/16-ambiente-local.md) | `apps/web/scripts`, `apps/supabase` |
+| Publicação em produção | [guides/28](guides/28-publicacao-em-producao.md) | [guides/28](guides/28-publicacao-em-producao.md) | `apps/supabase/migrations`, `apps/*/.env.example`, `apps/web/vercel.json`, `app/api/cron`, `app/api/webhooks` |
 | **Fora do foco** (agendamento e entrega) | os docs em "Módulos em Standby", como estão | | `features/appointments`, `features/services` |
 
 ---
@@ -95,6 +96,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 ### Guias (como fazer)
 - [guides/14-asaas-mcp.md](guides/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
 - [guides/16-ambiente-local.md](guides/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
+- [guides/28-publicacao-em-producao.md](guides/28-publicacao-em-producao.md) — **Publicação em produção:** ordem Supabase (migrações, Auth, Vault, papel do painel), Vercel do app e do painel (variáveis e o que nunca vai para produção), integrações (Asaas, Meta, MailerSend, PostHog, monitor), primeira versão, conferências depois do deploy e como voltar atrás.
 - [guides/20-tempo-dos-testes.md](guides/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
 
 ### Testes do sistema e planos de execução
