@@ -32,12 +32,15 @@ export async function POST(req: NextRequest) {
     }
 
     const updated = await saveMyPreferencesAction(payload);
-    if (!updated) return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
+    // Sem sessao do banco (barbearia de demonstracao): as preferencias ficam no
+    // navegador. 200 com `saved: false` (11/11/2026): o 401 so virava erro no
+    // console a cada gravacao, e o app nao le o status.
+    if (!updated) return NextResponse.json({ success: false, saved: false });
     return NextResponse.json({ success: true, preferences: updated });
   } catch (error) {
     // Sem sessao do banco (demonstracao): as preferencias ficam so no navegador.
     if (isApiError(error) && error.code === "FORBIDDEN") {
-      return NextResponse.json({ message: "Sem sessão." }, { status: 401 });
+      return NextResponse.json({ success: false, saved: false });
     }
     logError("[POST /api/preferences] Erro ao salvar preferências:", error);
     return NextResponse.json(

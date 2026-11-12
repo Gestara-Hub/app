@@ -100,8 +100,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (row.uploaded_by !== ctx.userId) {
       return NextResponse.json({ message: "Só quem enviou pode tirar este arquivo." }, { status: 403 });
     }
+    // Em uso: nao apaga. 200 (11/11/2026, antes 409): a limpeza do navegador
+    // pede "tira se ninguem usa" de proposito e ignora a resposta; o 409 so
+    // virava erro no console a cada formulario salvo com arquivo.
     if (await attachmentIsUsed(admin, ctx.organizationId, id)) {
-      return NextResponse.json({ message: "Arquivo já está em uso." }, { status: 409 });
+      return NextResponse.json({ removed: false, inUse: true, message: "Arquivo já está em uso." });
     }
     await removeAttachments(admin, [
       { id: String(row.id), organization_id: String(row.organization_id), storage_path: String(row.storage_path) },
