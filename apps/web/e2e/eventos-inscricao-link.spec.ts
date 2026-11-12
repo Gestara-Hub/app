@@ -127,7 +127,7 @@ test("Inscrição pelo link: lotado entra na espera; menor com o aceite do respo
   const visitor = await publicPage(browser, page, `/p/e/${code}`);
   await expect(visitor.getByText("Lotado: entre na lista de espera")).toBeVisible();
   await visitor.getByRole("textbox", { name: /^Nome/ }).fill("Lia Rocha");
-  await visitor.getByRole("checkbox", { name: "É menor de 18 anos" }).click();
+  await visitor.getByRole("switch", { name: "Participante menor de 18 anos" }).click();
   await visitor.getByLabel("Nome do responsável").fill("Marta Rocha");
   await visitor.getByLabel("WhatsApp do responsável").fill("11933330000");
   await visitor.getByRole("checkbox", { name: /Sou o responsável legal/ }).click();
