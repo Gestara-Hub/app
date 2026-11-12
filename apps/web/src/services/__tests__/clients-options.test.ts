@@ -86,3 +86,50 @@ describe("clientsService.listOptions", () => {
     expect(options[0].scholarship).toBeUndefined();
   });
 });
+
+// Chamada da aula e alunos da turma: cadastro so de quem esta nela (12/11/2026).
+describe("clientsService.listByIds", () => {
+  beforeEach(() => {
+    resetAcademy();
+    setCurrentActor(OWNER);
+  });
+  afterEach(() => setCurrentActor(OWNER));
+
+  it("devolve o cadastro completo só dos pedidos, em ordem de nome", async () => {
+    const bia = await createStudent("Bia");
+    const ana = await createStudent("Ana");
+    await createStudent("Caio");
+    store.clients.find((c) => c.id === ana.id)!.birthDate = "2010-05-02";
+
+    const result = await clientsService.listByIds([bia.id, ana.id, "nao-existe"]);
+
+    expect(result.map((c) => c.name)).toEqual(["Ana", "Bia"]);
+    expect(result[0].birthDate).toBe("2010-05-02");
+  });
+
+  it("professor: quem não é das turmas dele fica de fora", async () => {
+    const carlos = await createInstructor("Carlos");
+    const g = await createClass({ name: "Jiu-Jitsu", instructorId: carlos.id, slots: [{ weekday: 1, start: "19:00", end: "20:00" }] });
+    const mine = await createStudent("Aluno do Carlos");
+    const other = await createStudent("Aluno de outro");
+    await turmasService.enroll({ classGroupId: g.id, studentId: mine.id });
+    store.clients.find((c) => c.id === mine.id)!.cpf = "52998224725";
+    store.users.push({
+      id: "usr-prof-carlos",
+      organizationId: store.organization.id,
+      name: "Carlos",
+      email: "carlos@teste.local",
+      profile: "professional",
+      professionalId: carlos.id,
+      status: "active",
+      createdAt: "2026-09-01T12:00:00.000Z",
+      updatedAt: "2026-09-01T12:00:00.000Z",
+    });
+    setCurrentActor({ userId: "usr-prof-carlos", name: "Carlos", profile: "professional" });
+
+    const result = await clientsService.listByIds([mine.id, other.id]);
+
+    expect(result.map((c) => c.name)).toEqual(["Aluno do Carlos"]);
+    expect(result[0].cpf).toBeUndefined();
+  });
+});

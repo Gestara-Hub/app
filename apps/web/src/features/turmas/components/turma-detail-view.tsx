@@ -76,7 +76,7 @@ import {
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCategories } from "@/features/categories";
-import { StudentGraduationDialog, StudentRecordsDialog, useClients } from "@/features/clients";
+import { StudentGraduationDialog, StudentRecordsDialog, useClientsByIds } from "@/features/clients";
 import { ClassAssessmentsTab, StudentGradesDialog, useClassAssessments } from "@/features/grades";
 import {
   useCancelEnrollment,
@@ -218,9 +218,10 @@ export function TurmaDetailView({
   const [celebrateEnroll, setCelebrateEnroll] = useState(false);
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments, isPending: enrollmentsPending } = useEnrollments(id);
-  const { data: clients } = useClients({ status: "active" });
   const { data: categories } = useCategories();
   const { data: waitlist } = useWaitlist(id);
+  // So o cadastro dos matriculados (faixa, aniversario, evolucao), nao de todos os alunos.
+  const { data: clients } = useClientsByIds((enrollments ?? []).map((e) => e.studentId));
   const cancelMut = useCancelEnrollment();
   const paymentMut = useSetEnrollmentPayment();
   const promoteMut = usePromoteWaitlist();

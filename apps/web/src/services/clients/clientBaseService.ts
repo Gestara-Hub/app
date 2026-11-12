@@ -107,6 +107,22 @@ export const clientBaseService = {
     });
   },
 
+  /**
+   * Cadastro so dos alunos pedidos (chamada da aula, alunos da turma; 12/11/2026):
+   * antes essas telas baixavam todos os alunos ativos para mostrar os da aula.
+   * Mesma visao do professor da lista completa; quem ele nao ve fica de fora.
+   */
+  listByIds(ids: Id[]): Promise<Client[]> {
+    return readOp(async () => {
+      const wanted = new Set(ids);
+      return clone(
+        visibleClients()
+          .filter((c) => wanted.has(c.id))
+          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+      );
+    });
+  },
+
   listPaginated(filter?: ClientFilter): Promise<PaginatedResult<Client>> {
     return readOp(async () => {
 

@@ -36,6 +36,8 @@ export const queryKeys = {
     list: (filter?: ClientFilter) => ["clients", "list", filter] as const,
     // Seletores de aluno (so nome, telefone, nascimento, plano e bolsa).
     options: (filter?: ClientFilter) => ["clients", "options", filter] as const,
+    // Cadastro so dos alunos de uma aula ou turma (ids em ordem, para o cache).
+    byIds: (ids: readonly Id[]) => ["clients", "by-ids", [...ids].sort()] as const,
     detail: (id: Id) => ["clients", "detail", id] as const,
     // Alunos que fizeram aula experimental (selo, filtro, lembrete): reservas e matriculas o invalidam.
     trials: ["clients", "trials"] as const,

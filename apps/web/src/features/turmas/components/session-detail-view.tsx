@@ -67,7 +67,8 @@ import {
   StudentGraduationDialog,
   StudentRecordsDialog,
   nextClassReminder,
-  useClients,
+  useClientOptions,
+  useClientsByIds,
   useTrialStudents,
 } from "@/features/clients";
 import { StudentGradesDialog } from "@/features/grades";
@@ -166,7 +167,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
-  const { data: clients } = useClients({ status: "active" });
+  // So o cadastro de quem esta na aula (faixa, aniversario, consentimento, evolucao);
+  // o "Adicionar aluno nesta aula" escolhe pela lista enxuta (nome).
+  const { data: clients } = useClientsByIds(session?.roster.map((r) => r.studentId) ?? []);
+  const { data: studentOptions } = useClientOptions({ status: "active" });
   const saveMut = useSaveAttendance();
   const currentUser = useCurrentUser();
   const reserveMut = useReserveSession();
@@ -315,7 +319,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const rosterIds = new Set(roster.map((r) => r.studentId));
   // Presenca so faz sentido para aula que ja aconteceu (ou acontece hoje).
   const isFutureSession = session.date > dateInSpace();
-  const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
+  const availableClients = (studentOptions ?? []).filter((c) => !rosterIds.has(c.id));
 
   const today = dateInSpace();
   const isToday = session.date === today;

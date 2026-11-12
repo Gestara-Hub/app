@@ -69,6 +69,19 @@ async function graduationCertificate([studentId, promotionId]: unknown[], load: 
 export const clientSlices: Record<string, MethodSlice> = {
   list: clientsList,
   listOptions: clientsOnly,
+  // So os alunos pedidos; usuarios, turmas, substituicoes, matriculas e reservas
+  // deles bastam para a visao do professor (so os alunos das turmas dele).
+  listByIds: async ([ids], load) => {
+    const studentIds = (ids as Id[] | undefined) ?? [];
+    await Promise.all([
+      load.where("clients", "id", studentIds),
+      load.all("users"),
+      load.all("classGroups"),
+      load.all("sessionOverrides"),
+      load.where("enrollments", "studentId", studentIds),
+      load.where("reservations", "studentId", studentIds),
+    ]);
+  },
   listPaginated: clientsList,
   listTrials: trialsWorld,
   listVisitorIds: visitorsWorld,

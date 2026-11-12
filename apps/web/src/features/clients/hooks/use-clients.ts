@@ -43,6 +43,21 @@ export function useClientOptions(filter?: Pick<ClientFilter, "status" | "search"
   });
 }
 
+/**
+ * Cadastro so dos alunos de uma aula ou turma (12/11/2026): faixa, aniversario,
+ * consentimento e as janelas de evolucao, sem baixar todos os alunos ativos.
+ */
+export function useClientsByIds(ids: readonly Id[], enabled = true) {
+  const sorted = [...new Set(ids)].sort();
+  return useQuery({
+    queryKey: queryKeys.clients.byIds(sorted),
+    queryFn: () => clientsService.listByIds(sorted),
+    enabled: enabled && sorted.length > 0,
+    // Entrar ou sair um aluno muda a chave: mantem os de antes ate chegar a lista nova.
+    placeholderData: (previous) => previous,
+  });
+}
+
 /** Quem fez aula experimental: ainda sem voltar ou ja convertido (09/11/2026). */
 export function useTrialStudents(enabled = true) {
   return useQuery({
