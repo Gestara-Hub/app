@@ -24,8 +24,8 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import { classBillingMode } from "@gestarahub/core/billing";
 import { todayISO } from "@gestarahub/core/date";
 import { pickPackageFor } from "@gestarahub/core/packages";
-import type { ClassGroupView, Client, EnrollmentCourseChoice, Id, StudentPackageView } from "@gestarahub/contracts";
-import { useClients } from "@/features/clients";
+import type { ClassGroupView, ClientOption, EnrollmentCourseChoice, Id, StudentPackageView } from "@gestarahub/contracts";
+import { useClientOptions } from "@/features/clients";
 import { useAddToWaitlist, useEnroll } from "../hooks/use-turmas";
 import { useCharges } from "../hooks/use-billing";
 import { useStudentPackages } from "../hooks/use-packages";
@@ -62,7 +62,7 @@ export function EnrollStudentsDialog({
   waitlistedIds,
   onEnrolled,
 }: EnrollStudentsDialogProps) {
-  const { data: clients } = useClients({ status: "active" });
+  const { data: clients } = useClientOptions({ status: "active" });
   const enrollMut = useEnroll();
   const waitMut = useAddToWaitlist();
   // Curso: o pagamento escolhido vale para cada aluno selecionado.
@@ -90,7 +90,7 @@ export function EnrollStudentsDialog({
   const [cancelPrevious, setCancelPrevious] = useState(true);
   const [paymentChoice, setPaymentChoice] = useState<Map<Id, boolean>>(new Map());
   // Padrao: com pacote e sem plano, paga com pacote; com plano, mensalidade.
-  const paysWithPackageOf = (c: Client) =>
+  const paysWithPackageOf = (c: ClientOption) =>
     packageStudentIds.has(c.id) && (paymentChoice.get(c.id) ?? !c.planId);
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [pending, setPending] = useState(false);
@@ -113,11 +113,11 @@ export function EnrollStudentsDialog({
   const withPackage = isMembership ? selectedList.filter((c) => packageStudentIds.has(c.id)) : [];
   // Sem plano, sem pacote e sem bolsa: a matricula nao gera cobranca (so avisa).
   const withoutPayment = isMembership
-    ? selectedList.filter((c) => !packageStudentIds.has(c.id) && !c.planId && !c.discount?.scholarship)
+    ? selectedList.filter((c) => !packageStudentIds.has(c.id) && !c.planId && !c.scholarship)
     : [];
   // Tem pacote, mas escolheu Mensalidade sem ter plano: tambem nao gera cobranca.
   const membershipWithoutPlan = withPackage.filter(
-    (c) => !paysWithPackageOf(c) && !c.planId && !c.discount?.scholarship,
+    (c) => !paysWithPackageOf(c) && !c.planId && !c.scholarship,
   );
 
   const previousDebts = isCourse

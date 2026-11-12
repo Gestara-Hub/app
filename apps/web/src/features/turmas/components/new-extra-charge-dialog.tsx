@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/sheet";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
-import { useClients } from "@/features/clients";
+import { useClientOptions } from "@/features/clients";
 import { useBusinessSegment } from "@/features/settings";
 import { useCharges, useCreateExtraCharge } from "../hooks/use-billing";
 import { normalizeText } from "@/lib/text";
@@ -71,7 +71,7 @@ function ExtraChargeForm({
   const createMut = useCreateExtraCharge();
   const pending = createMut.isPending;
   const segment = useBusinessSegment();
-  const { data: clients, isPending: clientsPending } = useClients({ status: "active" });
+  const { data: clients, isPending: clientsPending } = useClientOptions({ status: "active" });
 
   const studentOptions = useMemo(
     () => (student ? [] : (clients ?? []).map((c) => ({ value: c.id, label: c.name }))),

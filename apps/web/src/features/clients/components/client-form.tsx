@@ -77,7 +77,7 @@ import {
   useStudentPackages,
 } from "@/features/turmas";
 import { useBusinessSegment, useOrganization } from "@/features/settings";
-import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clients";
+import { useClientOptions, useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { pauseDescription, pausedChargeDescription, planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
 import { normalizeText } from "@/lib/text";
@@ -274,7 +274,8 @@ export function ClientForm({
   const areaBillingMode = useBusinessSegment().defaultBillingMode;
   const createMut = useCreateClient();
   // Cadastro novo com o telefone de alguem ja cadastrado pergunta antes (duplicado).
-  const { data: existingClients } = useClients(undefined, !isEdit);
+  // Telefone repetido: so nome e telefone de cada aluno (leitura enxuta).
+  const { data: existingClients } = useClientOptions(undefined, !isEdit);
   const { confirm: confirmDuplicate, dialog: duplicateDialog } = useConfirmAction();
   const { confirm: confirmPlanSwitch, dialog: planSwitchDialog } = useConfirmAction();
   const { confirm: confirmPause, dialog: pauseDialog } = useConfirmAction();

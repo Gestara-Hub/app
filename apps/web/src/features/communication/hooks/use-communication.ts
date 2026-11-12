@@ -105,11 +105,11 @@ export function useRetryMessage() {
   return useMutation({ mutationFn: (id: Id) => communicationService.retryFailedMessage(id), onSuccess: invalidate });
 }
 
-/** Alunos ativos para escolher o destinatario (mesmo cache da lista de alunos). */
+/** Alunos ativos para escolher o destinatario: so nome e telefone (mesmo cache dos seletores). */
 export function useMessageRecipients() {
   return useQuery({
-    queryKey: queryKeys.clients.list({ status: "active" }),
-    queryFn: () => clientsService.list({ status: "active" }),
+    queryKey: queryKeys.clients.options({ status: "active" }),
+    queryFn: () => clientsService.listOptions({ status: "active" }),
   });
 }
 

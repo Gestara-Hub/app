@@ -16,7 +16,7 @@ import {
 } from "@/lib/birthdays";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@gestarahub/core/format";
-import { useClients } from "@/features/clients";
+import { useClientOptions } from "@/features/clients";
 import { useMessageLogs, useWhatsAppSend } from "@/features/communication";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -26,7 +26,7 @@ import { dateInSpace } from "@gestarahub/core/date";
  * mes e, por ultimo, os que ja passaram.
  */
 export function useMonthBirthdays(today: string) {
-  const { data: clients, isPending } = useClients({ status: "active" });
+  const { data: clients, isPending } = useClientOptions({ status: "active" });
   const month = birthdaysOfMonth(clients ?? [], today);
   const nextMonths = upcomingBirthdaysNextMonths(clients ?? [], today);
   const rank = (b: { daysUntil: number }) => (b.daysUntil >= 0 ? b.daysUntil : 1000 - b.daysUntil);

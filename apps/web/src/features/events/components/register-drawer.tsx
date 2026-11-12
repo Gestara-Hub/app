@@ -19,7 +19,7 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { toast } from "@/lib/toast";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useRetainedValue } from "@/lib/use-retained-value";
-import { useClients } from "@/features/clients";
+import { useClientOptions } from "@/features/clients";
 import { usePromoteEventWaitlist, useRegisterForEvent } from "../hooks/use-events";
 import { registerFormSchema, type RegisterFormValues } from "../event-schema";
 import { dayLabel, sessionTimeLabel } from "../event-copy";
@@ -38,7 +38,7 @@ const INSTALLMENT_OPTIONS = (max: number) =>
   Array.from({ length: Math.min(max, MAX_INSTALLMENTS) }, (_, i) => ({ value: String(i + 1), label: i === 0 ? "À vista" : `${i + 1}x` }));
 
 function RegisterForm({ event, registrations, promote, onClose }: Omit<RegisterDrawerProps, "open" | "onOpenChange"> & { onClose: () => void }) {
-  const { data: clients } = useClients({ status: "active" });
+  const { data: clients } = useClientOptions({ status: "active" });
   const registerMut = useRegisterForEvent();
   const promoteMut = usePromoteEventWaitlist();
   const pending = registerMut.isPending || promoteMut.isPending;

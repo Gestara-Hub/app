@@ -244,6 +244,22 @@ export type UpdateClient = Partial<CreateClient> & {
   cancelCurrentMembershipCharge?: boolean;
 };
 
+/**
+ * Aluno nos seletores (matricula, cobranca avulsa, evento, aniversarios): so o
+ * que a escolha mostra (12/11/2026). Sem CPF, endereco, responsaveis nem
+ * historico de evolucao, que a lista completa levava para o navegador.
+ */
+export interface ClientOption {
+  id: Id;
+  name: string;
+  phone?: string;
+  birthDate?: DateISO;
+  planId?: Id;
+  /** Bolsista: nao paga mensalidade nem matricula do jeito comum. */
+  scholarship?: boolean;
+  status: RecordStatus;
+}
+
 export interface ClientFilter extends PaginationParams {
   search?: string; // nome ou telefone
   status?: RecordStatus;

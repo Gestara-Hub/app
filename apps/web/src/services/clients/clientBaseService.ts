@@ -1,4 +1,4 @@
-import type { Client, ClientFilter, CreateClient, Id, PaginatedResult, TrialStudentView } from "@gestarahub/contracts";
+import type { Client, ClientFilter, ClientOption, CreateClient, Id, PaginatedResult, TrialStudentView } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
 import { store } from "@/services/world/store";
 import {
@@ -78,6 +78,32 @@ export const clientBaseService = {
       return clone(
         [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       );
+    });
+  },
+
+  /**
+   * Seletores de aluno (12/11/2026): nome, telefone, nascimento, plano e bolsa.
+   * Mesmo filtro e mesma visao do professor da lista completa.
+   */
+  listOptions(filter?: Pick<ClientFilter, "status" | "search">): Promise<ClientOption[]> {
+    return readOp(async () => {
+      let result = visibleClients();
+      if (filter?.search) {
+        const term = filter.search;
+        result = result.filter((c) => textIncludes(c.name, term) || phoneIncludes(c.phone, term));
+      }
+      if (filter?.status) result = result.filter((c) => c.status === filter.status);
+      return [...result]
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          ...(c.phone ? { phone: c.phone } : {}),
+          ...(c.birthDate ? { birthDate: c.birthDate } : {}),
+          ...(c.planId ? { planId: c.planId } : {}),
+          ...(c.discount?.scholarship ? { scholarship: true } : {}),
+        }));
     });
   },
 

@@ -14,7 +14,7 @@ import { handleFormApiError } from "@/lib/form-errors";
 import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { useClients } from "@/features/clients";
+import { useClientOptions } from "@/features/clients";
 import { DialogBody } from "@/components/ui/dialog";
 
 const schema = z.object({
@@ -48,7 +48,7 @@ export function PlanForm({
   const updateMut = useUpdatePlan();
   const isEdit = Boolean(plan);
   // Mudar o valor de um plano em uso diz para quem vale antes de salvar.
-  const { data: activeClients } = useClients({ status: "active" }, isEdit);
+  const { data: activeClients } = useClientOptions({ status: "active" }, isEdit);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const pending = createMut.isPending || updateMut.isPending;
   // Com alunos no plano a periodicidade nao muda (o servico recusa): ja trava na tela.

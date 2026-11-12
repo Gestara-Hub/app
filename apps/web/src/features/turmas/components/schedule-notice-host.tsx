@@ -48,7 +48,7 @@ function ScheduleNoticeFlow({ request, onDone }: { request: ScheduleNoticeReques
     void (async () => {
       const [enrollments, clients] = await Promise.all([
         turmasService.listEnrollments(request.classGroupId),
-        clientsService.list({ status: "active" }),
+        clientsService.listOptions({ status: "active" }),
       ]);
       const phoneOf = new Map(clients.map((c) => [c.id, c.phone]));
       const items = enrollments

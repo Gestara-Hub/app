@@ -68,6 +68,7 @@ async function graduationCertificate([studentId, promotionId]: unknown[], load: 
 
 export const clientSlices: Record<string, MethodSlice> = {
   list: clientsList,
+  listOptions: clientsOnly,
   listPaginated: clientsList,
   listTrials: trialsWorld,
   listVisitorIds: visitorsWorld,

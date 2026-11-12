@@ -34,6 +34,8 @@ export const queryKeys = {
   clients: {
     all: ["clients"] as const,
     list: (filter?: ClientFilter) => ["clients", "list", filter] as const,
+    // Seletores de aluno (so nome, telefone, nascimento, plano e bolsa).
+    options: (filter?: ClientFilter) => ["clients", "options", filter] as const,
     detail: (id: Id) => ["clients", "detail", id] as const,
     // Alunos que fizeram aula experimental (selo, filtro, lembrete): reservas e matriculas o invalidam.
     trials: ["clients", "trials"] as const,

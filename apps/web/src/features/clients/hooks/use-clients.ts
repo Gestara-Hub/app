@@ -30,6 +30,19 @@ export function useClients(filter?: ClientFilter, enabled = true) {
   });
 }
 
+/**
+ * Alunos para escolher (matricula, cobranca avulsa, evento, aniversarios): so
+ * nome, telefone, nascimento, plano e bolsa (12/11/2026). Use no lugar de
+ * `useClients` quando a tela nao precisa do cadastro completo.
+ */
+export function useClientOptions(filter?: Pick<ClientFilter, "status" | "search">, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clients.options(filter),
+    queryFn: () => clientsService.listOptions(filter),
+    enabled,
+  });
+}
+
 /** Quem fez aula experimental: ainda sem voltar ou ja convertido (09/11/2026). */
 export function useTrialStudents(enabled = true) {
   return useQuery({
