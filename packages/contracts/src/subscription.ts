@@ -15,6 +15,7 @@ export type PaidFeature =
   | "messaging" // Comunicacao automatizada (gateway WhatsApp, lembretes inteligentes)
   | "reports_advanced" // Relatorios gerenciais avancados (DRE, churn, projecao)
   | "certificates" // Certificado de conclusao do curso (doc 20, fase D)
+  | "event_signup" // Inscricao em evento por link e ingresso com QR code (doc product/29)
   | "bi"; // Inteligencia e analytics preditivos (nivel Scale)
 
 /**

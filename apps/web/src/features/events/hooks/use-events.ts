@@ -213,3 +213,31 @@ export function useClearEventAttendance() {
     },
   });
 }
+
+/**
+ * Leitura do ingresso na entrada (doc product/29 T4 a T6): confere e, se der,
+ * marca presente. `preview` so confere; `confirm` deixa entrar com pagamento em aberto.
+ */
+export function useCheckInTicket(sessionId: Id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { code: string; confirm?: boolean; preview?: boolean }) => eventsService.checkInTicket({ sessionId, ...input }),
+    onSuccess: (result) => {
+      if (!result.entered) return;
+      qc.invalidateQueries({ queryKey: queryKeys.events.session(sessionId) });
+      qc.invalidateQueries({ queryKey: queryKeys.events.all });
+    },
+  });
+}
+
+/** "Desfazer" da faixa da leitura. */
+export function useUndoCheckIn(sessionId: Id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (registrationId: Id) => eventsService.undoCheckIn({ sessionId, registrationId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.events.session(sessionId) });
+      qc.invalidateQueries({ queryKey: queryKeys.events.all });
+    },
+  });
+}

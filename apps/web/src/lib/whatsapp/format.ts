@@ -45,6 +45,11 @@ export function whatsappLink(phone: string, text: string): string {
   return `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(text)}`;
 }
 
+/** Compartilhar um texto pelo WhatsApp, escolhendo o contato no aparelho (sem numero). */
+export function whatsappShareLink(text: string): string {
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+}
+
 const VARIABLE_RE = /\{(\w+)\}/g;
 const HAS_VARIABLE_RE = /\{\w+\}/;
 

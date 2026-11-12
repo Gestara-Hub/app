@@ -1,4 +1,5 @@
 import type { Id } from "@gestarahub/contracts";
+import { normalizeTicketCode } from "./eventCheckInService";
 import type { MethodSlice, SliceLoader } from "../world/slices";
 
 /**
@@ -104,4 +105,25 @@ export const eventSlices: Record<string, MethodSlice> = {
   markEventAttendance: async ([input], load) => bySession((input as { sessionId: Id }).sessionId, load),
   markManyEventAttendance: async ([input], load) => bySession((input as { sessionId: Id }).sessionId, load),
   clearEventAttendance: async ([input], load) => bySession((input as { sessionId: Id }).sessionId, load),
+  // Ingresso na entrada: o dia, a inscricao do codigo e, se for de outro evento, o nome dele.
+  checkInTicket: async ([input], load) => {
+    const { sessionId, code } = input as { sessionId: Id; code: string };
+    await bySession(sessionId, load);
+    const [registration] = await load.where("eventRegistrations", "ticketCode", [normalizeTicketCode(code)]);
+    if (registration) {
+      await Promise.all([
+        load.where("events", "id", [registration.eventId as Id]),
+        load.where("clients", "id", [registration.studentId as Id]),
+      ]);
+    }
+  },
+  undoCheckIn: async ([input], load) => bySession((input as { sessionId: Id }).sessionId, load),
+  getCheckInList: async ([sessionId], load) => bySession(sessionId as Id, load),
+  // Ingresso fora da lista: o codigo pode ser de outro evento (vem o nome e o aluno dele).
+  syncOfflineCheckIns: async ([input], load) => {
+    const { sessionId, entries } = input as { sessionId: Id; entries: { code?: string }[] };
+    await bySession(sessionId, load);
+    const codes = entries.map((e) => e.code).filter((c): c is string => Boolean(c)).map(normalizeTicketCode);
+    if (codes.length > 0) await load.where("eventRegistrations", "ticketCode", codes);
+  },
 };

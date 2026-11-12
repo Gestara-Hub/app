@@ -32,6 +32,7 @@ const FEATURE_DESCRIPTION: Record<PaidFeature, string> = {
   messaging: "Lembretes de cobrança e avisos automáticos via WhatsApp.",
   reports_advanced: "Resultado do mês e retenção dos alunos.",
   certificates: "Certificado de conclusão do curso para imprimir ou salvar em PDF.",
+  event_signup: "Inscrição em evento por link, com ingresso e leitura na entrada.",
   bi: "Inteligência analítica preditiva e mapas de ocupação avançados.",
 };
 

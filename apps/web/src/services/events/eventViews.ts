@@ -12,6 +12,7 @@ import { activeDays, earlyBirdActive, eventStage, eventTotalHours, suggestedRegi
 import { store } from "@/services/world/store";
 import {
   confirmedRegistrations,
+  seatHolders,
   eventAttendancesStore,
   findEvent,
   instructorViews,
@@ -31,8 +32,10 @@ export function toEventView(event: Event): EventView {
   const today = todayISO();
   const registrations = registrationsOf(event.id);
   const confirmedCount = registrations.filter((r) => r.status === "confirmed").length;
+  // Vaga livre desconta tambem as reservas valendo ("vaga so com o pagamento").
+  const takenSeats = seatHolders(event.id).length;
   const waitlistCount = registrations.filter((r) => r.status === "waitlist").length;
-  const availableSpots = event.capacity === undefined ? undefined : Math.max(0, event.capacity - confirmedCount);
+  const availableSpots = event.capacity === undefined ? undefined : Math.max(0, event.capacity - takenSeats);
   return {
     ...event,
     modalityName: modalityName(event.modalityId),
@@ -59,7 +62,8 @@ export function toRegistrationView(registration: EventRegistration): EventRegist
   return {
     ...registration,
     studentName: client?.name ?? "",
-    studentPhone: client?.phone,
+    // Menor sem telefone: o do responsavel (o ingresso e os avisos vao para ele).
+    studentPhone: client?.phone ?? client?.guardians?.find((g) => g.financial)?.phone ?? client?.guardians?.[0]?.phone,
     paidCents: sum((s) => s === "paid"),
     openCents: sum((s) => s === "pending" || s === "overdue"),
     overdueCents: sum((s) => s === "overdue"),

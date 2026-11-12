@@ -42,6 +42,8 @@ export type ReminderGroupKey =
   | "roll_call"
   | "documents"
   | "event_certificates"
+  | "event_spot_open"
+  | "event_new_signups"
   /** Falar com alguem (09/11/2026, fase 3). */
   | "event_tomorrow"
   | "visitor_follow_up"
@@ -71,6 +73,8 @@ export const GROUP_LEVEL: Record<ReminderGroupKey, ReminderLevel> = {
   roll_call: "info",
   documents: "warning",
   event_certificates: "warning",
+  event_spot_open: "warning",
+  event_new_signups: "info",
   event_tomorrow: "info",
   visitor_follow_up: "warning",
   course_ending: "warning",
@@ -508,6 +512,28 @@ export function buildReminders(
     )
     .filter(keep);
 
+  // Inscricao pelo link (doc product/29 P12): novas e vaga aberta com espera.
+  const eventSignupItems = (kind: "new_signups" | "spot_open") =>
+    (src.eventSignups ?? [])
+      .filter((e) => e.kind === kind)
+      .map(
+        (e): ReminderItem => ({
+          key: `event_${kind}:${e.eventId}:${e.marker}`,
+          studentId: e.eventId,
+          studentName: e.eventName,
+          trigger: "manual_broadcast",
+          values: {},
+          detail:
+            kind === "new_signups"
+              ? plural(e.count, "inscrição nova pelo link", "inscrições novas pelo link")
+              : `${plural(e.count, "vaga aberta", "vagas abertas")} com gente na espera`,
+          href: e.href,
+        }),
+      )
+      .filter(keep);
+  const eventNewSignups = eventSignupItems("new_signups");
+  const eventSpotOpen = eventSignupItems("spot_open");
+
   // --- Falar com alguem: evento amanha, visitante, curso terminando ------------
   const eventTomorrow = (src.eventsTomorrow ?? [])
     .flatMap((day) =>
@@ -615,6 +641,8 @@ export function buildReminders(
     group("roll_call", "task", rollCalls, (n) => plural(n, "chamada de ontem em aberto", "chamadas de ontem em aberto"), names),
     group("documents", "task", documents, (n) => plural(n, "documento para renovar", "documentos para renovar"), names),
     group("event_certificates", "task", eventCertificates, (n) => plural(n, "evento com presentes sem certificado", "eventos com presentes sem certificado"), names),
+    group("event_spot_open", "task", eventSpotOpen, (n) => plural(n, "evento com vaga aberta e lista de espera", "eventos com vaga aberta e lista de espera"), names),
+    group("event_new_signups", "notice", eventNewSignups, (n) => plural(n, "evento com inscrição nova pelo link", "eventos com inscrição nova pelo link"), names),
   ].filter((g): g is ReminderGroup => g !== null);
 }
 

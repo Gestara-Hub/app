@@ -22,7 +22,26 @@ export type EventSessionStatus = "scheduled" | "done" | "canceled";
 /** `full`: todos os dias; `days`: so os dias escolhidos (`sessionIds`), so com `per_day`. */
 export type EventRegistrationScope = "full" | "days";
 /** `waitlist`: lotou; promover vira `confirmed` com a cobranca. */
-export type EventRegistrationStatus = "confirmed" | "waitlist" | "canceled";
+/**
+ * `reserved`: inscricao pelo link em evento "vaga so com pagamento", ocupando a
+ * vaga ate `holdUntil`; pagou, vira `confirmed`; nao pagou, a reserva cai.
+ */
+export type EventRegistrationStatus = "confirmed" | "reserved" | "waitlist" | "canceled";
+
+/** De onde veio a inscricao. */
+export type EventRegistrationSource = "staff" | "public_link";
+
+/** Quando a vaga fica garantida na inscricao pelo link (doc product/29 P5). */
+export type EventSeatGuarantee = "on_signup" | "on_payment";
+
+/** Inscricao publica por link (Plano Profissional; doc product/29). */
+export interface EventPublicSignup {
+  enabled: boolean;
+  /** Codigo aleatorio do link (`/p/e/<code>`), nunca o id do evento. */
+  code: string;
+  /** Ultimo dia em que o link aceita inscricao (inclusive). */
+  until?: DateISO;
+}
 export type EventAttendanceStatus = "present" | "absent";
 
 /**
@@ -63,6 +82,12 @@ export interface Event {
   earlyBirdUntil?: DateISO;
   /** Presenca conta como aula na frequencia da graduacao (exame de faixa coletivo). Padrao: nao. */
   countsForProgression?: boolean;
+  /** Inscricao pelo link (ausente = desligada). */
+  publicSignup?: EventPublicSignup;
+  /** Evento pago, inscricao pelo link: vaga garantida na inscricao (padrao) ou so com o pagamento. */
+  seatGuarantee?: EventSeatGuarantee;
+  /** Tempo da reserva em "so com o pagamento" (padrao 30). */
+  holdMinutes?: 15 | 30 | 60;
   status: EventStatus;
   canceledAt?: DateTimeISO;
   cancelReason?: string;
@@ -125,6 +150,14 @@ export interface EventRegistration {
   registeredAt: DateTimeISO;
   canceledAt?: DateTimeISO;
   cancellationReason?: string;
+  /** Padrao `staff`. */
+  source?: EventRegistrationSource;
+  /** `reserved`: a reserva vale ate aqui. */
+  holdUntil?: DateTimeISO;
+  /** Ingresso (QR code): aleatorio, criado ao confirmar. */
+  ticketCode?: string;
+  /** Aceite da inscricao pelo link (texto, data, IP; e o do responsavel, no menor). */
+  signupEvidence?: Record<string, unknown>;
 }
 
 /** Pagamento da inscricao: valor editavel (sugerido pelo evento e pelo lote), parcelas e 1o vencimento. */
@@ -152,6 +185,10 @@ export interface EventAttendance {
   studentId: Id;
   status: EventAttendanceStatus;
   markedAt: DateTimeISO;
+  /** Entrada pela leitura do ingresso. */
+  checkedInAt?: DateTimeISO;
+  /** Quem confirmou a entrada (nome). */
+  checkedInBy?: string;
 }
 
 // --- Leituras -----------------------------------------------------------------
@@ -252,4 +289,149 @@ export interface EventSessionView extends EventSession {
   instructors: EventInstructorView[];
   modalityName?: string;
   confirmedCount: number;
+}
+
+// --- Inscricao publica por link (doc product/29, aprovada em 12/11/2026) -------
+
+/** Por que o link nao aceita inscricao agora. */
+export type PublicSignupClosedReason = "disabled" | "until" | "finished" | "canceled" | "plan";
+
+/** O que a pagina `/p/e/<codigo>` recebe: dados do evento, nenhum dado de aluno. */
+export interface PublicEventView {
+  code: string;
+  organizationName: string;
+  eventName: string;
+  description?: string;
+  modalityName?: string;
+  /** Dias que ainda contam (sem os cancelados), com quem conduz cada um. */
+  sessions: { id: Id; date: DateISO; start: TimeISO; end: TimeISO; instructors: string[] }[];
+  /** Quem conduz: nome e, no convidado, de onde vem. */
+  instructors: { name: string; origin?: string; isGuest: boolean }[];
+  /** Endereco da unidade, numa linha. */
+  address?: string;
+  billingMode: EventBillingMode;
+  /** Valor de hoje da inscricao completa (lote ja aplicado). */
+  priceCents: number;
+  dayPriceCents?: number;
+  earlyBird?: { priceCents: number; until: DateISO };
+  seatGuarantee: EventSeatGuarantee;
+  holdMinutes: number;
+  /** O espaco cobra online (a pagina segue para o Pix ou cartao). */
+  onlinePayments: boolean;
+  /** Faltam poucas vagas (5 ou menos): quantas. Ausente: muitas ou sem limite. */
+  spotsLeft?: number;
+  isFull: boolean;
+  open: boolean;
+  closedReason?: PublicSignupClosedReason;
+}
+
+export interface PublicEventSignupInput {
+  code: string;
+  name: string;
+  phone: string;
+  email?: string;
+  /** Menor de 18 anos: dados e aceite do responsavel. */
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianPhone?: string;
+  scope?: EventRegistrationScope;
+  sessionIds?: Id[];
+  /** Aceite da inscricao (obrigatorio). */
+  acceptTerms: boolean;
+  /** Aceita mensagens do espaco pelo WhatsApp (opcional, doc product/27 M1). */
+  acceptWhatsapp?: boolean;
+  /** Campo escondido: preenchido = robo. */
+  website?: string;
+}
+
+export interface PublicEventSignupResult {
+  status: "confirmed" | "reserved" | "waitlist" | "already";
+  /** Ingresso (inscricao confirmada). */
+  ticketCode?: string;
+  /** Cobranca a pagar agora (evento pago). */
+  chargeId?: string;
+  amountCents: number;
+  /** Reserva: vale ate aqui. */
+  holdUntil?: DateTimeISO;
+  /** Nome do inscrito mascarado ("Ana S."), para a confirmacao. */
+  displayName: string;
+}
+
+// --- Ingresso e entrada (doc product/29 T1 a T8) --------------------------------
+
+/** O que a leitura do ingresso responde na entrada. */
+export type TicketCheckOutcome =
+  | "ok" // pode entrar (entrada marcada)
+  | "already" // ja entrou hoje
+  | "payment_pending" // inscricao confirmada com pagamento em aberto (entra com aviso)
+  | "reserved" // reserva sem pagamento ("vaga so com o pagamento")
+  | "waitlist"
+  | "canceled"
+  | "not_this_day" // a inscricao nao cobre este dia
+  | "not_today" // este dia do evento nao e hoje
+  | "other_event"
+  | "not_found";
+
+export interface TicketCheckResult {
+  outcome: TicketCheckOutcome;
+  /** Entrada marcada nesta leitura. */
+  entered: boolean;
+  registrationId?: Id;
+  studentName?: string;
+  /** Valor em aberto da inscricao. */
+  pendingCents?: number;
+  /** Primeira cobranca em aberto (para "Registrar pagamento"). */
+  pendingChargeId?: Id;
+  checkedInAt?: DateTimeISO;
+  checkedInBy?: string;
+  /** "Ingresso de outro evento": o nome dele. */
+  otherEventName?: string;
+}
+
+/** Ingresso aberto pelo QR, sem login: dados mascarados (regra das paginas publicas). */
+export interface PublicTicketView {
+  code: string;
+  organizationName: string;
+  eventName: string;
+  /** Nome mascarado ("Ana S. L."). */
+  holderName: string;
+  days: { date: DateISO; start: TimeISO; end: TimeISO }[];
+  address?: string;
+  instructors: string[];
+  state: "confirmed" | "payment_pending" | "reserved" | "canceled" | "waitlist";
+}
+
+/** Lista do dia para conferir ingresso sem internet (doc product/29, "Leitura sem internet"). */
+export interface CheckInListEntry {
+  registrationId: Id;
+  /** SHA-256 do codigo do ingresso (hex): a lista copiada nao serve para montar ingresso. */
+  codeHash: string;
+  studentName: string;
+  status: "confirmed" | "reserved";
+  pendingCents: number;
+  checkedInAt?: DateTimeISO;
+}
+
+export interface CheckInList {
+  sessionId: Id;
+  eventName: string;
+  date: DateISO;
+  generatedAt: DateTimeISO;
+  entries: CheckInListEntry[];
+}
+
+/** Entrada feita sem internet, enviada quando a conexao volta. */
+export interface OfflineCheckIn {
+  /** Ingresso achado na lista; ou o codigo lido, quando nao estava na lista. */
+  registrationId?: Id;
+  code?: string;
+  at: DateTimeISO;
+}
+
+export interface OfflineCheckInSyncResult {
+  applied: number;
+  /** A mesma pessoa ja tinha entrado (outra porta, ou ja sincronizado). */
+  duplicates: { studentName: string; firstAt: DateTimeISO; firstBy?: string }[];
+  /** Codigos que nao valem (nao achados, cancelados, outro evento). */
+  rejected: { code: string; reason: string }[];
 }

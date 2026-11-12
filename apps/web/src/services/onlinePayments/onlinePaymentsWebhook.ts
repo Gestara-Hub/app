@@ -3,6 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cancelGatewayPayment, subaccountKeyOf } from "./gateway";
 import { chargeMethodOf, mapRowToOnlinePayment } from "./onlinePaymentsRows";
 import { logError } from "@/lib/log";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { newTicketCode } from "../events/eventShared";
 
 /**
  * Baixa, expiracao e cancelamento vindos do webhook do Asaas (app/api/webhooks).
@@ -139,6 +141,7 @@ export async function markOnlinePaymentPaidInDb(
     return { payment, chargeId: payment.chargeId, newlyPaid, conflict: current?.status === "paid" ? "already_paid" : "closed" };
   }
 
+  await confirmPaidEventReservationInDb(adminClient, payment.chargeId);
   return { payment, chargeId: payment.chargeId, newlyPaid };
 }
 
@@ -221,3 +224,25 @@ export async function cancelOnlinePaymentByGatewayIdInDb(
   return !error;
 }
 
+
+
+/**
+ * Evento "vaga so com o pagamento" (doc product/29 P5): o Pix ou cartao caiu,
+ * a reserva vira inscricao confirmada com o ingresso. So reserva ainda valendo
+ * a confirmacao (gravacao condicional: a reserva que caiu nao volta).
+ */
+async function confirmPaidEventReservationInDb(adminClient: SupabaseClient, chargeId: string): Promise<void> {
+  try {
+    const { data: charge } = await adminClient.from("charges").select("event_registration_id").eq("id", chargeId).maybeSingle();
+    const registrationId = charge?.event_registration_id as string | null | undefined;
+    if (!registrationId) return;
+    const { error } = await adminClient
+      .from("event_registrations")
+      .update({ status: "confirmed", hold_until: null, ticket_code: newTicketCode() })
+      .eq("id", registrationId)
+      .eq("status", "reserved");
+    if (error) logError("[onlinePaymentsBackend] Erro ao confirmar a reserva do evento:", error);
+  } catch (err) {
+    logError("[onlinePaymentsBackend] Erro ao confirmar a reserva do evento:", err);
+  }
+}

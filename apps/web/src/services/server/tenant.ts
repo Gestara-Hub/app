@@ -1,4 +1,4 @@
-import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
+import type { AuditActor, Id, Permission, UserProfile } from "@gestarahub/contracts";
 import { requestRoute } from "./requestRoute";
 import { isAuthApiError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
@@ -30,6 +30,8 @@ export interface TenantContext {
   professionalId?: Id;
   /** Fuso do espaco (achado 60): o "hoje" das regras e do parceiro de pagamentos. */
   timeZone: SpaceTimeZone;
+  /** Autor fixo, sem pessoa (rotina, inscricao pelo link): vale no lugar do usuario. */
+  actor?: AuditActor;
   /** Lanca FORBIDDEN se o perfil nao tem nenhuma das permissoes. */
   require(...permissions: Permission[]): void;
 }

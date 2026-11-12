@@ -18,6 +18,7 @@ import { plural } from "@gestarahub/core/format";
 import { apiError, newId, nowIso, readOp, textIncludes, validationError, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { toChargeView } from "../billing/billingViews";
 import {
@@ -31,6 +32,7 @@ import {
   findSession,
   assertTeacherConductsSession,
   instructorViews,
+  newTicketCode,
   registrationsOf,
   sessionsOf,
   teacherConductsSession,
@@ -78,6 +80,35 @@ export function cancelFutureInstallments(registrationId: Id, reason: string): nu
     count += 1;
   }
   return count;
+}
+
+
+/**
+ * Inscricao pelo link e "Vaga garantida" (doc product/29 P5, P8, P13): o codigo
+ * do link nasce aqui (o navegador manda so ligado e a data limite) e se mantem
+ * ao desligar e religar. Ligar pede o Plano Profissional; "so com o pagamento"
+ * pede recebimentos online ligados e nao vale em evento sem cobranca.
+ */
+function applySignupSettings(
+  next: Pick<Event, "publicSignup" | "seatGuarantee" | "holdMinutes" | "billingMode">,
+  current?: Event,
+): void {
+  const wanted = next.publicSignup;
+  if (wanted?.enabled && !current?.publicSignup?.enabled) assertFeature("event_signup");
+  next.publicSignup = wanted
+    ? {
+        enabled: Boolean(wanted.enabled),
+        code: current?.publicSignup?.code ?? newTicketCode().toLowerCase(),
+        ...(wanted.until ? { until: wanted.until } : {}),
+      }
+    : current?.publicSignup;
+  if (next.billingMode === "free" || next.seatGuarantee !== "on_payment") next.seatGuarantee = "on_signup";
+  else if (!store.organization.settings?.onlinePayments?.enabled) {
+    throw validationError([
+      { field: "seatGuarantee", message: "\"Vaga só com o pagamento\" precisa dos recebimentos online ligados." },
+    ]);
+  }
+  next.holdMinutes = next.holdMinutes === 15 || next.holdMinutes === 60 ? next.holdMinutes : 30;
 }
 
 export const eventsService = {
@@ -192,6 +223,7 @@ export const eventsService = {
       const { sessions, ...rest } = input;
       const payload = normalizeEvent(rest);
       validateEvent(payload);
+      applySignupSettings(payload);
       validateSessions(sessions ?? [], payload.instructors);
       const ts = nowIso();
       const event: Event = {
@@ -227,6 +259,7 @@ export const eventsService = {
       const { sessions, ...rest } = payload;
       const next = normalizeEvent({ ...current, ...rest });
       validateEvent(next, current);
+      applySignupSettings(next, current);
       const ts = nowIso();
       const today = todayISO();
       const existingDays = sessionsOf(id);

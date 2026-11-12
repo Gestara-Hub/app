@@ -232,6 +232,8 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   roll_call: { icon: <ClipboardList className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   documents: { icon: <FileText className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
   event_certificates: { icon: <Award className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  event_spot_open: { icon: <Ticket className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  event_new_signups: { icon: <Ticket className="size-4" />, tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
 };
 
 const ALERT_TONE: Record<BellAlert["tone"], string> = {
@@ -380,7 +382,7 @@ export function DashboardTodo({
                     {item.href ? (
                       <Button asChild variant="outline" className="shrink-0 text-xs">
                         <Link href={item.href}>
-                          {group.key === "roll_call" ? "Fazer chamada" : group.key === "event_certificates" ? "Emitir" : "Abrir"}
+                          {group.key === "roll_call" ? "Fazer chamada" : group.key === "event_certificates" ? "Emitir" : group.key === "event_spot_open" ? "Promover" : "Abrir"}
                         </Link>
                       </Button>
                     ) : canMessage ? (

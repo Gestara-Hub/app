@@ -7,7 +7,7 @@ import type {
   Id,
 } from "@gestarahub/contracts";
 import { dateInSpace } from "@gestarahub/core/date";
-import { apiError, notFoundError } from "@/services/world/ops";
+import { apiError, newId, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { actorTeacherId } from "../classes/teacherScope";
 
@@ -77,6 +77,25 @@ export function registrationsOf(eventId: Id): EventRegistration[] {
 
 export function confirmedRegistrations(eventId: Id): EventRegistration[] {
   return registrationsOf(eventId).filter((r) => r.status === "confirmed");
+}
+
+/** Reserva ainda valendo ("vaga so com o pagamento", doc product/29 P5). */
+export function activeReservation(registration: EventRegistration, now = Date.now()): boolean {
+  return registration.status === "reserved" && Boolean(registration.holdUntil) && Date.parse(registration.holdUntil!) > now;
+}
+
+/** Quem ocupa vaga: confirmados e reservas ainda valendo (a vencida nao segura vaga, mesmo antes da rotina cancelar). */
+export function seatHolders(eventId: Id, now = Date.now()): EventRegistration[] {
+  return registrationsOf(eventId).filter((r) => r.status === "confirmed" || activeReservation(r, now));
+}
+
+/**
+ * Codigo do ingresso e do link: aleatorio (do mesmo gerador dos ids, que a
+ * conferencia de recorte repete igual nas duas rodadas), 12 caracteres, nao da
+ * para adivinhar nem montar a partir do id do registro.
+ */
+export function newTicketCode(): string {
+  return newId().replace(/-/g, "").slice(0, 12).toUpperCase();
 }
 
 export function studentName(id: Id): string {
@@ -152,3 +171,13 @@ export function assertTeacherConductsSession(
 }
 
 export { actorTeacherId };
+
+/** Reserva paga: confirma e cria o ingresso (pagamento registrado a mao ou pelo parceiro). */
+export function confirmPaidReservation(registrationId: Id | undefined): boolean {
+  const registration = registrationId ? eventRegistrationsStore().find((r) => r.id === registrationId) : undefined;
+  if (!registration || registration.status !== "reserved") return false;
+  registration.status = "confirmed";
+  registration.holdUntil = undefined;
+  registration.ticketCode ??= newTicketCode();
+  return true;
+}

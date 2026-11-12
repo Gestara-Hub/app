@@ -496,6 +496,7 @@ async function applyChanges(
 }
 
 async function actorOf(ctx: TenantContext): Promise<AuditActor> {
+  if (ctx.actor) return ctx.actor;
   const { data } = await createSupabaseAdminClient().from("users").select("name").eq("id", ctx.userId).maybeSingle();
   return { userId: ctx.userId, name: String(data?.name ?? "Usuário"), profile: ctx.profile };
 }

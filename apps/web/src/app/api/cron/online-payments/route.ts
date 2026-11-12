@@ -6,6 +6,7 @@ import { reportError } from "@/lib/log";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { finishJobRun, startJobRun } from "@/services/server/backgroundRuns";
 import { safeEqual } from "@/lib/security/webhook-signature";
+import { releaseAllExpiredEventReservations } from "@/services/events/eventReservationsCron";
 
 /**
  * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   const runId = await startJobRun(admin, "cron.online-payments");
   const errorReferences: string[] = [];
-  const result = { expired: 0, retriedCancels: 0, birthdayGreetings: 0, billingReminders: 0, failures: 0 };
+  const result = { expired: 0, retriedCancels: 0, releasedReservations: 0, birthdayGreetings: 0, billingReminders: 0, failures: 0 };
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
@@ -44,6 +45,14 @@ export async function POST(req: Request) {
     errorReferences.push(await reportError("cron.hourly.cancelamentos", err, { source: "cron" }));
     result.failures += 1;
   }
+  // Reservas de evento vencidas sem pagamento (doc product/29 P5).
+  try {
+    result.releasedReservations = await releaseAllExpiredEventReservations();
+  } catch (err) {
+    errorReferences.push(await reportError("cron.hourly.reservas-de-evento", err, { source: "cron" }));
+    result.failures += 1;
+  }
+
 
   try {
     // Folga para terminar dentro dos 300 s da rota.

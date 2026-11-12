@@ -924,6 +924,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "checked_in_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "checked_in_by": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -992,6 +1002,26 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "cancellation_reason": {
         "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "source": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "hold_until": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "ticket_code": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "signup_evidence": {
+        "type": "jsonb",
         "nullable": true,
         "hasDefault": false
       }
@@ -1157,6 +1187,21 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "instructors": {
         "type": "jsonb",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "public_signup": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "seat_guarantee": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "hold_minutes": {
+        "type": "integer",
         "nullable": false,
         "hasDefault": true
       }

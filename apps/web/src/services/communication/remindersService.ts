@@ -5,6 +5,7 @@ import type {
   MessageTrigger,
   ReminderCourseEnding,
   ReminderEventCertificates,
+  ReminderEventSignups,
   ReminderEventTomorrow,
   ReminderOpenRollCall,
   ReminderSources,
@@ -182,6 +183,7 @@ export const remindersService = {
         openRollCalls: openRollCallsOf(today, teacherId),
         documents: expiringDocuments(),
         eventCertificates: eventCertificatesOf(today, actor?.profile),
+        eventSignups: eventSignupsOf(today, actor?.profile),
         eventsTomorrow: eventsTomorrowOf(today, teacherId, visible),
         visitors: visitorsOf(today, visible),
         coursesEnding: coursesEndingOf(today, teacherId, visible),
@@ -345,6 +347,45 @@ function coursesEndingOf(today: string, teacherId: Id | undefined, visible: (id:
     }
   }
   return out.sort((a, b) => a.endDate.localeCompare(b.endDate));
+}
+
+/**
+ * Inscricao pelo link (doc product/29 P12): inscricoes novas nas ultimas 48 h e
+ * vaga aberta com gente na lista de espera (reserva que caiu, cancelamento).
+ * Quem ve eventos e pode inscrever (o professor: so os dele).
+ */
+function eventSignupsOf(today: string, profile: Parameters<typeof can>[0] | undefined): ReminderEventSignups[] {
+  if (profile && !(can(profile, "events:view") && can(profile, "enrollment:manage"))) return [];
+  const teacherId = actorTeacherId();
+  const since = Date.now() - 48 * 3_600_000;
+  const out: ReminderEventSignups[] = [];
+  for (const event of eventsStore()) {
+    if (event.status !== "active" || !teacherSeesEvent(event, teacherId)) continue;
+    const days = activeDays(eventSessionsStore().filter((s) => s.eventId === event.id));
+    if (eventStage(days, today) === "finished") continue;
+    const registrations = (store.eventRegistrations ?? []).filter((r) => r.eventId === event.id);
+    const fresh = registrations
+      .filter((r) => r.source === "public_link" && r.status !== "canceled" && Date.parse(r.registeredAt) >= since)
+      .sort((a, b) => b.registeredAt.localeCompare(a.registeredAt));
+    if (fresh.length > 0) {
+      out.push({ eventId: event.id, eventName: event.name, kind: "new_signups", count: fresh.length, marker: fresh[0].id, href: `/events/${event.id}` });
+    }
+    const waiting = registrations.filter((r) => r.status === "waitlist").length;
+    const taken = registrations.filter(
+      (r) => r.status === "confirmed" || (r.status === "reserved" && r.holdUntil && Date.parse(r.holdUntil) > Date.now()),
+    ).length;
+    if (waiting > 0 && event.capacity !== undefined && taken < event.capacity) {
+      out.push({
+        eventId: event.id,
+        eventName: event.name,
+        kind: "spot_open",
+        count: event.capacity - taken,
+        marker: `${taken}:${waiting}`,
+        href: `/events/${event.id}?tab=waitlist`,
+      });
+    }
+  }
+  return out;
 }
 
 /**

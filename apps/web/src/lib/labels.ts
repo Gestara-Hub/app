@@ -159,6 +159,7 @@ const PAID_FEATURE_LABEL: Record<PaidFeature, string> = {
   reports_advanced: "Relatórios avançados",
   messaging: "Comunicação automática",
   certificates: "Certificado de conclusão",
+  event_signup: "Inscrição em evento por link",
   bi: "BI & Analytics",
 };
 

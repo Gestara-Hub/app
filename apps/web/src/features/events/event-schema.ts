@@ -41,6 +41,11 @@ export const eventFormSchema = z
     earlyBirdUntil: z.string().optional(),
     dayPriceCents: z.number().int().min(0).nullish(),
     countsForProgression: z.boolean(),
+    /** Inscricao pelo link (Plano Profissional; doc product/29). */
+    publicSignupEnabled: z.boolean(),
+    publicSignupUntil: z.string().optional(),
+    seatGuarantee: z.enum(["on_signup", "on_payment"]),
+    holdMinutes: z.enum(["15", "30", "60"]),
     description: z.string().trim().optional(),
     sessions: z
       .array(

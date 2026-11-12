@@ -31,7 +31,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
-import { useTeamWords } from "@/features/settings";
+import { useOrganization, useTeamWords } from "@/features/settings";
+import { useHasFeature } from "@/features/auth";
 import { useCreateEvent, useUpdateEvent } from "../hooks/use-events";
 import { eventFormSchema, type EventFormValues } from "../event-schema";
 import { brDate } from "../event-copy";
@@ -74,6 +75,10 @@ function defaults(event?: EventView): EventFormValues {
     earlyBirdUntil: event?.earlyBirdUntil ?? "",
     dayPriceCents: event?.dayPriceCents ?? null,
     countsForProgression: event?.countsForProgression ?? false,
+    publicSignupEnabled: Boolean(event?.publicSignup?.enabled),
+    publicSignupUntil: event?.publicSignup?.until ?? "",
+    seatGuarantee: event?.seatGuarantee ?? "on_signup",
+    holdMinutes: String(event?.holdMinutes ?? 30) as "15" | "30" | "60",
     description: event?.description ?? "",
     sessions: event
       ? event.sessions.map((s) => ({
@@ -107,6 +112,10 @@ function toPayload(values: EventFormValues): CreateEvent {
     earlyBirdUntil: fixed && values.hasEarlyBird ? values.earlyBirdUntil || undefined : undefined,
     dayPriceCents: values.billingMode === "per_day" ? (values.dayPriceCents ?? undefined) : undefined,
     countsForProgression: values.countsForProgression || undefined,
+    // O codigo do link e do servidor; aqui so ligado e a data limite.
+    publicSignup: { enabled: values.publicSignupEnabled, code: "", ...(values.publicSignupUntil ? { until: values.publicSignupUntil } : {}) },
+    seatGuarantee: values.billingMode === "free" ? "on_signup" : values.seatGuarantee,
+    holdMinutes: Number(values.holdMinutes) as 15 | 30 | 60,
     sessions: values.sessions.map((s) => {
       // So ids que continuam na lista; nenhum escolhido = todos conduzem o bloco.
       const instructorIds = s.instructorIds.filter((id) => values.instructors.some((i) => i.id === id));
@@ -146,12 +155,20 @@ export function EventForm({ event, onSuccess, onCancel }: { event?: EventView; o
   const named = instructors.filter((i) => instructorNames.get(i.id));
   const billingMode = useWatch({ control: form.control, name: "billingMode" });
   const hasEarlyBird = useWatch({ control: form.control, name: "hasEarlyBird" });
+  const publicSignupEnabled = useWatch({ control: form.control, name: "publicSignupEnabled" });
+  const seatGuarantee = useWatch({ control: form.control, name: "seatGuarantee" });
+  const hasFeature = useHasFeature();
+  const signupInPlan = hasFeature("event_signup");
+  const { data: organization } = useOrganization();
+  const onlinePaymentsOn = Boolean(organization?.settings?.onlinePayments?.enabled);
   // Descricao e opcional: recolhida em "+ Adicionar descrição" ate ter texto.
   const [showDescription, setShowDescription] = useState(Boolean(event?.description));
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       const payload = toPayload(values);
+      // Sem recebimentos online, a vaga e sempre garantida na inscricao.
+      if (!onlinePaymentsOn) payload.seatGuarantee = "on_signup";
       const saved = event ? await updateMut.mutateAsync({ id: event.id, payload }) : await createMut.mutateAsync(payload);
       toast.success(event ? "Evento atualizado." : "Evento criado.");
       onSuccess(saved);
@@ -295,6 +312,58 @@ export function EventForm({ event, onSuccess, onCancel }: { event?: EventView; o
               hint="Presença vale como aula na frequência mínima (exame de faixa coletivo)."
               disabled={pending}
             />
+          </FormSection>
+
+          <FormSection title="Inscrição pelo link">
+            <SwitchField<EventFormValues>
+              name="publicSignupEnabled"
+              label="Aceitar inscrições pelo link"
+              hint={
+                signupInPlan
+                  ? "A pessoa se inscreve sozinha e recebe o ingresso."
+                  : "Disponível no Plano Profissional."
+              }
+              disabled={pending || (!signupInPlan && !publicSignupEnabled)}
+            />
+            {publicSignupEnabled ? (
+              <div className="space-y-4">
+                <div className="sm:w-1/2 sm:pr-2">
+                  <DateField<EventFormValues> name="publicSignupUntil" label="Inscrições até" hint="Vazio: até o evento começar." disabled={pending} />
+                </div>
+                {billingMode !== "free" && onlinePaymentsOn ? (
+                  <FieldShell label="Vaga garantida">
+                    <SegmentedChoiceField<EventFormValues>
+                      name="seatGuarantee"
+                      ariaLabel="Vaga garantida"
+                      variant="cards"
+                      options={[
+                        { value: "on_signup", label: "Na inscrição", description: "A vaga é da pessoa na hora; paga depois." },
+                        { value: "on_payment", label: "Com o pagamento", description: "Reserva a vaga até pagar; sem pagar, a vaga volta." },
+                      ]}
+                      disabled={pending}
+                    />
+                  </FieldShell>
+                ) : billingMode !== "free" ? (
+                  <p className="text-xs text-muted-foreground">
+                    A vaga é garantida na inscrição. Para reservar só até o pagamento, ligue os recebimentos online.
+                  </p>
+                ) : null}
+                {billingMode !== "free" && onlinePaymentsOn && seatGuarantee === "on_payment" ? (
+                  <div className="sm:w-1/2 sm:pr-2">
+                    <SelectField<EventFormValues>
+                      name="holdMinutes"
+                      label="Reserva de"
+                      options={[
+                        { value: "15", label: "15 minutos" },
+                        { value: "30", label: "30 minutos" },
+                        { value: "60", label: "1 hora" },
+                      ]}
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </FormSection>
         </DialogBody>
         <DialogFormFooter isPending={pending} isEdit={isEdit} onCancel={onCancel} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4" />

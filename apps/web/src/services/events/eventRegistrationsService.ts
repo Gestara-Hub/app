@@ -4,6 +4,7 @@ import type {
   EventRegistration,
   EventRegistrationPayment,
   EventRegistrationScope,
+  EventRegistrationSource,
   EventRegistrationView,
   Id,
   RegisterForEvent,
@@ -17,11 +18,12 @@ import { auditLogService } from "../audit/auditLogService";
 import {
   assertTeacherSeesEvent,
   clone,
-  confirmedRegistrations,
   eventRegistrationsStore,
   findEvent,
   findRegistration,
+  newTicketCode,
   registrationsOf,
+  seatHolders,
   sessionsOf,
   studentName,
   todayISO,
@@ -29,6 +31,7 @@ import {
 import { assertDaysBelongToEvent, validateRegistrationPayment } from "./eventValidation";
 import { toRegistrationView } from "./eventViews";
 import { cancelFutureInstallments } from "./eventsService";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments/onlinePaymentRules";
 
 /**
  * Inscricoes no evento (doc product/29 §Inscricao): completa ou por dia,
@@ -40,8 +43,9 @@ function brDate(iso: string): string {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 }
 
+/** Lotou: confirmados e reservas valendo ja ocupam todas as vagas. */
 function isFull(event: Event): boolean {
-  return event.capacity !== undefined && confirmedRegistrations(event.id).length >= event.capacity;
+  return event.capacity !== undefined && seatHolders(event.id).length >= event.capacity;
 }
 
 function assertStudentCanRegister(event: Event, studentId: Id): void {
@@ -122,18 +126,123 @@ function createCharges(event: Event, registration: EventRegistration, payment: E
   }));
 }
 
-function confirm(event: Event, registration: EventRegistration, payment: EventRegistrationPayment | undefined): void {
+/**
+ * Confirma (ou reserva, na "vaga so com o pagamento") e gera as parcelas.
+ * Confirmada ganha o ingresso; reservada so ganha ao pagar (doc product/29 P5).
+ */
+function confirm(
+  event: Event,
+  registration: EventRegistration,
+  payment: EventRegistrationPayment | undefined,
+  hold?: { minutes: number },
+): void {
   const dayScope = registration.scope === "days";
   const dayCount = dayScope ? (registration.sessionIds ?? []).length : activeDays(sessionsOf(event.id)).length;
   const pay = event.billingMode === "free" ? undefined : (payment ?? defaultPayment(event, registration.scope, dayCount));
   if (pay) validateRegistrationPayment(event, pay, dayScope);
-  registration.status = "confirmed";
+  const reserves = Boolean(hold && pay && pay.amountCents > 0);
+  registration.status = reserves ? "reserved" : "confirmed";
+  if (reserves) registration.holdUntil = new Date(Date.now() + hold!.minutes * 60_000).toISOString();
+  else registration.ticketCode ??= newTicketCode();
   registration.amountCents = pay?.amountCents ?? 0;
   registration.installments = dayScope ? 1 : (pay?.installments ?? 1);
   if (pay && pay.amountCents > 0) {
     registration.installmentGroupId = newId();
     store.charges.push(...createCharges(event, registration, pay));
   }
+}
+
+/** Cancela as cobrancas em aberto da inscricao (e o Pix delas). Devolve quantas. */
+function cancelOpenCharges(registrationId: Id, reason: string): number {
+  const ts = nowIso();
+  let count = 0;
+  for (const c of store.charges) {
+    if (c.eventRegistrationId !== registrationId || (c.status !== "pending" && c.status !== "overdue")) continue;
+    c.status = "canceled";
+    c.canceledBy = "system";
+    c.cancelReason = reason;
+    c.updatedAt = ts;
+    cancelOnlinePaymentsForCharge(c.id);
+    count += 1;
+  }
+  return count;
+}
+
+/**
+ * Reservas vencidas sem pagamento: a inscricao cai, as cobrancas em aberto sao
+ * canceladas (o Pix tambem) e a vaga volta. Devolve quantas cairam.
+ */
+export function releaseExpiredReservations(eventId?: Id, now = Date.now()): number {
+  const ts = nowIso();
+  let released = 0;
+  for (const registration of eventRegistrationsStore()) {
+    if (registration.status !== "reserved" || (eventId && registration.eventId !== eventId)) continue;
+    if (!registration.holdUntil || Date.parse(registration.holdUntil) > now) continue;
+    registration.status = "canceled";
+    registration.canceledAt = ts;
+    registration.cancellationReason = "Reserva vencida sem pagamento";
+    registration.holdUntil = undefined;
+    cancelOpenCharges(registration.id, "Reserva vencida sem pagamento");
+    released += 1;
+  }
+  return released;
+}
+
+/** Como a inscricao entra: pela equipe (padrao) ou pelo link publico. */
+export interface RegisterOptions {
+  source?: EventRegistrationSource;
+  /** "Vaga so com o pagamento": reserva por este tempo. */
+  hold?: { minutes: number };
+  signupEvidence?: Record<string, unknown>;
+}
+
+/**
+ * Inscreve dentro de uma gravacao ja aberta: lotou, espera sem cobranca; senao
+ * confirma (ou reserva) e gera as parcelas. A equipe e o link publico usam.
+ */
+export function registerInWorld(input: RegisterForEvent, options: RegisterOptions = {}): EventRegistration {
+  const event = findEvent(input.eventId);
+  releaseExpiredReservations(event.id);
+  assertStudentCanRegister(event, input.studentId);
+  const { scope, sessionIds } = resolveScope(event, input);
+  const registration: EventRegistration = {
+    id: newId(),
+    eventId: event.id,
+    studentId: input.studentId,
+    scope,
+    ...(sessionIds ? { sessionIds } : {}),
+    status: "waitlist",
+    amountCents: 0,
+    installments: 1,
+    registeredAt: nowIso(),
+    source: options.source ?? "staff",
+    ...(options.signupEvidence ? { signupEvidence: options.signupEvidence } : {}),
+  };
+  const name = studentName(input.studentId);
+  const via = registration.source === "public_link" ? " pelo link" : "";
+  if (isFull(event)) {
+    eventRegistrationsStore().push(registration);
+    auditLogService.record({
+      action: "created",
+      target: { type: "event_registration", id: registration.id, label: `${name} em ${event.name}` },
+      predicate: `pôs ${name} na lista de espera do evento ${event.name}${via} (lotado)`,
+    });
+    return registration;
+  }
+  confirm(event, registration, input.payment, options.hold);
+  eventRegistrationsStore().push(registration);
+  const what =
+    registration.status === "reserved"
+      ? `reservou a vaga de ${name} no evento ${event.name}${via} até o pagamento (${describePayment(registration)})`
+      : scope === "days"
+        ? `inscreveu ${name} em ${plural(sessionIds?.length ?? 0, "dia", "dias")} do evento ${event.name}${via} (${describePayment(registration)})`
+        : `inscreveu ${name} no evento ${event.name}${via} (${describePayment(registration)})`;
+  auditLogService.record({
+    action: "created",
+    target: { type: "event_registration", id: registration.id, label: `${name} em ${event.name}` },
+    predicate: what,
+  });
+  return registration;
 }
 
 function describePayment(registration: EventRegistration): string {
@@ -147,7 +256,7 @@ export const eventRegistrationsService = {
     return readOp(async () => {
       const event = findEvent(eventId);
       assertTeacherSeesEvent(event);
-      const order: Record<EventRegistration["status"], number> = { confirmed: 0, waitlist: 1, canceled: 2 };
+      const order: Record<EventRegistration["status"], number> = { confirmed: 0, reserved: 1, waitlist: 2, canceled: 3 };
       return clone(
         registrationsOf(eventId)
           .map(toRegistrationView)
@@ -161,44 +270,7 @@ export const eventRegistrationsService = {
    * gera as parcelas (valor editavel, sugerido pelo evento e pelo lote).
    */
   register(input: RegisterForEvent): Promise<EventRegistrationView> {
-    return writeOp(async () => {
-      const event = findEvent(input.eventId);
-      assertStudentCanRegister(event, input.studentId);
-      const { scope, sessionIds } = resolveScope(event, input);
-      const ts = nowIso();
-      const registration: EventRegistration = {
-        id: newId(),
-        eventId: event.id,
-        studentId: input.studentId,
-        scope,
-        ...(sessionIds ? { sessionIds } : {}),
-        status: "waitlist",
-        amountCents: 0,
-        installments: 1,
-        registeredAt: ts,
-      };
-      const name = studentName(input.studentId);
-      if (isFull(event)) {
-        eventRegistrationsStore().push(registration);
-        auditLogService.record({
-          action: "created",
-          target: { type: "event_registration", id: registration.id, label: `${name} em ${event.name}` },
-          predicate: `pôs ${name} na lista de espera do evento ${event.name} (lotado)`,
-        });
-        return clone(toRegistrationView(registration));
-      }
-      confirm(event, registration, input.payment);
-      eventRegistrationsStore().push(registration);
-      auditLogService.record({
-        action: "created",
-        target: { type: "event_registration", id: registration.id, label: `${name} em ${event.name}` },
-        predicate:
-          scope === "days"
-            ? `inscreveu ${name} em ${plural(sessionIds?.length ?? 0, "dia", "dias")} do evento ${event.name} (${describePayment(registration)})`
-            : `inscreveu ${name} no evento ${event.name} (${describePayment(registration)})`,
-      });
-      return clone(toRegistrationView(registration));
-    });
+    return writeOp(async () => clone(toRegistrationView(registerInWorld(input))));
   },
 
   /** Da lista de espera para confirmado, com a cobranca; so se abriu vaga. */
@@ -236,10 +308,17 @@ export const eventRegistrationsService = {
       }
       const event = findEvent(registration.eventId);
       const wasWaiting = registration.status === "waitlist";
+      const wasReserved = registration.status === "reserved";
       registration.status = "canceled";
       registration.canceledAt = nowIso();
       registration.cancellationReason = reason?.trim() || undefined;
-      const canceled = wasWaiting ? 0 : cancelFutureInstallments(registration.id, "Inscrição cancelada");
+      registration.holdUntil = undefined;
+      // Reserva cancelada: sai tambem a cobranca de hoje (a vaga nunca foi paga).
+      const canceled = wasWaiting
+        ? 0
+        : wasReserved
+          ? cancelOpenCharges(registration.id, "Inscrição cancelada")
+          : cancelFutureInstallments(registration.id, "Inscrição cancelada");
       const name = studentName(registration.studentId);
       auditLogService.record({
         action: "cancelled",

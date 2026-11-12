@@ -15,6 +15,8 @@ describe("endereço limpo para a análise de uso", () => {
   it("o id dos links públicos vira marcador", () => {
     expect(scrubAnalyticsUrl("/consent/minor/0b9f6c1e-1111-4111-8111-111111111111")).toBe("/consent/minor/:id");
     expect(scrubAnalyticsUrl("/p/c/0b9f6c1e-1111-4111-8111-111111111111")).toBe("/p/c/:id");
+    expect(scrubAnalyticsUrl("/p/e/3f9a1c2b7d4e")).toBe("/p/e/:code");
+    expect(scrubAnalyticsUrl("/p/i/3F9A1C2B7D4E")).toBe("/p/i/:code");
     expect(scrubAnalyticsUrl("https://app.gestarahub.com.br/p/AB12CD34/comprovante")).toBe("https://app.gestarahub.com.br/p/:code/comprovante");
   });
 

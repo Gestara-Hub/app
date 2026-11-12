@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, RotateCcw, Users, X } from "lucide-react";
-import type { EventRosterEntry } from "@gestarahub/contracts";
+import { Check, CloudDownload, QrCode, RotateCcw, Users, WifiOff, X } from "lucide-react";
+import type { CheckInList, EventRosterEntry } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { todayISO } from "@gestarahub/core/date";
 import { BackLink } from "@/components/shared/back-link";
@@ -18,11 +18,15 @@ import { useAudioFeedback } from "@/features/preferences";
 import { useClearEventAttendance, useEventSession, useMarkEventAttendance, useMarkManyEventAttendance } from "../hooks/use-events";
 import { dayLabel, instructorsLabel, sessionInstructors, sessionTimeLabel } from "../event-copy";
 import { EventKindBadge } from "./event-badges";
+import { TicketScanner } from "./ticket-scanner";
+import { eventsService } from "@/services/events";
+import { clearCheckInLists, enableOfflineCheckIn, loadCheckInList, saveCheckInList } from "../offline-check-in";
 
 /** Dia do evento: chamada (presente ou ausente) de quem esta inscrito nele. */
 export function EventSessionView({ sessionId }: { sessionId: string }) {
   const can = useCan();
   const canMark = can("attendance:mark");
+  const [scanning, setScanning] = useState(false);
   const { data: detail, isPending, isError } = useEventSession(sessionId);
   const markMut = useMarkEventAttendance();
   const markManyMut = useMarkManyEventAttendance();
@@ -30,6 +34,47 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
   // Mesmo som da chamada das turmas (Preferências → Sons), na hora do toque.
   const { playChime } = useAudioFeedback();
   const busy = markMut.isPending || markManyMut.isPending || clearMut.isPending;
+  // Lista do dia guardada no aparelho (leitura sem internet, doc product/29).
+  const [storedList, setStoredList] = useState<CheckInList | undefined>();
+  const [preparing, setPreparing] = useState(false);
+  useEffect(() => {
+    void loadCheckInList(sessionId).then(setStoredList);
+  }, [sessionId]);
+  const listTime = storedList ? new Date(storedList.generatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  const prepareOffline = async () => {
+    setPreparing(true);
+    try {
+      const list = await eventsService.getCheckInList(sessionId);
+      await clearCheckInLists(list.date);
+      await saveCheckInList(list);
+      await enableOfflineCheckIn();
+      setStoredList(list);
+      toast.success(`Lista pronta: ${list.entries.length} ${list.entries.length === 1 ? "inscrito" : "inscritos"}. Deixe esta tela aberta.`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível baixar a lista."));
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  // Sem internet, com a lista guardada: so a leitura dos ingressos.
+  if (isError && storedList) {
+    return (
+      <>
+        <h1 className="text-2xl font-semibold tracking-tight">{storedList.eventName}</h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <WifiOff className="size-4" aria-hidden />
+          Sem internet · usando a lista das {listTime}
+        </p>
+        <Button className="mt-4" onClick={() => setScanning(true)}>
+          <QrCode className="size-4" />
+          Ler ingressos
+        </Button>
+        {scanning ? <TicketScanner sessionId={sessionId} eventName={storedList.eventName} onClose={() => setScanning(false)} /> : null}
+      </>
+    );
+  }
 
   if (isError) {
     return (
@@ -115,13 +160,32 @@ export function EventSessionView({ sessionId }: { sessionId: string }) {
               ? `${roster.length} ${roster.length === 1 ? "inscrito" : "inscritos"} neste dia`
               : `${presentCount} de ${roster.length} ${roster.length === 1 ? "presente" : "presentes"}`}
         </p>
-        {marking && pendingEntries.length > 0 ? (
-          <Button variant="outline" onClick={() => void allCame()} disabled={busy}>
-            <Check className="size-4" />
-            Todos vieram
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Entrada pelo ingresso (doc product/29 T6): so no dia, com inscritos. */}
+          {marking && session.date === today && roster.length > 0 ? (
+            <>
+              <Button variant="outline" onClick={() => void prepareOffline()} disabled={preparing}>
+                <CloudDownload className="size-4" />
+                {preparing ? "Baixando..." : storedList ? "Atualizar lista" : "Preparar para usar sem internet"}
+              </Button>
+              <Button onClick={() => setScanning(true)}>
+                <QrCode className="size-4" />
+                Ler ingressos
+              </Button>
+            </>
+          ) : null}
+          {marking && pendingEntries.length > 0 ? (
+            <Button variant="outline" onClick={() => void allCame()} disabled={busy}>
+              <Check className="size-4" />
+              Todos vieram
+            </Button>
+          ) : null}
+        </div>
       </div>
+      {storedList && session.date === today ? (
+        <p className="-mt-1 mb-3 text-xs text-muted-foreground">Pronto para usar sem internet · lista das {listTime}</p>
+      ) : null}
+      {scanning ? <TicketScanner sessionId={session.id} eventName={event.name} onClose={() => setScanning(false)} /> : null}
 
       <ListContainer
         busy={busy}

@@ -12,8 +12,8 @@ import type {
  */
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   free: ["online_payments"],
-  pro: ["online_payments", "messaging", "reports_advanced", "certificates"],
-  scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
+  pro: ["online_payments", "messaging", "reports_advanced", "certificates", "event_signup"],
+  scale: ["online_payments", "messaging", "reports_advanced", "certificates", "event_signup", "bi"],
 };
 
 /** O que o Profissional tem a mais que o Grátis (a lista da aba "Plano GestaraHub"). */

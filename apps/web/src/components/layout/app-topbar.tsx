@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/app/(auth)/actions";
+import { clearCheckInLists } from "@/features/events";
 import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
@@ -203,7 +204,15 @@ export function AppTopbar() {
 
             <form action={signOut}>
               <DropdownMenuItem asChild variant="destructive">
-                <button type="submit" onClick={resetAnalytics} className="w-full cursor-pointer">
+                <button
+                  type="submit"
+                  onClick={() => {
+                    resetAnalytics();
+                    // Lista de ingressos guardada para usar sem internet sai junto (doc product/29).
+                    void clearCheckInLists();
+                  }}
+                  className="w-full cursor-pointer"
+                >
                   <LogOut />
                   Sair
                 </button>

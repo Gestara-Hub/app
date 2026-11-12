@@ -11,7 +11,10 @@ const SENSITIVE_PARAMS = new Set(["token", "signup_token", "access_token", "refr
 const PUBLIC_PATHS: [RegExp, string][] = [
   [/^\/consent\/minor\/[^/?#]+/, "/consent/minor/:id"],
   [/^\/p\/c\/[^/?#]+/, "/p/c/:id"],
-  [/^\/p\/(?!c\/)[^/?#]+/, "/p/:code"],
+  // Inscricao em evento e ingresso (doc product/29): o codigo nao vai para a analise.
+  [/^\/p\/e\/[^/?#]+/, "/p/e/:code"],
+  [/^\/p\/i\/[^/?#]+/, "/p/i/:code"],
+  [/^\/p\/(?!(?:c|e|i)\/)[^/?#]+/, "/p/:code"],
 ];
 
 export function scrubAnalyticsUrl(value: string): string {

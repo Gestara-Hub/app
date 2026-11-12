@@ -418,3 +418,12 @@ export async function setKnownTwoFactorEmailCode(
     })
     .throwOnError();
 }
+
+/**
+ * Os testes saem todos do mesmo IP local: os limites por IP das paginas
+ * publicas (ex.: 10 inscricoes por hora no link do evento) estourariam entre
+ * testes. Limpa so as chaves do prefixo pedido; a regra do app nao muda.
+ */
+export async function resetRateLimits(prefix: string): Promise<void> {
+  await admin().from("rate_limits").delete().like("key", `${prefix}%`).throwOnError();
+}

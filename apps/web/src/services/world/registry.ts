@@ -81,7 +81,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       cancelEventCertificate: ["events:manage"],
       ...all(["create", "update", "cancelSession", "cancelEvent"], ["events:manage"]),
       ...all(["register", "promoteFromWaitlist", "cancelRegistration"], MANAGE_ENROLLMENT),
-      ...all(["markEventAttendance", "markManyEventAttendance", "clearEventAttendance"], MARK_ATTENDANCE),
+      ...all(["markEventAttendance", "markManyEventAttendance", "clearEventAttendance", "checkInTicket", "undoCheckIn", "getCheckInList", "syncOfflineCheckIns"], MARK_ATTENDANCE),
     },
   },
   billing: {

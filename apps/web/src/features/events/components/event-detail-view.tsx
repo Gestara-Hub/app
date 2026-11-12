@@ -1,9 +1,12 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { format, parseISO } from "date-fns";
+import { EventSignupLink } from "./event-signup-link";
+import { useWhatsAppSend } from "@/features/communication";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, User, UserPlus, Users, Wallet, XCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, Send, Ticket, User, UserPlus, Users, Wallet, XCircle } from "lucide-react";
 import type { EventRegistrationView, EventSession } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -38,6 +41,7 @@ function paymentLabel(r: EventRegistrationView): { text: string; tone: string } 
 
 export function EventDetailView({ id }: { id: string }) {
   const router = useRouter();
+  const whatsapp = useWhatsAppSend();
   const can = useCan();
   const canManage = can("events:manage");
   const canEnroll = can("enrollment:manage");
@@ -46,7 +50,9 @@ export function EventDetailView({ id }: { id: string }) {
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const { data: event, isPending, isError } = useEvent(id);
   const { data: registrations } = useEventRegistrations(id);
-  const [tab, setTab] = useState<Tab>("registered");
+  // `?tab=waitlist` (aviso "vaga aberta" do sino) abre direto na espera.
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get("tab") === "waitlist" ? "waitlist" : "registered"));
   const [editOpen, setEditOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [promote, setPromote] = useState<EventRegistrationView | undefined>();
@@ -75,7 +81,8 @@ export function EventDetailView({ id }: { id: string }) {
   }
 
   const all = registrations ?? [];
-  const confirmed = all.filter((r) => r.status === "confirmed");
+  // Reservada ("vaga so com o pagamento") aparece nos inscritos, com o selo do prazo.
+  const confirmed = all.filter((r) => r.status === "confirmed" || r.status === "reserved");
   const waiting = all.filter((r) => r.status === "waitlist");
   const canceled = all.filter((r) => r.status === "canceled");
   const active = event.status === "active";
@@ -179,7 +186,26 @@ export function EventDetailView({ id }: { id: string }) {
 
   const registrationRow = (r: EventRegistrationView) => {
     const pay = paymentLabel(r);
+    // Endereco montado no clique (no servidor nao ha `window`).
+    const ticketUrl = r.status === "confirmed" && r.ticketCode ? () => `${window.location.origin}/p/i/${r.ticketCode}` : null;
     const actions: ListItemAction[] = [
+      // Ingresso (doc product/29 T7): abrir e mandar pelo WhatsApp.
+      ...(ticketUrl
+        ? [
+            { key: "ticket", label: "Ver ingresso", icon: <Ticket className="size-4" />, onSelect: () => window.open(ticketUrl(), "_blank", "noopener") },
+            {
+              key: "send-ticket",
+              label: "Enviar ingresso",
+              icon: <Send className="size-4" />,
+              onSelect: () =>
+                whatsapp.send({
+                  trigger: "manual_broadcast",
+                  recipient: { name: r.studentName, phone: r.studentPhone, clientId: r.studentId },
+                  content: `Olá, ${r.studentName.split(" ")[0]}! Seu ingresso para ${event.name}: ${ticketUrl()}`,
+                }),
+            },
+          ]
+        : []),
       ...(finished && r.status === "confirmed" && r.presentCount > 0
         ? [{ key: "certificate", label: "Certificado", icon: <Award className="size-4" />, onSelect: () => router.push(`/events/${event.id}/certificate/${r.id}`) }]
         : []),
@@ -225,6 +251,16 @@ export function EventDetailView({ id }: { id: string }) {
           {r.status === "canceled" ? (
             <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
               Cancelada
+            </span>
+          ) : null}
+          {r.status === "reserved" && r.holdUntil ? (
+            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+              Reservada até {format(parseISO(r.holdUntil), "HH:mm")}
+            </span>
+          ) : null}
+          {r.source === "public_link" ? (
+            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              Pelo link
             </span>
           ) : null}
         </div>
@@ -298,6 +334,8 @@ export function EventDetailView({ id }: { id: string }) {
           </Button>
         ) : null}
       </div>
+
+      {canManage && open ? <EventSignupLink event={event} /> : null}
 
       <EventFormDrawer open={editOpen} onOpenChange={setEditOpen} event={event} />
       <RegisterDrawer open={registerOpen} onOpenChange={setRegisterOpen} event={event} registrations={all} promote={promote} />

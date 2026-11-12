@@ -1,4 +1,5 @@
 import type { ChargeView, Id, ManualPaymentDetails, PaymentMethod } from "@gestarahub/contracts";
+import { confirmPaidReservation } from "../events/eventShared";
 import { coversPeriod } from "@gestarahub/core/membership-generation";
 import { store } from "@/services/world/store";
 import { apiError, notFoundError, nowIso, writeOp } from "@/services/world/ops";
@@ -34,6 +35,8 @@ export const chargePaymentsService = {
       c.updatedAt = nowIso();
       // Pago na mao: o Pix/link em aberto nao vale mais.
       cancelOnlinePaymentsForCharge(c.id, "Baixa manual da cobrança");
+      // Evento "vaga so com o pagamento": pagou, a reserva vira inscricao com ingresso.
+      if (c.kind === "event") confirmPaidReservation(c.eventRegistrationId);
       recordChargeEvent(c, "status_changed", `registrou${paidOnNote(details.paidOn)} o pagamento da`);
       return clone(toChargeView(c));
     });

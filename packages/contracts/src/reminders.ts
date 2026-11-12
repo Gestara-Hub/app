@@ -66,6 +66,17 @@ export interface ReminderOpenRollCall {
 }
 
 /** Evento terminado com presentes ainda sem certificado (Pro). */
+export interface ReminderEventSignups {
+  eventId: Id;
+  eventName: string;
+  /** `new_signups`: inscricoes pelo link nas ultimas 48 h; `spot_open`: vaga livre com gente na espera. */
+  kind: "new_signups" | "spot_open";
+  count: number;
+  /** Muda quando chega inscricao nova (o sino pulsa de novo). */
+  marker: string;
+  href: string;
+}
+
 export interface ReminderEventCertificates {
   eventId: Id;
   eventName: string;
@@ -124,6 +135,8 @@ export interface ReminderSources {
   documents: ExpiringPersonDocument[];
   /** Eventos terminados com presentes sem certificado (so com o recurso `certificates`). */
   eventCertificates: ReminderEventCertificates[];
+  /** Inscricoes novas pelo link e vaga aberta com gente na espera (doc product/29, 12/11/2026). */
+  eventSignups?: ReminderEventSignups[];
   // --- Falar com alguem (09/11/2026, fase 3) ---
   eventsTomorrow: ReminderEventTomorrow[];
   visitors: ReminderVisitor[];
