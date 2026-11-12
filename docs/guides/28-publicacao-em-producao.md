@@ -11,7 +11,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 | Item | Quem | Por quê |
 | --- | --- | --- |
 | Domínio `gestarahub.com.br` com DNS acessível (app, `admin.` e e-mail) | Você | Links de e-mail, webhooks, OAuth e o MailerSend precisam do endereço final |
-| Termos e Privacidade com a identificação da MHMJ (pendência "Jurídico") | Você + agente | A Meta exige `/privacy` e `/terms` para virar o app para produção; o aceite grava a versão |
+| Termos e Privacidade: a identificação da MHMJ já está (`config/site.ts`, v1.2 de 10/11/2026). Antes de abrir para o público: leitura de advogado da parte de dados de saúde e confirmar a região do Supabase e do PostHog no texto de transferência internacional (pendência "Jurídico", doc `product/27`) | Você + agente | A Meta exige `/privacy` e `/terms` para virar o app para produção; o aceite grava a versão |
 | Conta-pai PJ no Asaas (CNPJ da MHMJ) | Você | Pagamento online, assinatura do plano e a taxa do GestaraHub |
 | Conta do MailerSend aprovada ("Get approved") e domínio de envio verificado | Você | Hoje só entrega para 1 destinatário |
 | Plano do Supabase com conexões suficientes | Você | Pico de uso: o limite é o banco (doc `technical/19` §14) |
