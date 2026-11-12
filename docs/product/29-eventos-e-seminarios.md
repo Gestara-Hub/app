@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; selo "Visitante" em Alunos em 11/11/2026; fica para depois a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; selo "Visitante" em Alunos em 11/11/2026; inscrição pelo link, ingresso e leitura sem internet em 12/11/2026) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -134,7 +134,7 @@ Padrões do doc frontend/07 valem inteiros (botão 36px, labels com `RequiredMar
 | 3. Cobrança e financeiro (**feita 09/11/2026**) | Inscrição com valor fechado e parcelas, lote opcional, por dia, cancelamento com regra de parcelas, aba Financeiro do evento, categoria "Eventos" e `eventId` no Financeiro geral | testes do serviço de cobrança |
 | 4. Calendário e Painel (**feita 09/11/2026**, sem o lembrete do sino) | Sessões de evento no calendário com cor própria e filtro, card no Painel; lembrete "evento amanhã" no sino ficou para depois | manual |
 | 5. Pro (**feita 09/11/2026**) | Certificado de participação, relatório do evento (inscritos, presença por dia, financeiro) | manual + teste do relatório |
-| 6. Depois | Inscrição pública por link | nova proposta |
+| 6. Inscrição pelo link (**feita 12/11/2026**) | Inscrição pública, vaga garantida, ingresso, leitor e leitura sem internet | Vitest, db e e2e (`eventos-inscricao-link`) |
 
 Cada fase é uma leva de commits pequenos, um assunto cada.
 
@@ -219,3 +219,133 @@ Seminário com um sensei por dia, aulão com dois professores no mesmo bloco, um
 - Derivado, nada é gravado no aluno: inscrição em evento não cancelada (confirmada ou na espera) e nenhum outro vínculo, em qualquer situação: sem matrícula, plano, pacote nem aula experimental. Quem passa a frequentar perde o selo sozinho.
 - Na lista de Alunos (linha e cartão), ao lado do "Experimental"; o filtro "Aula experimental" ganhou "Visitantes" (`?visitor=1` abre filtrado).
 - Código: `visitorIds()` e `listVisitorIds()` em `services/clients/clientBaseService.ts`, filtro `ClientFilter.visitor`, recorte `visitorsWorld` em `clientSlices.ts`, `VisitorBadge`. Teste: `services/__tests__/clients-visitors.test.ts`.
+
+## Proposta: inscrição pública por link (12/11/2026)
+
+Status: **Aprovada e feita em 12/11/2026** (ver "Como ficou" no fim). Fase 6 da tabela de fases.
+
+### O que resolve
+Hoje só a equipe inscreve, pela tela do evento. Um seminário aberto ao público depende de alguém do espaço anotar nome e telefone de cada interessado (WhatsApp, Instagram) e cadastrar um por um. O link deixa a própria pessoa se inscrever e, no evento pago, já pagar.
+
+### Como seria, em uma linha
+O espaço liga "Aceitar inscrições pelo link" no evento, copia o link e divulga. A pessoa abre, vê o evento, preenche nome e WhatsApp, aceita os termos e, se for pago, paga ali mesmo. Ela entra em Alunos como "Visitante" (ou é ligada ao aluno que já existe) e aparece nos inscritos com a marca "Pelo link".
+
+### Decisões (com a recomendação)
+
+| # | Decisão | Recomendação | Alternativas |
+| --- | --- | --- | --- |
+| P1 | **Inscrição direta ou pedido para aprovar** | **Direta**: a inscrição nasce confirmada (ou na espera, se lotou). O espaço cancela se precisar, pela regra de sempre. | Pedido que o espaço aprova: mais controle, mas cria uma fila para alguém olhar todo dia e a pessoa fica sem resposta. |
+| P2 | **Exceção à regra das páginas públicas** (doc 24 §6: página pública não grava no cadastro) | **Exceção controlada, só nesta página**: ela só **cria** (aluno visitante novo e a inscrição), nunca **muda** um cadastro existente. Telefone que já é de um aluno do espaço liga a inscrição a ele, sem tocar no cadastro dele e sem mostrar nada dele na página. Nada vem preenchido. | Não gravar e só mandar um aviso para a equipe cadastrar: anula o ganho. |
+| P3 | **Quem pode se inscrever** | **Qualquer pessoa**, com Nome* e WhatsApp*; e-mail opcional. Sem conta e sem senha. | Só alunos da casa, com login: exige a área do aluno (doc 23), que ainda não existe. |
+| P4 | **Menor de idade** (**decidido em 12/11/2026: sim**) | Pergunta "É menor de 18 anos?". Se sim, pede o nome e o WhatsApp do responsável e o **aceite do responsável** com o mesmo texto do termo do menor (o nome digitado e a hora ficam como prova, como em `/consent/minor`). | Bloquear menores no link: corta exatamente o público de seminário infantil. |
+| P5 | **Evento pago: quando a vaga fica garantida** (**decidido em 12/11/2026: opção no evento, "Na inscrição" (padrão) ou "Com o pagamento", reserva de 30 min**) | Opção no cadastro do evento, ver "Garantia da vaga". Em qualquer forma, a cobrança é à vista com o lote aplicado sozinho, e com recebimentos online a página segue direto para o Pix ou cartão. Sem recebimentos online, "O pagamento é combinado com o espaço". Sem parcelas pelo link. | Uma forma só para todos os eventos. |
+| P6 | **Evento por dia** | A pessoa escolhe os dias (ou todos) e vê o valor somado. | Só inscrição completa pelo link: mais simples, mas o evento por dia existe para isso. |
+| P7 | **Lotou** | Entra na **lista de espera**, sem cobrança, com a mensagem "Você está na lista de espera; o espaço avisa se abrir vaga". A página mostra "Últimas N vagas" só quando faltam 5 ou menos, e "Lotado, entre na lista de espera" quando lota. | Fechar o link ao lotar: perde o interessado. |
+| P8 | **Quando o link aceita** | Chave por evento "Aceitar inscrições pelo link" (desligada no começo), com "até dd/mm" opcional. Fecha sozinho em evento encerrado, cancelado ou depois da data. Link fechado mostra o evento e "Inscrições encerradas". | Link sempre aberto em todo evento: o espaço não controla. |
+| P9 | **LGPD e WhatsApp** | Aceite obrigatório: "Li e aceito que {espaço} use meus dados para esta inscrição" com link da Privacidade (guardado com data e IP, como os outros aceites). Caixa separada e opcional "Aceito receber mensagens do espaço pelo WhatsApp", que grava a autorização do aluno (doc 27 §9) com "Na inscrição pelo link". | Uma caixa só para tudo: mistura a inscrição com a autorização de mensagens, o que a Meta e a LGPD pedem separado. |
+| P10 | **O que a página mostra** | Nome do espaço, nome e descrição do evento, dias e horários, quem conduz (nome; convidado com "de onde vem"), endereço da unidade, valor (lote, cheio ou por dia) e vagas na regra do P7. Nenhum dado de aluno ou inscrito. Prévia bonita ao colar no WhatsApp (título, datas e nome do espaço). | Lista de inscritos na página: expõe dado pessoal; fora. |
+| P11 | **Abuso** | Código do link aleatório (não o id do evento); até 10 inscrições por IP por hora e 3 por telefone por evento; campo-armadilha escondido para robô; telefone com DDD válido; mesmo telefone no mesmo evento responde "Você já está inscrito" sem mostrar detalhes. Sem CAPTCHA de terceiro no começo. | CAPTCHA (Turnstile, reCAPTCHA): mais um fornecedor e cookie; fica para se houver abuso. |
+| P12 | **Aviso ao espaço** | Lembrete no sino "Nova inscrição pelo link" (com o nome) e linha na Auditoria com o autor "Inscrição pelo link". Nos inscritos, a marca "Pelo link". | E-mail a cada inscrição: barulhento; o resumo diário pode levar isso depois. |
+| P13 | **Plano** (**decidido em 12/11/2026: só no Profissional**) | Inscrição pelo link e ingresso são recursos do **Plano Profissional**. No Grátis, a chave aparece com "Disponível no Plano Profissional". Ao construir, entram nas listas dos planos: `plans-view.tsx`, `subscription-checkout-view.tsx`, `subscription-checkout-dialog.tsx`, `landing-plans.tsx` e a doc `product/13` (só quando existir: a tela só promete o que o produto faz). | Em todos os planos (era a recomendação): traz gente nova, mas o dono preferiu como argumento de venda. |
+| P14 | **Divulgação** | No detalhe do evento: "Copiar link", "Enviar pelo WhatsApp" (texto pronto com o link) e QR code para imprimir no cartaz. | Só o link: o QR code é pedido comum em academia. |
+
+### Garantia da vaga (proposta para a conversa do P5, 12/11/2026)
+
+Uma opção no cadastro do evento pago, no bloco de Cobrança: **"Vaga garantida"**.
+
+| Opção | Como funciona | Quando serve |
+| --- | --- | --- |
+| **Na inscrição** (padrão) | A pessoa se inscreve e a vaga é dela na hora. A cobrança fica em aberto e ela paga quando puder (o link segue para o Pix ou cartão). O ingresso sai com "Pagamento pendente" e vira "Confirmado" quando o pagamento cai. | Evento da casa, público conhecido, pagamento na porta ou combinado. Funciona também sem recebimentos online. |
+| **Com o pagamento** | A inscrição nasce **reservada** por um tempo (15, 30 ou 60 minutos; padrão 30, o prazo do Pix). Enquanto reservada, ocupa a vaga. Pagou no prazo: confirma e sai o ingresso. Não pagou: a reserva cai sozinha, a cobrança é cancelada e a vaga volta. A página mostra o tempo que falta. | Evento aberto ao público, com vaga disputada e risco de quem se inscreve e não aparece. Só com recebimentos online ligados (sem eles, a opção fica desligada e explica por quê). |
+
+Pontos que valem para as duas:
+- **A opção vale para o link.** A equipe, pela tela do evento, continua inscrevendo direto (decide na hora, como hoje).
+- **Evento grátis** ignora a opção: a vaga é garantida na inscrição.
+- **Lista de espera:** quando uma reserva cai e há gente na espera, o sino avisa "Abriu vaga em {evento}" para a equipe promover (sem promoção automática no começo).
+- **Dados:** `Event.seatGuarantee: "on_signup" | "on_payment"` e `holdMinutes`; a inscrição ganha a situação `reserved` com `holdUntil`. A rotina de hora em hora (a dos pagamentos online) e a própria leitura do evento derrubam as reservas vencidas; o aviso do pagamento (webhook do parceiro) confirma.
+- **Por que não uma terceira forma "genérica":** as duas cobrem os casos e o padrão (na inscrição) é o comportamento de hoje. Um campo livre de regra seria difícil de explicar na tela.
+
+### Ingresso com QR code (pedido do dono, 12/11/2026)
+
+Toda inscrição confirmada ganha um **ingresso**: um cartão com os dados do evento e um QR code que a equipe lê na entrada para confirmar que a pessoa está inscrita naquele evento e naquele dia. Ler o ingresso **marca a presença do dia**: a entrada vira a própria chamada.
+
+| # | Decisão | Recomendação | Alternativas |
+| --- | --- | --- | --- |
+| T1 | **Quem recebe** | Toda inscrição **confirmada**, venha do link ou da equipe. Quem está na espera não recebe; recebe ao ser promovido. Inscrição cancelada invalida o ingresso. | Só quem se inscreveu pelo link: a recepção teria dois jeitos de conferir a entrada. |
+| T2 | **O que o cartão mostra** | Nome do espaço, nome do evento, dias e horários que a inscrição cobre (todos ou os escolhidos), local, quem conduz, **nome do inscrito mascarado** ("Ana S. L.", regra das páginas públicas), situação ("Confirmado" ou "Pagamento pendente") e o QR code com o código curto escrito embaixo (para digitar se a câmera falhar). | Nome completo no cartão: o ingresso circula por WhatsApp e print; a regra das páginas públicas vale. |
+| T3 | **O que o QR guarda** | Um **endereço** (`/p/i/<código>`), com código aleatório e longo próprio do ingresso (não o id da inscrição). Qualquer câmera de celular abre, inclusive a do iPhone, sem aplicativo. Sem login, a página só mostra o cartão e se o ingresso vale. | Só o código, lido por um leitor dentro do app: precisa de biblioteca de leitura nova e não abre na câmera comum. Pode vir depois como "Ler ingressos" (ver T6). |
+| T4 | **Leitura pela câmera comum (reserva)** | A pessoa da equipe aponta a câmera do celular **logada no GestaraHub** (com `attendance:mark`): a mesma página mostra o resultado grande e o botão **"Confirmar entrada"**, que marca presente no dia de hoje. O professor só nos eventos que conduz. | Marcar presença sozinho ao abrir o link: qualquer um com o print marcaria presença. |
+| T5 | **O que a leitura responde** (**decidido em 12/11/2026: quem não pagou entra com o aviso**) | Verde "Pode entrar" (inscrição confirmada que cobre o dia de hoje); âmbar "Já entrou hoje às 19h02" (segunda leitura do mesmo ingresso no dia: protege contra print repassado); âmbar "Pagamento pendente: R$ 150,00", com "Confirmar entrada" e "Registrar pagamento" lado a lado; vermelho "Inscrição cancelada", "Este dia não está na inscrição", "Ingresso de outro evento" ou "O evento não é hoje". | Bloquear a entrada de quem não pagou: a decisão de deixar entrar é do espaço na hora, por isso o aviso com as duas ações. |
+| T6 | **Leitor dentro do app** (**decidido em 12/11/2026: já na primeira versão**) | No dia do evento, **"Ler ingressos"** abre a câmera dentro do app e lê um atrás do outro, sem trocar de tela. Para quem está na fila: lê, mostra o resultado grande por 2 segundos com o som de presença (o mesmo da chamada) e **confirma a entrada sozinho** quando está tudo certo ("Pode entrar"), com "Desfazer" na faixa. Para quando há algo a decidir: "Pagamento pendente" e "Já entrou hoje" param a leitura e esperam o toque ("Confirmar entrada", "Registrar pagamento" ou "Próximo"). Campo "Digitar código" para ingresso amassado ou tela quebrada. Contador "32 de 45 entraram". A biblioteca de leitura carrega só nessa tela (o resto do app não fica mais pesado). A câmera comum (T4) continua funcionando como reserva, por exemplo para quem não está logado no celular da porta. | Só a câmera comum: funciona, mas são três toques por pessoa (abrir a câmera, abrir o link, confirmar) e a fila trava. |
+| T7 | **Como chega na pessoa** | Pelo link: o ingresso aparece logo depois da inscrição (e do pagamento), com "Salvar ingresso" (imagem para guardar no celular) e "Enviar para o meu WhatsApp". Pela equipe: na linha do inscrito, "Ver ingresso" e "Enviar ingresso" pelo WhatsApp (assistido, ou oficial com a autorização do aluno, doc 27 §9). | E-mail automático: muitos inscritos não têm e-mail no cadastro; pode somar depois. |
+| T8 | **Sem internet na porta** (**pedido do dono em 12/11/2026: a lista fica no celular de quem lê**) | Ver "Leitura sem internet" logo abaixo. | Conferir só com internet e cair na chamada por nome sem sinal: era a proposta anterior; não serve para porta de evento, onde o sinal costuma cair. |
+| T9 | **Plano** | Plano Profissional, junto com a inscrição pelo link (P13, decidido). | — |
+
+### Leitura sem internet (12/11/2026)
+
+**Como funciona para quem está na porta:**
+1. Antes de abrir a porta, com internet, a pessoa entra no dia do evento e toca **"Preparar para usar sem internet"**. O celular baixa a lista do dia: inscrições confirmadas e reservadas que cobrem o dia, o código de cada ingresso, o nome, a situação do pagamento (com o valor em aberto) e quem já entrou. Aparece "Lista pronta: 45 inscritos, atualizada às 18h40".
+2. **Sem sinal, o "Ler ingressos" continua funcionando**: confere o ingresso pela lista guardada, mostra o mesmo resultado (Pode entrar, Pagamento pendente, Já entrou hoje, Dia fora da inscrição) e confirma a entrada no próprio celular.
+3. As entradas ficam numa fila no aparelho, com o aviso no topo "Sem internet · 12 entradas para enviar". Quando a conexão volta, sobem sozinhas numa gravação só. Ninguém precisa fazer nada.
+4. **Com internet**, a lista se atualiza sozinha a cada minuto (quem se inscreveu pelo link na última hora também entra) e as entradas sobem na hora.
+
+**Regras:**
+- **Dinheiro só com internet:** sem sinal, "Registrar pagamento" fica desligado. Quem não pagou entra com o aviso (T5) e o pagamento é registrado depois, com a cobrança em aberto como hoje.
+- **Duas portas sem internet:** o mesmo ingresso lido em dois celulares sem sinal passa nos dois (um não vê o outro). Ao sincronizar, vale a primeira entrada e a segunda aparece para a equipe como "Entrada repetida de Ana S. às 19h05, na porta de Carla". Com internet, a segunda leitura já responde "Já entrou hoje".
+- **O que fica no celular:** só a lista daquele dia do evento. O código do ingresso fica guardado embaralhado (hash), então a lista copiada do aparelho não serve para montar ingresso falso. A lista some ao fim do dia do evento e ao sair da conta. Quem pode baixar é quem pode fazer a chamada do evento (`attendance:mark`; o professor, só nos eventos que conduz).
+- **Pessoa inscrita depois do download, sem internet:** o ingresso não está na lista e a leitura responde "Ingresso não encontrado nesta lista (atualizada às 18h40)", com "Confirmar entrada mesmo assim", que vai na fila e é conferido ao sincronizar.
+
+**O que isso exige do app** (primeira vez que o GestaraHub funciona sem internet):
+- **Service worker** só para a tela de leitura do evento: guarda a tela e o código dela no aparelho, para abrir mesmo sem sinal. O resto do app segue como hoje.
+- **Lista e fila no aparelho** (IndexedDB), com a sincronização quando a conexão volta.
+- **iPhone:** o Safari apaga os dados de site pouco usado. Por isso o passo 1 é feito no dia do evento, e a tela avisa se a lista guardada é de outro dia.
+- Essa base é a mesma da "chamada sem internet" que está nas pendências do PWA (doc technical/10). Construída aqui, serve depois para a chamada das turmas.
+
+**Dados do ingresso:** `EventRegistration.ticketCode` (aleatório, único, criado ao confirmar). A entrada grava a presença do dia (`EventAttendance` presente) com `checkedInAt` e `checkedInBy`, para a segunda leitura responder "Já entrou hoje às ...". A página `/p/i/<código>` segue a regra das páginas públicas: dados mascarados e nenhuma gravação sem login.
+
+### Dados (proposta de contrato)
+- `Event.publicSignup?: { enabled: boolean; code: string; until?: DateISO }` (coluna `public_signup` jsonb) e índice único no `code`.
+- `EventRegistration.source: "staff" | "public_link"` (padrão `staff`) e `EventRegistration.ticketCode` (ingresso).
+- `EventAttendance.checkedInAt?` e `checkedInBy?` (entrada pelo ingresso).
+- Aceite da inscrição em `legal_consents` com um tipo novo `event_signup` (data, IP, texto aceito); o do responsável segue o modelo do termo do menor.
+- Rotas públicas `/p/e/<código>` (inscrição) e `/p/i/<código>` (ingresso), e uma ação de servidor sem login, com as travas do P11, que monta o próprio contexto do espaço a partir do código (como a fatura pública).
+
+### Fases
+1. **Base:** contrato e migração, serviço da inscrição pública (criar visitante ou ligar ao aluno, inscrição, cobrança à vista, espera, travas), testes de serviço e de banco (inclusive "não muda cadastro existente" e "não devolve dado de outro aluno").
+2. **Página e divulgação:** `/p/e/<código>` (celular primeiro), aceites, menor de idade, ida para o pagamento, prévia no WhatsApp; no detalhe do evento, a chave, copiar, WhatsApp e QR code.
+3. **Ingresso:** código na inscrição confirmada, cartão (tela, imagem para salvar), "Ler ingressos" no dia do evento (leitor dentro do app, entrada confirmada sozinha quando está tudo certo), `/p/i/<código>` com o resultado da leitura e "Confirmar entrada" para a equipe logada (reserva), "Ver ingresso" e "Enviar ingresso" nos inscritos; testes das respostas do T5 (inclusive "já entrou hoje" e print repassado).
+4. **Sem internet:** "Preparar para usar sem internet", service worker da tela de leitura, lista e fila no aparelho, sincronização, entrada repetida entre portas; testes com a rede desligada no navegador.
+5. **Avisos e testes:** lembrete no sino, Auditoria, marca "Pelo link", e2e de ponta a ponta (grátis, pago com Pix de teste, lotado, menor, link fechado, ingresso lido na entrada).
+
+### Perguntas para o dono
+Tudo decidido em 12/11/2026: menor de idade pelo link com o aceite do responsável (P4); "Vaga garantida" como opção do evento (P5); só no Plano Profissional (P13); quem não pagou entra com o aviso (T5); leitor dentro do app já na primeira versão (T6), funcionando sem internet (T8). As demais decisões seguem a recomendação. Status: **feita em 12/11/2026**.
+
+## Como ficou: inscrição pelo link, ingresso e leitura sem internet (12/11/2026)
+
+Construído no mesmo dia da aprovação, nas cinco fases da proposta. Recurso do Plano Profissional (`event_signup`).
+
+**Cadastro do evento** (bloco "Inscrição pelo link" do formulário): chave "Aceitar inscrições pelo link" (no Grátis, "Disponível no Plano Profissional"), "Inscrições até" (opcional) e, em evento pago com recebimentos online ligados, "Vaga garantida" (Na inscrição / Com o pagamento) e "Reserva de" 15 min, 30 min ou 1 h. O código do link nasce no servidor e continua o mesmo ao desligar e religar (`applySignupSettings` em `services/events/eventsService.ts`). Sem recebimentos online, a vaga é sempre garantida na inscrição.
+
+**Divulgação** (detail do evento, `EventSignupLink`): "Inscrições pelo link abertas" com o endereço, "Copiar link", "Enviar pelo WhatsApp" (texto pronto) e "QR code" (janela com o QR e "Baixar imagem" em alta resolução para o cartaz).
+
+**Página pública `/p/e/<código>`** (`app/(marketing)/p/e/[code]`): espaço, evento, dias e horários, quem conduz (convidado com a origem), endereço da unidade, descrição, valor (lote quando vale), "Últimas N vagas" (5 ou menos) ou "Lotado". Formulário: Nome*, WhatsApp*, E-mail, "É menor de 18 anos" (abre nome e WhatsApp do responsável e troca o texto do aceite), dias no evento por dia, aceite obrigatório e "Aceito receber mensagens do espaço pelo WhatsApp" (opcional, grava a autorização do aluno, doc 27 §9). Resultado: confirmada (com "Pagar agora" para a fatura `/p/c/<cobrança>` quando o espaço cobra online, e "Ver ingresso"), vaga reservada com o tempo que falta, lista de espera ou "Você já está inscrito". Link fechado mostra o evento e o motivo.
+
+**Servidor** (`services/server/eventPublicSignup.ts`): travas do P11 (campo-armadilha, tamanhos, WhatsApp com DDD, 10 por IP e 3 por telefone e evento por hora). Roda no espaço com um contexto sem pessoa (`systemTenantContext`, autor "Inscrição pelo link" na Auditoria). Telefone de aluno ativo liga a inscrição sem mexer no cadastro; pessoa nova vira visitante; menor entra sem telefone próprio, com o responsável (financeiro) e a autorização do termo registrada pelo aceite (`confirmed_whatsapp`, prova com texto, data e IP). A prova do aceite fica na inscrição (`signup_evidence`).
+
+**Vaga só com o pagamento** (`registerInWorld` e `releaseExpiredReservations`): a inscrição nasce `reserved` com `holdUntil`; reserva valendo ocupa vaga (`seatHolders`), a vencida não. Pagou (baixa manual ou aviso do parceiro, `confirmPaidEventReservationInDb`): confirma e cria o ingresso. A rotina de hora em hora derruba as vencidas, com as cobranças e o Pix (`services/events/eventReservationsCron.ts`). Cancelar uma reserva tira também a cobrança de hoje.
+
+**Ingresso**: toda inscrição confirmada ganha `ticketCode` (12 caracteres, do mesmo gerador dos ids). Página `/p/i/<código>`: cartão com o nome mascarado, situação, dias, local, quem conduz, QR e o código em grupos de 4 ("Mostre na entrada"); "Salvar ingresso" (imagem PNG em `/p/i/<código>/image`, abre sem internet) e "Enviar para o meu WhatsApp". Equipe logada no mesmo espaço com a chamada vê o resultado da leitura e "Confirmar entrada" (reserva do leitor). Na lista de inscritos: "Ver ingresso" e "Enviar ingresso".
+
+**Leitor dentro do app** ("Ler ingressos" no dia do evento, `TicketScanner`): câmera traseira com a biblioteca `jsqr` (carrega só nessa tela), leitura a cada 250 ms, o mesmo código ignorado por 4 s. "Pode entrar" confirma sozinho com o som da chamada e "Desfazer"; "Pagamento pendente", "Reserva sem pagamento", "Já entrou hoje às ..." e os recusados (cancelada, espera, dia fora da inscrição, evento não é hoje, outro evento, não encontrado) param e esperam "Confirmar entrada", "Registrar pagamento" (janela de pagamento) ou "Próximo". "Digitar código" para ingresso amassado. Contador "N de M entraram". A entrada grava presença com `checkedInAt` e `checkedInBy` (`services/events/eventCheckInService.ts`). O site passou a permitir a câmera para ele mesmo (`Permissions-Policy: camera=(self)` no `next.config.ts`).
+
+**Sem internet** ("Preparar para usar sem internet"): baixa a lista do dia (`getCheckInList`: código em SHA-256, nome, valor em aberto, quem já entrou) para o IndexedDB e liga o service worker `public/checkin-sw.js` (só a tela do dia do evento, rede primeiro, e os arquivos `/_next/static`). Sem sinal, a leitura confere pela lista, marca no aparelho e põe na fila ("Sem internet · N entradas para enviar"); ingresso fora da lista pode entrar "mesmo assim" e é conferido no envio. Com a conexão de volta, a fila sobe numa gravação (`syncOfflineCheckIns`): vale a primeira entrada; a de outra porta volta como "Entrada repetida"; o código que não vale volta recusado. A lista se atualiza a cada minuto com internet e sai do aparelho ao sair da conta. Aberta sem sinal, a tela do dia mostra o nome do evento, "Sem internet · usando a lista das HH:mm" e "Ler ingressos".
+
+**Avisos**: no sino, "evento com inscrição nova pelo link" (48 h) e "evento com vaga aberta e lista de espera" (com "Promover", abre a aba Espera). Inscritos com a marca "Pelo link" e "Reservada até HH:mm".
+
+**Planos**: a inscrição em evento por link, com ingresso, entrou nas listas do Profissional (Planos, checkout em tela e em janela, aba Plano das Configurações e os planos da landing).
+
+**Banco**: migração 97 (`events.public_signup`, `seat_guarantee`, `hold_minutes`; `event_registrations.status` aceita `reserved`, mais `source`, `hold_until`, `ticket_code` único e `signup_evidence`; `event_attendances.checked_in_at` e `checked_in_by`).
+
+**Testes**: `services/__tests__/events-public-signup.test.ts` (link e vaga garantida no cadastro, reserva e pagamento, ingresso, entrada, leitura sem internet e envio da fila), `services/events/__tests__/publicSignup.db.test.ts` (página sem dado de aluno, visitante novo, aluno existente sem mudar o cadastro, menor, travas, ingresso mascarado), e2e `eventos-inscricao-link.spec.ts` (inscrição, ingresso, espera, menor, link fechado, sino, entrada com pagamento pendente).
+
+**Não coberto por teste automático** (nas pendências): a câmera de verdade lendo o QR, o modo avião no celular com o service worker, o Safari do iPhone e a confirmação da reserva pelo aviso do parceiro com um Pix de teste.

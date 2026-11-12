@@ -37,7 +37,8 @@ Data: 2026-10-19.
   - `icon-maskable-192/512` (Android recorta em círculo, gota ou quadrado): fundo cheio e G em 56%, dentro da área segura de 80% com folga.
   - `apple-touch-icon.png` (180, sem transparência; o iPhone arredonda sozinho): fundo cheio e G em 60%.
 - **Metadados** em `app/layout.tsx`: ícone do iPhone, `appleWebApp` (abre sem a barra do Safari) e a cor da barra do sistema por tema.
-- **Ainda não feito:** service worker de cache e tela offline. O Chrome instala sem ele. Os outros recursos estão em "Recursos do PWA para depois".
+- **Ainda não feito:** service worker de cache e tela offline para o app inteiro. O Chrome instala sem ele.
+- **Primeiro service worker (12/11/2026):** `public/checkin-sw.js`, só para a leitura de ingressos sem internet (doc product/29): guarda a tela do dia do evento (rede primeiro) e os arquivos `/_next/static`, com a lista e a fila no IndexedDB. Registrado pelo "Preparar para usar sem internet". É a base para a "chamada sem internet" das turmas. Os outros recursos estão em "Recursos do PWA para depois".
 - Ao trocar o ícone, rodar `icons:build` e conferir nos três cortes (quadrado do iPhone, círculo e gota do Android). O app já instalado guarda o ícone antigo: para ver o novo, remover da tela de início e instalar de novo.
 
 ### Sugestão de instalação (04/11/2026)

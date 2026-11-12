@@ -133,6 +133,7 @@ Toda página aberta sem login (link que circula por WhatsApp: fatura da cobranç
 Também valem nessas páginas:
 - Formulário não vem preenchido com dado pessoal: no termo do responsável, quem assina digita o próprio nome e telefone (o nome digitado vai para a prova do consentimento).
 - Página pública não grava no cadastro: o CPF digitado na fatura vale só para aquela cobrança.
+- **Exceção controlada (12/11/2026, doc product/29): a inscrição em evento por link** (`/p/e/<código>`) só **cria** o aluno visitante novo e a inscrição, nunca muda um cadastro existente (telefone de aluno ativo liga a inscrição a ele sem tocar no cadastro) e não devolve dado de aluno. O ingresso (`/p/i/<código>`) mostra o nome mascarado e não grava nada sem login.
 - **Limites contra abuso (30/10/2026, auditoria):** a fatura pública aceita até 6 pedidos de pagamento por IP e cobrança a cada 10 minutos e 15 por cobrança por hora (cada pedido cria um pagamento no parceiro e cancela o anterior). O termo do responsável aceita até 10 envios por IP por hora, texto com tamanho máximo, e **não sobrescreve uma autorização já registrada** (termo impresso ou pelo WhatsApp). O link do termo segue sem prazo (é o id do aluno, impossível de adivinhar); depois de autorizado, deixa de valer.
 
 ### Contexto
