@@ -1,10 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { setErrorReporter } from "@/lib/toast";
 import { onOpenSupport, openSupport, type OpenSupportDetail } from "../support-events";
-import { SupportSheet } from "./support-sheet";
+
+// Sob demanda (11/11/2026): a janela de conversa so baixa na primeira abertura.
+const SupportSheet = dynamic(() => import("./support-sheet").then((m) => m.SupportSheet), { ssr: false });
 
 /**
  * Janela do "Fale com a gente", montada uma vez no layout do app. Qualquer
@@ -13,6 +16,7 @@ import { SupportSheet } from "./support-sheet";
 export function SupportHost() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [detail, setDetail] = useState<OpenSupportDetail>({});
   const [origin, setOrigin] = useState(pathname);
 
@@ -21,6 +25,7 @@ export function SupportHost() {
       onOpenSupport((next) => {
         setDetail(next);
         setOrigin(window.location.pathname);
+        setMounted(true);
         setOpen(true);
       }),
     [],
@@ -32,6 +37,7 @@ export function SupportHost() {
     return () => setErrorReporter(undefined);
   }, []);
 
+  if (!mounted) return null;
   return (
     <SupportSheet
       open={open}

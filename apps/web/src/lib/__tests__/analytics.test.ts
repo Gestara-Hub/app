@@ -16,6 +16,9 @@ vi.mock("posthog-js", () => ({ default: posthog }));
 
 const ANA = { id: "usr-ana", profile: "owner", organizationId: "org-1" };
 
+/** O PostHog carrega sob demanda depois do aceite (import dinamico): espera ele chegar. */
+const loaded = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 /** localStorage em memoria (o teste roda em Node). */
 function stubStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -108,6 +111,7 @@ describe("analytics", () => {
     const analytics = await loadAnalytics();
     analytics.identifyUser(ANA);
     analytics.setAnalyticsConsent("granted");
+    await loaded();
     expect(posthog.init).toHaveBeenCalledTimes(1);
     expect(posthog.init.mock.calls[0][1]).toMatchObject({
       session_recording: { maskAllInputs: true, maskTextSelector: "[data-analytics-mask]" },
@@ -120,6 +124,7 @@ describe("analytics", () => {
     stubStorage({ [ANALYTICS_CONSENT_KEY]: "granted" });
     const analytics = await loadAnalytics();
     analytics.initAnalytics();
+    await loaded();
     analytics.setAnalyticsConsent("denied");
     expect(posthog.opt_out_capturing).toHaveBeenCalledTimes(1);
     analytics.setAnalyticsConsent("granted");
@@ -132,6 +137,7 @@ describe("analytics", () => {
     posthog.has_opted_out_capturing.mockReturnValue(true);
     const analytics = await loadAnalytics();
     analytics.initAnalytics();
+    await loaded();
     expect(posthog.opt_in_capturing).toHaveBeenCalledTimes(1);
   });
 
@@ -139,6 +145,7 @@ describe("analytics", () => {
     stubStorage({ [ANALYTICS_CONSENT_KEY]: "granted" });
     const analytics = await loadAnalytics();
     analytics.initAnalytics();
+    await loaded();
     posthog.get_distinct_id.mockReturnValue("usr-carlos");
     posthog.get_property.mockReturnValue("identified");
     analytics.identifyUser(ANA);
@@ -161,7 +168,10 @@ describe("trackEvent", () => {
     analytics.trackEvent("landing_signup_cta_clicked", { placement: "hero" });
     expect(posthog.capture).not.toHaveBeenCalled();
     analytics.setAnalyticsConsent("granted");
+    // Clique antes de o PostHog chegar: espera na fila e sai quando ele liga.
     analytics.trackEvent("landing_signup_cta_clicked", { placement: "hero" });
+    expect(posthog.capture).not.toHaveBeenCalled();
+    await loaded();
     expect(posthog.capture).toHaveBeenCalledWith("landing_signup_cta_clicked", { placement: "hero" });
   });
 

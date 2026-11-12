@@ -1,6 +1,6 @@
 "use client";
 
-import posthog, { type CaptureResult } from "posthog-js";
+import type { CaptureResult, PostHog } from "posthog-js";
 import { readAnalyticsConsent, writeAnalyticsConsent } from "@/lib/analytics-consent";
 import { URL_PROPERTIES, scrubAnalyticsUrl } from "@/lib/analytics-url";
 
@@ -34,12 +34,30 @@ interface AnalyticsIdentity {
 let started = false;
 // Usuario logado: identificado assim que o PostHog ligar (o aceite pode vir depois).
 let currentIdentity: AnalyticsIdentity | null = null;
+// PostHog sob demanda (11/11/2026): ~115 KB gzip que iam em toda pagina, inclusive
+// nos links publicos de pagamento, mesmo sem chave e antes do aceite. So baixa
+// depois do aceite; o que chega antes de ele carregar espera na fila.
+let posthog: PostHog | null = null;
+const pending: ((ph: PostHog) => void)[] = [];
+
+function withPosthog(run: (ph: PostHog) => void): void {
+  if (posthog) run(posthog);
+  else if (started) pending.push(run);
+}
 
 export function initAnalytics(): void {
   if (started || !KEY || typeof window === "undefined") return;
   if (readAnalyticsConsent() !== "granted") return;
   started = true;
-  posthog.init(KEY, {
+  void import("posthog-js").then(({ default: ph }) => {
+    posthog = ph;
+    startPosthog(ph, KEY);
+    for (const run of pending.splice(0)) run(ph);
+  });
+}
+
+function startPosthog(posthog: PostHog, key: string): void {
+  posthog.init(key, {
     api_host: HOST,
     defaults: "2026-08-30",
     capture_pageview: "history_change",
@@ -58,7 +76,7 @@ export function initAnalytics(): void {
   });
   // Recusou numa visita anterior e aceitou agora: o PostHog guarda a recusa.
   if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing();
-  if (currentIdentity) identify(currentIdentity);
+  if (currentIdentity) identify(posthog, currentIdentity);
 }
 
 function scrubEvent(event: CaptureResult | null): CaptureResult | null {
@@ -77,7 +95,7 @@ function scrubEvent(event: CaptureResult | null): CaptureResult | null {
   return event;
 }
 
-function identify(user: AnalyticsIdentity): void {
+function identify(posthog: PostHog, user: AnalyticsIdentity): void {
   // Outra pessoa no mesmo navegador (troca de usuario): comeca uma identidade nova.
   if (posthog.get_distinct_id() !== user.id && posthog.get_property("$user_state") === "identified") {
     posthog.reset();
@@ -87,7 +105,7 @@ function identify(user: AnalyticsIdentity): void {
 
 export function identifyUser(user: AnalyticsIdentity): void {
   currentIdentity = user;
-  if (started) identify(user);
+  if (started) withPosthog((ph) => identify(ph, user));
   // Efeito do filho roda antes do efeito do Providers: inicia aqui se preciso
   // (e o init identifica o `currentIdentity`).
   else initAnalytics();
@@ -98,23 +116,23 @@ export function identifyUser(user: AnalyticsIdentity): void {
  * aceite dos cookies, nao faz nada. Nunca mandar nome, e-mail ou texto digitado.
  */
 export function trackEvent(name: string, properties?: Record<string, string>): void {
-  if (started) posthog.capture(name, properties);
+  withPosthog((ph) => ph.capture(name, properties));
 }
 
 /** Ao sair: as proximas visitas neste navegador ficam anonimas. */
 export function resetAnalytics(): void {
   currentIdentity = null;
-  if (started) posthog.reset();
+  withPosthog((ph) => ph.reset());
 }
 
 /** Resposta do aviso de cookies: aceitar liga o PostHog; recusar para a captura. */
 export function setAnalyticsConsent(value: "granted" | "denied"): void {
   writeAnalyticsConsent(value);
   if (value === "granted") {
-    if (started) posthog.opt_in_capturing();
+    if (started) withPosthog((ph) => ph.opt_in_capturing());
     else initAnalytics();
-  } else if (started) {
-    posthog.opt_out_capturing();
+  } else {
+    withPosthog((ph) => ph.opt_out_capturing());
   }
 }
 

@@ -2,6 +2,19 @@
   "name": "@gestarahub/web",
   "version": "0.1.0",
   "private": true,
+  "sideEffects": [
+    "*.css",
+    "./src/instrumentation.ts",
+    "./src/instrumentation-client.ts",
+    "./src/lib/zod-config.ts",
+    "./src/lib/log/server-sink.ts",
+    "./src/lib/documents/*.tsx",
+    "./src/mocks/helpers.ts",
+    "./src/mocks/store.ts",
+    "./src/services/world/scope.ts",
+    "./src/services/personDocuments/personDocumentFiles.ts",
+    "./src/services/communication/messageDelivery.ts"
+  ],
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3200",
     "dev:https": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3200 --experimental-https",
