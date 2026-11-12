@@ -212,27 +212,31 @@ export function FinanceCashFlowChart({ points }: { points: FinanceMonthPoint[] }
         ) : null}
       </div>
 
-      <table className="sr-only">
-        <caption>Entradas, saídas e resultado por mês</caption>
-        <thead>
-          <tr>
-            <th scope="col">Mês</th>
-            <th scope="col">Entradas</th>
-            <th scope="col">Saídas</th>
-            <th scope="col">Resultado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {points.map((p) => (
-            <tr key={p.competence}>
-              <th scope="row">{competenceLabel(p.competence)}</th>
-              <td>{formatCents(p.incomeCents)}</td>
-              <td>{formatCents(p.expenseCents)}</td>
-              <td>{formatCents(p.resultCents)}</td>
+      {/* sr-only no <div>, nao na <table>: a tabela ignora a largura de 1px e estica
+          ate o conteudo; absoluta e larga, vazava da tela e o celular afastava o zoom. */}
+      <div className="sr-only">
+        <table>
+          <caption>Entradas, saídas e resultado por mês</caption>
+          <thead>
+            <tr>
+              <th scope="col">Mês</th>
+              <th scope="col">Entradas</th>
+              <th scope="col">Saídas</th>
+              <th scope="col">Resultado</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {points.map((p) => (
+              <tr key={p.competence}>
+                <th scope="row">{competenceLabel(p.competence)}</th>
+                <td>{formatCents(p.incomeCents)}</td>
+                <td>{formatCents(p.expenseCents)}</td>
+                <td>{formatCents(p.resultCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

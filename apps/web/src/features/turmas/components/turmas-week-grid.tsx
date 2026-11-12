@@ -80,8 +80,10 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
   const updateEdges = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const left = el.scrollLeft > 4;
-    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    // Tela larga (xl): a grade nao rola; sobra de texto nao vira "Deslize".
+    const scrolls = getComputedStyle(el).overflowX !== "visible";
+    const left = scrolls && el.scrollLeft > 4;
+    const right = scrolls && el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
     setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
   }, []);
   useEffect(() => {
@@ -184,10 +186,13 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                     data-today={isToday || undefined}
                     // Cabecalho sticky e OPACO (uma cor translucida deixaria os chips
                     // aparecerem por baixo ao rolar). Hoje: so o circulo no numero e a linha de "agora".
-                    className="sticky top-0 z-20 xl:top-14 border-b border-r bg-card px-2 py-2 last:border-r-0"
+                    // overflow-hidden (11/11/2026): o nome do dia vazava da coluna estreita
+                    // do dia vazio e a grade achava que tinha rolagem ("Deslize").
+                    className="sticky top-0 z-20 xl:top-14 overflow-hidden border-b border-r bg-card px-2 py-2 last:border-r-0"
                   >
-                    <span className="block text-xs font-normal uppercase text-muted-foreground">
-                      {format(day, "EEE", { locale: ptBR })}
+                    <span className="block text-xs font-normal uppercase text-muted-foreground" title={format(day, "EEEE", { locale: ptBR })}>
+                      {/* Dia vazio fica estreito: so as 3 primeiras letras ("dom"). */}
+                      {busyDays.has(iso) ? format(day, "EEE", { locale: ptBR }) : format(day, "EEE", { locale: ptBR }).slice(0, 3)}
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5">
                       <span

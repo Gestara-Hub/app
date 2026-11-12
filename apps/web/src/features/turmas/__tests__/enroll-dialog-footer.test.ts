@@ -14,7 +14,14 @@ describe("janela Matricular alunos (achado 36)", () => {
   });
 
   it("a lista de alunos cresce com a altura da janela, sem caixa fixa baixa", () => {
+    // A lista mora no seletor compartilhado; a matricula usa a altura padrao dele.
+    const picker = readFileSync(
+      fileURLToPath(new URL("../../../components/shared/student-multi-select.tsx", import.meta.url)),
+      "utf8",
+    );
+    expect(source).toContain("<StudentMultiSelect");
+    expect(source).not.toMatch(/<StudentMultiSelect[^>]*listClassName/);
     expect(source).not.toContain("max-h-72");
-    expect(source).toContain("100dvh");
+    expect(picker).toContain("100dvh");
   });
 });

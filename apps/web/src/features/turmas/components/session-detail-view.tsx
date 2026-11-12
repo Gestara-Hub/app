@@ -717,6 +717,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
               <ListRow
                 key={r.studentId}
                 onClick={marking ? () => tapRow(r) : undefined}
+                // Nome explicito do botao da chamada (11/11/2026): o pedaco sr-only
+                // dentro do nome saia com espaco a mais no Chrome novo ("Ana : sem marcação").
+                aria-label={marking ? `${r.studentName}: ${r.attendance ? ATTENDANCE_LABEL[r.attendance] : "sem marcação"}` : undefined}
                 actions={
                   absentLike || rowActions.length > 0 ? (
                     <>
@@ -762,11 +765,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-sm font-medium text-foreground">
                       {r.studentName}
-                      {marking ? (
-                        <span className="sr-only">
-                          : {r.attendance ? ATTENDANCE_LABEL[r.attendance] : "sem marcação"}
-                        </span>
-                      ) : null}
                     </p>
                     {/* Nivel em texto (faixa mantem a cor) e so o que foge do padrao */}
                     <div
@@ -1033,12 +1031,15 @@ function AddStudentSessionDialog({
     });
   };
 
+  // Substantivos no mesmo formato (11/11/2026): "Entra como pelo pacote" quebrava
+  // a frase na turma sem avulso, que tambem deixou de ser avisada.
   const kinds = [
     session.allowDropin ? "aula avulsa" : null,
-    hasPackages ? "pelo pacote" : null,
+    hasPackages ? "pacote" : null,
     "experimental",
   ].filter(Boolean) as string[];
   const kindsText = kinds.length === 1 ? kinds[0] : `${kinds.slice(0, -1).join(", ")} ou ${kinds[kinds.length - 1]}`;
+  const noDropin = session.allowDropin ? "" : " Turma sem aula avulsa.";
 
   // Drawer a direita, como os outros formularios (doc 07 §2.7; pedido de 31/10/2026).
   return (
@@ -1051,7 +1052,7 @@ function AddStudentSessionDialog({
         <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
           <SheetTitle className="text-lg font-semibold text-foreground">Adicionar aluno nesta aula</SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
-            Aula de {format(parseISO(session.date), "EEEE, dd/MM", { locale: ptBR })}. Entra como {kindsText}.
+            Aula de {format(parseISO(session.date), "EEEE, dd/MM", { locale: ptBR })}. Entra como {kindsText}.{noDropin}
           </SheetDescription>
         </SheetHeader>
 
