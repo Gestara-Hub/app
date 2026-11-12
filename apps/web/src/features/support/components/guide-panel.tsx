@@ -92,13 +92,18 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
     [],
   );
 
+  /** Passo que pediu uma janela que ainda nao tinha aberto no tempo do clique. */
+  const ownerCandidate = useRef<{ owner: number; before: number } | null>(null);
   /** Passo cumprido. `layersBefore`: janelas abertas antes do clique, para saber se o passo abriu ou fechou uma. */
   const complete = useCallback(
     (layersBefore?: number) => {
+      ownerCandidate.current = null;
       if (layersBefore !== undefined) {
         const now = openLayers().length;
         if (now > layersBefore) setLayerOwner(index);
         else if (now < layersBefore) setLayerOwner(null);
+        // A janela ainda nao abriu (gaveta que carrega depois): confere nos proximos ciclos.
+        else ownerCandidate.current = { owner: index, before: layersBefore };
       }
       setNotice(null);
       if (isLast) finish(true);
@@ -137,6 +142,13 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
       // A janela aberta (Radix) esconde do leitor de tela tudo que está fora dela, inclusive o painel.
       rootRef.current?.removeAttribute("aria-hidden");
       const layers = openLayers().length;
+
+      // A janela do passo anterior abriu depois do tempo do clique (11/11/2026): agora e dele.
+      const candidate = ownerCandidate.current;
+      if (candidate && layers > candidate.before) {
+        ownerCandidate.current = null;
+        setLayerOwner(candidate.owner);
+      }
 
       // A janela que um passo anterior abriu fechou antes do fim: volta ao passo que a abriu.
       if (layerOwner !== null && layers === 0) {
@@ -212,13 +224,15 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
     if (step && !ADVANCES_ON_CLICK.includes(step.kind)) completeRef.current();
   }, [pathname, step]);
 
-  // Esc fecha o guia só sem janela aberta (com janela, o Esc é dela).
+  // Esc fecha o guia só sem janela aberta (com janela, o Esc é dela). Na fase de
+  // captura (11/11/2026): sem ela, o Radix fechava a janela antes e o guia via
+  // "nenhuma janela" e fechava junto, em vez de voltar ao passo que a abriu.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && openLayers().length === 0) finish(false);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [finish]);
 
   // Janela aberta (Radix) fecha ao clicar ou focar fora dela: o painel fica fora do que ela entende como "fora".
