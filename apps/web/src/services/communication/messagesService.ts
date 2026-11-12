@@ -13,6 +13,7 @@ import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { inServerWorld, store } from "@/services/world/store";
 import { afterWorldCommit } from "@/services/world/effects";
 import { auditLogService } from "../audit/auditLogService";
+import { whatsappConsentGranted } from "../clients/clientConsentRules";
 import { assertFeature } from "../subscription/subscriptionService";
 import {
   ensureConnection,
@@ -106,6 +107,19 @@ export const messagesService = {
         });
       }
       validateMessage(payload);
+      // Envio oficial so para quem autorizou (doc product/27 M1): a Politica do
+      // WhatsApp Business pede o opt-in antes de mensagem iniciada pelo espaco.
+      // O envio assistido (pelo celular de quem atende) continua.
+      const recipient = payload.clientId ? store.clients.find((c) => c.id === payload.clientId) : undefined;
+      if (recipient && !whatsappConsentGranted(recipient)) {
+        throw apiError(
+          "CONFLICT",
+          recipient.whatsappConsentStatus === "revoked"
+            ? `${recipient.name} pediu para não receber mensagens pelo WhatsApp do espaço.`
+            : `${recipient.name} ainda não autorizou mensagens pelo WhatsApp do espaço. Marque "Aceita mensagens pelo WhatsApp" no cadastro.`,
+          { httpStatus: 409, fields: [{ field: "whatsappConsentStatus", message: "Sem autorização para WhatsApp." }] },
+        );
+      }
       const connection = ensureConnection();
 
       let messageId: string | undefined;

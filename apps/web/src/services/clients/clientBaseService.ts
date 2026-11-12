@@ -18,7 +18,7 @@ import { assertCanSetDiscount, validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
 import { teacherStudentIds } from "../classes/teacherScope";
 import { clientWithoutMoney } from "./studentSummaryRules";
-import { consentFieldsFor } from "./clientConsentRules";
+import { consentFieldsFor, whatsappConsentFieldsFor } from "./clientConsentRules";
 import { trialOutcomeOf, trialStudents } from "./clientTrials";
 
 /**
@@ -205,6 +205,8 @@ export const clientBaseService = {
         membershipStatus: payload.membershipStatus ?? "active",
         // Autorizacao do menor: a regra do servidor, nao o que o navegador mandou.
         ...consentFieldsFor(payload),
+        // Autorizacao do WhatsApp: data e autor do servidor (doc product/27 M1).
+        ...whatsappConsentFieldsFor(payload),
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,

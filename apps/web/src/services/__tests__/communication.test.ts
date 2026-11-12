@@ -511,11 +511,16 @@ describe("envio automatico (oficial)", () => {
 describe("parabens automatico", () => {
   beforeEach(() => resetAcademy());
 
-  async function birthdayStudent(name = "Bia", overrides: { phone?: string; birthDate?: string } = {}) {
+  async function birthdayStudent(
+    name = "Bia",
+    overrides: { phone?: string; birthDate?: string; whatsappConsentStatus?: "unknown" | "granted" | "revoked" } = {},
+  ) {
     return clientsService.create({
       name,
       phone: overrides.phone ?? "11977770000",
       birthDate: overrides.birthDate ?? "2000-09-22",
+      // O automatico so sai para quem autorizou (doc product/27 M1).
+      whatsappConsentStatus: overrides.whatsappConsentStatus ?? "granted",
       status: "active",
     });
   }
@@ -552,6 +557,30 @@ describe("parabens automatico", () => {
     greet();
     expect(greetings()).toHaveLength(1);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
+  });
+
+  it("sem a autorização do aluno (ou depois do SAIR) o automático não sai", async () => {
+    await birthdayStudent("Sem registro", { whatsappConsentStatus: "unknown" });
+    await birthdayStudent("Pediu para parar", { phone: "11977770001", whatsappConsentStatus: "revoked" });
+    const bia = await birthdayStudent("Bia", { phone: "11977770002" });
+    await connectOfficial();
+    expect(greet()).toBe(1);
+    expect(greetings().map((l) => l.clientId)).toEqual([bia.id]);
+  });
+
+  it("envio oficial pela tela recusa aluno sem autorização e explica", async () => {
+    const semRegistro = await birthdayStudent("Caio", { whatsappConsentStatus: "unknown" });
+    const parou = await birthdayStudent("Duda", { phone: "11977770003", whatsappConsentStatus: "revoked" });
+    const bia = await birthdayStudent("Bia", { phone: "11977770004" });
+    await connectOfficial();
+    const send = (clientId: string, name: string) =>
+      communicationService.sendMessage({ recipientName: name, recipientPhone: "11977770009", content: "Oi", clientId });
+    await expect(send(semRegistro.id, "Caio")).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("ainda não autorizou"),
+    });
+    await expect(send(parou.id, "Duda")).rejects.toMatchObject({ message: expect.stringContaining("pediu para não receber") });
+    await expect(send(bia.id, "Bia")).resolves.toMatchObject({ clientId: bia.id });
   });
 
   it("usa o texto editado do modelo", async () => {

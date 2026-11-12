@@ -19,6 +19,7 @@ import { chargeInvoiceUrl, paymentPageUrl } from "@/lib/payment-page";
 import { store } from "@/services/world/store";
 import { tenantHasFeature } from "../subscription/subscriptionService";
 import { dateInSpace } from "@gestarahub/core/date";
+import { whatsappConsentGranted } from "../clients/clientConsentRules";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -174,6 +175,8 @@ export function runBirthdayGreetings(): number {
   for (const client of store.clients) {
     if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
     if (client.status !== "active" || !whatsappNumber(client.phone)) continue;
+    // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
+    if (!whatsappConsentGranted(client)) continue;
     if (!isBirthdayToday(client.birthDate, today)) continue;
     const alreadySent = logs.some(
       (log) =>
@@ -248,6 +251,8 @@ export function runBillingReminders(): number {
       if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
       const client = (store.clients ?? []).find((cl) => cl.id === charge.studentId);
       if (!client || client.status !== "active" || !whatsappNumber(client.phone)) continue;
+      // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
+      if (!whatsappConsentGranted(client)) continue;
 
       const alreadySent = logs.some(
         (log) =>

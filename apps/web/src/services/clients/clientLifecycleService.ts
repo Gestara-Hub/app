@@ -21,7 +21,7 @@ import {
 } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
-import { consentFieldsFor } from "./clientConsentRules";
+import { consentFieldsFor, whatsappConsentFieldsFor } from "./clientConsentRules";
 import { validateClient, assertCanSetDiscount } from "./clientValidation";
 
 /** Edicao (com efeitos na cobranca) e inativacao do aluno. */
@@ -53,16 +53,21 @@ export const clientLifecycleService = {
         minorConsentAt: _minorConsentAt,
         minorConsentBy: _minorConsentBy,
         minorConsentEvidence: _minorConsentEvidence,
+        whatsappConsentStatus: _whatsappConsentStatus,
+        whatsappConsentAt: _whatsappConsentAt,
+        whatsappConsentBy: _whatsappConsentBy,
         // Os meses passados se decidem so no cadastro (pergunta de 31/10/2026).
         chargesFrom: _chargesFrom,
         ...fields
       } = payload as UpdateClient & Partial<Client> & { unitId?: string };
       void [_initialCharge, _id, _organizationId, _unitId, _createdAt, _updatedAt, _progressions];
       void [_minorConsentStatus, _minorConsentAt, _minorConsentBy, _minorConsentEvidence, _chargesFrom];
+      void [_whatsappConsentStatus, _whatsappConsentAt, _whatsappConsentBy];
       const updated: Client = {
         ...current,
         ...fields,
         ...consentFieldsFor(payload, current),
+        ...whatsappConsentFieldsFor(payload, current),
         updatedAt: ts,
       };
       // Volta do aluno (reativado ou assinatura retomada): a cobranca recomeca

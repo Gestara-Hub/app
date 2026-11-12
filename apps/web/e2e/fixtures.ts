@@ -312,6 +312,8 @@ export function student(id: string, name: string, over: Record<string, unknown> 
     cyclePaymentTiming: "prepaid",
     dueDay: 10,
     membershipStatus: "active",
+    // Autorizou o WhatsApp do espaco (doc product/27 M1): os cenarios do envio oficial dependem disso.
+    whatsappConsentStatus: "granted",
     status: "active",
     createdAt: TS,
     updatedAt: TS,

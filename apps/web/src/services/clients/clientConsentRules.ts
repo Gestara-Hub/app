@@ -1,4 +1,4 @@
-import type { Client, MinorConsentStatus } from "@gestarahub/contracts";
+import type { Client, MinorConsentStatus, WhatsAppConsentStatus } from "@gestarahub/contracts";
 import { getCurrentActor } from "../world/actor";
 import { nowIso } from "../world/ops";
 
@@ -51,4 +51,39 @@ export function consentFieldsFor(payload: Partial<ConsentFields>, current?: Clie
     minorConsentBy: undefined,
     minorConsentEvidence: wanted === "not_applicable" ? current?.minorConsentEvidence : undefined,
   };
+}
+
+type WhatsAppConsentFields = Pick<Client, "whatsappConsentStatus" | "whatsappConsentAt" | "whatsappConsentBy">;
+
+/**
+ * Autorizacao para mensagens pelo WhatsApp (12/11/2026, doc product/27 M1): o
+ * navegador manda so a situacao; data e quem registrou sao do servidor. Mesma
+ * situacao de antes nao muda o carimbo. "Pediu para parar" pelo WhatsApp
+ * ("SAIR") chega pelo webhook, nao por aqui.
+ */
+export function whatsappConsentFieldsFor(
+  payload: { whatsappConsentStatus?: WhatsAppConsentStatus },
+  current?: Client,
+): Partial<WhatsAppConsentFields> {
+  const wanted = payload.whatsappConsentStatus;
+  const before = current?.whatsappConsentStatus ?? "unknown";
+  if (wanted === undefined || wanted === before) {
+    return current
+      ? { whatsappConsentStatus: current.whatsappConsentStatus, whatsappConsentAt: current.whatsappConsentAt, whatsappConsentBy: current.whatsappConsentBy }
+      : { whatsappConsentStatus: "unknown" };
+  }
+  if (wanted === "unknown") {
+    return { whatsappConsentStatus: "unknown", whatsappConsentAt: undefined, whatsappConsentBy: undefined };
+  }
+  const actor = getCurrentActor();
+  return {
+    whatsappConsentStatus: wanted,
+    whatsappConsentAt: nowIso(),
+    whatsappConsentBy: actor?.name ? `${actor.name} (no cadastro)` : "Registrado no cadastro",
+  };
+}
+
+/** O envio oficial (automatico ou pela API) pode ir para este aluno? */
+export function whatsappConsentGranted(client: Pick<Client, "whatsappConsentStatus"> | undefined): boolean {
+  return client?.whatsappConsentStatus === "granted";
 }

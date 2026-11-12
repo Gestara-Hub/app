@@ -102,4 +102,16 @@ Conferência do texto contra o que o sistema faz depois de 02/11. Versão `v1.2-
 | R6 | Dados de cobrança da assinatura do GestaraHub | Privacidade §3: cobrança pela Asaas e nota fiscal. |
 | R7 | Prazos de guarda dos registros | Privacidade §11: auditoria e aceites (com IP) enquanto servirem de prova; registro de erros por 120 dias (doc technical/21). |
 
-**Continua em aberto:** região dos projetos Supabase e PostHog (o padrão do PostHog no projeto é `us.i.posthog.com`); devolução do plano anual dentro dos 7 dias conferida no código; opt-out e consentimento de WhatsApp (M1, M2); itens de produção do §7 passo 5.
+**Continua em aberto:** região dos projetos Supabase e PostHog (o padrão do PostHog no projeto é `us.i.posthog.com`); devolução do plano anual dentro dos 7 dias conferida no código; itens de produção do §7 passo 5.
+
+
+## 9. Autorização e "SAIR" do WhatsApp (12/11/2026, M1 e M2)
+
+**Como ficou:**
+- **Autorização no cadastro do aluno:** chave "Aceita mensagens pelo WhatsApp" logo abaixo do telefone. A situação fica em `Client.whatsappConsentStatus` (`unknown`, `granted`, `revoked`; migração 96). O navegador manda só a situação; a data e quem registrou ("Ana (no cadastro)") são do servidor (`whatsappConsentFieldsFor` em `services/clients/clientConsentRules.ts`). Desmarcar quem tinha autorizado vira "pediu para parar". A linha de apoio da chave mostra quando e quem registrou.
+- **Sem autorização, o envio oficial não sai:** parabéns e lembretes de cobrança automáticos pulam o aluno; o envio pela API a partir da tela recusa com a explicação ("ainda não autorizou" ou "pediu para não receber"). O envio assistido, pelo WhatsApp de quem atende, continua (quem envia é a pessoa).
+- **"SAIR" pelo WhatsApp:** o webhook (`services/communication/whatsappOptOut.ts`) reconhece "SAIR", "PARAR", "PARE", "CANCELAR", "STOP" e "DESCADASTRAR" (só a palavra, sem diferença de maiúscula, acento ou pontuação). Marca "pediu para parar" nos alunos daquele número, como aluno ou responsável (com ou sem o 9 do celular), só nos espaços que falam com ele: o dono do número do WhatsApp conectado ou, no número da plataforma, quem mandou mensagem a esse número nos últimos 90 dias. A Auditoria registra com o autor "Sistema".
+- **Alunos que já existiam** começam sem registro: o automático para até o espaço marcar a autorização. Antes do lançamento não há espaço real, então nada para de surpresa.
+- **Testes:** `whatsapp-consent.test.ts` (carimbo e palavras), `communication.test.ts` (parabéns e envio pela tela), `whatsappOptOut.db.test.ts` (o "SAIR" no banco, responsável, outro espaço, número conectado).
+
+**Falta:** voltar o "responda SAIR" à Privacidade (R2), na próxima versão dos textos, junto com as outras mudanças (regra de 10/11/2026: textos jurídicos mudam em lote). Na lista de lembretes e no envio em sequência, o aluno sem autorização ainda aparece e só recusa ao enviar; vale um selo antes, se incomodar no uso.

@@ -42,6 +42,7 @@ import {
   InputText,
   SegmentedChoiceField,
   SelectField,
+  SwitchField,
   TextArea,
   type SegmentedChoiceOption,
 } from "@/components/form";
@@ -238,7 +239,17 @@ function toDefaults(
     minorConsentAt: client?.minorConsentAt ?? "",
     minorConsentBy: client?.minorConsentBy ?? "",
     hasPaperConsent: client?.minorConsentStatus === "confirmed_paper",
+    whatsappConsent: client?.whatsappConsentStatus === "granted",
   };
+}
+
+/** Linha de apoio da autorizacao do WhatsApp: quando e quem registrou. */
+function whatsappConsentHint(client?: Client): string {
+  const when = client?.whatsappConsentAt ? format(parseISO(client.whatsappConsentAt), "dd/MM/yyyy") : "";
+  const by = client?.whatsappConsentBy ? ` · ${client.whatsappConsentBy}` : "";
+  if (client?.whatsappConsentStatus === "granted") return `Autorizado em ${when}${by}.`;
+  if (client?.whatsappConsentStatus === "revoked") return `Pediu para parar em ${when}${by}.`;
+  return "Lembretes e avisos automáticos só saem com a autorização do aluno ou responsável.";
 }
 
 interface ClientFormProps {
@@ -1219,6 +1230,13 @@ export function ClientForm({
       minorConsentAt,
       minorConsentBy,
       minorConsentEvidence,
+      // So a situacao: data e quem registrou sao do servidor (doc product/27 M1).
+      // Desmarcar quem tinha autorizado vira "pediu para parar".
+      whatsappConsentStatus: values.whatsappConsent
+        ? "granted"
+        : client?.whatsappConsentStatus === "granted"
+          ? "revoked"
+          : (client?.whatsappConsentStatus ?? "unknown"),
       address: addressPayload,
       planId,
       // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
@@ -1638,6 +1656,14 @@ export function ClientForm({
               disabled={pending}
             />
           </div>
+
+          {/* Opt-in do WhatsApp (doc product/27 M1): sem ele, o envio oficial nao sai. */}
+          <SwitchField<ClientFormValues>
+            name="whatsappConsent"
+            label="Aceita mensagens pelo WhatsApp"
+            hint={whatsappConsentHint(client)}
+            disabled={pending}
+          />
 
           {isMinor ? (
             <>

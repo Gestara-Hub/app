@@ -799,6 +799,21 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "date",
         "nullable": true,
         "hasDefault": false
+      },
+      "whatsapp_consent_status": {
+        "type": "text",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "whatsapp_consent_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "whatsapp_consent_by": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

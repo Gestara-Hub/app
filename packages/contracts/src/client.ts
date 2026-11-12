@@ -185,6 +185,9 @@ export type MinorConsentStatus =
   | "confirmed_whatsapp"
   | "confirmed_paper";
 
+/** unknown: sem registro; granted: autorizou; revoked: pediu para parar. */
+export type WhatsAppConsentStatus = "unknown" | "granted" | "revoked";
+
 export interface Client {
   id: Id;
   organizationId: Id;
@@ -219,6 +222,14 @@ export interface Client {
   minorConsentAt?: DateTimeISO;
   minorConsentBy?: string;
   minorConsentEvidence?: Record<string, unknown>;
+  /**
+   * Autorizacao para mensagens pelo WhatsApp do espaco (12/11/2026, doc
+   * product/27 M1 e M2). Sem `granted`, o envio oficial (automatico ou pela
+   * API) nao sai; o assistido continua. Data e autor sao do servidor.
+   */
+  whatsappConsentStatus?: WhatsAppConsentStatus;
+  whatsappConsentAt?: DateTimeISO;
+  whatsappConsentBy?: string;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;

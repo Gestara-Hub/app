@@ -2,6 +2,7 @@ import type { MetaTemplateStatus, WhatsAppWebhookPayload, WhatsAppWebhookStatus 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
 import { store } from "@/services/world/store";
+import { applyWhatsAppOptOut, isOptOutText } from "./whatsappOptOut";
 
 /**
  * Atualiza o status de entrega e leitura de uma mensagem enviada via WhatsApp.
@@ -90,10 +91,21 @@ export async function handleWhatsAppWebhookPayload(payload: WhatsAppWebhookPaylo
           }
         }
 
-        // 2. Mensagens recebidas (respostas de alunos)
+        // 2. Mensagens recebidas (respostas de alunos). "SAIR", "PARAR" ou
+        // "CANCELAR" param o envio oficial do espaco (doc product/27 M2).
         if (Array.isArray(change.value.messages)) {
           messagesReceived += change.value.messages.length;
-          // Futuramente podemos direcionar para atendimento ou histórico de conversa
+          for (const message of change.value.messages) {
+            if (message.type !== "text" || !isOptOutText(message.text?.body)) continue;
+            try {
+              await applyWhatsAppOptOut(createSupabaseAdminClient(), {
+                from: message.from,
+                businessNumber: change.value.metadata?.display_phone_number,
+              });
+            } catch (err) {
+              logError("[WhatsApp Webhook] Erro ao registrar o pedido para parar:", err);
+            }
+          }
         }
       }
 

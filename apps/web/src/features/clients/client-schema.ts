@@ -130,6 +130,8 @@ export const clientFormSchema = z.object({
   minorConsentAt: z.string().optional(),
   minorConsentBy: z.string().optional(),
   hasPaperConsent: z.boolean().optional(),
+  /** Aceita mensagens pelo WhatsApp do espaco (doc product/27 M1). */
+  whatsappConsent: z.boolean().optional(),
   packagePriceCents: z.number({ error: "Informe o valor." }).nullish(),
   packageInstallments: z.string().optional(),
   packageFirstDueDate: z.string().optional(),

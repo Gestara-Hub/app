@@ -31,7 +31,7 @@ beforeEach(async () => {
     const template = store.messageTemplates.find((t) => t.trigger === "birthday_greeting")!;
     template.enabled = true;
     template.sendHour = "00:00";
-    store.clients.push({ id: randomUUID(), organizationId: org, name: "Bia", phone: "11977770000", birthDate: `2000-${today.slice(5)}`, status: "active", createdAt: ts, updatedAt: ts } as never);
+    store.clients.push({ id: randomUUID(), organizationId: org, name: "Bia", phone: "11977770000", birthDate: `2000-${today.slice(5)}`, whatsappConsentStatus: "granted", status: "active", createdAt: ts, updatedAt: ts } as never);
   });
 });
 
