@@ -85,6 +85,54 @@ function findCard(labels: string[], root: ParentNode): Element | null {
   return allCards[0] ?? candidates[0] ?? null;
 }
 
+/** Elementos visíveis que carregam o texto, do menor para o maior (fora da barra lateral). */
+function textCandidates(labels: string[], root: ParentNode): Element[] {
+  const all = outsideSidebar([...root.querySelectorAll("h1, h2, h3, h4, legend, label, th, p, span, div")]).filter(
+    (el) => matchScore(el.textContent ?? "", labels) > 0 && visible(el) && !insideGuide(el),
+  );
+  return all.sort((a, b) => (a.textContent?.length ?? 0) - (b.textContent?.length ?? 0));
+}
+
+function smallestWithText(labels: string[], root: ParentNode): Element | null {
+  return textCandidates(labels, root)[0] ?? null;
+}
+
+const SECTION_STOP = '[role="dialog"], [role="alertdialog"], main, body, [data-slot="sidebar-inset"]';
+const SECTION_CONTENT = `${FIELD_CONTROLS}, ${CLICKABLE}, [data-guide-list], [data-record-id], table, ul, ol, img`;
+
+/**
+ * Sobe do texto até o menor bloco que tem conteúdo embaixo dele (campo, opções,
+ * lista). Botão na mesma linha do título não conta, e o bloco não passa de 80%
+ * da altura da tela. Sem bloco assim, fica o próprio texto.
+ */
+function sectionOf(textEl: Element): Element {
+  const textBottom = textEl.getBoundingClientRect().bottom;
+  const maxHeight = window.innerHeight * 0.8;
+  let node = textEl.parentElement;
+  while (node && !node.matches(SECTION_STOP)) {
+    if (node.getBoundingClientRect().height > maxHeight) break;
+    const hasContentBelow = [...node.querySelectorAll(SECTION_CONTENT)].some(
+      (el) => !el.contains(textEl) && !textEl.contains(el) && visible(el) && el.getBoundingClientRect().top >= textBottom - 2,
+    );
+    if (hasContentBelow) return node;
+    node = node.parentElement;
+  }
+  return textEl;
+}
+
+/** A lista mais perto do texto: marcada com `data-guide-list` ou, sem ela, o bloco das linhas (`data-record-id`). */
+function listNear(textEl: Element): Element | null {
+  let node = textEl.parentElement;
+  while (node) {
+    const marked = [...node.querySelectorAll("[data-guide-list]")].find((el) => visible(el) && !insideGuide(el));
+    const list = marked ?? [...node.querySelectorAll("[data-record-id]")].find(visible)?.parentElement ?? null;
+    if (list && visible(list)) return list;
+    if (node.matches(SECTION_STOP)) break;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 function findIn(step: GuideStep, root: ParentNode): Element | null {
   const labels = stepLabels(step);
   switch (step.kind) {
@@ -99,26 +147,39 @@ function findIn(step: GuideStep, root: ParentNode): Element | null {
     case "card":
       return findCard(labels, root);
     case "texto": {
-      // O menor elemento que carrega o texto: o título, não o bloco todo.
-      const all = [...root.querySelectorAll("h1, h2, h3, h4, legend, label, th, p, span, div")].filter((el) => matchScore(el.textContent ?? "", labels) > 0 && visible(el) && !insideGuide(el));
-      return all.sort((a, b) => (a.textContent?.length ?? 0) - (b.textContent?.length ?? 0))[0] ?? null;
+      // O bloco do texto (11/11/2026): o título junto com o que vem embaixo dele
+      // (campo, opções, lista), não só a palavra.
+      const textEl = smallestWithText(labels, root);
+      return textEl ? sectionOf(textEl) : null;
+    }
+    case "lista": {
+      // A lista perto do texto (contador "N alunos", título da tela): a pessoa escolhe um item nela.
+      for (const textEl of textCandidates(labels, root)) {
+        const list = listNear(textEl);
+        if (list) return list;
+      }
+      return null;
     }
     default:
       return best(outsideSidebar([...root.querySelectorAll(CLICKABLE)]), labels);
   }
 }
 
-/** Camada em primeiro plano (janela ou gaveta aberta), se houver. */
-function frontLayer(): Element | null {
-  const layers = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter((el) => visible(el) && !insideGuide(el));
-  return layers[layers.length - 1] ?? null;
+/** Janelas e gavetas abertas (Radix), sem as que estão fechando. */
+export function openLayers(): Element[] {
+  return [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter(
+    (el) => visible(el) && !insideGuide(el) && el.getAttribute("data-state") !== "closed",
+  );
 }
 
+/**
+ * Acha o elemento do passo. Com janela ou gaveta aberta, procura SÓ nela
+ * (11/11/2026): antes caía na tela de trás e destacava o "Nome" da lista
+ * enquanto o cadastro ainda nem tinha aberto. O menu lateral é a exceção.
+ */
 export function findGuideElement(step: GuideStep): Element | null {
-  const layer = frontLayer();
-  if (layer) {
-    const inLayer = findIn(step, layer);
-    if (inLayer) return inLayer;
-  }
+  const layers = openLayers();
+  const layer = layers[layers.length - 1];
+  if (layer && step.kind !== "menu") return findIn(step, layer);
   return findIn(step, document);
 }

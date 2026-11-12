@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { HELP_CHUNKS, type HelpChunk } from "@/lib/support/help-search";
 import { onOpenHelp, onStartGuide } from "../help-events";
-import { GuideRunner } from "./guide-runner";
+import { GuidePanel } from "./guide-panel";
 import { HelpSheet } from "./help-sheet";
 
 /** Janela da ajuda e guia na tela, montados uma vez no layout do app; qualquer tela abre com `openHelp()` e `startGuide(id)`. */
@@ -24,7 +24,7 @@ export function HelpHost() {
   return (
     <>
       <HelpSheet open={open} onOpenChange={setOpen} />
-      {guide ? <GuideRunner key={guide.id} chunk={guide} onClose={() => setGuide(null)} /> : null}
+      {guide ? <GuidePanel key={guide.id} chunk={guide} onClose={() => setGuide(null)} /> : null}
     </>
   );
 }

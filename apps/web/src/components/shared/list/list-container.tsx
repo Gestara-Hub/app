@@ -24,6 +24,8 @@ export function ListContainer({
 }: ListContainerProps) {
   return (
     <div
+      // O guia na tela destaca a lista inteira no passo "lista" (features/support/guide-target).
+      data-guide-list
       aria-busy={busy || refreshing || undefined}
       className={cn(
         "relative overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs",

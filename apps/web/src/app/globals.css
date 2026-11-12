@@ -197,6 +197,29 @@
   }
 }
 
+/* Guia na tela (painel de passos, 11/11/2026): o contorno do alvo pulsa de leve
+   (halo que cresce e some, contorno e fundo que respiram), sem escurecer a tela.
+   Com movimento reduzido fica o contorno parado. */
+@keyframes guide-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 50%, transparent);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 12px color-mix(in oklab, var(--primary) 0%, transparent);
+    background-color: color-mix(in oklab, var(--primary) 3%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in oklab, var(--primary) 0%, transparent);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .guide-pulse {
+    animation: guide-pulse 1.4s ease-out infinite;
+  }
+}
+
 /* No fluxo guiado (onboarding), o CTA principal da tela do passo atual pulsa
    sem parar ate ser clicado (o banner marca `data-onboarding-cta-attention` no
    <html> e o remove no clique). Modalidades e a excecao: ja vem da configuracao

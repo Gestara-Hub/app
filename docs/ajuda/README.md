@@ -16,7 +16,7 @@ Regras para escrever:
 
 ## Guia na tela ("Me mostre na tela")
 
-Seção de ação (criar, pagar, configurar...) pode ter um guia que destaca, passo a passo, o botão, a aba ou o campo na tela de verdade. Fica logo abaixo do `##` (e do `Resumo:`), antes do texto:
+Seção de ação (criar, pagar, configurar...) pode ter um guia que destaca, passo a passo, o botão, a aba ou o campo na tela de verdade. Desde 11/11/2026 o guia é um painel lateral com todos os passos (no celular, uma faixa embaixo, recolhida no passo atual): marca os feitos, destaca o alvo com um contorno leve, sem escurecer a tela, e deixa voltar a um passo feito. Fica logo abaixo do `##` (e do `Resumo:`), antes do texto:
 
 ```
 ## Cadastrar um aluno
@@ -27,8 +27,10 @@ Guia: /clients
 ```
 
 - `Guia: /rota` é a tela onde começa (rota estática do app, pode ter `?tab=`). Se a pessoa está em outra, a ajuda leva até lá. O guia atravessa telas e janelas abertas pelo próprio passo.
-- Passo: `+ tipo "rótulo": texto`. Tipos: `botão`, `aba`, `campo`, `menu` (barra lateral), `item` (linha de menu, opção, card) e `texto` (só mostra um título).
+- Passo: `+ tipo "rótulo": texto`. Tipos: `botão`, `aba`, `campo`, `menu` (barra lateral), `item` (linha de menu, opção), `card` (cartão inteiro), `texto` (destaca o bloco do título: o título e o campo, as opções ou a lista logo abaixo) e `lista` (destaca a lista perto do texto, como o contador "N alunos cadastrados" ou o título da tela, para a pessoa escolher um item).
 - O rótulo é o texto que a pessoa vê na tela (sem acento nem maiúscula; `Nome` casa com `Nome do aluno*`; `Adicionar|Salvar` aceita os dois). Não invente: o teste `help-guides.test.ts` confere que o rótulo existe no código e reprova quando um botão muda de nome.
-- `botão`, `aba`, `menu` e `item` avançam sozinhos quando a pessoa clica no destaque; `campo` e `texto` avançam em "Próximo".
+- `botão`, `aba`, `menu` e `item` avançam sozinhos quando a pessoa clica no destaque (ou em "Fazer por mim"); `lista` avança quando ela abre um item (muda de tela ou abre janela); `campo`, `texto` e `card` avançam em "Próximo", que só liga com o alvo na tela.
+- Ordem: com janela aberta, o passo procura só nela. Se um passo abriu uma janela e ela fecha antes do fim, o guia volta ao passo que a abriu ("A janela fechou").
+- Passo que pede para escolher um aluno, uma turma ou uma aula da lista é `lista`, não `texto`. A lista é a `ListContainer` (marcada com `data-guide-list`) ou, sem ela, o bloco das linhas com `data-record-id`; o Calendário de turmas também é marcado.
 - Texto do passo: uma frase, imperativa, até 160 caracteres. De 2 a 6 passos por guia (máximo 8).
 - Mudou um botão ou uma aba? Rode `pnpm --filter @gestarahub/web help:build` e `npx vitest run src/lib/support`.

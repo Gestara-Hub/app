@@ -16,7 +16,7 @@ const DIR = resolve(ROOT, "docs/ajuda");
 const OUT = resolve(ROOT, "apps/web/src/lib/support/help-kb.generated.json");
 
 // Passo do guia na tela (linha `+ tipo "rótulo": texto` depois de `Guia: /rota`).
-const STEP_LINE = /^\+\s+(botão|aba|campo|menu|item|texto|card|cartão)\s+"([^"]+)"\s*:\s*(.+)$/;
+const STEP_LINE = /^\+\s+(botão|aba|campo|menu|item|texto|card|cartão|lista)\s+"([^"]+)"\s*:\s*(.+)$/;
 
 export function buildChunks() {
   const chunks = [];

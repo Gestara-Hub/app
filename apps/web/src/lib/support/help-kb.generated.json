@@ -112,7 +112,7 @@
           "text": "Procure o aluno pelo nome ou telefone."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -503,8 +503,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Abra a turma do curso que terminou."
         },
         {
@@ -526,14 +526,14 @@
       "route": "/clients",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Alunos",
-          "text": "Abra a ficha do aluno, na seção Evolução, e clique em \"Graduação\" (ou \"Níveis\", \"Módulos\", \"Fases\")."
+          "kind": "lista",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
         },
         {
           "kind": "texto",
           "label": "Certificado",
-          "text": "Ao lado de cada etapa alcançada, \"Certificado\" abre o certificado daquela graduação."
+          "text": "Na seção Evolução, abra \"Graduação\" (ou Níveis, Módulos, Fases). \"Certificado\" fica ao lado de cada etapa."
         }
       ]
     }
@@ -580,8 +580,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Abra a turma do curso, depois o certificado do aluno pelo menu ⋮."
         }
       ]
@@ -605,7 +605,7 @@
       "route": "/classes/calendar",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "Calendário de turmas",
           "text": "Aqui ficam as aulas da semana. Clique na aula de hoje para abrir a chamada."
         },
@@ -633,7 +633,7 @@
       "route": "/classes/calendar",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "Calendário de turmas",
           "text": "Abra a aula do dia clicando nela."
         },
@@ -661,7 +661,7 @@
       "route": "/classes/calendar",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "Calendário de turmas",
           "text": "Abra a aula que vai receber o aluno."
         },
@@ -696,7 +696,7 @@
       "route": "/classes/calendar",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "Calendário de turmas",
           "text": "Abra a aula que precisa de correção."
         },
@@ -1409,7 +1409,7 @@
           "text": "Procure o aluno que vai avançar."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -1452,7 +1452,7 @@
           "text": "Procure o aluno."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -1489,7 +1489,7 @@
           "text": "Procure o aluno."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -1532,7 +1532,7 @@
           "text": "Procure o aluno."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -1565,8 +1565,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {
@@ -1602,8 +1602,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {
@@ -1645,7 +1645,7 @@
           "text": "Procure o aluno."
         },
         {
-          "kind": "texto",
+          "kind": "lista",
           "label": "aluno cadastrado|alunos cadastrados",
           "text": "Clique no nome do aluno para abrir a ficha."
         },
@@ -3125,8 +3125,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {
@@ -3158,8 +3158,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha uma turma lotada e clique nela."
         },
         {
@@ -3185,8 +3185,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {
@@ -3218,8 +3218,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {
@@ -3255,8 +3255,8 @@
       "route": "/classes",
       "steps": [
         {
-          "kind": "texto",
-          "label": "Turmas",
+          "kind": "lista",
+          "label": "turma cadastrada|turmas cadastradas",
           "text": "Escolha a turma na lista e clique nela para abrir."
         },
         {

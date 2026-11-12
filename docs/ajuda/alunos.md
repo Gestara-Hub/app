@@ -30,7 +30,7 @@ Use a busca no topo da lista de Alunos. O filtro de situação começa em "Ativo
 ## Ficha do aluno
 Guia: /clients
 + campo "Buscar aluno": Procure o aluno pelo nome ou telefone.
-+ texto "aluno cadastrado|alunos cadastrados": Clique no nome do aluno para abrir a ficha.
++ lista "aluno cadastrado|alunos cadastrados": Clique no nome do aluno para abrir a ficha.
 + botão "Cobranças": Veja as mensalidades do aluno e o que está em aberto.
 + botão "Evolução": Veja o nível do aluno, os registros de aula e os testes e medidas.
 + botão "Mais ações": Aqui ficam editar, vender pacote, inativar e outras ações.

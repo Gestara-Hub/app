@@ -52,15 +52,15 @@ O botão só aparece quando o texto está diferente do padrão. Layout, cor, ass
 ## Emitir todos de uma vez
 Resumo: No fim do curso, os certificados de toda a turma num PDF só.
 Guia: /classes
-+ texto "Turmas": Abra a turma do curso que terminou.
++ lista "turma cadastrada|turmas cadastradas": Abra a turma do curso que terminou.
 + botão "Mais ações da turma": Abra o menu e escolha "Emitir certificados".
 Sai um PDF com um certificado por aluno, cada um com o próprio código de verificação. Quem já tinha certificado continua com o mesmo código; os cancelados ficam de fora. Também dá para imprimir pela tela, com uma folha por aluno.
 
 ## Certificado de graduação
 Resumo: Faixa, nível, módulo ou fase: cada graduação registrada pode virar certificado.
 Guia: /clients
-+ texto "Alunos": Abra a ficha do aluno, na seção Evolução, e clique em "Graduação" (ou "Níveis", "Módulos", "Fases").
-+ texto "Certificado": Ao lado de cada etapa alcançada, "Certificado" abre o certificado daquela graduação.
++ lista "aluno cadastrado|alunos cadastrados": Clique no nome do aluno para abrir a ficha.
++ texto "Certificado": Na seção Evolução, abra "Graduação" (ou Níveis, Módulos, Fases). "Certificado" fica ao lado de cada etapa.
 Faz parte do plano Profissional. O certificado nasce do registro de graduação do aluno, não da turma: ao abrir pela primeira vez, ele é emitido com o código de verificação; depois, o código é o mesmo. Logo depois de Graduar, o aviso oferece "Ver certificado". Quem assina como professor é o examinador informado na graduação; sem ele, o professor da turma do aluno na modalidade. Dá para baixar em PDF, imprimir e cancelar, como no de curso.
 
 ## Modelo do certificado de graduação
@@ -77,7 +77,7 @@ Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX,
 ## Cancelar um certificado
 Resumo: Emitiu errado? Cancele e a página de verificação passa a dizer que não vale.
 Guia: /classes
-+ texto "Turmas": Abra a turma do curso, depois o certificado do aluno pelo menu ⋮.
++ lista "turma cadastrada|turmas cadastradas": Abra a turma do curso, depois o certificado do aluno pelo menu ⋮.
 Na tela do certificado, "Cancelar certificado" pede confirmação e não dá para desfazer. O PDF e a impressão somem, e a página do código passa a dizer que o certificado foi cancelado. Para emitir de novo, fale com o suporte.
 
 ## Frequência
