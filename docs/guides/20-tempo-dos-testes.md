@@ -53,6 +53,7 @@ Medido no Vitest: sem isolar arquivos (`--isolate=false`), **6 s em vez de 20 s*
 ### Etapa 3: atacar o custo por teste (contínuo)
 
 7. **Corrigir as esperas instáveis** (navegação e filtros na URL, troca de mês e de semana): menos reexecução e menos falso alarme.
+   - Vistas instáveis em 12/11/2026 (rodada de 168 no computador, todas passaram sozinhas em seguida): `dinheiro-pacotes` "presença, falta e justificada…" (`page.goto` abortado), `eventos` "por dia, o valor acompanha…" (segundo "Inscrever" sem aparecer em 30 s), `formularios` "novo lançamento: miniatura…" (Adicionar sem "Lançamento criado.") e `mensalidades` "depois do uso + proporcional…" (vencimento sugerido ainda o de antes).
 8. **Semear direto no banco** onde hoje o teste passa pelo motor (`editTenant` monta o espaço inteiro por gravação): inserção em lote, mais rápida.
 9. **Login reaproveitado** por arquivo (`storageState`) quando o teste não depende de entrar.
 
