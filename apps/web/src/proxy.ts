@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/session";
+import { PATHNAME_HEADER } from "@/lib/request-path";
 
 /**
  * Guarda de rota mockada (Next 16: `proxy` substitui o antigo `middleware`).
@@ -63,7 +64,11 @@ export function proxy(request: NextRequest): NextResponse {
   // Estar logado e visitar /login NAO redireciona aqui: a propria page decide
   // (so redireciona se o cookie resolver um usuario valido). Evita loop quando
   // o cookie e stale/invalido — o proxy so garante presenca do cookie.
-  return NextResponse.next();
+  // O caminho vai para o layout do app (11/11/2026): a guarda de modelo e
+  // permissao roda la, antes do `loading.tsx` (ver `app/(app)/layout.tsx`).
+  const headers = new Headers(request.headers);
+  headers.set(PATHNAME_HEADER, pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {
