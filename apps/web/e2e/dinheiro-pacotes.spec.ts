@@ -9,6 +9,7 @@ import {
   profileSection,
   pageAction,
   rollCallName,
+  saveRollCall,
   rollCallRow,
   seedAcademy,
   test,
@@ -369,28 +370,36 @@ test.describe("chamada", () => {
     // Presenca gasta; tocar de novo (com gente a marcar) desmarca e devolve.
     await sete.click();
     await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Presente"));
+    // So gasta ao salvar (12/11/2026).
+    await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await sete.click();
     await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "sem marcação"));
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Falta sem justificativa gasta; trocar para justificada devolve.
     await attendanceAction(page, "Aluno Sete", "Marcar falta");
     await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Faltou"));
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await attendanceAction(page, "Aluno Sete", "Justificar falta");
     await expect(sete).toHaveAccessibleName(rollCallName("Aluno Sete", "Justificada"));
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Pacote em que a falta nao gasta.
     await attendanceAction(page, "Aluna Falta Livre", "Marcar falta");
     await expect(rollCallRow(page, "Aluna Falta Livre")).toHaveAccessibleName(rollCallName("Aluna Falta Livre", "Faltou"));
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluna Falta Livre")).toContainText("5 de 10");
 
     // A ultima aula: gasta nesta chamada, o selo continua dizendo que foi a ultima.
     const last = rollCallRow(page, "Aluna Última");
     await last.click();
     await expect(last).toHaveAccessibleName(rollCallName("Aluna Última", "Presente"));
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 10);
 
@@ -401,6 +410,7 @@ test.describe("chamada", () => {
     await expect(rollCallRow(page, "Aluno Sem")).toHaveAccessibleName(rollCallName("Aluno Sem", "Presente"));
     await rollCallRow(page, "Aluno Vencido").click();
     await expect(rollCallRow(page, "Aluno Vencido")).toHaveAccessibleName(rollCallName("Aluno Vencido", "Presente"));
+    await saveRollCall(page);
     await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await waitForTenant(page, (t) => t.attendances.length === 5);
     expect(await remainingOf(page, "sp-v")).toBe(10);
@@ -411,6 +421,7 @@ test.describe("chamada", () => {
     // Desmarcar a ultima aula devolve o saldo (com a chamada concluida, desmarcar e pelo menu).
     await attendanceAction(page, "Aluna Última", "Desmarcar");
     await expect(last).toHaveAccessibleName(rollCallName("Aluna Última", "sem marcação"));
+    await saveRollCall(page);
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 9);
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
   });
@@ -418,7 +429,7 @@ test.describe("chamada", () => {
   test("\"Todos vieram\" gasta uma aula de cada pacote", { tag: "@smoke" }, async ({ page }) => {
     await seedRollCall(page);
     await page.getByRole("button", { name: "Todos vieram" }).click();
-    await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
+    await saveRollCall(page);
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await expect(rosterRow(page, "Aluna Falta Livre")).toContainText("4 de 10");
     await waitForTenant(page, (t) => t.attendances.length === 5);
@@ -473,6 +484,7 @@ test.describe("chamada", () => {
     await expect(row).toContainText("Pacote");
     await expect(row).toContainText("10 de 10");
     await rollCallRow(page, "Aluna Com Pacote").click();
+    await saveRollCall(page);
     await expect(row).toContainText("9 de 10");
     // Pela aula avulsa nao houve cobranca.
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-p")?.usages.length === 1);

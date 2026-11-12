@@ -237,7 +237,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 2. **Matricular alunos** — selecao multipla; se lotada, "Pôr na lista de espera" ou "Matricular mesmo assim (N)".
 3. **Adicionar avulso/experimental numa aula** — avulso gera cobranca avulsa; experimental e cortesia.
 4. **Trocar instrutor de uma aula** — substituto com motivo opcional; restaurar titular.
-5. **Fazer a chamada** — tocar em quem veio e "Concluir chamada" (quem não foi marcado vira falta); falta e justificada também pelo menu ⋮ do aluno. No dia da aula ou depois.
+5. **Fazer a chamada** — tocar em quem veio e "Salvar" ou "Concluir chamada" (quem não foi marcado vira falta); falta e justificada também pelo menu ⋮ do aluno. No dia da aula ou depois.
 6. **Promover da lista de espera** — manual, com confirmacao.
 7. **Mensalidades** — cadastrar aluno com plano (1a cobranca), gerar competencia, registrar pagamento, desfazer/cancelar/reabrir, resetar competencia. Ver doc 15 e [09-fluxos-principais.md](09-fluxos-principais.md) (Fluxos 12 a 16).
 8. **Cancelar matricula** — com confirmacao; libera vaga; nao mexe na mensalidade.
@@ -377,7 +377,7 @@ Menos informação por vez: na tela fica o que se usa toda vez; o resto vai para
 **Aula (chamada)**
 - Cabeçalho: "Hoje, 08:00 · Profissional 1" (outro dia: "Segunda-feira, 20 de outubro, 08:00"). Substituto: "(substituto)" e a linha "Substitui {titular} · {motivo}". Menu ⋮: "Adicionar aluno nesta aula" (sem ninguém para adicionar, avisa "Todos os alunos ativos já estão nesta aula."), "Trocar instrutor" / "Alterar substituto", "Restaurar titular" e "Abrir a turma".
 - **Chamada por toque:** a linha do aluno é o botão. Toque marca presente (círculo verde). Com alguém ainda sem marcação, tocar no presente desmarca; com todos marcados, vira falta. Falta e justificada voltam a presente no toque. No ⋮ do aluno: "Marcar falta", "Justificar falta", "Desmarcar", "Registrar aula", nível, "Notas", "Abrir ficha" e, para avulso, experimental e pacote, "Remover da aula".
-- **Concluir chamada:** barra fixa embaixo com "{N} de {total} presentes", "Todos vieram" (enquanto ninguém foi marcado presente) e "Concluir chamada", que marca **falta** em quem não foi marcado ("Chamada concluída. 2 faltas marcadas."). Essas faltas contam nas faltas seguidas ("Sentimos sua falta"). Concluída, a barra mostra "Chamada concluída." e "Registrar a aula".
+- **Concluir chamada:** barra fixa embaixo com "{N} de {total} presentes" (mais "· não salva" com toques pendentes), "Todos vieram" (enquanto ninguém foi marcado presente), "Salvar" (com toques pendentes) e "Concluir chamada", que salva os toques e marca **falta** em quem não foi marcado ("Chamada concluída. 2 faltas marcadas."). Essas faltas contam nas faltas seguidas ("Sentimos sua falta"). Concluída, a barra mostra "Chamada concluída." e "Registrar a aula".
 - Ao lado de "Chamada": "Toque em quem veio" enquanto aberta, o resumo ("3 presentes · 2 faltas") quando concluída e "A chamada abre em 20/10" em aula futura (sem toque).
 - Linha: nome, nível em texto (faixa mantém o selo colorido), "Experimental" / "Avulso" / "Pacote", saldo do pacote, aniversário, troca de nível pela idade e o lembrete "Para hoje". Saíram avatar, vagas ocupadas e o quadro de contadores.
 
@@ -404,7 +404,9 @@ Fase 1 das notas (detalhe e decisões em [21-ideias-certificados-e-notas.md](21-
 
 Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md).
 
-- **Chamada otimista:** o toque aparece na hora e cada aluno tem uma fila de gravação na ordem dos toques; toque rápido não se perde. Quando a fila do aluno esvazia, a aula é relida e vale o que veio do serviço (erro volta ao estado real). "Todos vieram" e "Concluir chamada" esperam as filas antes.
+- **Chamada com "Salvar" (12/11/2026, a pedido; antes cada toque gravava na hora):** o toque muda só a tela. "Salvar" ou "Concluir chamada" mandam tudo numa gravação só (`saveAttendance`, status por aluno, tudo ou nada) e a aula é relida uma vez. "Todos vieram" também só marca na tela. A presença gasta a aula do pacote ao salvar.
+- **Sair sem salvar** pergunta "Sair sem salvar a chamada?" ao recarregar ou fechar a aba, ao clicar num link (menu, "‹ Voltar") e no voltar do navegador ou no gesto de voltar do iPhone (`lib/unsaved-changes.ts`).
+- **Rascunho no aparelho:** os toques ficam guardados no navegador (por pessoa e aula, 7 dias; `features/turmas/attendance-draft.ts`). Se o app fechar no meio (bateria, trocar de app no celular, onde o aviso de sair nem sempre aparece), ao reabrir a aula aparece "Chamada não salva de 12/11 às 19:40. Continuar de onde parou?" com "Continuar" e "Descartar". Continuar fica só com o que ainda muda a aula; tocar sem responder começa uma chamada nova.
 - **Remover da aula** apaga a presença: voltar para a aula começa sem marcação e gasta o pacote de novo.
 - **Aula que existe:** data real, entre o início e o fim da turma, no dia da semana e no horário da grade daquela data; em turma inativada, só as que já passaram. Senão, "Aula não encontrada" no detalhe e na chamada (data inválida na URL não derruba mais a tela).
 - **Mudar o horário** vale daqui para frente: a grade antiga fica em `ClassGroup.scheduleHistory` até ontem (ou até hoje, se a chamada de hoje já foi feita), e as aulas passadas, a frequência e o calendário seguem no horário delas (`meetingSlotsOn`).

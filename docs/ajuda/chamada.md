@@ -6,8 +6,8 @@ Resumo: Abra a aula do dia e marque quem veio.
 Guia: /classes/calendar
 + lista "Calendário de turmas": Aqui ficam as aulas da semana. Clique na aula de hoje para abrir a chamada.
 + texto "Chamada": Toque em cada aluno que veio. O círculo fica verde.
-+ botão "Concluir chamada": Quando terminar, clique aqui. Quem ficou sem marcação vira falta.
-No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele.
++ botão "Concluir chamada": Quando terminar, clique aqui. Salva tudo e quem ficou sem marcação vira falta.
+No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. As marcações só ficam gravadas ao clicar em "Salvar" ou "Concluir chamada". Se sair antes, o sistema pergunta. Se o app fechar no meio, ao abrir a aula de novo dá para continuar de onde parou. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele.
 
 ## Marcar falta ou justificar
 Resumo: Use o menu do aluno para marcar falta ou justificar.
@@ -34,4 +34,4 @@ Guia: /classes/calendar
 + lista "Calendário de turmas": Abra a aula que precisa de correção.
 + botão "Ações de": Abra o menu do aluno.
 + item "Desmarcar|Marcar falta|Justificar falta": Desfaça ou troque a marcação.
-Abra a aula de novo e mude o status do aluno. A alteração fica na Auditoria.
+Abra a aula de novo, mude o status do aluno e clique em "Salvar". A alteração fica na Auditoria.

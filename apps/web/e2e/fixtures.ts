@@ -362,6 +362,16 @@ export function rollCallName(name: string, mark: string): RegExp {
   return new RegExp(`^${escapeRegExp(name)}\\s?: ${escapeRegExp(mark)}$`);
 }
 
+/**
+ * A chamada guarda os toques na tela ate o "Salvar" (12/11/2026): grava e espera
+ * a confirmacao (saldo do pacote e frequencia so mudam depois).
+ */
+export async function saveRollCall(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByText("Chamada salva.").last()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar", exact: true })).toHaveCount(0);
+}
+
 /** Falta, justificativa e desmarcar ficam no menu ⋮ do aluno na chamada. */
 export async function attendanceAction(
   page: Page,

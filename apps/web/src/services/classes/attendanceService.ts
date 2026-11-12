@@ -1,6 +1,7 @@
 import { actorTeacherId, teacherSeesClassRoster } from "./teacherScope";
 import type {
   Attendance,
+  AttendanceChange,
   AttendanceStatus,
   AttendanceSummary,
   AbsenceStreakView,
@@ -45,6 +46,19 @@ function applyAttendanceMark(input: { sessionId: Id; studentId: Id; status: Atte
   auditPackageUsage(usage, g, date, input.studentId, input.status);
 }
 
+/** Desmarca um aluno (dentro de uma gravacao ja aberta). */
+function applyAttendanceClear(input: { sessionId: Id; studentId: Id }): void {
+  const { g, date } = resolveSession(input.sessionId);
+  assertTeacherSession(g, input.sessionId);
+
+  store.attendances = store.attendances.filter(
+    (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
+  );
+  const usage = syncAttendanceUsage(input.sessionId, input.studentId);
+  // Apaga a presenca e devolve a aula do pacote na mesma transacao.
+  auditPackageUsage(usage, g, date, input.studentId);
+}
+
 export const attendanceService = {
   markAttendance(input: {
     sessionId: Id;
@@ -68,16 +82,22 @@ export const attendanceService = {
 
   /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
   clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return writeOp(async () => {
-      const { g, date } = resolveSession(input.sessionId);
-      assertTeacherSession(g, input.sessionId);
+    return writeOp(async () => applyAttendanceClear(input));
+  },
 
-      store.attendances = store.attendances.filter(
-        (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
-      );
-      const usage = syncAttendanceUsage(input.sessionId, input.studentId);
-      // Apaga a presenca e devolve a aula do pacote na mesma transacao.
-      auditPackageUsage(usage, g, date, input.studentId);
+  /**
+   * Botao "Salvar" da chamada (12/11/2026): os toques ficam na tela e vao numa
+   * gravacao so, com status diferentes por aluno; `null` desmarca. Tudo ou nada.
+   */
+  saveAttendance(input: { sessionId: Id; changes: AttendanceChange[] }): Promise<void> {
+    return writeOp(async () => {
+      for (const change of input.changes) {
+        if (change.status) {
+          applyAttendanceMark({ sessionId: input.sessionId, studentId: change.studentId, status: change.status });
+        } else {
+          applyAttendanceClear({ sessionId: input.sessionId, studentId: change.studentId });
+        }
+      }
     });
   },
 

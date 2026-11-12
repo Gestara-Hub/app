@@ -78,7 +78,7 @@ As telas de detalhe da turma (`/classes/[id]`) e da aula (`/classes/sessions/[id
 - **Sem avatar** nas linhas de aluno; nível em texto (faixa mantém o selo colorido).
 - **Busca só a partir de 9 alunos** e **sem `ListSummaryBar`**: o cabeçalho já diz as vagas.
 - **Ações raras no menu ⋮ do cabeçalho** (`PageActionsMenu`, `@/components/shared/page-actions-menu`, botão `size="icon"` ao lado do principal); seleção em lote só quando pedida nesse menu, com barra fixa embaixo.
-- **Chamada por toque na linha** (sem os três botões Presente / Faltou / Justificada) e uma ação por vez numa barra fixa embaixo ("Concluir chamada", depois "Registrar a aula").
+- **Chamada por toque na linha** (sem os três botões Presente / Faltou / Justificada) e uma ação por vez numa barra fixa embaixo ("Concluir chamada", depois "Registrar a aula"). Desde 12/11/2026 os toques só gravam no "Salvar" ou no "Concluir chamada", com aviso ao sair e rascunho no aparelho (doc product/11). Tela com alterações a salvar fora de formulário usa as guardas de `@/lib/unsaved-changes` (recarregar, links e voltar do navegador).
 - Linha mostra só o que pede atenção (alertas), não dados de cadastro (telefone, data de matrícula).
 
 ### 1.7. "‹ Voltar" nas telas de detalhe (18/10/2026)

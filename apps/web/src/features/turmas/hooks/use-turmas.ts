@@ -10,7 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { turmasService } from "@/services/classes";
 import { eventsService } from "@/services/events";
 import type {
-  AttendanceStatus,
+  AttendanceChange,
   ClassGroupFilter,
   CreateClassGroup,
   CreateEnrollment,
@@ -228,41 +228,14 @@ export function useRefreshAfterAttendance() {
 }
 
 /**
- * `deferRefresh`: a chamada grava toques em sequência e relê tudo no fim. Reler
- * a cada toque enfileirava leituras do espaço inteiro na frente do próximo toque.
+ * Chamada salva pelo botao "Salvar" ou "Concluir chamada" (12/11/2026): os
+ * toques ficam na tela e vao numa gravacao so, com o status de cada aluno.
  */
-type AttendanceWriteOptions = { deferRefresh?: boolean };
-
-export function useMarkAttendance() {
+export function useSaveAttendance() {
   const refresh = useRefreshAfterAttendance();
   return useMutation({
-    mutationFn: ({ sessionId, studentId, status }: { sessionId: Id; studentId: Id; status: AttendanceStatus } & AttendanceWriteOptions) =>
-      turmasService.markAttendance({ sessionId, studentId, status }),
-    onSuccess: (_data, input) => {
-      if (!input.deferRefresh) refresh();
-    },
-  });
-}
-
-/** Vários alunos numa gravação só ("Todos vieram", concluir a chamada). */
-export function useMarkManyAttendance() {
-  const refresh = useRefreshAfterAttendance();
-  return useMutation({
-    mutationFn: (input: { sessionId: Id; studentIds: Id[]; status: AttendanceStatus }) =>
-      turmasService.markManyAttendance(input),
+    mutationFn: (input: { sessionId: Id; changes: AttendanceChange[] }) => turmasService.saveAttendance(input),
     onSuccess: () => refresh(),
-  });
-}
-
-/** Desmarca a presença (devolve a aula do pacote, se gastou). */
-export function useClearAttendance() {
-  const refresh = useRefreshAfterAttendance();
-  return useMutation({
-    mutationFn: ({ sessionId, studentId }: { sessionId: Id; studentId: Id } & AttendanceWriteOptions) =>
-      turmasService.clearAttendance({ sessionId, studentId }),
-    onSuccess: (_data, input) => {
-      if (!input.deferRefresh) refresh();
-    },
   });
 }
 

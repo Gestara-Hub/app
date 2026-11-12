@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, pageAction, rollCallRow, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, pageAction, rollCallRow, saveRollCall, seedAcademy, student, test } from "./fixtures";
 import { TS } from "./geral-fixtures";
 
 /**
@@ -185,6 +185,14 @@ test("chamada da aula: linhas, menu do aluno e barra de baixo cabem e marcam", a
   // Tocar na linha marca presente.
   await row.click();
   await expect(row).toHaveAccessibleName("Aluno Com Nome Bem Comprido da Silva: Presente");
+  // Com toque a salvar (12/11/2026): "Salvar" e "Concluir chamada" cabem lado a lado.
+  await expect(page.getByText("· não salva")).toBeVisible();
+  for (const name of ["Salvar", "Concluir chamada"]) {
+    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(box && box.x >= 0 && box.x + box.width <= 375, `${name} dentro da tela`).toBe(true);
+  }
+  await expectNoHorizontalScroll(page);
+  await saveRollCall(page);
   await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
   await expectDialogFits(page);
   await expectNoHorizontalScroll(page);

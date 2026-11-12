@@ -162,6 +162,7 @@ export const classSlices: Record<string, MethodSlice> = {
   markAttendance: sessionOfInput,
   markManyAttendance: sessionOfInput,
   clearAttendance: sessionOfInput,
+  saveAttendance: sessionOfInput,
   reserveSession: sessionWithStudent,
   cancelReservation: sessionWithStudent,
   // Professor ocupado: confere as substituicoes de todas as turmas no mesmo dia (sao poucas).

@@ -6,6 +6,7 @@ import {
   expect,
   pageAction,
   rollCallRow,
+  saveRollCall,
   seedAcademy,
   student,
   test,
@@ -57,7 +58,43 @@ test("chamada bloqueada em aula futura e liberada em aula passada", async ({ pag
   await expect(row).toHaveAccessibleName("Aluno A20: sem marcação");
   await row.click();
   await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+  await saveRollCall(page);
   await expect(page.getByText("Chamada concluída.")).toBeVisible();
+});
+
+test("chamada não salva: sair pergunta antes e o rascunho volta ao reabrir a aula", async ({ page }) => {
+  await seedAcademy(page, { extra: withClass });
+  await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
+  const row = rollCallRow(page, "Aluno A20");
+  await row.click();
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+  await expect(page.getByText("· não salva")).toBeVisible();
+
+  // Sair pelo "Voltar" pergunta; continuar mantem a marcacao na tela.
+  await page.getByRole("link", { name: "Voltar" }).click();
+  const leave = page.getByRole("alertdialog", { name: "Sair sem salvar a chamada?" });
+  await expect(leave).toBeVisible();
+  await leave.getByRole("button", { name: "Continuar a chamada" }).click();
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+
+  // Voltar do navegador (e gesto de voltar do celular) tambem pergunta.
+  await page.goBack();
+  await expect(leave).toBeVisible();
+  await leave.getByRole("button", { name: "Continuar a chamada" }).click();
+  await expect(page).toHaveURL(/\/classes\/sessions\//);
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+
+  // App fechado no meio (aqui, abrir a aula de novo pelo endereco): oferece continuar.
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
+  await expect(page.getByText(/^Chamada não salva de /)).toBeVisible();
+  await expect(row).toHaveAccessibleName("Aluno A20: sem marcação");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+  await saveRollCall(page);
+  await page.reload();
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+  await expect(page.getByText(/^Chamada não salva de /)).toHaveCount(0);
 });
 
 test("avulso gera cobrança e remover da aula pede confirmação e a cancela", async ({ page }) => {
@@ -223,7 +260,7 @@ test.describe("aula", () => {
     await attendanceAction(page, "Aluna Carla", "Marcar falta");
     await expect(rollCallRow(page, "Aluna Carla")).toHaveAccessibleName("Aluna Carla: Faltou");
     await page.getByRole("button", { name: "Todos vieram" }).click();
-    await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
+    await saveRollCall(page);
     await expect(rollCallRow(page, "Aluno A20")).toHaveAccessibleName("Aluno A20: Presente");
     await expect(rollCallRow(page, "Aluna Carla")).toHaveAccessibleName("Aluna Carla: Faltou");
     await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);

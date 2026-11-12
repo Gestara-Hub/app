@@ -64,7 +64,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
         ],
         MANAGE_ENROLLMENT,
       ),
-      ...all(["markAttendance", "markManyAttendance", "clearAttendance"], MARK_ATTENDANCE),
+      ...all(["markAttendance", "markManyAttendance", "clearAttendance", "saveAttendance"], MARK_ATTENDANCE),
     },
   },
   // Eventos e seminarios (doc product/29): gerir pede events:manage; inscrever

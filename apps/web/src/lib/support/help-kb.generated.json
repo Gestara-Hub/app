@@ -599,7 +599,7 @@
     "article": "Chamada (lista de presença)",
     "title": "Fazer a chamada",
     "route": "/classes/calendar",
-    "text": "No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele.",
+    "text": "No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. As marcações só ficam gravadas ao clicar em \"Salvar\" ou \"Concluir chamada\". Se sair antes, o sistema pergunta. Se o app fechar no meio, ao abrir a aula de novo dá para continuar de onde parou. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele.",
     "summary": "Abra a aula do dia e marque quem veio.",
     "guide": {
       "route": "/classes/calendar",
@@ -617,7 +617,7 @@
         {
           "kind": "botão",
           "label": "Concluir chamada",
-          "text": "Quando terminar, clique aqui. Quem ficou sem marcação vira falta."
+          "text": "Quando terminar, clique aqui. Salva tudo e quem ficou sem marcação vira falta."
         }
       ]
     }
@@ -690,7 +690,7 @@
     "article": "Chamada (lista de presença)",
     "title": "Corrigir uma marcação",
     "route": "/classes/calendar",
-    "text": "Abra a aula de novo e mude o status do aluno. A alteração fica na Auditoria.",
+    "text": "Abra a aula de novo, mude o status do aluno e clique em \"Salvar\". A alteração fica na Auditoria.",
     "summary": "Abra a aula de novo e mude o status do aluno.",
     "guide": {
       "route": "/classes/calendar",

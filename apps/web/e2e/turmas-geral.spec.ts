@@ -6,6 +6,7 @@ import {
   expect,
   pageAction,
   rollCallRow,
+  saveRollCall,
   seedAcademy,
   student,
   test,
@@ -269,6 +270,9 @@ test.describe("aula", () => {
     await attendanceAction(page, "Carla Souza", "Justificar falta");
     await expect(carla).toHaveAccessibleName("Carla Souza: Justificada");
     await expect(page.getByText("1 presente · 1 falta · 1 justificada")).toBeVisible();
+    // Os toques ficam na tela ate salvar (12/11/2026).
+    await expect(page.getByText("Chamada concluída.")).toHaveCount(0);
+    await saveRollCall(page);
     await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Concluir chamada" })).toHaveCount(0);
@@ -289,10 +293,8 @@ test.describe("aula", () => {
     await a20.click();
     await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
 
-    // Persistiu: recarregar mantem as marcas. Os toques de cada aluno gravam em
-    // fila e o banco passa por estados do meio parecidos com o final; a lista
-    // fica `aria-busy` ate o ultimo toque chegar ao servidor.
-    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
+    // Persistiu: salvar grava tudo de uma vez e recarregar mantem as marcas.
+    await saveRollCall(page);
     await waitWorld(page, ORG, (t) => {
       const of = (id: string) => t.attendances.find((a: { studentId: string }) => a.studentId === id)?.status;
       return t.attendances.length === 2 && of("c-a") === "present" && of("c-c") === "justified" && !of("c-b");

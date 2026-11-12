@@ -1,7 +1,7 @@
 "use client";
 
 import { useTeamWords } from "@/features/settings";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
@@ -59,7 +59,7 @@ import {
   type ReservationKind,
   type SessionRosterEntry,
 } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import {
   ClassRecordsDialog,
@@ -73,13 +73,10 @@ import {
 import { StudentGradesDialog } from "@/features/grades";
 import {
   useCancelReservation,
-  useClearAttendance,
   useClassGroup,
   useClassSession,
-  useMarkAttendance,
-  useMarkManyAttendance,
-  useRefreshAfterAttendance,
   useReserveSession,
+  useSaveAttendance,
   useRestorePrimaryInstructor,
 } from "../hooks/use-turmas";
 import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
@@ -88,6 +85,18 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 import { dateInSpace } from "@gestarahub/core/date";
 import { focusField } from "@/lib/form-errors";
+import { useIsClient } from "@/lib/use-is-client";
+import { useBeforeUnloadGuard, useHistoryBackGuard, useLeaveLinkGuard } from "@/lib/unsaved-changes";
+import {
+  attendanceDraftKey,
+  clearStoredDraft,
+  draftToChanges,
+  pruneDraft,
+  readStoredDraft,
+  writeStoredDraft,
+  type AttendanceDraft,
+  type StoredAttendanceDraft,
+} from "../attendance-draft";
 
 /**
  * Saldo do pacote de quem paga a aula com pacote: "7 de 10 aulas", "Última
@@ -114,15 +123,52 @@ const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = {
   justified: "Justificada",
 };
 
+/**
+ * Chamada que nao chegou a ser salva (app fechado no meio, bateria): oferece
+ * continuar de onde parou. Sem nada que mude a aula (salva por outro aparelho),
+ * o rascunho some sozinho.
+ */
+function StoredDraftNotice({
+  savedAt,
+  changes,
+  onContinue,
+  onDiscard,
+}: {
+  savedAt: string;
+  changes: number;
+  onContinue: () => void;
+  onDiscard: () => void;
+}) {
+  useEffect(() => {
+    if (changes === 0) onDiscard();
+  }, [changes, onDiscard]);
+  if (changes === 0) return null;
+  return (
+    <div
+      role="status"
+      className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2"
+    >
+      <p className="min-w-0 break-words text-sm text-foreground">
+        Chamada não salva de {format(parseISO(savedAt), "dd/MM 'às' HH:mm")}. Continuar de onde parou?
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" onClick={onDiscard}>
+          Descartar
+        </Button>
+        <Button onClick={onContinue}>Continuar</Button>
+      </div>
+    </div>
+  );
+}
+
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const team = useTeamWords();
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
   const { data: clients } = useClients({ status: "active" });
-  const markMut = useMarkAttendance();
-  const markManyMut = useMarkManyAttendance();
-  const clearMut = useClearAttendance();
+  const saveMut = useSaveAttendance();
+  const currentUser = useCurrentUser();
   const reserveMut = useReserveSession();
   const cancelReservationMut = useCancelReservation();
   const restoreMut = useRestorePrimaryInstructor();
@@ -165,25 +211,37 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   // Cada abertura comeca do zero (aluno e tipo da inscricao anterior nao ficam).
   const [addKey, setAddKey] = useState(0);
   const [substituteOpen, setSubstituteOpen] = useState(false);
-  const [bulkPending, setBulkPending] = useState(false);
-  // Chamada otimista: o toque aparece na hora e as gravacoes de cada aluno
-  // seguem em fila, na ordem dos toques (toque rapido nunca se perde).
-  const [optimistic, setOptimistic] = useState<ReadonlyMap<string, AttendanceStatus | null>>(new Map());
-  // Filas por aluno: objeto estavel e mutavel, fora do que a tela desenha.
-  const [writeQueues] = useState(() => new Map<string, { chain: Promise<void>; size: number }>());
-  const refreshAfterAttendance = useRefreshAfterAttendance();
-  // Toques ainda gravando (a lista fica `aria-busy` ate o ultimo chegar ao servidor).
-  const [pendingWrites, setPendingWrites] = useState(0);
-  // Sair da página com toque ainda gravando perderia a marcação: o navegador pergunta antes.
+  // Chamada com botao "Salvar" (12/11/2026): os toques ficam so na tela (e num
+  // rascunho no aparelho) ate salvar ou concluir; sair antes pergunta.
+  const [draft, setDraft] = useState<AttendanceDraft>(new Map());
+  const draftKey = attendanceDraftKey(currentUser.id, sessionId);
+  // Rascunho de uma visita anterior que o app nao chegou a salvar.
+  // Lido so no navegador (o servidor nao tem o armazenamento do aparelho).
+  const isClient = useIsClient();
+  const [storedResolved, setStoredResolved] = useState(false);
+  const storedDraft = useMemo<StoredAttendanceDraft | null>(
+    () => (isClient && !storedResolved ? readStoredDraft(draftKey) : null),
+    [isClient, storedResolved, draftKey],
+  );
+  // Guarda o rascunho a cada toque (so depois de responder ao anterior, se havia).
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (writeQueues.size === 0) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [writeQueues]);
+    if (isClient && !storedDraft) writeStoredDraft(draftKey, draft);
+  }, [draft, draftKey, isClient, storedDraft]);
+  const dirty = draft.size > 0;
+  const askLeave = useCallback(async () => {
+    const ok = await confirmAction({
+      title: "Sair sem salvar a chamada?",
+      description: "As marcações feitas nesta aula serão perdidas.",
+      confirmLabel: "Sair sem salvar",
+      cancelLabel: "Continuar a chamada",
+      highlightAction: "cancel",
+    });
+    if (ok) clearStoredDraft(draftKey);
+    return ok;
+  }, [confirmAction, draftKey]);
+  useBeforeUnloadGuard(dirty);
+  useLeaveLinkGuard(dirty, askLeave);
+  useHistoryBackGuard(dirty, askLeave);
   // Dois modais por aluno (Graduação e Registros de aula) e o registro da turma inteira.
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
@@ -250,9 +308,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     );
   }
 
-  // Lista com os toques ainda gravando por cima do que veio do servidor.
+  // Lista com os toques ainda nao salvos por cima do que veio do servidor.
   const roster = session.roster.map((r) =>
-    optimistic.has(r.studentId) ? { ...r, attendance: optimistic.get(r.studentId) ?? undefined } : r,
+    draft.has(r.studentId) ? { ...r, attendance: draft.get(r.studentId) ?? undefined } : r,
   );
   const rosterIds = new Set(roster.map((r) => r.studentId));
   // Presenca so faz sentido para aula que ja aconteceu (ou acontece hoje).
@@ -293,50 +351,27 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
   // Chamada so para aula de hoje ou passada, com permissao.
   const marking = canMark && !isFutureSession;
-  const attendanceBusy = bulkPending;
+  const attendanceBusy = saveMut.isPending;
   const onMarkError = (err: unknown) => {
-    toast.error(getErrorMessage(err, "Não foi possível marcar a presença."));
+    toast.error(getErrorMessage(err, "Não foi possível salvar a chamada."));
   };
-  // Grava na fila do aluno; quando a fila dele esvazia, rele a aula e o que
-  // veio do servidor passa a valer (erro tambem volta ao estado real).
-  const writeAttendance = (studentId: string, status: AttendanceStatus | null) => {
-    setOptimistic((prev) => new Map(prev).set(studentId, status));
-    setPendingWrites((n) => n + 1);
-    const queue = writeQueues.get(studentId) ?? { chain: Promise.resolve(), size: 0 };
-    queue.size += 1;
-    queue.chain = queue.chain
-      .then(() =>
-        status
-          ? markMut.mutateAsync({ sessionId, studentId, status, deferRefresh: true })
-          : // Desmarcar devolve a aula do pacote, se gastou.
-            clearMut.mutateAsync({ sessionId, studentId, deferRefresh: true }),
-      )
-      .then(() => undefined, onMarkError)
-      .then(async () => {
-        setPendingWrites((n) => n - 1);
-        queue.size -= 1;
-        if (queue.size > 0) return;
-        writeQueues.delete(studentId);
-        // Ultima gravacao da chamada: frequencia, pacotes e resumos relidos uma vez.
-        if (writeQueues.size === 0) refreshAfterAttendance();
-        await refetch();
-        if (writeQueues.has(studentId)) return;
-        setOptimistic((prev) => {
-          const next = new Map(prev);
-          next.delete(studentId);
-          return next;
-        });
-      });
-    writeQueues.set(studentId, queue);
-  };
+  const savedAttendance = new Map(session.roster.map((r) => [r.studentId, r.attendance ?? null]));
+  // Toque so muda o rascunho; voltar ao que esta salvo tira o aluno dele.
+  // Tocar enquanto salva vale: o toque fica no rascunho para o proximo "Salvar".
   const setAttendance = (r: SessionRosterEntry, status?: AttendanceStatus) => {
+    // Tocar sem responder ao aviso do rascunho anterior comeca uma chamada nova.
+    if (storedDraft) discardStoredDraft();
     if (status === "present") playChime("checkin");
-    writeAttendance(r.studentId, status ?? null);
+    setDraft((prev) => {
+      const next = new Map(prev);
+      if ((savedAttendance.get(r.studentId) ?? null) === (status ?? null)) next.delete(r.studentId);
+      else next.set(r.studentId, status ?? null);
+      return next;
+    });
   };
   // Toque na linha = veio. Com a chamada aberta, tocar de novo desmarca; com
   // ela concluida (ninguem a marcar), vira falta. Falta e justificada voltam a presente.
   const tapRow = (r: SessionRosterEntry) => {
-    if (attendanceBusy) return;
     if (r.attendance === "present") {
       setAttendance(r, counts.pending === 0 ? "absent" : undefined);
       return;
@@ -344,34 +379,44 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     setAttendance(r, "present");
   };
 
-  const markPending = async (status: AttendanceStatus) => {
-    setBulkPending(true);
-    try {
-      // Os toques ainda gravando entram antes (a lista ja mostra o que foi tocado).
-      await Promise.all([...writeQueues.values()].map((q) => q.chain));
-      const pending = roster.filter((entry) => !entry.attendance);
-      if (pending.length > 0) {
-        // Uma gravacao para todos (a mutacao rele turmas, pacotes e resumos no fim).
-        await markManyMut.mutateAsync({ sessionId, studentIds: pending.map((r) => r.studentId), status });
-      }
-      return pending.length;
-    } finally {
-      setBulkPending(false);
-    }
+  // Uma gravacao com o rascunho (e, ao concluir, falta para quem ficou sem marcar).
+  const saveAttendance = async (extra: Map<string, AttendanceStatus> = new Map()) => {
+    // So quem segue na aula (removido da aula com toque pendente fica de fora).
+    const changes = draftToChanges(new Map<string, AttendanceStatus | null>([...draft, ...extra])).filter((c) =>
+      savedAttendance.has(c.studentId),
+    );
+    if (changes.length > 0) await saveMut.mutateAsync({ sessionId, changes });
+    await refetch();
+    // Sai do rascunho so o que foi gravado; um toque feito durante o salvar fica.
+    const sent = new Map(changes.map((c) => [c.studentId, c.status]));
+    setDraft((prev) => {
+      const next = new Map(prev);
+      for (const [studentId, status] of prev) if (sent.has(studentId) && sent.get(studentId) === status) next.delete(studentId);
+      return next;
+    });
   };
 
-  const markAllPresent = async () => {
+  const save = async () => {
     try {
-      playChime("checkin");
-      await markPending("present");
-      toast.success("Presença marcada para todos os alunos pendentes.");
+      await saveAttendance();
+      toast.success("Chamada salva.");
     } catch (err) {
       onMarkError(err);
     }
   };
 
-  // Concluir: quem nao foi marcado vira falta. Sem nenhum presente, confirma
-  // antes (falta gasta pacote e entra no "Sentimos sua falta").
+  // "Todos vieram": marca os pendentes no rascunho; grava no "Salvar" ou no "Concluir".
+  const markAllPresent = () => {
+    playChime("checkin");
+    setDraft((prev) => {
+      const next = new Map(prev);
+      for (const r of roster) if (!r.attendance) next.set(r.studentId, "present");
+      return next;
+    });
+  };
+
+  // Concluir: salva o que foi tocado e quem nao foi marcado vira falta. Sem
+  // nenhum presente, confirma antes (falta gasta pacote e entra no "Sentimos sua falta").
   const concludeAttendance = async () => {
     if (counts.present === 0) {
       const ok = await confirmAction({
@@ -382,16 +427,30 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       });
       if (!ok) return;
     }
+    const absences = new Map(
+      roster.filter((r) => !r.attendance).map((r) => [r.studentId, "absent" as AttendanceStatus]),
+    );
     try {
-      const absences = await markPending("absent");
+      await saveAttendance(absences);
       toast.success(
-        absences > 0
-          ? `Chamada concluída. ${plural(absences, "falta marcada", "faltas marcadas")}.`
+        absences.size > 0
+          ? `Chamada concluída. ${plural(absences.size, "falta marcada", "faltas marcadas")}.`
           : "Chamada concluída.",
       );
     } catch (err) {
       onMarkError(err);
     }
+  };
+
+  // Rascunho de uma visita anterior: continuar (so o que ainda muda algo) ou descartar.
+  const storedChanges = storedDraft ? pruneDraft(storedDraft.changes, savedAttendance) : null;
+  const continueStoredDraft = () => {
+    if (storedChanges) setDraft(storedChanges);
+    setStoredResolved(true);
+  };
+  const discardStoredDraft = () => {
+    clearStoredDraft(draftKey);
+    setStoredResolved(true);
   };
 
   const restorePrimary = async () => {
@@ -537,6 +596,15 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         {total > 0 ? <p className="text-xs text-muted-foreground sm:text-right">{rollCallHint}</p> : null}
       </div>
 
+      {storedDraft && marking ? (
+        <StoredDraftNotice
+          savedAt={storedDraft.savedAt}
+          changes={storedChanges?.size ?? 0}
+          onContinue={continueStoredDraft}
+          onDiscard={discardStoredDraft}
+        />
+      ) : null}
+
       {total === 0 ? (
         <ListContainer
           emptyState={
@@ -552,7 +620,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {null}
         </ListContainer>
       ) : (
-        <ListContainer busy={pendingWrites > 0}>
+        <ListContainer busy={attendanceBusy}>
           {roster.map((r) => {
             const isEnrolled = r.kind === "enrolled" || !r.kind;
             const isTrial = r.kind === "trial";
@@ -582,7 +650,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           key: "absent",
                           label: "Marcar falta",
                           icon: <X className="size-4" />,
-                          disabled: attendanceBusy,
                           onSelect: () => setAttendance(r, "absent"),
                         },
                       ]
@@ -593,7 +660,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           key: "justified",
                           label: "Justificar falta",
                           icon: <FileText className="size-4" />,
-                          disabled: attendanceBusy,
                           onSelect: () => setAttendance(r, "justified"),
                         },
                       ]
@@ -604,7 +670,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           key: "clear",
                           label: "Desmarcar",
                           icon: <RotateCcw className="size-4" />,
-                          disabled: attendanceBusy,
                           onSelect: () => setAttendance(r, undefined),
                         },
                       ]
@@ -826,7 +891,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       {/* Uma acao por vez embaixo: concluir a chamada, depois registrar a aula */}
       {total > 0 && marking ? (
         <div className="sticky bottom-4 z-10 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 shadow-md">
-          {counts.pending === 0 ? (
+          {counts.pending === 0 && !dirty ? (
             <>
               <p className="text-sm text-foreground">Chamada concluída.</p>
               {recordSession && canProgress && presentStudents.length > 0 ? (
@@ -844,17 +909,31 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
             <>
               <p className="text-sm text-muted-foreground">
                 {counts.present} de {total} {total === 1 ? "presente" : "presentes"}
+                {dirty ? (
+                  <span className="font-medium text-amber-700 dark:text-amber-400"> · não salva</span>
+                ) : null}
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                {counts.present === 0 ? (
-                  <Button variant="outline" onClick={() => void markAllPresent()} disabled={attendanceBusy}>
+                {counts.present === 0 && counts.pending > 0 ? (
+                  <Button variant="outline" onClick={markAllPresent} disabled={attendanceBusy}>
                     <CheckCheck className="size-4" />
                     Todos vieram
                   </Button>
                 ) : null}
-                <Button onClick={() => void concludeAttendance()} disabled={attendanceBusy}>
-                  {bulkPending ? "Marcando..." : "Concluir chamada"}
-                </Button>
+                {dirty ? (
+                  <Button
+                    variant={counts.pending > 0 ? "outline" : "default"}
+                    onClick={() => void save()}
+                    disabled={attendanceBusy}
+                  >
+                    {attendanceBusy ? "Salvando..." : "Salvar"}
+                  </Button>
+                ) : null}
+                {counts.pending > 0 ? (
+                  <Button onClick={() => void concludeAttendance()} disabled={attendanceBusy}>
+                    {attendanceBusy ? "Salvando..." : "Concluir chamada"}
+                  </Button>
+                ) : null}
               </div>
             </>
           )}

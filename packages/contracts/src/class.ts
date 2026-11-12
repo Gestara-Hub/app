@@ -256,6 +256,12 @@ export interface AbsenceStreakView {
 /** Presenca — por (Sessao x Aluno). */
 export type AttendanceStatus = "present" | "absent" | "justified";
 
+/** Uma marcacao da chamada salva em lote; `null` desmarca o aluno. */
+export interface AttendanceChange {
+  studentId: Id;
+  status: AttendanceStatus | null;
+}
+
 export interface Attendance {
   id: Id;
   sessionId: Id;

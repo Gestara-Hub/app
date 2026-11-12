@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { admin } from "./db";
-import { classGroup, currentAcademy, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
+import { classGroup, currentAcademy, enrollment, expect, rollCallRow, saveRollCall, seedAcademy, student, test } from "./fixtures";
 import { loginAsUser, user } from "./ficha-notas-fixtures";
 import { type Tenant } from "./geral-fixtures";
 
@@ -256,6 +256,7 @@ test.describe("menu e rotas por perfil (academia)", () => {
     const row = rollCallRow(page, "Aluno A20");
     await row.click();
     await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+    await saveRollCall(page);
   });
 });
 
