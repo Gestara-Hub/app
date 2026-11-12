@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Copy, ExternalLink, FlaskConical, Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -24,6 +24,7 @@ import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
 import type { PlanChangeStart } from "@/services/server/subscriptionPlan";
 import type { PlanTarget } from "@/services/subscription/actions";
 import { usePlanChange, usePlanChangePreview } from "../hooks/use-plan-change";
+import { usePaymentPolling } from "@/hooks/use-payment-polling";
 
 const per = (interval: SubscriptionInterval) => (interval === "yearly" ? "/ano" : "/mês");
 const planName = (tier: SubscriptionTier) => (tier === "free" ? "Grátis" : `Plano ${subscriptionTierLabel(tier)}`);
@@ -55,22 +56,15 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
   const { change, simulate, checkPayment } = usePlanChange();
   const [awaiting, setAwaiting] = useState<Extract<PlanChangeStart, { kind: "awaiting_payment" }>["payment"] | null>(null);
 
-  // Pix da diferenca: confere a cada 5 s ate o servidor ligar o plano.
-  useEffect(() => {
-    if (!awaiting) return;
-    const id = window.setInterval(async () => {
-      try {
-        const res = await checkPayment(awaiting.id);
-        if (res.isPaid) {
-          toast.success(`${planName(target.tier)} ativado.`);
-          onClose();
-        }
-      } catch {
-        // A proxima conferencia tenta de novo.
-      }
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [awaiting, checkPayment, onClose, target.tier]);
+  // Pix da diferenca: confere ate o servidor ligar o plano (pausa com a aba escondida).
+  usePaymentPolling(async () => {
+    if (!awaiting) return true;
+    const res = await checkPayment(awaiting.id);
+    if (!res.isPaid) return false;
+    toast.success(`${planName(target.tier)} ativado.`);
+    onClose();
+    return true;
+  }, Boolean(awaiting));
 
   const title = target.tier === "free" ? "Voltar ao Grátis?" : `Mudar para o ${planName(target.tier)}?`;
 

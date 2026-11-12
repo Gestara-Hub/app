@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -25,6 +25,7 @@ import {
   createPublicChargePaymentAction,
 } from "@/services/server/chargeInvoiceActions";
 import { CopyPixButton } from "../../[code]/copy-pix-button";
+import { usePaymentPolling } from "@/hooks/use-payment-polling";
 
 const METHOD_DETAILS: Record<
   string,
@@ -61,22 +62,14 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(invoice.state === "paid");
 
-  // Polling para detectar pagamento enquanto houver Pix ativo aguardando
+  // Confere o pagamento enquanto houver Pix ativo aguardando (pausa com a aba escondida).
   const checkStatus = useCallback(async () => {
-    if (isPaid) return;
-    try {
-      const res = await checkPublicChargeStatusAction(invoice.chargeId);
-      if (res.status === "paid") {
-        setIsPaid(true);
-      }
-    } catch {}
-  }, [invoice.chargeId, isPaid]);
-
-  useEffect(() => {
-    if (isPaid || !activePayment || activePayment.method !== "pix") return;
-    const interval = setInterval(checkStatus, 3500);
-    return () => clearInterval(interval);
-  }, [activePayment, checkStatus, isPaid]);
+    const res = await checkPublicChargeStatusAction(invoice.chargeId);
+    if (res.status !== "paid") return false;
+    setIsPaid(true);
+    return true;
+  }, [invoice.chargeId]);
+  usePaymentPolling(checkStatus, !isPaid && activePayment?.method === "pix");
 
   const handleGeneratePayment = async () => {
     setErrorMessage(null);

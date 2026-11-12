@@ -1,7 +1,7 @@
 "use client";
 
 import { useDialogPresence } from "@/lib/use-dialog-presence";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -39,6 +39,7 @@ import { useSubscriptionCheckout } from "../hooks/use-subscription-checkout";
 import { logWarn } from "@/lib/log";
 import { focusField } from "@/lib/form-errors";
 import { isValidEmail } from "@/lib/email-format";
+import { usePaymentPolling } from "@/hooks/use-payment-polling";
 
 interface SubscriptionCheckoutDialogProps {
   open: boolean;
@@ -89,25 +90,20 @@ function SubscriptionCheckoutContent({
     payload: string;
   } | null>(null);
 
-  // Polling automático no Pix enquanto aguarda pagamento
-  useEffect(() => {
-    if (step !== "pix_awaiting" || !pixData?.paymentId) return;
-
-    const intervalId = window.setInterval(async () => {
-      try {
-        const res = await checkStatus(pixData.paymentId!);
-        if (res.isPaid) {
-          window.clearInterval(intervalId);
-          setStep("success");
-          toast.success("Pagamento confirmado.");
-        }
-      } catch (err) {
-        logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
-      }
-    }, 3500);
-
-    return () => window.clearInterval(intervalId);
-  }, [step, pixData?.paymentId, checkStatus]);
+  // Confere o Pix enquanto aguarda o pagamento (pausa com a aba escondida).
+  usePaymentPolling(async () => {
+    if (!pixData?.paymentId) return true;
+    try {
+      const res = await checkStatus(pixData.paymentId);
+      if (!res.isPaid) return false;
+      setStep("success");
+      toast.success("Pagamento confirmado.");
+      return true;
+    } catch (err) {
+      logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
+      return false;
+    }
+  }, step === "pix_awaiting" && Boolean(pixData?.paymentId));
 
   // Preço e economia do plano selecionado
   const isYearly = interval === "yearly";
