@@ -84,7 +84,11 @@ export function tenantHasFeature(feature: PaidFeature): boolean {
 }
 
 export const subscriptionService = {
-  get(): Promise<Subscription> {
+  async get(): Promise<Subscription> {
+    // Conta real: a assinatura vem do espaco guardado no navegador, que so chega
+    // com a organizacao do servidor. Sem esperar, a leitura podia sair antes e
+    // mostrar "Grátis" num espaco pago (11/11/2026, com as leituras em paralelo).
+    if (realAccountInBrowser()) await (await import("../settings/settingsService")).settingsService.getOrganization();
     return readOp(() => currentSubscription());
   },
 
