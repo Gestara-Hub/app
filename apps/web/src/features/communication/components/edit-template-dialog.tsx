@@ -69,16 +69,19 @@ function TemplateConfigForm({
   return (
     <>
       <DialogBody className="space-y-4">
-        {/* Selo informativo de modelo oficial homologado pela Meta */}
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-xs text-foreground">
-          <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-          <div className="space-y-1">
-            <p className="font-medium text-foreground">Modelo oficial homologado pelo WhatsApp</p>
-            <p className="text-muted-foreground leading-relaxed">
-              O texto deste modelo é padronizado e validado diretamente pela Meta. Isso garante entrega com prioridade máxima, evita bloqueios de número e mantém a tarifa mais econômica por mensagem.
-            </p>
+        {/* Selo so com a API oficial ligada e o modelo aprovado pela Meta (12/11/2026):
+            no envio pelo WhatsApp do celular nada e homologado. */}
+        {official && template.metaStatus === "APPROVED" ? (
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-xs text-foreground">
+            <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">Modelo aprovado pelo WhatsApp</p>
+              <p className="text-muted-foreground leading-relaxed">
+                Texto validado pela Meta: entrega segura e tarifa menor.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Configurações operacionais (Envio automático e horário) */}
         {automatic ? (
