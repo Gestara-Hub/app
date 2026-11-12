@@ -1,6 +1,7 @@
 import { isSupabaseOrganization } from "@/lib/session";
 import { inServerWorld, store } from "./store";
-import { unwrap } from "../server/action";
+import { networkError } from "@gestarahub/core/api-error";
+import { unwrap, type ActionResult } from "../server/action";
 import { serviceAction } from "./serviceActions";
 import { encodeArgs } from "./transport";
 
@@ -57,7 +58,13 @@ export function delegateAll<T extends object, B extends keyof T & string = never
     }
     const method = value as (...args: unknown[]) => unknown;
     wrapped[name] = (...args: unknown[]) => {
-      if (delegatesToServer()) return unwrap(serviceAction(`${namespace}.${name}`, encodeArgs(args) as unknown[]));
+      if (delegatesToServer()) {
+        const encoded = encodeArgs(args) as unknown[];
+        // Leitura em paralelo pela rota; gravacao pela action (uma por vez, na ordem).
+        return unwrap(
+          isReadMethod(name) ? fetchService(`${namespace}.${name}`, encoded) : serviceAction(`${namespace}.${name}`, encoded),
+        );
+      }
       if (sliceChecker && !inServerWorld()) {
         const call = () => Promise.resolve(method.apply(service, args));
         return sliceChecker(`${namespace}.${name}`, args, call).then(call);
@@ -66,4 +73,28 @@ export function delegateAll<T extends object, B extends keyof T & string = never
     };
   }
   return wrapped as T;
+}
+
+/**
+ * Leitura pelo nome (11/11/2026): `get`, `list`, `search`, `count`, `preview`.
+ * Uma leitura que tambem grava (ex.: expirar um Pix vencido) continua certa:
+ * a rota roda o mesmo motor, com a mesma conferencia de versao.
+ */
+export function isReadMethod(name: string): boolean {
+  return /^(get|list|search|count|preview)(?![a-z])/.test(name);
+}
+
+/**
+ * Leituras pela rota `/api/svc`, nao pela server action: as actions de uma aba
+ * rodam uma por vez e uma tela fazia ~18 leituras em fila (4 a 5 s no 4G fraco).
+ */
+async function fetchService(method: string, args: unknown[]): Promise<ActionResult<unknown>> {
+  const response = await fetch("/api/svc", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ method, args }),
+  });
+  if (!response.ok) return { ok: false, error: networkError() };
+  return (await response.json()) as ActionResult<unknown>;
 }

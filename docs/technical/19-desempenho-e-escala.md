@@ -258,7 +258,7 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 - **Relatórios somando no banco (item 1):** os relatórios saem em 0,03 a 0,14 s pelo recorte. Reescrever as regras em SQL duplicaria regra testada sem ganho visível. Volta quando o log de tempo mostrar relatório acima de 300 ms.
 - **Mensagens paginadas no banco:** a leitura do histórico também dispara as felicitações de aniversário (grava), então não é uma consulta simples. Hoje 0,2 s com 6 mil mensagens; cresce com o histórico (cerca de 0,6 s em 3 anos). Próximo candidato quando passar de 300 ms: separar as felicitações da leitura e paginar como a auditoria.
 - **`maxDuration` nas rotas de documento:** com o Fluid Compute da Vercel, o padrão já é 300 s, e os documentos saem em menos de 0,2 s. As rotinas (rotas longas de verdade) já tinham `maxDuration`.
-- **Região e pooler:** é configuração do deploy, não código. Vercel em `gru1` e Supabase em `sa-east-1`. O app fala com o banco pelo PostgREST (supabase-js), que já usa o pool do Supabase; o pooler (Supavisor) só importa para conexão direta ao Postgres, que o app não usa.
+- **Região e pooler:** Vercel em `gru1` (fixado em `apps/web/vercel.json` desde 11/11/2026, vale com o Root Directory do projeto na Vercel em `apps/web`) e Supabase em `sa-east-1` (escolher ao criar o projeto). Na região padrão da Vercel (`iad1`), cada ida ao banco custa uns 120 ms a mais, e uma ação faz de 4 a 8 idas em sequência. O app fala com o banco pelo PostgREST (supabase-js), que já usa o pool do Supabase; o pooler (Supavisor) só importa para conexão direta ao Postgres, que o app não usa.
 
 **Achado (registrado, não corrigido):** cada linha gravada pelo motor custa de 1,5 a 3 ms no banco (`apply_world_changes` faz 3 consultas por linha). No uso normal não aparece (gerar as mensalidades de 200 alunos são 200 linhas, cerca de 0,5 s), mas uma gravação de milhares de linhas de uma vez, como importação em massa, passa do tempo limite da consulta. Se a importação vier, o caminho é gravar por tabela em lote (`INSERT ... SELECT FROM jsonb_to_recordset`) em vez de linha a linha.
 
@@ -320,3 +320,60 @@ As ações com recorte (cobranças, financeiro, mensagens, relatórios) já liam
 **Mantidos de propósito:** os índices por campo que o código filtra (aluno, turma, aula, situação, vencimento, competência, recorrência) e os únicos, que protegem regras (mensalidade por período, lançamento por competência da recorrência, presença por aula e aluno). Alguns, como cobranças por tipo ou situação, separam pouco dentro de um espaço, mas pesam pouco na gravação; sem prova de que sobram, ficam. Revisar com `pg_stat_user_indexes` em produção, depois de alguns meses de uso real.
 
 **Produção:** a migração cria os índices sem `CONCURRENTLY` (roda em transação e, na primeira publicação, as tabelas estão vazias). Para recriar com dados, rodar à mão com `CREATE INDEX CONCURRENTLY`.
+
+## 14. Banda, fila de leituras e memória (11/11/2026, noite)
+
+Medido no build de produção (`next start`), banco local, espaço da demonstração. "Slow 4G" é o perfil do Chrome (150 ms, 1,6 Mbps), no celular, com o JavaScript já em cache.
+
+### Leituras em paralelo
+
+As server actions de uma aba rodam uma por vez. Uma tela fazia umas 18 leituras em fila (organização, unidade, conexão, lembretes, contagens da configuração inicial, documentos, cobranças...). Agora as leituras (`get`, `list`, `search`, `count`, `preview`) vão pela rota `POST /api/svc`, que roda em paralelo; as gravações seguem pela action, na ordem. As duas portas usam o mesmo `runServiceMethod` (`services/world/serviceRunner.ts`): sessão, permissão, recorte e repetição em conflito. A rota só aceita o próprio site (`Sec-Fetch-Site` e `Origin`).
+
+| Tela no Slow 4G (média de 19 telas) | Antes | Depois |
+| --- | --- | --- |
+| Até o conteúdo aparecer | 3,8 s | 2,0 s |
+
+### Pacote baixado na primeira visita (gzip)
+
+| Rota | Antes | Depois |
+| --- | --- | --- |
+| Telas do app | 1.045 KB | 609 a 642 KB |
+| Landing | 556 KB | 352 KB |
+| Login | 563 KB | 343 KB |
+| Link público de pagamento (`/p/c`) | 402 KB | 238 KB |
+
+O que saiu: PostHog só baixa depois do aceite de cookies; a configuração do Zod importa só o núcleo; a Ajuda (base de artigos) e o Fale com a gente baixam ao abrir; o layout importa os componentes direto dos arquivos; e o `sideEffects` no `package.json` do web, que deixa o empacotador descartar o que os barris das features reexportam e ninguém usa (antes, toda tela do app levava o app inteiro).
+
+`sideEffects` lista os arquivos que fazem algo ao serem carregados (CSS, `instrumentation*`, `zod-config`, `server-sink`, PDFs, `mocks/helpers` e `mocks/store`, `world/scope`, `personDocumentFiles`, `messageDelivery`). Arquivo novo com efeito no carregamento (registro de função, configuração global) entra nessa lista, senão some do pacote quando ninguém usa o que ele exporta. O primeiro teste dele mostrou erro de hidratação (React #418); a causa era o `loading.tsx` (ver doc 07 §1.9), que saiu.
+
+### Menos leitura em toda tela
+
+- Recortes novos nas leituras de toda página: organização e unidade, contagens da configuração inicial, conexão do WhatsApp, pagamentos contestados e resumo de presenças do dia (`settingsSlices.ts`, `communicationSlices.ts`, `onlinePaymentSlices.ts`, `classSlices.ts`). Teste: `shell-reads-slices.test.ts`.
+- O sino contava a troca de nível pela idade baixando a lista inteira de alunos, as categorias e as modalidades em toda tela. A conta vai junto dos lembretes (`levelChanges`).
+- A barra da configuração inicial, pronta, não relê a contagem a cada tela; os lembretes se releem no máximo uma vez por minuto fora do Painel (o sino relê ao abrir).
+- O aviso de mudança de horário só carrega modelos e conexão quando é pedido.
+- Conferência de pagamento (Pix público, assinatura, troca de plano): pausa com a aba escondida e espaça de 3,5 s para 10 s e 30 s, parando em 20 min (`hooks/use-payment-polling.ts`). Antes, uns 1.000 pedidos por hora numa aba esquecida.
+
+### Servidor e memória
+
+- Repetição em conflito com espera aleatória de 25 a 150 ms (antes repetia na hora e batia de novo).
+- Cache do espaço limitado a 150 mil linhas (antes 400 mil, mais de 300 MB por instância); `WORLD_CACHE_MAX_ROWS` ajusta pelo ambiente.
+- Um cliente administrativo do Supabase por processo, em vez de dezenas por chamada.
+- Região da Vercel fixada em `gru1` (`apps/web/vercel.json`).
+
+### Pico de uso (um processo do servidor, banco local no Docker)
+
+Cada "usuário" repete, em fila como o navegador, as leituras gravadas ao abrir Painel, Cobranças, Alunos e Calendário. 20 s por rodada, espaço da demonstração. Um processo `next start` faz o papel de uma instância da Vercel; o banco local faz o papel do Supabase.
+
+| Usuários ao mesmo tempo | Chamadas por segundo | Mediana | p95 | Memória do servidor | Erros |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 35 | 24 ms | 60 ms | 370 MB | 0 |
+| 10 | 163 | 53 ms | 125 ms | 740 MB | 0 |
+| 25 | 123 | 183 ms | 383 ms | 750 MB | 0 |
+| 50 | 116 | 386 ms | 841 ms | 850 MB | 0 |
+| 100 | 123 | 570 ms | 1,98 s | 850 MB | 165 |
+
+- O teto (cerca de 120 a 160 chamadas por segundo) é o banco, não o Node: a leitura de 3 linhas da organização chegou a 3 s com 50 usuários, só esperando conexão. Na nuvem, o tamanho do Supabase (compute) define esse teto; a Vercel abre mais instâncias sozinha.
+- A memória ficou estável (850 MB com 100 usuários), sem crescer entre rodadas.
+- Os 165 erros com 100 usuários eram o serviço de login (Auth) local saturado. O servidor tratava a falha como "Sua sessão expirou" e mandava a pessoa para o login. Corrigido: falha passageira do Auth (rede, 429, 5xx) vira "O sistema está com muita gente agora. Tente de novo em instantes." (`isTransientAuthError` em `services/server/tenant.ts`); só sessão inválida desloga.
+- O mais pesado por chamada é `communication.getReminderSources` (35 KB, o dobro do tempo das outras): bom alvo para a próxima rodada (o sino lê isso em toda tela).
