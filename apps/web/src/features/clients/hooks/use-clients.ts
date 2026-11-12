@@ -39,6 +39,15 @@ export function useTrialStudents(enabled = true) {
   });
 }
 
+/** Ids dos visitantes (so inscricao em evento): selo "Visitante" em Alunos. */
+export function useVisitorIds(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clients.visitors,
+    queryFn: () => clientsService.listVisitorIds(),
+    enabled,
+  });
+}
+
 export function usePaginatedClients(filter?: ClientFilter, enabled = true) {
   return useQuery({
     queryKey: [...queryKeys.clients.list(filter), "paginated", filter?.page ?? 1, filter?.pageSize ?? 20],

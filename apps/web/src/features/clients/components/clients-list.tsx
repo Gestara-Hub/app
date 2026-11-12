@@ -65,8 +65,9 @@ import { useCategories } from "@/features/categories";
 import {
   useEnrolledModalities,
 } from "@/features/turmas";
-import { usePaginatedClients, useTrialStudents } from "../hooks/use-clients";
+import { usePaginatedClients, useTrialStudents, useVisitorIds } from "../hooks/use-clients";
 import { TrialBadge } from "./trial-badge";
+import { VisitorBadge } from "./visitor-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserPreferences } from "@/features/preferences";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
@@ -277,6 +278,7 @@ function ClientRow({
   onOpenMeasurements,
   onNewCharge,
   trial,
+  visitor,
   onInactivate,
   onReactivate,
 }: {
@@ -293,6 +295,8 @@ function ClientRow({
   onNewCharge?: (c: Client) => void;
   /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
   trial?: TrialOutcome;
+  /** So veio para evento: selo "Visitante" (11/11/2026). */
+  visitor?: boolean;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -396,6 +400,7 @@ function ClientRow({
               </Link>
               {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
               <TrialBadge trial={trial} compact />
+              <VisitorBadge visitor={visitor} />
               <MinorConsentBadge client={client} compact />
               {isClasses ? (
                 <ClientProgressionBadges
@@ -445,6 +450,7 @@ function ClientCard({
   onOpenMeasurements,
   onNewCharge,
   trial,
+  visitor,
   onInactivate,
   onReactivate,
 }: {
@@ -461,6 +467,8 @@ function ClientCard({
   onNewCharge?: (c: Client) => void;
   /** Aula experimental sem voltar: selo "Experimental" (09/11/2026). */
   trial?: TrialOutcome;
+  /** So veio para evento: selo "Visitante" (11/11/2026). */
+  visitor?: boolean;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -554,6 +562,7 @@ function ClientCard({
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
               <TrialBadge trial={trial} compact />
+              <VisitorBadge visitor={visitor} />
                 <MinorConsentBadge client={client} compact />
                 {isClasses ? (
                   <ClientProgressionBadges
@@ -702,7 +711,9 @@ export function ClientsList({
   // Aula experimental (09/11/2026): "Experimentais" (sem voltar) e "Viraram alunos".
   // `?trial=trial` (lembrete do painel) ja abre filtrado.
   const searchParams = useSearchParams();
-  const [trialFilter, setTrialFilter] = useState<"all" | TrialStage>(() => {
+  // Visitantes (11/11/2026): no mesmo filtro, `?visitor=1` abre filtrado.
+  const [trialFilter, setTrialFilter] = useState<"all" | TrialStage | "visitor">(() => {
+    if (searchParams.get("visitor") === "1") return "visitor";
     const fromUrl = searchParams.get("trial");
     return fromUrl === "trial" || fromUrl === "converted" ? fromUrl : "all";
   });
@@ -717,7 +728,8 @@ export function ClientsList({
     () => ({
       search: search.trim() || undefined,
       status: status === "all" ? undefined : status,
-      trial: trialFilter === "all" ? undefined : trialFilter,
+      trial: trialFilter === "all" || trialFilter === "visitor" ? undefined : trialFilter,
+      visitor: trialFilter === "visitor" || undefined,
       page,
       pageSize,
     }),
@@ -728,6 +740,8 @@ export function ClientsList({
   const { data: categories } = useCategories();
   const { data: trialStudents } = useTrialStudents(isClasses);
   const trialById = useMemo(() => new Map((trialStudents ?? []).map((t) => [t.studentId, t])), [trialStudents]);
+  const { data: visitorIdList } = useVisitorIds(isClasses);
+  const visitorIds = useMemo(() => new Set(visitorIdList ?? []), [visitorIdList]);
   const clients = paginatedData?.items ?? [];
   const total = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
@@ -816,6 +830,7 @@ export function ClientsList({
         key={client.id}
         client={client}
         trial={trialById.get(client.id)}
+        visitor={visitorIds.has(client.id)}
         categoryById={categoryById}
         canManage={canManage}
         isClasses={isClasses}
@@ -858,7 +873,7 @@ export function ClientsList({
             <Select
               value={trialFilter}
               onValueChange={(val) => {
-                setTrialFilter(val as "all" | TrialStage);
+                setTrialFilter(val as "all" | TrialStage | "visitor");
                 setPage(1);
               }}
             >
@@ -869,6 +884,7 @@ export function ClientsList({
                 <SelectItem value="all">Todos os alunos</SelectItem>
                 <SelectItem value="trial">Experimentais</SelectItem>
                 <SelectItem value="converted">Viraram alunos</SelectItem>
+                <SelectItem value="visitor">Visitantes</SelectItem>
               </SelectContent>
             </Select>
           ) : null}
@@ -912,6 +928,7 @@ export function ClientsList({
               key={client.id}
               client={client}
               trial={trialById.get(client.id)}
+              visitor={visitorIds.has(client.id)}
               categoryById={categoryById}
               canManage={canManage}
               isClasses={isClasses}

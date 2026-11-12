@@ -1,6 +1,6 @@
 # Eventos e seminários (módulo próprio)
 
-Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; ficam para depois o selo "Visitante" em Alunos, o lembrete "evento amanhã" no sino e a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
+Data: 09/11/2026 · Status: Feito (fases 1 a 5 em 09/11/2026; selo "Visitante" em Alunos em 11/11/2026; fica para depois a inscrição pública) · Código: `packages/contracts/src/event.ts`, `packages/core/src/events.ts`, `apps/web/src/services/events`, `apps/web/src/features/events`, rotas `app/(app)/events`, migração `20261109000091_events.sql` · Testes: `packages/core/test/events.test.ts`, `services/__tests__/events.test.ts`, `services/events/__tests__/events.db.test.ts`; e2e `events` a escrever
 
 ## Decisão
 
@@ -213,3 +213,9 @@ Seminário com um sensei por dia, aulão com dois professores no mesmo bloco, um
 
 - **Variação da turma** (`ClassGroup.kind: event`, datas soltas no lugar da grade). Menos código e tudo já lido por relatórios e ficha. Rejeitada em 09/11/2026 por decisão do produto: o módulo próprio permite regras completas (inscrição por dia, convidado, lista de espera dura, inscrição pública) sem encher a turma de condicionais.
 - **Agendamento (modelo 1)**. Não serve: é 1 a 1, sem inscrição em grupo nem chamada.
+
+## Selo "Visitante" em Alunos (11/11/2026)
+
+- Derivado, nada é gravado no aluno: inscrição em evento não cancelada (confirmada ou na espera) e nenhum outro vínculo, em qualquer situação: sem matrícula, plano, pacote nem aula experimental. Quem passa a frequentar perde o selo sozinho.
+- Na lista de Alunos (linha e cartão), ao lado do "Experimental"; o filtro "Aula experimental" ganhou "Visitantes" (`?visitor=1` abre filtrado).
+- Código: `visitorIds()` e `listVisitorIds()` em `services/clients/clientBaseService.ts`, filtro `ClientFilter.visitor`, recorte `visitorsWorld` em `clientSlices.ts`, `VisitorBadge`. Teste: `services/__tests__/clients-visitors.test.ts`.

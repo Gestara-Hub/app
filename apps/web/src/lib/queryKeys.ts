@@ -37,6 +37,8 @@ export const queryKeys = {
     detail: (id: Id) => ["clients", "detail", id] as const,
     // Alunos que fizeram aula experimental (selo, filtro, lembrete): reservas e matriculas o invalidam.
     trials: ["clients", "trials"] as const,
+    // Visitantes (so evento): inscricao, matricula, plano e pacote o invalidam.
+    visitors: ["clients", "visitors"] as const,
     progressionTerms: (modalityId: Id) => ["clients", "progression-terms", modalityId] as const,
     // Resumo do aluno (ficha): cobrancas, pacotes, chamada e mensagens tambem o invalidam.
     summaries: ["clients", "summary"] as const,

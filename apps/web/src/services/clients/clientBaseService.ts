@@ -25,6 +25,24 @@ import { trialOutcomeOf, trialStudents } from "./clientTrials";
  * O professor ve so os alunos das turmas dele, sem dinheiro, documentos nem
  * endereco (como na ficha); os outros perfis, todos, completos.
  */
+/**
+ * Visitantes (doc product/29, decisao 2; 11/11/2026): inscricao em evento (nao
+ * cancelada) e nenhum outro vinculo: sem matricula, plano, pacote nem aula
+ * experimental, em qualquer situacao. Derivado: nada e gravado no aluno, e a
+ * situacao do cadastro nao muda sozinha.
+ */
+export function visitorIds(): Set<Id> {
+  const tied = new Set<Id>([
+    ...store.enrollments.map((e) => e.studentId),
+    ...(store.studentPackages ?? []).map((p) => p.studentId),
+    ...(store.reservations ?? []).filter((r) => r.kind === "trial").map((r) => r.studentId),
+    ...store.clients.filter((c) => c.planId).map((c) => c.id),
+  ]);
+  return new Set(
+    (store.eventRegistrations ?? []).filter((r) => r.status !== "canceled" && !tied.has(r.studentId)).map((r) => r.studentId),
+  );
+}
+
 function visibleClients(): Client[] {
   const allowed = teacherStudentIds();
   return allowed ? store.clients.filter((c) => allowed.has(c.id)).map(clientWithoutMoney) : store.clients;
@@ -86,9 +104,21 @@ export const clientBaseService = {
         const today = todayISO();
         result = result.filter((c) => trialOutcomeOf(c, today).stage === filter.trial);
       }
+      if (filter?.visitor) {
+        const visitors = visitorIds();
+        result = result.filter((c) => visitors.has(c.id));
+      }
 
       const sorted = [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
       return clone(paginateArray(sorted, filter?.page, filter?.pageSize));
+    });
+  },
+
+  /** Ids dos visitantes (selo "Visitante" na lista de Alunos). */
+  listVisitorIds(): Promise<Id[]> {
+    return readOp(async () => {
+      const visitors = visitorIds();
+      return visibleClients().filter((c) => visitors.has(c.id)).map((c) => c.id);
     });
   },
 

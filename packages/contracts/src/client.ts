@@ -251,6 +251,8 @@ export interface ClientFilter extends PaginationParams {
   membershipStatus?: MembershipStatus;
   /** Aula experimental (09/11/2026): quem ainda nao voltou e quem virou aluno. */
   trial?: TrialStage;
+  /** Visitante (11/11/2026, doc product/29): so inscricao em evento, sem matricula, plano ou pacote. */
+  visitor?: boolean;
 }
 
 /**
