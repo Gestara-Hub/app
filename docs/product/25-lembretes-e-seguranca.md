@@ -143,7 +143,9 @@ Revisão das notificações com o usuário. Até aqui os três tons do sino (inf
 - O sino pulsa três vezes ao abrir o app quando há item de Atenção ou Urgente **novo desde a última vez que o sino foi aberto**, e de novo quando uma pendência dessas chega durante a sessão.
 - Item já visto não pulsa; nada de intervalo fixo (vira ruído em uma semana).
 - "Visto" = abriu o painel do sino; guardado por usuário nas preferências (`bellSeenAt`), como os adiamentos.
-- Respeita a preferência de movimento reduzido do sistema e o som de Aparência (sem som novo; só o pulsar).
+- Respeita a preferência de movimento reduzido do sistema.
+- **Som do sino (12/11/2026, pedido do dono; antes era "sem som novo, só o pulsar").** Junto com o pulsar toca um sino: uma batida em cada balanço do ícone, cada vez mais fraca (`playBellChime` em `lib/audio-feedback.ts`, Web Audio, sem arquivo). Toca uma vez por item novo **neste aparelho**: as abas abertas dividem a lista do que já tocou (`gestarahub:bell-rung` no navegador, `keysToRing` em `features/dashboard/bell-pulse.ts`), então duas abas não tocam o mesmo item e recarregar não toca de novo. Nos primeiros 15 segundos depois de abrir o app o sino só pulsa (o som é para o que chega com o app aberto; o navegador também não deixa tocar antes do primeiro toque na página). Desliga em Preferências > Sons > "Som do sino" (`bellSoundEnabled`, ligado por padrão).
+- Para o que chega de fora (pagamento, inscrição pelo link, contestação) aparecer sem gravar nada, o resumo do sino é relido a cada 2 minutos, também com a aba em segundo plano (`REMINDER_SUMMARY_REFRESH_MS` em `use-reminders.ts`). Isso relê os dados; o sino continua pulsando e tocando só com item novo.
 
 ### Modal de urgência
 

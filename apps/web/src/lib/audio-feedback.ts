@@ -86,6 +86,32 @@ const CHECKIN_TONES: Record<CheckinSound, Tone[]> = {
 };
 
 
+/** Duracao de cada balanco do sino no pulsar (`bell-pulse` em globals.css: 3 x 0,9 s). */
+const BELL_SWING_SECONDS = 0.9;
+
+/**
+ * Sino de lembrete novo (12/11/2026): uma batida em cada balanco do icone, no
+ * ponto mais alto (20% do balanco), cada vez mais fraca, como um sino que para
+ * de tocar. Timbre de sino pequeno: a nota e dois parciais agudos que somem antes.
+ */
+export function playBellChime() {
+  if (typeof window === "undefined") return;
+  try {
+    playTones(
+      [0.09, 0.055, 0.03].flatMap((volume, i): Tone[] => {
+        const at = BELL_SWING_SECONDS * (0.2 + i);
+        return [
+          { wave: "sine", from: 1174.66, at, duration: 0.85, volume },
+          { wave: "sine", from: 3242, at, duration: 0.3, volume: volume * 0.35 },
+          { wave: "sine", from: 6343, at, duration: 0.12, volume: volume * 0.12 },
+        ];
+      }),
+    );
+  } catch {
+    // sem audio (navegador antigo ou sem toque na pagina ainda): so o pulsar
+  }
+}
+
 export function playAudioFeedback(
   type: "success" | "checkin" | "error" = "checkin",
   sound: CheckinSound = "confirm",

@@ -87,7 +87,7 @@ describe("aviso da franquia de mensagens no sino", () => {
 // Niveis e urgencia (doc product/25, "Níveis, urgência e novos lembretes", 09/11/2026).
 import type { ExpiringPersonDocument, OnlinePayment } from "@gestarahub/contracts";
 import { disputeBellAlerts, documentBellAlerts, gatewayRejectedBellAlert } from "../bell-alerts";
-import { newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
+import { keysToRing, newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
 
 const PAID: OnlinePayment = {
   id: "op-1",
@@ -146,5 +146,11 @@ describe("pulsar do sino", () => {
     expect(newAttentionKeys(["a"], ["a", "b"])).toEqual([]);
     expect(seenKeysAfterOpening(["a", "a", "b"])).toEqual(["a", "b"]);
     expect(seenKeysAfterOpening(Array.from({ length: 400 }, (_, i) => `k${i}`))).toHaveLength(300);
+  });
+
+  it("som: toca só o item que ainda não tocou neste aparelho (12/11/2026)", () => {
+    expect(keysToRing(["a", "b"], [])).toEqual(["a", "b"]);
+    expect(keysToRing(["a", "b"], ["a"])).toEqual(["b"]);
+    expect(keysToRing(["a"], ["a", "b"])).toEqual([]);
   });
 });

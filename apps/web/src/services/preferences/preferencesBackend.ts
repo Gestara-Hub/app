@@ -63,6 +63,7 @@ const PREFERENCE_KEYS: ReadonlySet<string> = new Set<keyof UserPreferences>([
   "defaultPageSize",
   "audioFeedbackEnabled",
   "checkinSound",
+  "bellSoundEnabled",
   "lastSeenRelease",
   "onboarding",
   "dismissedAlertKeys",

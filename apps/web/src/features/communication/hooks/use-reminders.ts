@@ -60,8 +60,16 @@ export function useReminderSummary(today: string, enabled = true) {
     enabled,
     // Trocar o adiamento muda a chave: segura o numero de antes ate chegar o novo.
     placeholderData: (previous) => previous,
+    // O que chega de fora (pagamento, inscricao pelo link, contestacao) aparece
+    // sem gravar nada: rele a cada 2 minutos, tambem em outra aba, para o sino
+    // pulsar e tocar (12/11/2026). O resumo e pequeno (so numero e chaves).
+    refetchInterval: REMINDER_SUMMARY_REFRESH_MS,
+    refetchIntervalInBackground: true,
   });
 }
+
+/** De quanto em quanto tempo o sino rele o resumo. */
+export const REMINDER_SUMMARY_REFRESH_MS = 2 * 60_000;
 
 /** Tira os adiamentos que ja passaram (a preferencia nao cresce para sempre). */
 function cleaned(snoozes: Record<string, string> | undefined, today: string): Record<string, string> {

@@ -24,7 +24,15 @@ import {
   whatsappPendingConnectionBellAlert,
   type BellAlert,
 } from "../bell-alerts";
-import { newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
+import { playBellChime } from "@/lib/audio-feedback";
+import {
+  BELL_SOUND_WARMUP_MS,
+  keysToRing,
+  newAttentionKeys,
+  readRungKeys,
+  rememberRungKeys,
+  seenKeysAfterOpening,
+} from "../bell-pulse";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -96,6 +104,21 @@ function RemindersBellButton() {
     pulsedFor.current = signature;
     setPulseId((n) => n + 1);
   }, [fresh, open]);
+
+  // Som de sino junto com o pulsar: so item que ainda nao tocou neste aparelho
+  // e que chegou com o app aberto (os primeiros segundos so pulsam).
+  const mountedAt = useRef(0);
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
+  const bellSound = preferences.bellSoundEnabled !== false;
+  useEffect(() => {
+    if (open || fresh.length === 0) return;
+    const ring = keysToRing(fresh, readRungKeys());
+    if (ring.length === 0) return;
+    rememberRungKeys(ring);
+    if (bellSound && Date.now() - mountedAt.current >= BELL_SOUND_WARMUP_MS) playBellChime();
+  }, [fresh, open, bellSound]);
 
   const queryClient = useQueryClient();
   function openBell() {

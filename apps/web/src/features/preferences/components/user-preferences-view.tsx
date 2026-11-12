@@ -2,12 +2,12 @@
 
 import { useTheme } from "next-themes";
 import { toast } from "@/lib/toast";
-import { Check, Monitor, Moon, RotateCcw, Rows3, Sparkles, Sun, Volume2, VolumeX } from "lucide-react";
+import { BellOff, BellRing, Check, Monitor, Moon, RotateCcw, Rows3, Sparkles, Sun, Volume2, VolumeX } from "lucide-react";
 import { CHECKIN_SOUNDS, type CheckinSound, type ThemeMode } from "@gestarahub/contracts";
 import { cn } from "@/lib/utils";
 import { useIsClient } from "@/lib/use-is-client";
 import { THEME_COLORS, useThemeColor } from "@/lib/theme-accent";
-import { CHECKIN_SOUND_LABELS, playAudioFeedback } from "@/lib/audio-feedback";
+import { CHECKIN_SOUND_LABELS, playAudioFeedback, playBellChime } from "@/lib/audio-feedback";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +45,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const theme = isClient ? preferences.theme : undefined;
   const color = isClient ? themeColor : undefined;
   const audioEnabled = isClient && preferences.audioFeedbackEnabled;
+  const bellSoundEnabled = isClient && preferences.bellSoundEnabled !== false;
   // Som que saiu da lista (ou nenhum salvo): fica a confirmacao, o padrao.
   const savedSound = isClient ? preferences.checkinSound : undefined;
   const checkinSound: CheckinSound = savedSound && CHECKIN_SOUNDS.includes(savedSound) ? savedSound : "confirm";
@@ -61,6 +62,16 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
       toast.success("Som ligado.");
     } else {
       toast.info("Som desligado.");
+    }
+  };
+
+  const handleBellSoundToggle = (enabled: boolean) => {
+    updatePreference("bellSoundEnabled", enabled);
+    if (enabled) {
+      playBellChime();
+      toast.success("Som do sino ligado.");
+    } else {
+      toast.info("Som do sino desligado.");
     }
   };
 
@@ -192,6 +203,20 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             </div>
           </div>
         ) : null}
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+          <div className="flex items-center gap-3">
+            {bellSoundEnabled ? (
+              <BellRing className="size-5 shrink-0 text-primary" />
+            ) : (
+              <BellOff className="size-5 shrink-0 text-muted-foreground" />
+            )}
+            <div>
+              <p className="text-xs font-medium text-foreground">Som do sino</p>
+              <p className="text-[11px] text-muted-foreground">Toca quando chega um lembrete novo.</p>
+            </div>
+          </div>
+          <Switch checked={bellSoundEnabled} onCheckedChange={handleBellSoundToggle} aria-label="Som do sino" />
+        </div>
       </section>
 
       <section className="space-y-3 border-t border-border/40 pt-4">

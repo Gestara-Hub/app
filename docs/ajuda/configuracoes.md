@@ -54,6 +54,13 @@ Guia: /dashboard
 + campo "Som ao marcar presença": Ligue ou desligue o bipe da chamada.
 + botão "Testar": Clique aqui para ouvir o som.
 
+## Som do sino
+Resumo: Ligue ou desligue o sino quando chega lembrete novo.
+Guia: /dashboard
++ botão "Menu do usuário": Clique na bolinha com suas iniciais, no topo.
++ item "Preferências": Abra as escolhas só suas.
++ campo "Som do sino": Ligue ou desligue o som dos lembretes novos.
+
 ## Reativar dicas e primeiros passos
 Resumo: Traga de volta a lista de primeiros passos e as dicas dispensadas.
 Guia: /dashboard

@@ -25,6 +25,8 @@ export interface UserPreferences {
   audioFeedbackEnabled: boolean;
   /** Qual som toca ao marcar presente; sem valor, a confirmacao. */
   checkinSound?: CheckinSound;
+  /** Som de sino quando chega lembrete novo, junto com o pulsar (12/11/2026); sem valor, ligado. */
+  bellSoundEnabled?: boolean;
   onboarding: {
     dismissed: boolean;
     completedStepIds: string[];
@@ -70,6 +72,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   defaultPageSize: 20,
   audioFeedbackEnabled: true,
   checkinSound: "confirm",
+  bellSoundEnabled: true,
   onboarding: {
     dismissed: false,
     completedStepIds: [],
