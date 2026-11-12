@@ -393,8 +393,9 @@ test.describe("calendário de turmas", () => {
     await expect(page.getByRole("link", { name: /Yoga Manhã/ })).toHaveCount(1);
     await expect(page.getByRole("link", { name: /Jiu-Jitsu Adulto/ })).toHaveCount(3);
 
-    await page.getByRole("combobox", { name: "Filtrar por modalidade" }).click();
-    await page.getByRole("option", { name: "Yoga" }).click();
+    // Legenda das cores filtra (11/11/2026, no lugar do seletor de modalidade).
+    const legend = page.getByRole("group", { name: "Filtrar por modalidade ou evento" });
+    await legend.getByRole("button", { name: "Yoga" }).click();
     await expect(page).toHaveURL(/modality=/);
     await expect(page.getByRole("link", { name: /Jiu-Jitsu Adulto/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Yoga Manhã/ })).toHaveCount(1);
@@ -403,8 +404,9 @@ test.describe("calendário de turmas", () => {
     await page.getByRole("option", { name: "Carlos Silva" }).click();
     await expect(page.getByText("Nenhuma aula para os filtros aplicados.")).toBeVisible();
 
-    await page.getByRole("combobox", { name: "Filtrar por modalidade" }).click();
-    await page.getByRole("option", { name: "Todas as modalidades" }).click();
+    await legend.getByRole("button", { name: "Yoga" }).click();
+    await page.getByRole("combobox", { name: "Filtrar por instrutor" }).click();
+    await page.getByRole("option", { name: /^Todos os/ }).click();
     await page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).first().click();
     await expect(page).toHaveURL(/\/classes\/sessions\/cg-1~2026-09-28~17%3A00/);
     await expect(page.getByText("A chamada abre em 28/09")).toBeVisible();

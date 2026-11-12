@@ -111,6 +111,13 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
     el.scrollBy({ left: direction * width, behavior: "smooth" });
   };
 
+  // Linha de "agora" (11/11/2026): na coluna de hoje, antes do primeiro horario
+  // que ainda nao comecou; depois do ultimo, no pe da ultima faixa. A grade nao e
+  // proporcional ao tempo: a linha separa o que ja foi do que vem.
+  const nextRow = now ? startTimes.findIndex((start) => start > now) : -1;
+  const nowLineAtEnd = now !== null && nextRow === -1;
+  const nowLineRow = nowLineAtEnd ? startTimes.length - 1 : nextRow;
+
   // Passado (ja terminou) esmaece; o que esta acontecendo ganha um anel.
   const timing = (entry: CalendarEntry): "past" | "now" | "future" => {
     if (!now) return "future";
@@ -125,44 +132,33 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
     // Sem rolagem propria na vertical (10/11/2026): a pagina rola e o cabecalho
     // dos dias gruda abaixo da barra do topo (top-14). Abaixo de xl a tabela
     // (min 60rem) rola so para o lado.
-    <div className="relative rounded-lg border bg-card">
-      {edges.left ? (
-        <>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-16 z-30 w-6 bg-gradient-to-r from-black/15 to-transparent dark:from-black/40"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="absolute left-[4.5rem] top-4 z-40 rounded-full shadow-md"
-            aria-label="Ver dias anteriores"
-            onClick={() => scrollByDay(-1)}
-          >
+    <div className="rounded-lg border bg-card">
+      {/* Dias escondidos (celular, 11/11/2026): as setas ficam numa faixa acima da
+          grade, nao mais flutuando sobre o nome dos dias. */}
+      {edges.left || edges.right ? (
+        <div className="flex items-center justify-between gap-2 border-b px-1.5 py-1">
+          <Button type="button" variant="ghost" size="icon" aria-label="Ver dias anteriores" disabled={!edges.left} onClick={() => scrollByDay(-1)}>
             <ChevronLeft />
           </Button>
-        </>
-      ) : null}
-      {edges.right ? (
-        <>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 z-30 w-6 rounded-r-lg bg-gradient-to-l from-black/15 to-transparent dark:from-black/40"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="absolute right-2 top-4 z-40 rounded-full shadow-md"
-            aria-label="Ver próximos dias"
-            onClick={() => scrollByDay(1)}
-          >
+          <span className="text-xs text-muted-foreground">Deslize para ver os outros dias</span>
+          <Button type="button" variant="ghost" size="icon" aria-label="Ver próximos dias" disabled={!edges.right} onClick={() => scrollByDay(1)}>
             <ChevronRight />
           </Button>
-        </>
+        </div>
       ) : null}
-      <div ref={scrollerRef} onScroll={updateEdges} className="overflow-x-auto rounded-lg xl:overflow-visible">
+      <div className="relative">
+      {/* Sombra leve na borda enquanto ha dias escondidos daquele lado. */}
+      {edges.left ? (
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-16 z-30 w-3 bg-gradient-to-r from-black/[0.07] to-transparent dark:from-black/30" />
+      ) : null}
+      {edges.right ? (
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-30 w-3 rounded-br-lg bg-gradient-to-l from-black/[0.07] to-transparent dark:from-black/30" />
+      ) : null}
+      {/* `relative` (11/11/2026): sem ele, os textos do leitor de tela dos cards
+          (sr-only, posicao absoluta) se posicionavam pelo bloco de fora, escapavam
+          da rolagem e iam ate 800px para a direita; o Safari do iPhone contava isso
+          e encolhia a pagina inteira (zoom out). */}
+      <div ref={scrollerRef} onScroll={updateEdges} className="relative overflow-x-auto rounded-b-lg xl:overflow-visible">
         {/* `table-fixed`: sem isso a tabela dimensiona por conteudo e o dia cheio
           fica largo enquanto os vazios encolhem — deixa de ser uma grade. */}
         <table className="w-full min-w-[60rem] table-fixed border-separate border-spacing-0">
@@ -186,21 +182,22 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                     scope="col"
                     data-day
                     data-today={isToday || undefined}
-                    // Sem tinte de "hoje" aqui: o cabecalho e sticky e precisa ser
-                    // OPACO (uma cor translucida deixaria os chips aparecerem por
-                    // baixo ao rolar). O dia atual e marcado pelo circulo cheio.
+                    // Cabecalho sticky e OPACO (uma cor translucida deixaria os chips
+                    // aparecerem por baixo ao rolar). Hoje: so o circulo no numero e a linha de "agora".
                     className="sticky top-0 z-20 xl:top-14 border-b border-r bg-card px-2 py-2 last:border-r-0"
                   >
                     <span className="block text-xs font-normal uppercase text-muted-foreground">
                       {format(day, "EEE", { locale: ptBR })}
                     </span>
-                    <span
-                      className={cn(
-                        "mx-auto mt-0.5 flex size-6 items-center justify-center rounded-full text-sm font-medium tabular-nums",
-                        isToday && "bg-primary text-primary-foreground",
-                      )}
-                    >
-                      {format(day, "d")}
+                    <span className="mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5">
+                      <span
+                        className={cn(
+                          "flex size-6 items-center justify-center rounded-full text-sm font-medium tabular-nums",
+                          isToday && "bg-primary text-primary-foreground",
+                        )}
+                      >
+                        {format(day, "d")}
+                      </span>
                     </span>
                   </th>
                 );
@@ -208,7 +205,7 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
             </tr>
           </thead>
           <tbody>
-            {startTimes.map((start) => (
+            {startTimes.map((start, rowIndex) => (
               <tr key={start}>
                 <th
                   scope="row"
@@ -224,10 +221,9 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                   return (
                     <td
                       key={iso}
-                      // Sem fundo no dia de hoje (10/11/2026): com destaque neutro ele
-                      // virava cinza de "desativado". O circulo no numero ja marca o dia.
                       className="border-b border-r p-1.5 align-top last:border-r-0"
                     >
+                      {iso === today && now && nowLineRow === rowIndex && !nowLineAtEnd ? <NowLine time={now} /> : null}
                       <div className="space-y-1.5">
                         {cell.map((entry) => {
                           const when = timing(entry);
@@ -239,7 +235,7 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                               className={cn(
                                 "block rounded-md border border-l-[3px] px-2 py-1.5 transition-[colors,opacity]",
                                 entryColor(entry, colors).card,
-                                when === "past" && "opacity-60 hover:opacity-100",
+                                when === "past" && "opacity-40 hover:opacity-100",
                                 when === "now" && cn("ring-2 ring-offset-1 ring-offset-card", entryColor(entry, colors).ring),
                               )}
                             >
@@ -248,10 +244,8 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                                 <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">{entry.title}</p>
                                 {/* "Evento" na linha do horario: o titulo fica com a largura toda. */}
                                 <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                                  {/* Sem "Evento" escrito (11/11/2026): o roxo e a legenda dizem; o leitor de tela le no sr-only. */}
                                   {entry.start}–{entry.end}
-                                  {entry.kind === "event" ? (
-                                    <span className="font-medium text-violet-700 dark:text-violet-300"> · Evento</span>
-                                  ) : null}
                                   {/* Ocupacao, ambar quando a turma esta lotada. */}
                                   <span className={cn(entry.isFull && "font-medium text-amber-700 dark:text-amber-400")}>
                                     {" · "}
@@ -263,7 +257,7 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                                     <span className="font-medium text-amber-700 dark:text-amber-400">{entry.instructorName} (Subst.)</span>
                                   ) : (
                                     <>
-                                      {entry.instructorName}
+                                      {entry.instructorShort ?? entry.instructorName}
                                       {entry.isGuest ? " (convidado)" : ""}
                                     </>
                                   )}
@@ -273,6 +267,7 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                           );
                         })}
                       </div>
+                      {iso === today && now && nowLineAtEnd && rowIndex === startTimes.length - 1 ? <NowLine time={now} atEnd /> : null}
                     </td>
                   );
                 })}
@@ -280,6 +275,7 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
@@ -289,4 +285,19 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
 export function dayLabel(day: Date): string {
   const label = format(day, "EEEE", { locale: ptBR });
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** Linha de "agora" na coluna de hoje: bolinha, a hora e o traco, na cor de atraso. Sem posicao absoluta (ver doc 07, mobile). */
+function NowLine({ time, atEnd = false }: { time: string; atEnd?: boolean }) {
+  return (
+    <div
+      role="presentation"
+      title={`Agora, ${time}`}
+      className={cn("-mx-1.5 flex items-center gap-1 text-overdue", atEnd ? "mt-1.5 -mb-1" : "-mt-1 mb-1.5")}
+    >
+      <span className="size-2 shrink-0 rounded-full bg-overdue" aria-hidden />
+      <span className="text-[10px] font-semibold leading-none tabular-nums">{time}</span>
+      <span className="h-px flex-1 bg-overdue" aria-hidden />
+    </div>
+  );
 }

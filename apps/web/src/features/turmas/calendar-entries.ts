@@ -16,6 +16,8 @@ export interface CalendarEntry {
   end: string;
   modalityName?: string;
   instructorName: string;
+  /** Versao curta para o card da grade (evento com varios: "Ana Souza +1"); o nome inteiro fica no title. */
+  instructorShort?: string;
   /** Aula com instrutor substituto. */
   isSubstitute: boolean;
   /** Evento conduzido por convidado (nome livre). */
@@ -50,6 +52,14 @@ export function classEntry(s: ClassSessionListItem, accessibleLabel: string): Ca
   };
 }
 
+/** Primeiro de quem conduz e quantos mais: "Ana Souza +1", "Mika Galvão (convidado)". */
+function blockInstructorsShort(s: EventSessionView): string | undefined {
+  const named = s.instructors.filter((i) => i.name);
+  if (named.length <= 1) return undefined;
+  const first = named[0];
+  return `${first.isGuest ? `${first.name} (convidado)` : first.name} +${named.length - 1}`;
+}
+
 /** "Ana e Sensei Kenji (convidado)": quem conduz o bloco, convidado marcado. */
 function blockInstructors(s: EventSessionView): string {
   const names = s.instructors.map((i) => (i.isGuest ? `${i.name} (convidado)` : i.name)).filter(Boolean);
@@ -69,6 +79,7 @@ export function eventEntry(s: EventSessionView): CalendarEntry {
     modalityName: s.modalityName,
     // Quem conduz o bloco, convidado ja marcado no texto ("Ana e Kenji (convidado)").
     instructorName: blockInstructors(s),
+    instructorShort: blockInstructorsShort(s),
     isSubstitute: false,
     isGuest: false,
     occupancy: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
