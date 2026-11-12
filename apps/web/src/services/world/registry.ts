@@ -193,6 +193,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   settings: {
     load: async () => (await import("../settings/settingsService")).settingsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../settings/settingsSlices")).settingsSlices,
     permissions: {
       ...all(["updateOrganization", "updateUnit"], ["settings:view"]),
       markModalitiesReviewed: ["classes:manage", "services:manage"],
@@ -200,6 +201,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   onboarding: {
     load: async () => (await import("../settings/onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../settings/settingsSlices")).onboardingSlices,
     permissions: {},
   },
   certificates: {

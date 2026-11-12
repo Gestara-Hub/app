@@ -6,4 +6,8 @@ import type { MethodSlice } from "../world/slices";
  */
 export const onlinePaymentSlices: Record<string, MethodSlice> = {
   getRecurringForStudent: async () => undefined,
+  // Sino (toda pagina): so os pagamentos online, para achar os contestados.
+  listDisputed: async (_args, load) => {
+    await load.all("onlinePayments");
+  },
 };

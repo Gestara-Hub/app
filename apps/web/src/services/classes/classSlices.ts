@@ -151,6 +151,11 @@ export const classSlices: Record<string, MethodSlice> = {
   listEnrolledModalities: async (_args, load) => {
     await Promise.all([load.all("classGroups"), load.all("enrollments")]);
   },
+  // Painel: so as marcacoes das aulas do dia (o id da aula traz a data).
+  getAttendanceSummary: async ([date], load) => {
+    const groups = (await load.all("classGroups")) as unknown as ClassGroup[];
+    await load.where("attendances", "sessionId", sessionIdsInRange(groups, date as DateISO, date as DateISO));
+  },
   listSessions: async ([filter], load) => sessionsInRange(filter as { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }, load),
   list: classList,
   getSession: sessionOf,

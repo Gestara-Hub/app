@@ -54,6 +54,8 @@ const reminderSources: MethodSlice = async (_args, load) => {
 };
 
 export const communicationSlices: Record<string, MethodSlice> = {
+  // Sino e topo (toda pagina): a conexao e a organizacao sao de uma linha so.
+  getConnection: async () => undefined,
   listLogs: logs,
   listLogsPaginated: logs,
   getReminderSources: reminderSources,
