@@ -414,13 +414,20 @@ export function ClientForm({
       orgSettingsLoadedRef.current = true;
       // Padroes do espaco viram o valor inicial (resetField), nao uma edicao:
       // senao contavam como alteracao e travavam outras sugestoes (doc 07 §2.8).
+      // O `resetField` ignora campo nao registrado, e a regra do aluno mora na
+      // secao recolhida: sem o `register`, o aluno ficava com "Antecipado" num
+      // espaco "Depois do uso" quando a organizacao chegava depois da janela
+      // abrir (12/11/2026, e2e de mensalidades instavel).
       if (orgSettings.midMonthStrategy && !form.getFieldState("billingStrategy").isDirty) {
+        form.register("billingStrategy");
         form.resetField("billingStrategy", { defaultValue: orgSettings.midMonthStrategy });
       }
       if (orgSettings.billingTiming && !form.getFieldState("cyclePaymentTiming").isDirty) {
+        form.register("cyclePaymentTiming");
         form.resetField("cyclePaymentTiming", { defaultValue: orgSettings.billingTiming });
       }
       if (orgSettings.defaultDueDay && !form.getFieldState("dueDay").isDirty) {
+        form.register("dueDay");
         form.resetField("dueDay", { defaultValue: orgSettings.defaultDueDay });
       }
       // A area vem da mesma organizacao: corrige o padrao se ainda nao mexeram.
@@ -883,6 +890,9 @@ export function ClientForm({
   const prevTimingRef = useRef(cyclePaymentTiming);
   const prevPriceRef = useRef(basePriceCents);
   const prevPastRef = useRef(billPastMonths);
+  // Regras de cobranca do espaco chegando depois do plano e da data (12/11/2026):
+  // a sugestao ficava com a conta feita sem elas (e2e de mensalidades instavel).
+  const prevOrgSettingsRef = useRef(orgSettings);
 
   useEffect(() => {
     const dateChanged = prevDateRef.current !== planStartDate;
@@ -891,6 +901,7 @@ export function ClientForm({
     const timingChanged = prevTimingRef.current !== cyclePaymentTiming;
     const priceChanged = prevPriceRef.current !== basePriceCents;
     const pastChanged = prevPastRef.current !== billPastMonths;
+    const orgSettingsChanged = prevOrgSettingsRef.current !== orgSettings;
     const isUninitialized = Boolean(selectedPlanId && billingCalculation && firstChargeAmount === undefined);
 
     prevDateRef.current = planStartDate;
@@ -899,10 +910,18 @@ export function ClientForm({
     prevTimingRef.current = cyclePaymentTiming;
     prevPriceRef.current = basePriceCents;
     prevPastRef.current = billPastMonths;
+    prevOrgSettingsRef.current = orgSettings;
 
     if (
       showFirstCharge &&
-      (dateChanged || planChanged || strategyChanged || timingChanged || priceChanged || pastChanged || isUninitialized) &&
+      (dateChanged ||
+        planChanged ||
+        strategyChanged ||
+        timingChanged ||
+        priceChanged ||
+        pastChanged ||
+        orgSettingsChanged ||
+        isUninitialized) &&
       billingCalculation
     ) {
       form.setValue("dueDay", billingCalculation.terms.dueDay, { shouldDirty: true });
@@ -920,6 +939,7 @@ export function ClientForm({
     showFirstCharge,
     form,
     firstChargeAmount,
+    orgSettings,
   ]);
 
   const hasAddressData = Boolean(
