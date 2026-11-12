@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Ticket,
   Zap,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -386,6 +387,16 @@ export function SubscriptionCheckoutView() {
                 <p className="text-xs font-bold text-foreground">Certificados em PDF</p>
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   Emissão de diplomas oficiais com código de validação para cursos.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5">
+                <div className="flex size-7 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                  <Ticket className="size-4" />
+                </div>
+                <p className="text-xs font-bold text-foreground">Inscrição em evento por link</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  A pessoa se inscreve sozinha, recebe o ingresso e entra pelo QR code.
                 </p>
               </div>
             </div>
@@ -1206,6 +1217,10 @@ export function SubscriptionCheckoutView() {
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
                         <span>Certificado de conclusão em PDF</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>Inscrição em evento por link, com ingresso</span>
                       </li>
                     </>
                   ) : (

@@ -789,6 +789,10 @@ function SubscriptionCheckoutContent({
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span><strong>Certificados em PDF:</strong> emissão oficial e envio aos alunos.</span>
               </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span><strong>Inscrição em evento por link:</strong> com ingresso e leitura na entrada.</span>
+              </li>
             </ul>
           </div>
 

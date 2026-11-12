@@ -394,6 +394,7 @@ const PRO_FEATURES = [
   "Relatório do resultado do mês",
   "Retenção de alunos",
   "Certificado de conclusão em PDF",
+  "Inscrição em evento por link, com ingresso",
   "Taxa menor por Pix pago",
 ];
 

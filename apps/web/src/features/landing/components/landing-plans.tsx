@@ -27,6 +27,7 @@ const PRO_POINTS = [
   "Lembretes automáticos no WhatsApp",
   "Relatórios avançados",
   "Certificado de conclusão de curso",
+  "Inscrição em evento por link, com ingresso",
 ];
 
 export function LandingPlans() {
