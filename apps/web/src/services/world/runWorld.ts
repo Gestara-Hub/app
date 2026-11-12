@@ -140,8 +140,14 @@ interface CachedWorld {
 }
 
 const WORLD_CACHE_TTL_MS = 5 * 60_000;
-/** Limite de linhas guardadas somando todos os espacos (sai o menos usado). */
-const WORLD_CACHE_MAX_ROWS = 400_000;
+/**
+ * Limite de linhas guardadas somando todos os espacos (sai o menos usado).
+ * 150 mil (11/11/2026; antes 400 mil): cada espaco fica guardado em duas copias
+ * (cru e normalizado), e 400 mil linhas passavam de 300 MB por instancia, antes
+ * da memoria de cada chamada; num pico, varias chamadas dividem a mesma
+ * instancia da Vercel. `WORLD_CACHE_MAX_ROWS` no ambiente ajusta sem deploy de codigo.
+ */
+const WORLD_CACHE_MAX_ROWS = Number(process.env.WORLD_CACHE_MAX_ROWS) || 150_000;
 const worldCache = new Map<string, CachedWorld>();
 const worldCacheCounters = { hits: 0, misses: 0, advances: 0 };
 
