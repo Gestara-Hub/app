@@ -170,7 +170,8 @@ export async function createSubAccount(
 /**
  * Cria ou busca um cliente (Aluno) no Asaas. Primeiro pelo id do aluno
  * (`externalReference`): o mesmo aluno e sempre o mesmo cliente, e os dados
- * de contato e endereco sao atualizados com o cadastro atual. Depois pelo CPF.
+ * de contato e endereco sao atualizados com o cadastro atual. Pelo CPF so
+ * quando nao ha o id do aluno.
  */
 export async function createOrFindCustomer(
   customerData: AsaasCustomerRequest,
@@ -202,8 +203,11 @@ export async function createOrFindCustomer(
     }
   }
 
-  // Se informou CPF/CNPJ, tenta buscar primeiro para não duplicar
-  if (customerData.cpfCnpj) {
+  // Busca pelo CPF so sem o id do aluno. Com ele, o cliente achado pelo CPF e
+  // de outro aluno (irmao com o mesmo responsavel, ou um CPF digitado na pagina
+  // publica) e voltaria com o nome de outra pessoa na fatura: cria um novo (o
+  // Asaas aceita mais de um cliente com o mesmo CPF).
+  if (customerData.cpfCnpj && !customerData.externalReference) {
     const cleanCpf = customerData.cpfCnpj.replace(/\D/g, "");
     try {
       const searchRes = await asaasFetch<{

@@ -30,6 +30,16 @@ export function charCount(text: string): number {
   return [...text].length;
 }
 
+/**
+ * Mesmo nome de pessoa, sem diferenca de acento, maiuscula ou espacos a mais
+ * ("José  da Silva" = "jose da silva"). Nome vazio nunca e igual.
+ */
+export function sameName(a: string | undefined, b: string | undefined): boolean {
+  const clean = (value: string | undefined) => normalizeText(value ?? "").replace(/\s+/g, " ");
+  const left = clean(a);
+  return left !== "" && left === clean(b);
+}
+
 export function textIncludes(haystack: string, needle: string): boolean {
   return normalizeText(haystack).includes(normalizeText(needle));
 }

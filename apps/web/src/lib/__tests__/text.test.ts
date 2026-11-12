@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { charCount, normalizeText, singularLabel, suggestionsNotTaken, withKind } from "@/lib/text";
+import { charCount, normalizeText, sameName, singularLabel, suggestionsNotTaken, withKind } from "@/lib/text";
+
+describe("sameName (inscrição pelo link)", () => {
+  it("ignora acento, maiúscula e espaços a mais", () => {
+    expect(sameName("José  da Silva ", "jose da silva")).toBe(true);
+  });
+
+  it("nome diferente ou só parte do nome não é a mesma pessoa", () => {
+    expect(sameName("Pedro Raul", "Diego Barbosa")).toBe(false);
+    expect(sameName("Diego", "Diego Barbosa")).toBe(false);
+  });
+
+  it("vazio nunca é igual", () => {
+    expect(sameName("", "")).toBe(false);
+    expect(sameName("  ", undefined)).toBe(false);
+  });
+});
 
 describe("normalizeText", () => {
   it("remove acentos e cedilha", () => {

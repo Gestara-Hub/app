@@ -12,6 +12,7 @@ import { apiError } from "@gestarahub/core/api-error";
 import { activeDays, earlyBirdActive, eventStage, suggestedRegistrationPrice } from "@gestarahub/core/events";
 import { dateInSpace, resolveSpaceTimeZone } from "@gestarahub/core/date";
 import { maskPersonName } from "@gestarahub/core/privacy";
+import { sameName } from "@/lib/text";
 import { whatsappNumber } from "@/lib/whatsapp";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
@@ -198,10 +199,13 @@ export async function submitPublicEventSignup(
       whatsapp: Boolean(input.acceptWhatsapp),
     };
 
-    // Aluno ativo com este telefone: liga a inscricao sem mexer no cadastro.
+    // Aluno ativo com o mesmo nome E o mesmo telefone: liga a inscricao sem
+    // mexer no cadastro. So o telefone nao basta: quem digita o numero de outra
+    // pessoa veria o nome dela na cobranca e entraria no historico dela. Nome
+    // diferente vira um cadastro novo (a equipe junta depois, se for a mesma).
     const existing = input.isMinor
       ? undefined
-      : store.clients.find((c) => c.status === "active" && samePhone(c.phone, phone));
+      : store.clients.find((c) => c.status === "active" && samePhone(c.phone, phone) && sameName(c.name, name));
     let studentId = existing?.id;
     if (!studentId) {
       const created = await clientsServiceImpl.create({

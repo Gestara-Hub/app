@@ -91,21 +91,45 @@ describe("página e inscrição pelo link", () => {
     expect((audit ?? []).some((a) => String(a.summary).includes("pelo link") && (a.actor as { name?: string }).name === "Inscrição pelo link")).toBe(true);
   });
 
-  it("aluno que já existe é ligado sem mudar o cadastro; a segunda vez responde 'já inscrito'", async () => {
+  it("telefone de um aluno com outro nome vira cadastro novo: nada do aluno aparece nem muda", async () => {
+    const id = randomUUID();
+    await admin
+      .from("clients")
+      .insert({ id, organization_id: tenant.organizationId, name: "Carla Dias", phone: "+5511955550000", status: "active" })
+      .throwOnError();
+    const result = await submitPublicEventSignup({ code, name: "Pedro Raul", phone: "11955550000", acceptTerms: true }, meta());
+    expect(result).toMatchObject({ status: "confirmed", displayName: "Pedro R." });
+
+    const { data: carlaRegistrations } = await admin.from("event_registrations").select("id").eq("student_id", id);
+    expect(carlaRegistrations).toEqual([]);
+    const { data: pedro } = await admin
+      .from("clients")
+      .select("id, phone")
+      .eq("organization_id", tenant.organizationId)
+      .eq("name", "Pedro Raul")
+      .single();
+    expect(pedro).toMatchObject({ phone: "+5511955550000" });
+    expect(pedro!.id).not.toBe(id);
+  });
+
+  it("aluno com o mesmo nome e telefone é ligado sem mudar o cadastro; a segunda vez responde 'já inscrito'", async () => {
     const id = randomUUID();
     await admin
       .from("clients")
       .insert({ id, organization_id: tenant.organizationId, name: "Carla Dias", phone: "+5511955550000", email: "carla@antes.com", status: "active" })
       .throwOnError();
+    // Sem diferenca de acento, maiuscula ou espaco: a mesma pessoa.
     const first = await submitPublicEventSignup(
-      { code, name: "Outro Nome", phone: "11955550000", email: "novo@depois.com", acceptTerms: true, acceptWhatsapp: true },
+      { code, name: " carla  DIAS", phone: "11955550000", email: "novo@depois.com", acceptTerms: true, acceptWhatsapp: true },
       meta(),
     );
     expect(first.status).toBe("confirmed");
     const { data: after } = await admin.from("clients").select("name, email, whatsapp_consent_status").eq("id", id).single();
     expect(after).toEqual({ name: "Carla Dias", email: "carla@antes.com", whatsapp_consent_status: "unknown" });
+    const { data: registrations } = await admin.from("event_registrations").select("source").eq("student_id", id);
+    expect(registrations).toEqual([{ source: "public_link" }]);
 
-    const again = await submitPublicEventSignup({ code, name: "Carla", phone: "11955550000", acceptTerms: true }, meta());
+    const again = await submitPublicEventSignup({ code, name: "Carla Dias", phone: "11955550000", acceptTerms: true }, meta());
     expect(again).toMatchObject({ status: "already" });
     expect(again.ticketCode).toBeUndefined();
   });
