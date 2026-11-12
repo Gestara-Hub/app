@@ -59,4 +59,5 @@ export const communicationSlices: Record<string, MethodSlice> = {
   listLogs: logs,
   listLogsPaginated: logs,
   getReminderSources: reminderSources,
+  getReminderSummary: reminderSources,
 };

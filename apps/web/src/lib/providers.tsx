@@ -76,9 +76,16 @@ export function createQueryClient(): QueryClient {
         // (cobrancas, alunos, 120 dias de presenca) atras de cada clique na
         // chamada (11/11/2026). Agora: no Painel rele na hora (a lista esta na
         // tela); fora dele, no maximo uma vez por minuto, e o sino rele ao abrir.
-        const reminders = client.getQueryState(queryKeys.communication.reminders);
+        // A lista e o resumo do sino (12/11/2026) contam juntos: vale a leitura mais recente.
+        const lastRead = Math.max(
+          0,
+          ...client
+            .getQueryCache()
+            .findAll({ queryKey: queryKeys.communication.reminders })
+            .map((query) => query.state.dataUpdatedAt),
+        );
         const onDashboard = typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard");
-        const fresh = reminders !== undefined && Date.now() - reminders.dataUpdatedAt < REMINDERS_REFRESH_MS;
+        const fresh = lastRead > 0 && Date.now() - lastRead < REMINDERS_REFRESH_MS;
         void client.invalidateQueries({
           queryKey: queryKeys.communication.reminders,
           refetchType: onDashboard || !fresh ? "active" : "none",

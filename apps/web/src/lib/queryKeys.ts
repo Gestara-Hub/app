@@ -230,6 +230,9 @@ export const queryKeys = {
     metrics: ["communication", "metrics"] as const,
     // Lembretes (doc product/25): mudam com mensagens, cobrancas e presencas.
     reminders: ["communication", "reminders"] as const,
+    // So o numero e as chaves de atencao do sino (dentro de `reminders`: invalida junto).
+    reminderSummary: (today: string, snoozes?: Record<string, string>) =>
+      ["communication", "reminders", "summary", today, snoozes ?? {}] as const,
   },
   reports: {
     all: ["reports"] as const,

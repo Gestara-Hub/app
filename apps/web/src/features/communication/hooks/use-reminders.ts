@@ -47,6 +47,22 @@ export function useReminders(today: string) {
   };
 }
 
+/**
+ * Sino fora do Painel (12/11/2026): so o numero e as chaves de atencao, montados
+ * no servidor. A lista inteira (~35 KB) vem so ao abrir o sino ou no Painel.
+ */
+export function useReminderSummary(today: string, enabled = true) {
+  const { preferences } = useUserPreferences();
+  const snoozes = cleaned(preferences.reminderSnoozes, today);
+  return useQuery({
+    queryKey: queryKeys.communication.reminderSummary(today, snoozes),
+    queryFn: () => communicationService.getReminderSummary({ today, snoozes }),
+    enabled,
+    // Trocar o adiamento muda a chave: segura o numero de antes ate chegar o novo.
+    placeholderData: (previous) => previous,
+  });
+}
+
 /** Tira os adiamentos que ja passaram (a preferencia nao cresce para sempre). */
 function cleaned(snoozes: Record<string, string> | undefined, today: string): Record<string, string> {
   return Object.fromEntries(Object.entries(snoozes ?? {}).filter(([, until]) => until === "never" || until > today));

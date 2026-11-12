@@ -1,5 +1,6 @@
 import type {
   ChargeView,
+  DateISO,
   Id,
   MessageTrigger,
   ReminderCourseEnding,
@@ -7,6 +8,7 @@ import type {
   ReminderEventTomorrow,
   ReminderOpenRollCall,
   ReminderSources,
+  ReminderSummary,
   ReminderVisitor,
 } from "@gestarahub/contracts";
 import { addDays, format, subDays } from "date-fns";
@@ -30,6 +32,7 @@ import { expiringDocuments } from "../personDocuments/personDocumentsService";
 import { tenantHasFeature } from "../subscription/subscriptionService";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
+import { attentionReminderKeys, buildReminders, pendingReminders } from "@/lib/messages/reminders";
 import { messageGuardian } from "@gestarahub/core/payer";
 
 /**
@@ -62,6 +65,21 @@ const PAID_WINDOW_DAYS = 7;
 const PROMOTION_WINDOW_DAYS = 14;
 
 export const remindersService = {
+  /**
+   * Sino fora do Painel (12/11/2026): monta os lembretes aqui e devolve so o
+   * numero e as chaves de atencao. `today` e `snoozes` vem da tela (dia do
+   * espaco e "Lembrar amanha" da pessoa), para dar o mesmo que a lista.
+   */
+  async getReminderSummary(input: { today: DateISO; snoozes?: Record<string, string> }): Promise<ReminderSummary> {
+    const sources = await remindersService.getReminderSources();
+    const groups = buildReminders(sources, { today: input.today, snoozes: input.snoozes });
+    return {
+      pending: pendingReminders(groups),
+      levelChanges: sources.levelChanges.length,
+      attentionKeys: attentionReminderKeys(groups),
+    };
+  },
+
   getReminderSources(): Promise<ReminderSources> {
     return readOp(async () => {
       const actor = getCurrentActor();

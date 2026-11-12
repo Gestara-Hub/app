@@ -23,6 +23,6 @@ export {
   type ChargeForMessage,
   type PackageForMessage,
 } from "./message-values";
-export { useReminders } from "./hooks/use-reminders";
+export { useReminders, useReminderSummary } from "./hooks/use-reminders";
 export { attentionReminderKeys, buildReminders, pendingReminders, type ReminderGroup, type ReminderItem, type ReminderLevel } from "./reminders";
 export { ReminderSequenceDialog } from "./components/reminder-sequence-dialog";

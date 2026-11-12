@@ -35,7 +35,7 @@ import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
 import { StudentGraduationDialog } from "@/features/clients";
-import { ReminderSequenceDialog, useReminders, useWhatsAppSend, type ReminderGroup, type ReminderItem } from "@/features/communication";
+import { ReminderSequenceDialog, useReminderSummary, useReminders, useWhatsAppSend, type ReminderGroup, type ReminderItem } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
 import { SellPackageDialog } from "@/features/turmas";
 import type { BellAlert } from "../bell-alerts";
@@ -504,12 +504,15 @@ export function DashboardTodo({
 }
 
 /**
- * Pendencias dos lembretes mais a troca de nivel pela idade (o numero do sino).
- * A troca de nivel vem contada dos lembretes (11/11/2026): antes o sino baixava
- * a lista inteira de alunos em toda tela so para contar.
+ * O numero do sino: pendencias dos lembretes mais a troca de nivel pela idade,
+ * e as chaves de atencao (o sino pulsa com as novas). Vem do resumo montado no
+ * servidor (12/11/2026): antes o sino baixava a lista inteira em toda tela.
  */
-export function useReminderCount(today: string): number {
+export function useReminderCount(today: string): { count: number; attentionKeys: string[] } {
   const can = useCan();
-  const reminders = useReminders(today);
-  return reminders.pending + (can("clients:view") ? reminders.levelChanges : 0);
+  const { data } = useReminderSummary(today);
+  return {
+    count: (data?.pending ?? 0) + (can("clients:view") ? (data?.levelChanges ?? 0) : 0),
+    attentionKeys: data?.attentionKeys ?? [],
+  };
 }

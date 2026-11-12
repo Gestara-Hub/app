@@ -156,6 +156,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       ),
       // Lembretes: o professor ve so os dos alunos dele (faltas seguidas e aniversarios).
       getReminderSources: ["communication:view", "clients:view_own"],
+      getReminderSummary: ["communication:view", "clients:view_own"],
       ...all(["connectOfficial", "disconnectOfficial", "updateConnectionSettings", "updateTemplate"], MANAGE_COMMUNICATION),
     },
     noRetry: ["sendMessage", "retryFailedMessage", "connectOfficial", "disconnectOfficial"],

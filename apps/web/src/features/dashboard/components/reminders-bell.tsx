@@ -9,13 +9,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useModel } from "@/features/auth";
-import { useWhatsAppConnection, useReminders } from "@/features/communication";
+import { useWhatsAppConnection } from "@/features/communication";
 import { useOrganization, useSubscription } from "@/features/settings";
 import { useExpiringDocuments } from "@/features/person-documents";
 import { useCharges, useDisputedOnlinePayments } from "@/features/turmas";
 import { useUserPreferences } from "@/features/preferences";
 import { seesPlanNotices } from "@/lib/plan-notice-copy";
-import { attentionReminderKeys } from "@/features/communication";
 import {
   disputeBellAlerts,
   documentBellAlerts,
@@ -74,15 +73,17 @@ export function useBellAlerts(today: string): BellAlert[] {
 function RemindersBellButton() {
   const today = dateInSpace();
   const alerts = useBellAlerts(today);
-  const reminders = useReminders(today);
-  const count = useReminderCount(today) + alerts.length;
+  // Fechado, o sino so precisa do numero e das chaves de atencao (resumo do
+  // servidor); a lista inteira carrega dentro da gaveta, ao abrir.
+  const summary = useReminderCount(today);
+  const count = summary.count + alerts.length;
   const [open, setOpen] = useState(false);
   const { preferences, updatePreferences } = useUserPreferences();
 
   // Chaves de atencao ou urgencia de agora; novas desde a ultima abertura fazem o sino pulsar.
   const attentionKeys = useMemo(
-    () => [...alerts.filter((a) => a.tone !== "info").map((a) => a.key), ...attentionReminderKeys(reminders.groups)],
-    [alerts, reminders.groups],
+    () => [...alerts.filter((a) => a.tone !== "info").map((a) => a.key), ...summary.attentionKeys],
+    [alerts, summary.attentionKeys],
   );
   const fresh = useMemo(() => newAttentionKeys(attentionKeys, preferences.bellSeenKeys), [attentionKeys, preferences.bellSeenKeys]);
   const [pulseId, setPulseId] = useState(0);

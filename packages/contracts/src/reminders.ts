@@ -135,6 +135,20 @@ export interface ReminderSources {
   levelChanges: ReminderLevelChange[];
 }
 
+/**
+ * Resumo do sino (12/11/2026): o servidor monta os lembretes e devolve so o
+ * numero e as chaves que fazem o sino pulsar. A lista inteira (~35 KB) vem so
+ * ao abrir o sino ou no Painel.
+ */
+export interface ReminderSummary {
+  /** Pendencias dos lembretes (sem os adiados). */
+  pending: number;
+  /** Alunos com troca de nivel pela idade. */
+  levelChanges: number;
+  /** Itens de atencao ou urgencia ainda pendentes (o sino pulsa com os novos). */
+  attentionKeys: string[];
+}
+
 export interface ReminderLevelChange {
   studentId: Id;
   modalityId: Id;
