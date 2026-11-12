@@ -39,6 +39,8 @@ export function useReminders(today: string) {
     groups,
     pending: pendingReminders(groups),
     canBilling: query.data?.canBilling ?? false,
+    /** Alunos com troca de nivel pela idade (so a contagem; a lista e do Painel). */
+    levelChanges: query.data?.levelChanges?.length ?? 0,
     isPending: query.isPending,
     snooze,
     ignore,

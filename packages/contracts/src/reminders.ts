@@ -128,4 +128,14 @@ export interface ReminderSources {
   eventsTomorrow: ReminderEventTomorrow[];
   visitors: ReminderVisitor[];
   coursesEnding: ReminderCourseEnding[];
+  /**
+   * Alunos que passaram da idade do nivel atual numa modalidade em que estao
+   * matriculados (11/11/2026). So os ids: o sino conta sem baixar os alunos.
+   */
+  levelChanges: ReminderLevelChange[];
+}
+
+export interface ReminderLevelChange {
+  studentId: Id;
+  modalityId: Id;
 }

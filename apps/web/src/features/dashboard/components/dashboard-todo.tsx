@@ -503,10 +503,13 @@ export function DashboardTodo({
   );
 }
 
-/** Pendencias dos lembretes mais a troca de nivel pela idade (o numero do sino). */
+/**
+ * Pendencias dos lembretes mais a troca de nivel pela idade (o numero do sino).
+ * A troca de nivel vem contada dos lembretes (11/11/2026): antes o sino baixava
+ * a lista inteira de alunos em toda tela so para contar.
+ */
 export function useReminderCount(today: string): number {
   const can = useCan();
   const reminders = useReminders(today);
-  const levelPending = useLevelChangePending(today, can("clients:view"));
-  return reminders.pending + levelPending.length;
+  return reminders.pending + (can("clients:view") ? reminders.levelChanges : 0);
 }

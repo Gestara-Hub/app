@@ -12,6 +12,7 @@ import type {
 import { addDays, format, subDays } from "date-fns";
 import { hasEnded } from "@gestarahub/core/billing";
 import { can } from "@/lib/permissions";
+import { ageAt, isAgedOutOfLevel, resolveModalityTrack } from "@/lib/progression-tracks";
 import { getCurrentActor } from "@/services/world/actor";
 import { readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -166,10 +167,41 @@ export const remindersService = {
         eventsTomorrow: eventsTomorrowOf(today, teacherId, visible),
         visitors: visitorsOf(today, visible),
         coursesEnding: coursesEndingOf(today, teacherId, visible),
+        levelChanges: levelChangesOf(today, active),
       };
     });
   },
 };
+
+/**
+ * Troca de nivel pela idade (mesma regra do Painel, `use-level-change-pending`):
+ * aluno ativo que passou da idade do nivel atual numa modalidade ativa, com
+ * trilha, em que esta matriculado. O sino so precisa da contagem.
+ */
+function levelChangesOf(today: string, active: Set<Id>): { studentId: Id; modalityId: Id }[] {
+  const categoryById = new Map(store.categories.filter((c) => c.status === "active").map((c) => [c.id, c]));
+  const modalityByGroup = new Map(store.classGroups.map((g) => [g.id, g.modalityId]));
+  const enrolled = new Set(
+    store.enrollments
+      .filter((e) => e.status === "active")
+      .map((e) => `${e.studentId}~${modalityByGroup.get(e.classGroupId)}`),
+  );
+  const out: { studentId: Id; modalityId: Id }[] = [];
+  for (const client of store.clients) {
+    if (!active.has(client.id)) continue;
+    const age = ageAt(client.birthDate, today);
+    if (age === null) continue;
+    for (const prog of Object.values(client.progressions ?? {})) {
+      const category = categoryById.get(prog.modalityId);
+      if (!category || !enrolled.has(`${client.id}~${prog.modalityId}`)) continue;
+      const track = resolveModalityTrack(category);
+      if (!track.enabled) continue;
+      const level = track.levels.find((l) => l.id === prog.levelId || l.name === prog.levelName);
+      if (level && isAgedOutOfLevel(level, age)) out.push({ studentId: client.id, modalityId: prog.modalityId });
+    }
+  }
+  return out;
+}
 
 /**
  * Chamadas de ontem em aberto (doc product/25, "Resolver no sistema"): aulas de

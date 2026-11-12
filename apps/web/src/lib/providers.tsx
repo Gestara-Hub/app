@@ -60,6 +60,9 @@ function handleGlobalMutationError(
  * escrita pode gerar evento), marca o resto como stale e aplica o fallback
  * global de erro.
  */
+/** Fora do Painel, os lembretes se releem no maximo uma vez neste intervalo apos gravacoes. */
+const REMINDERS_REFRESH_MS = 60_000;
+
 export function createQueryClient(): QueryClient {
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
@@ -68,9 +71,18 @@ export function createQueryClient(): QueryClient {
         highlightRecord(highlightIdOf(mutation.meta?.highlight as HighlightMeta | undefined, data, variables));
         void client.invalidateQueries({ queryKey: queryKeys.audit.all });
         // Lembretes (doc product/25): pagar, vender pacote, marcar presenca,
-        // mandar mensagem... quase toda escrita muda a lista. Leitura com recorte
-        // (barata); relida so se estiver na tela (painel, sino).
-        void client.invalidateQueries({ queryKey: queryKeys.communication.reminders });
+        // mandar mensagem... quase toda escrita muda a lista. O sino fica montado
+        // em toda tela, entao reler a cada gravacao enfileirava uma leitura pesada
+        // (cobrancas, alunos, 120 dias de presenca) atras de cada clique na
+        // chamada (11/11/2026). Agora: no Painel rele na hora (a lista esta na
+        // tela); fora dele, no maximo uma vez por minuto, e o sino rele ao abrir.
+        const reminders = client.getQueryState(queryKeys.communication.reminders);
+        const onDashboard = typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard");
+        const fresh = reminders !== undefined && Date.now() - reminders.dataUpdatedAt < REMINDERS_REFRESH_MS;
+        void client.invalidateQueries({
+          queryKey: queryKeys.communication.reminders,
+          refetchType: onDashboard || !fresh ? "active" : "none",
+        });
         // Marcos do "Descubra o dia a dia" e passos da configuracao inicial viram
         // "Feito" na hora (refaz so se montado). Com tudo feito, nao rele mais:
         // cada releitura carrega o espaco inteiro no servidor (doc 19, fase 1).

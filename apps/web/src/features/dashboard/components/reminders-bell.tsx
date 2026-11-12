@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useModel } from "@/features/auth";
 import { useWhatsAppConnection, useReminders } from "@/features/communication";
@@ -94,8 +96,11 @@ function RemindersBellButton() {
     setPulseId((n) => n + 1);
   }, [fresh, open]);
 
+  const queryClient = useQueryClient();
   function openBell() {
     setOpen(true);
+    // Gravacoes fora do Painel so marcam os lembretes como velhos: abrir o sino rele.
+    void queryClient.refetchQueries({ queryKey: queryKeys.communication.reminders, stale: true });
     // Visto: o que esta no sino agora deixa de ser novo.
     if (fresh.length > 0) updatePreferences({ bellSeenKeys: seenKeysAfterOpening(attentionKeys) });
   }

@@ -31,9 +31,14 @@ export function useOnboardingSteps() {
   const unitQuery = useUnit();
   const orgQuery = useOrganization();
   // Uma leitura com as contagens (antes: dez listas inteiras em toda pagina).
+  // Configuracao pronta: nao rele a cada tela (11/11/2026); antes relia em toda
+  // navegacao depois de 30 s, para sempre, so para manter a barra escondida.
+  const queryClient = useQueryClient();
+  const alreadyDone = queryClient.getQueryData(queryKeys.onboarding.setupDone) === true;
   const snapshotQuery = useQuery({
     queryKey: queryKeys.onboarding.snapshot,
     queryFn: () => onboardingService.getOnboardingSnapshot(),
+    staleTime: alreadyDone ? Infinity : undefined,
   });
   const snapshot = snapshotQuery.data;
 
@@ -80,7 +85,6 @@ export function useOnboardingSteps() {
 
   const summary = summarizeOnboardingSteps(steps);
   // Passos prontos: as gravacoes deixam de reler a contagem (ver `createQueryClient`).
-  const queryClient = useQueryClient();
   const setupDone = isReady && summary.isComplete;
   useEffect(() => {
     queryClient.setQueryData(queryKeys.onboarding.setupDone, setupDone);

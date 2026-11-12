@@ -29,6 +29,7 @@ function sources(over: Partial<ReminderSources> = {}): ReminderSources {
     eventsTomorrow: [],
     visitors: [],
     coursesEnding: [],
+    levelChanges: [],
     students: [
       { id: "c-ana", name: "Ana", phone: "11977770000", birthDate: "2000-09-22", createdAt: "2026-01-05T12:00:00.000Z" },
       { id: "c-bia", name: "Bia", phone: "11988880000", birthDate: "2001-09-19", createdAt: "2026-01-05T12:00:00.000Z" },
