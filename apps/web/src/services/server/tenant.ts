@@ -1,5 +1,6 @@
 import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
 import { requestRoute } from "./requestRoute";
+import { isAuthApiError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
 import { resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { can } from "@/lib/permissions";
@@ -37,11 +38,27 @@ function unauthorized() {
   return apiError("FORBIDDEN", "Sua sessão expirou. Entre de novo.", { httpStatus: 401 });
 }
 
+function authUnavailable() {
+  return apiError("NETWORK", "O sistema está com muita gente agora. Tente de novo em instantes.", { httpStatus: 503 });
+}
+
+/** Rede, 5xx ou limite de pedidos do Auth: tentar de novo resolve; sessao invalida nao. */
+export function isTransientAuthError(error: unknown): boolean {
+  if (isAuthRetryableFetchError(error)) return true;
+  if (isAuthApiError(error)) return error.status === 429 || error.status >= 500;
+  return false;
+}
+
 export async function requireTenant(): Promise<TenantContext> {
   const client = await createSupabaseServerClient();
   const {
     data: { user },
+    error: authError,
   } = await client.auth.getUser();
+  // Falha passageira do servico de login (rede, sobrecarga, limite): nao e
+  // sessao vencida. Antes virava "Sua sessão expirou" e mandava para o login
+  // (pico de 100 chamadas simultaneas, 11/11/2026); agora pede para tentar de novo.
+  if (!user && authError && isTransientAuthError(authError)) throw authUnavailable();
   if (!user || isPlatformAdminUser(user)) throw unauthorized();
   if ((await secondFactorState(client, user)) === "missing") throw missingSecondFactor();
 
