@@ -2,6 +2,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { EnvStrip } from "@/components/layout/env-strip";
+import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { visibleNav } from "@/components/layout/nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ADMIN_ROLE_LABEL, can } from "@/lib/permissions";
@@ -19,6 +20,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const groups = visibleNav((permission) => can(admin.role, permission), { "/support": attention, "/privacy": privacy });
   return (
     <SidebarProvider>
+      <NavigationTracker />
       <AppSidebar groups={groups} />
       <SidebarInset>
         <EnvStrip env={getEnv().ADMIN_ENV_LABEL} />

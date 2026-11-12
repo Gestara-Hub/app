@@ -32,7 +32,7 @@ export default async function MacrosPage({ searchParams }: { searchParams: Promi
   };
   return (
     <>
-      <BackLink href="/support" label="Voltar ao Suporte" />
+      <BackLink href="/support" />
       <PageHeader title="Respostas prontas" description="Textos que você insere na resposta ao cliente com um clique.">
         <FormDrawer title="Nova resposta pronta" description="Fica disponível na caixa de resposta de cada conversa." trigger={<Button>+ Nova resposta pronta</Button>}>
           <MacroForm />

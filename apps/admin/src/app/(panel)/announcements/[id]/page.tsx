@@ -16,7 +16,7 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
   if (!row) notFound();
   return (
     <>
-      <BackLink href="/announcements" label="Voltar aos Comunicados" />
+      <BackLink href="/announcements" />
       <PageHeader title="Editar comunicado" description={`${row.dismissed} ${row.dismissed === 1 ? "pessoa dispensou" : "pessoas dispensaram"}.`} />
       <AnnouncementForm
         values={{

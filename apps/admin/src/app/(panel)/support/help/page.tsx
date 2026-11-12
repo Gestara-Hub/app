@@ -40,7 +40,7 @@ export default async function HelpUsagePage({ searchParams }: { searchParams: Pr
   const notHelpful = feedback.reduce((sum, row) => sum + row.notHelpful, 0);
   return (
     <>
-      <BackLink href="/support" label="Voltar ao Suporte" />
+      <BackLink href="/support" />
       <PageHeader title="Uso da ajuda" description={`Últimos ${days} dias. Mostra o que falta escrever e o que precisa melhorar nos artigos.`} />
 
       <StatGrid>

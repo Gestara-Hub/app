@@ -56,7 +56,7 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
   });
   return (
     <>
-      <BackLink href={`/spaces/${data.organizationId}?tab=suporte`} label="Voltar ao espaço" />
+      <BackLink href={`/spaces/${data.organizationId}?tab=suporte`} />
       <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
         <span className="flex min-w-0 items-center gap-2">
           <Eye className="size-4 shrink-0 text-warning" aria-hidden />
@@ -202,7 +202,7 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
 function Ended({ message }: { message?: string }) {
   return (
     <>
-      <BackLink href="/spaces" label="Voltar aos espaços" />
+      <BackLink href="/spaces" />
       <Card>
         <EmptyState icon={EyeOff} title={message ?? "Esta visão de suporte não existe ou terminou."} description="Abra uma nova pela aba Suporte e notas do espaço." />
       </Card>

@@ -59,7 +59,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <BackLink href="/support" label="Voltar ao Suporte" />
+      <BackLink href="/support" />
       <PageHeader title={thread.subject} description={`${thread.organizationName} · ${thread.userName}`}>
         <ProtocolTag number={thread.number} />
         <KindBadge kind={thread.kind} />

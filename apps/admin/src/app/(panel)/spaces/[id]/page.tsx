@@ -77,7 +77,7 @@ export default async function SpacePage({ params, searchParams }: { params: Prom
 
   return (
     <>
-      <BackLink href="/spaces" label="Voltar aos espaços" />
+      <BackLink href="/spaces" />
       <PageHeader title={space.name} description={`${space.customAreaName || AREA_LABEL[space.area ?? ""] || "Sem área"} · ${MODEL_LABEL[space.model] ?? space.model}`}>
         <PlanBadge subscription={space.subscription} today={today} />
         {space.status === "inactive" ? <Badge variant="destructive">Inativo</Badge> : null}

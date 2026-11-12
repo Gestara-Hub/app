@@ -10,7 +10,7 @@ export default async function NewAnnouncementPage() {
   await requireAdmin("announcements:manage");
   return (
     <>
-      <BackLink href="/announcements" label="Voltar aos Comunicados" />
+      <BackLink href="/announcements" />
       <PageHeader title="Novo comunicado" description="Confira quantos espaços recebem antes de publicar." />
       <AnnouncementForm values={{ title: "", body: "", severity: "info", audience: "all", tiers: [], areas: [], spaces: "", startsAt: "", endsAt: "" }} />
     </>
