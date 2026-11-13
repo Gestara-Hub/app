@@ -25,6 +25,16 @@ export function activeDays<T extends EventDayLike>(days: readonly T[]): T[] {
   return days.filter((d) => d.status !== "canceled").sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
 }
 
+/** Posicao do dia entre os dias valendo do evento ("dia 3 de 3"); dia cancelado ou de fora: null. */
+export function dayPosition<T extends EventDayLike & { id: string }>(
+  days: readonly T[],
+  dayId: string,
+): { position: number; total: number } | null {
+  const active = activeDays(days);
+  const index = active.findIndex((d) => d.id === dayId);
+  return index < 0 ? null : { position: index + 1, total: active.length };
+}
+
 /** Antes do primeiro dia, entre o primeiro e o ultimo, ou depois do ultimo. Sem dias: `upcoming`. */
 export function eventStage(days: readonly EventDayLike[], today: DateISO): EventStage {
   const active = activeDays(days);

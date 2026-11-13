@@ -388,6 +388,8 @@ export interface TicketCheckResult {
   checkedInBy?: string;
   /** "Ingresso de outro evento": o nome dele. */
   otherEventName?: string;
+  /** O dia que esta leitura confere (12/11/2026): "Quinta, 12/11 (dia 3 de 3)". */
+  day?: { date: DateISO; position: number; total: number };
 }
 
 /** Ingresso aberto pelo QR, sem login: dados mascarados (regra das paginas publicas). */
@@ -397,7 +399,21 @@ export interface PublicTicketView {
   eventName: string;
   /** Nome mascarado ("Ana S. L."). */
   holderName: string;
-  days: { date: DateISO; start: TimeISO; end: TimeISO }[];
+  /**
+   * Todos os dias do evento (12/11/2026): os da inscricao e os de fora
+   * (`included: false`), com a presenca de cada um. Um QR so vale para todos.
+   */
+  days: {
+    date: DateISO;
+    start: TimeISO;
+    end: TimeISO;
+    included: boolean;
+    /** Presente neste dia (pela leitura do ingresso ou pela chamada). */
+    attended?: boolean;
+    /** Hora da entrada pela leitura ("09:02", no fuso do espaco). */
+    enteredAt?: TimeISO;
+    isToday?: boolean;
+  }[];
   address?: string;
   instructors: string[];
   state: "confirmed" | "payment_pending" | "reserved" | "canceled" | "waitlist";
@@ -426,6 +442,9 @@ export interface CheckInList {
   sessionId: Id;
   eventName: string;
   date: DateISO;
+  /** Posicao do dia no evento (dia 3 de 3), para a leitura sem internet dizer o dia. */
+  dayPosition?: number;
+  dayTotal?: number;
   generatedAt: DateTimeISO;
   entries: CheckInListEntry[];
 }

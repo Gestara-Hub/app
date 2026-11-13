@@ -2,11 +2,19 @@
 
 import { CheckCircle2, CircleAlert, Clock, XCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { TicketCheckResult } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { cn } from "@/lib/utils";
 
 type Tone = "ok" | "warn" | "bad";
+
+/** "Quinta, 12/11 (dia 3 de 3)": so em evento de mais de um dia (12/11/2026). */
+export function ticketDayLabel(day: TicketCheckResult["day"]): string | null {
+  if (!day || day.total < 2) return null;
+  const weekday = format(parseISO(day.date), "EEEE, dd/MM", { locale: ptBR }).replace("-feira", "");
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} (dia ${day.position} de ${day.total})`;
+}
 
 /** Titulo, texto e cor de cada resposta da leitura (doc product/29 T5). */
 export function ticketCheckCopy(result: TicketCheckResult): { tone: Tone; title: string; text?: string } {
@@ -52,6 +60,7 @@ const TONE = {
 /** O resultado grande da leitura, para ler de longe na porta. */
 export function TicketCheckResultView({ result, className }: { result: TicketCheckResult; className?: string }) {
   const copy = ticketCheckCopy(result);
+  const dayLabel = ticketDayLabel(result.day);
   const tone = TONE[copy.tone];
   const Icon = result.outcome === "already" ? Clock : tone.Icon;
   return (
@@ -60,6 +69,7 @@ export function TicketCheckResultView({ result, className }: { result: TicketChe
       <div className="min-w-0">
         <p className="text-lg font-semibold text-foreground">{copy.title}</p>
         {copy.text ? <p className="min-w-0 break-words text-sm text-foreground/80">{copy.text}</p> : null}
+        {dayLabel ? <p className="text-xs font-medium text-foreground/70">{dayLabel}</p> : null}
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   const { ticket } = data;
   const url = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}/p/i/${ticket.code}`;
   const qr = await QRCode.toDataURL(url, { width: 520, margin: 1, errorCorrectionLevel: "M" });
-  const days = ticket.days.map((d) => {
+  const days = ticket.days.filter((d) => d.included).map((d) => {
     const day = format(parseISO(d.date), "EEE, dd/MM", { locale: ptBR });
     return `${day.charAt(0).toUpperCase()}${day.slice(1)} · ${d.start} às ${d.end}`;
   });

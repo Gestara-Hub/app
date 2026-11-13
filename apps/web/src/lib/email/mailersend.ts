@@ -1321,6 +1321,13 @@ export function eventTicketStatusLine({ status, pendingCents, holdMinutes }: Sen
     : "Sua vaga está garantida. Mostre o ingresso na entrada.";
 }
 
+/** Como usar o link: um QR so, mostrado em cada dia quando o evento tem mais de um. */
+export function eventTicketUsageLine({ days }: SendEventTicketEmailInput): string {
+  return days.length > 1
+    ? "Guarde este link. Use o mesmo ingresso em todos os dias: mostre o QR code na entrada de cada dia."
+    : "Guarde este link. Na entrada, mostre o QR code que aparece nele.";
+}
+
 export function buildEventTicketEmailSubject({ eventName }: SendEventTicketEmailInput): string {
   return `Seu ingresso: ${eventName}`;
 }
@@ -1335,7 +1342,7 @@ export function buildEventTicketEmailText(input: SendEventTicketEmailInput): str
     eventTicketStatusLine(input),
     "",
     `Seu ingresso: ${input.ticketUrl}`,
-    "Guarde este link. Na entrada, mostre o QR code que aparece nele.",
+    eventTicketUsageLine(input),
     "",
     `Você recebeu este e-mail porque se inscreveu em ${input.eventName} pelo link de ${input.organizationName}. Se não foi você, ignore esta mensagem.`,
   ].join("\n");
@@ -1352,7 +1359,7 @@ export function buildEventTicketEmailHtml(input: SendEventTicketEmailInput & { h
     body: `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#475569;">${days}</p>
               <p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">${escapeHtml(eventTicketStatusLine(input))}</p>
               ${emailButton(safeUrl, "Ver meu ingresso")}
-              ${emailNotice("Guarde este link. Na entrada, mostre o QR code que aparece nele.")}
+              ${emailNotice(escapeHtml(eventTicketUsageLine(input)))}
               ${emailFallbackLink(safeUrl)}`,
     footer: `Você recebeu este e-mail porque se inscreveu em ${escapeHtml(input.eventName)} pelo link de ${escapeHtml(input.organizationName)}. Se não foi você, ignore esta mensagem.<br />
               <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,

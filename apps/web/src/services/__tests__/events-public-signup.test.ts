@@ -181,6 +181,42 @@ describe("entrada pelo ingresso", () => {
     expect(store.eventAttendances?.some((a) => a.registrationId === registration.id)).toBe(false);
   });
 
+  it("um QR para todos os dias: cada leitura marca o seu dia e diz qual é (dia 2 de 3)", async () => {
+    const { ticketDayLabel } = await import("@/features/events/components/ticket-check-result");
+    const { checkOffline, hashTicketCode } = await import("@/features/events/offline-check-in");
+    const event = await todayEvent({
+      sessions: [
+        { date: "2026-09-21", start: "19:00", end: "21:00" },
+        { date: "2026-09-22", start: "09:00", end: "12:00" },
+        { date: "2026-09-22", start: "19:00", end: "21:00" },
+      ],
+    });
+    const ana = await createStudent("Ana");
+    const registration = registerInWorld({ eventId: event.id, studentId: ana.id });
+    const [yesterday, morning, evening] = event.sessions.map((s) => s.id);
+
+    const first = await eventsService.checkInTicket({ sessionId: morning, code: registration.ticketCode! });
+    expect(first).toMatchObject({ outcome: "ok", entered: true, day: { date: "2026-09-22", position: 2, total: 3 } });
+    // O mesmo QR no outro dia (turno) marca o outro dia; no mesmo, "ja entrou".
+    expect(await eventsService.checkInTicket({ sessionId: evening, code: registration.ticketCode! })).toMatchObject({
+      outcome: "ok",
+      entered: true,
+      day: { position: 3, total: 3 },
+    });
+    expect((await eventsService.checkInTicket({ sessionId: evening, code: registration.ticketCode! })).outcome).toBe("already");
+    expect((await eventsService.checkInTicket({ sessionId: yesterday, code: registration.ticketCode! })).outcome).toBe("not_today");
+    expect(store.eventAttendances?.filter((a) => a.registrationId === registration.id && a.status === "present")).toHaveLength(2);
+
+    // Sem internet: a lista do dia diz a posicao e a conferencia devolve o mesmo dia.
+    const list = await eventsService.getCheckInList(evening);
+    expect(list).toMatchObject({ dayPosition: 3, dayTotal: 3 });
+    const hash = await hashTicketCode(registration.ticketCode!);
+    expect(checkOffline(list, hash).result.day).toEqual({ date: "2026-09-22", position: 3, total: 3 });
+
+    expect(ticketDayLabel({ date: "2026-09-22", position: 2, total: 3 })).toBe("Terça, 22/09 (dia 2 de 3)");
+    expect(ticketDayLabel({ date: "2026-09-22", position: 1, total: 1 })).toBeNull();
+  });
+
   it("pagamento pendente para e espera; confirmando, entra com o aviso", async () => {
     const event = await todayEvent({ billingMode: "fixed", priceCents: 5000, maxInstallments: 1 });
     const ana = await createStudent("Ana");

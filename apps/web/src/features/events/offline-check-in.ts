@@ -104,7 +104,8 @@ export function checkOffline(
 ): { result: TicketCheckResult; entry?: CheckInListEntry } {
   const entry = list.entries.find((e) => e.codeHash === hash);
   if (!entry) return { result: { outcome: "not_found", entered: false } };
-  const base = { registrationId: entry.registrationId, studentName: entry.studentName };
+  const day = list.dayPosition && list.dayTotal ? { day: { date: list.date, position: list.dayPosition, total: list.dayTotal } } : {};
+  const base = { registrationId: entry.registrationId, studentName: entry.studentName, ...day };
   if (entry.status === "reserved") return { result: { ...base, outcome: "reserved", entered: false, pendingCents: entry.pendingCents }, entry };
   if (entry.checkedInAt) return { result: { ...base, outcome: "already", entered: false, checkedInAt: entry.checkedInAt }, entry };
   if (entry.pendingCents > 0 && !options.confirm) {

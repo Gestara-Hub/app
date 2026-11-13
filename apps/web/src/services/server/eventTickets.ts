@@ -2,7 +2,7 @@ import type { Id, PublicTicketView } from "@gestarahub/contracts";
 import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { maskPersonName } from "@gestarahub/core/privacy";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, timeInSpace } from "@gestarahub/core/date";
 import { forgetCachedWorld, runInWorld } from "@/services/world/runWorld";
 import { store } from "@/services/world/store";
 import { normalizeTicketCode } from "@/services/events/eventCheckInService";
@@ -55,9 +55,12 @@ export async function loadTicketPage(code: string): Promise<TicketPageData | nul
     if (!registration) return null;
     const event = findEvent(registration.eventId);
     const student = store.clients.find((c) => c.id === registration.studentId);
-    const days = (store.eventSessions ?? [])
-      .filter((s) => s.eventId === event.id && s.status !== "canceled" && registrationCoversDay(registration, s.id))
+    // Todos os dias do evento: os de fora da inscricao aparecem como "Nao incluso".
+    const allDays = (store.eventSessions ?? [])
+      .filter((s) => s.eventId === event.id && s.status !== "canceled")
       .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
+    const days = allDays.filter((s) => registrationCoversDay(registration, s.id));
+    const marks = (store.eventAttendances ?? []).filter((a) => a.registrationId === registration.id && a.status === "present");
     // Em aberto: a soma e a primeira a vencer (a que o "Pagar agora" abre).
     const openCharges = store.charges
       .filter((c) => c.eventRegistrationId === registration.id && (c.status === "pending" || c.status === "overdue") && c.amountCents > 0)
@@ -87,7 +90,18 @@ export async function loadTicketPage(code: string): Promise<TicketPageData | nul
         organizationName: store.organization.name,
         eventName: event.name,
         holderName: maskPersonName(student?.name ?? ""),
-        days: days.map((s) => ({ date: s.date, start: s.start, end: s.end })),
+        days: allDays.map((s) => {
+          const mark = marks.find((a) => a.sessionId === s.id);
+          return {
+            date: s.date,
+            start: s.start,
+            end: s.end,
+            included: registrationCoversDay(registration, s.id),
+            ...(mark ? { attended: true } : {}),
+            ...(mark?.checkedInAt ? { enteredAt: timeInSpace(mark.checkedInAt, ctx.timeZone) } : {}),
+            ...(s.date === today ? { isToday: true } : {}),
+          };
+        }),
         ...(addressLine(unit?.address) ? { address: addressLine(unit?.address) } : {}),
         instructors: instructors.filter(Boolean),
         state,

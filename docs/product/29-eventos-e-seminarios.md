@@ -364,3 +364,16 @@ Construído no mesmo dia da aprovação, nas cinco fases da proposta. Recurso do
 - "Já inscrito" passou a dizer que o link está no e-mail da inscrição.
 
 **Testes:** `lib/email/__tests__/event-ticket-email.test.ts` (texto, o que falta, HTML escapado), `services/__tests__/events-public-signup.test.ts` (código na reserva, o mesmo ao pagar), `publicSignup.db.test.ts` (e-mail enviado, reserva com valor, prazo e "Pagar agora") e `e2e/eventos-inscricao-link.spec.ts` (endereço do ingresso, atualizar, aparelho lembra, equipe abrindo o link).
+
+## Um QR para todos os dias (12/11/2026, decidido com o dono)
+
+**Pergunta:** evento de mais de um dia deveria ter um QR por dia, já que cada dia marca a presença?
+
+**Decisão: um QR por inscrição, valendo em cada dia.** A leitura sempre acontece dentro de um dia do evento ("Ler ingressos" no dia) e marca a presença daquele dia: o mesmo QR lido no dia 1 marca o dia 1, no dia 2 marca o dia 2; de novo no mesmo dia, "Já entrou hoje"; num dia que a pessoa não comprou, "Este dia não está na inscrição". Um QR por dia não protege mais (quem quisesse passar o ingresso a outra pessoa passaria o QR daquele dia do mesmo jeito; o que protege é a equipe conferir o nome na leitura) e confunde: três imagens para salvar, qual mostrar, três links no e-mail. Só faria sentido se cada dia pudesse ir para uma pessoa diferente, e a inscrição é de uma pessoa.
+
+**O que deixa isso claro:**
+- **No ingresso**, todos os dias do evento com a situação de cada um: "Entrou às 09:02" (leitura do ingresso), "Presente" (marcado na chamada), "Hoje" ou "Não incluso" (dia fora da inscrição, em cinza). Embaixo do QR: "Vale para os 3 dias. Mostre na entrada de cada dia." (`PublicTicketView.days` com `included`, `attended`, `enteredAt` no fuso do espaço e `isToday`; a imagem para salvar mostra só os dias da inscrição).
+- **Na leitura**, o dia que está sendo marcado, numa linha embaixo do nome: "Terça, 22/09 (dia 2 de 3)", só em evento de mais de um dia (`TicketCheckResult.day`, `dayPosition` em `@gestarahub/core/events`, `ticketDayLabel`). Sem internet, a lista do dia leva a posição (`CheckInList.dayPosition`/`dayTotal`) e a conferência no aparelho mostra o mesmo.
+- **No e-mail**, em evento de mais de um dia: "Use o mesmo ingresso em todos os dias: mostre o QR code na entrada de cada dia."
+
+**Testes:** `packages/core/test/events.test.ts` (`dayPosition`), `services/__tests__/events-public-signup.test.ts` (o mesmo QR marca cada turno, "já entrou" no mesmo, "não é hoje" no outro, lista sem internet com a posição, o rótulo do dia), `publicSignup.db.test.ts` (dias no ingresso) e `event-ticket-email.test.ts` (frase do e-mail).

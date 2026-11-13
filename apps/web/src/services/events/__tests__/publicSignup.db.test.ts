@@ -202,6 +202,8 @@ describe("página e inscrição pelo link", () => {
     );
     const page = await loadTicketPage(result.ticketCode!.toLowerCase());
     expect(page?.ticket).toMatchObject({ eventName: "Seminário aberto", holderName: "Fernanda A. C.", state: "confirmed" });
+    // Cada dia do evento com a situacao: aqui um dia, da inscricao, sem presenca ainda.
+    expect(page?.ticket.days).toEqual([{ date: "2099-10-10", start: "09:00", end: "12:00", included: true }]);
     const text = JSON.stringify(page);
     expect(text).not.toContain("Alves");
     expect(text).not.toContain("88887777");

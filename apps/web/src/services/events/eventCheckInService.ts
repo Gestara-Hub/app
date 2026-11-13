@@ -11,9 +11,11 @@ import {
   findSession,
   registrationCoversDay,
   registrationsOf,
+  sessionsOf,
   studentName,
   todayISO,
 } from "./eventShared";
+import { dayPosition } from "@gestarahub/core/events";
 
 /**
  * Entrada pelo ingresso (doc product/29 T4 a T6): a leitura do QR confere a
@@ -53,22 +55,25 @@ export function checkTicketInWorld(input: { sessionId: Id; code: string; confirm
     const other = eventsStore().find((e) => e.id === registration.eventId);
     return { ...base, outcome: "other_event", entered: false, ...(other ? { otherEventName: other.name } : {}) };
   }
-  if (registration.status === "canceled") return { ...base, outcome: "canceled", entered: false };
-  if (registration.status === "waitlist") return { ...base, outcome: "waitlist", entered: false };
+  // O dia desta leitura (dia 3 de 3): a equipe ve que dia esta marcando.
+  const position = dayPosition(sessionsOf(event.id), session.id);
+  const here = { ...base, ...(position ? { day: { date: session.date, ...position } } : {}) };
+  if (registration.status === "canceled") return { ...here, outcome: "canceled", entered: false };
+  if (registration.status === "waitlist") return { ...here, outcome: "waitlist", entered: false };
   const open = openChargesOf(registration.id);
   const pendingCents = open.reduce((sum, c) => sum + c.amountCents, 0);
   const pending = pendingCents > 0 ? { pendingCents, pendingChargeId: open[0].id } : {};
-  if (registration.status === "reserved") return { ...base, ...pending, outcome: "reserved", entered: false };
-  if (!registrationCoversDay(registration, session.id)) return { ...base, outcome: "not_this_day", entered: false };
-  if (session.date !== todayISO()) return { ...base, outcome: "not_today", entered: false };
+  if (registration.status === "reserved") return { ...here, ...pending, outcome: "reserved", entered: false };
+  if (!registrationCoversDay(registration, session.id)) return { ...here, outcome: "not_this_day", entered: false };
+  if (session.date !== todayISO()) return { ...here, outcome: "not_today", entered: false };
 
   const marks = eventAttendancesStore();
   const existing = marks.find((a) => a.sessionId === session.id && a.registrationId === registration.id);
   if (existing?.status === "present" && existing.checkedInAt) {
-    return { ...base, outcome: "already", entered: false, checkedInAt: existing.checkedInAt, ...(existing.checkedInBy ? { checkedInBy: existing.checkedInBy } : {}) };
+    return { ...here, outcome: "already", entered: false, checkedInAt: existing.checkedInAt, ...(existing.checkedInBy ? { checkedInBy: existing.checkedInBy } : {}) };
   }
-  if (pendingCents > 0 && !input.confirm) return { ...base, ...pending, outcome: "payment_pending", entered: false };
-  if (input.preview) return { ...base, ...pending, outcome: pendingCents > 0 ? "payment_pending" : "ok", entered: false };
+  if (pendingCents > 0 && !input.confirm) return { ...here, ...pending, outcome: "payment_pending", entered: false };
+  if (input.preview) return { ...here, ...pending, outcome: pendingCents > 0 ? "payment_pending" : "ok", entered: false };
 
   const at = nowIso();
   const by = getCurrentActor()?.name;
@@ -91,7 +96,7 @@ export function checkTicketInWorld(input: { sessionId: Id; code: string; confirm
     };
     marks.push(mark);
   }
-  return { ...base, ...pending, outcome: pendingCents > 0 ? "payment_pending" : "ok", entered: true, checkedInAt: at };
+  return { ...here, ...pending, outcome: pendingCents > 0 ? "payment_pending" : "ok", entered: true, checkedInAt: at };
 }
 
 /** SHA-256 em hex (Web Crypto: servidor e navegador fazem a mesma conta). */
@@ -133,7 +138,15 @@ export const eventCheckInService = {
           };
         }),
       );
-      return { sessionId, eventName: event.name, date: session.date, generatedAt: nowIso(), entries };
+      const position = dayPosition(sessionsOf(event.id), sessionId);
+      return {
+        sessionId,
+        eventName: event.name,
+        date: session.date,
+        ...(position ? { dayPosition: position.position, dayTotal: position.total } : {}),
+        generatedAt: nowIso(),
+        entries,
+      };
     });
   },
 

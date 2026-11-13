@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  dayPosition,
   daysOverlap,
   earlyBirdActive,
   eventStage,
@@ -54,5 +55,22 @@ describe("eventos: preco sugerido", () => {
     assert.equal(suggestedRegistrationPrice(perDay, "days", 2, "2026-10-20"), 16000);
     assert.equal(suggestedRegistrationPrice(perDay, "full", 3, "2026-10-20"), 24000);
     assert.equal(suggestedRegistrationPrice({ billingMode: "free" }, "full", 3, "2026-10-20"), 0);
+  });
+});
+
+describe("dayPosition (dia 3 de 3, 12/11/2026)", () => {
+  const evDays = [
+    { id: "d3", date: "2026-11-12", start: "09:00", end: "12:00" },
+    { id: "d1", date: "2026-11-10", start: "09:00", end: "12:00" },
+    { id: "dx", date: "2026-11-11", start: "09:00", end: "12:00", status: "canceled" as const },
+    { id: "d2", date: "2026-11-11", start: "14:00", end: "17:00" },
+  ];
+  it("conta só os dias valendo, em ordem de data e hora", () => {
+    assert.deepEqual(dayPosition(evDays, "d1"), { position: 1, total: 3 });
+    assert.deepEqual(dayPosition(evDays, "d3"), { position: 3, total: 3 });
+  });
+  it("dia cancelado ou que não existe: null", () => {
+    assert.equal(dayPosition(evDays, "dx"), null);
+    assert.equal(dayPosition(evDays, "nada"), null);
   });
 });
