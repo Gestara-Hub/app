@@ -51,7 +51,6 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 
 | O que | Cobre | Como (tempo) |
 | --- | --- | --- |
-| e2e da aba Financeiro do evento (12/11/2026, refeita com os conceitos de Cobranças e do Financeiro) | cartões filtrando a lista, abas A receber/Em atraso/Pagas/Todas, ações da cobrança e "Abrir no Financeiro" nos lançamentos | novo teste em `e2e/eventos.spec.ts` (~1 min) |
 | À mão: Novidades no menu do avatar (ponto no avatar e no item quando há versão não vista; some ao abrir; conta nova sem ponto; versão no rodapé da gaveta; versão no pé da sidebar abre as Novidades e some com a barra recolhida), no celular e no computador; alerta de erro novo por e-mail (com `ERROR_DIGEST_EMAIL` e um erro inédito) | Versão, novidades e monitoramento de 10/11/2026 (doc technical/27) | Trocar `lastSeenRelease` nas preferências para uma versão antiga e entrar (5 min) |
 | À mão no Asaas sandbox: Pix logo depois de ativar uma subconta nova | #56: a mensagem "A conta ainda está liberando o Pix" e a cobrança cancelada no Asaas | Conta nova → Recebimentos online → Ativar → logo em seguida Cobranças → Cobrar online → Gerar Pix (5 min) |
 | À mão no Asaas sandbox: avisos de verdade pelo túnel | Webhook da conta principal com renovação, diferença do upgrade e assinatura removida (a rotina diária e o aviso já estão no e2e `plano-rotina-e-webhook`, com dados do banco) | Doc `guides/16` (túnel) e doc 13 §6 |

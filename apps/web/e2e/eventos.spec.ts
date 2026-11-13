@@ -1,5 +1,16 @@
 import type { Page } from "@playwright/test";
-import { editAcademy, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import {
+  editAcademy,
+  expect,
+  expectActiveTab,
+  expectOverdueRow,
+  readAcademy,
+  seedAcademy,
+  statCard,
+  statusTab,
+  student,
+  test,
+} from "./fixtures";
 
 /**
  * Eventos e seminarios (doc product/29). Relogio fixo em 22/09/2026: os dias
@@ -179,4 +190,115 @@ test("Eventos: por dia, o valor acompanha os dias marcados e zero pede confirma�
   const free = (world.eventRegistrations ?? []).find((r: { studentId: string }) => r.studentId === "c-0005");
   expect(free).toMatchObject({ amountCents: 0, status: "confirmed" });
   expect((world.charges ?? []).filter((c: { studentId: string; kind: string }) => c.kind === "event" && c.studentId === "c-0005")).toHaveLength(0);
+});
+
+test("Eventos: aba Financeiro com os cartões e a lista de Cobranças, o pagamento e os lançamentos do evento", async ({ page }) => {
+  const reg = (id: string, studentId: string) => ({
+    id,
+    eventId: "ev-fin",
+    studentId,
+    scope: "full",
+    status: "confirmed",
+    amountCents: 20000,
+    installments: 1,
+    registeredAt: TS,
+  });
+  const evCharge = (id: string, studentId: string, registrationId: string, over: Record<string, unknown> = {}) => ({
+    id,
+    organizationId: ORG,
+    unitId: UNIT,
+    studentId,
+    kind: "event",
+    eventId: "ev-fin",
+    eventRegistrationId: registrationId,
+    description: "Seminário de Caixa",
+    competence: "2026-09",
+    dueDate: "2026-09-30",
+    amountCents: 20000,
+    status: "pending",
+    createdAt: TS,
+    updatedAt: TS,
+    ...over,
+  });
+  await seedAcademy(page, {
+    extra: (t) => {
+      t.clients = [visitor("c-0011", "Ana Paga"), visitor("c-0012", "Bruno Atrasado"), visitor("c-0013", "Carla Pendente")];
+      t.events = [event("ev-fin", "Seminário de Caixa")];
+      t.eventSessions = [day("evs-fin", "ev-fin", "2026-10-03")];
+      t.eventRegistrations = [reg("reg-ana", "c-0011"), reg("reg-bruno", "c-0012"), reg("reg-carla", "c-0013")];
+      t.charges = [
+        evCharge("ch-ana", "c-0011", "reg-ana", { status: "paid", paidAt: "2026-09-10T12:00:00.000Z", method: "pix" }),
+        // Venceu em 15/09 (o relogio do teste e 22/09): em atraso.
+        evCharge("ch-bruno", "c-0012", "reg-bruno", { dueDate: "2026-09-15" }),
+        evCharge("ch-carla", "c-0013", "reg-carla"),
+      ];
+      t.financialEntries = [
+        {
+          id: "fe-cache",
+          organizationId: ORG,
+          unitId: UNIT,
+          type: "expense",
+          categoryId: `fcat-${ORG}-utilities`,
+          description: "Cachê do convidado",
+          amountCents: 50000,
+          dueDate: "2026-09-30",
+          status: "pending",
+          eventId: "ev-fin",
+          createdAt: TS,
+          updatedAt: TS,
+        },
+      ];
+    },
+  });
+  await openEvent(page, "Seminário de Caixa");
+  await page.getByRole("tab", { name: /Financeiro/ }).click();
+
+  // Os cartoes de Cobrancas, com os numeros do evento.
+  await expect(statCard(page, "Recebido")).toContainText("R$ 200,00");
+  await expect(statCard(page, "A receber")).toContainText("R$ 400,00");
+  await expect(statCard(page, "A receber")).toContainText("R$ 200,00 em atraso");
+  await expect(statCard(page, "Saídas")).toContainText("R$ 500,00");
+  await expect(statCard(page, "Resultado")).toContainText("R$ 200,00");
+
+  // A lista abre em "A receber", como em Cobrancas: o atraso em vermelho na linha, sem selo; a paga fica de fora.
+  const row = (id: string) => page.locator(`[data-record-id="${id}"]`);
+  await expectActiveTab(page, "A receber");
+  await expectOverdueRow(row("ch-bruno"), "15/09");
+  await expect(row("ch-bruno").getByText("Atrasado", { exact: true })).toHaveCount(0);
+  await expect(row("ch-carla")).toContainText("vence 30/09");
+  await expect(row("ch-ana")).toHaveCount(0);
+
+  // O link do cartao filtra a lista e marca a aba.
+  await statCard(page, "Recebido").getByText("Ver pagas").click();
+  await expectActiveTab(page, "Pagas");
+  await expect(row("ch-ana")).toContainText("pago via Pix");
+  await expect(row("ch-bruno")).toHaveCount(0);
+
+  // Todas e a busca por aluno.
+  await statusTab(page, "Todas").click();
+  await expect(row("ch-ana")).toBeVisible();
+  await page.getByLabel("Buscar aluno").fill("Carla");
+  await expect(row("ch-carla")).toBeVisible();
+  await expect(row("ch-bruno")).toHaveCount(0);
+  await page.getByLabel("Buscar aluno").fill("");
+
+  // As acoes de Cobrancas na linha: marcar pago atualiza os cartoes.
+  await statusTab(page, "A receber").click();
+  await page.getByRole("button", { name: "Ações de Bruno Atrasado", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Marcar pago" }).click();
+  const pay = page.getByRole("dialog", { name: "Registrar pagamento" });
+  await pay.getByRole("radio", { name: "Pix" }).click();
+  await pay.getByRole("button", { name: "Registrar pagamento" }).click();
+  await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();
+  await expect(statCard(page, "Recebido")).toContainText("R$ 400,00");
+  await expect(statCard(page, "A receber")).toContainText("R$ 200,00");
+  await expect(statCard(page, "A receber")).not.toContainText("em atraso");
+  await expect(row("ch-bruno")).toHaveCount(0);
+
+  // Lancamentos do evento: linha do Financeiro, sem selo, e "Abrir no Financeiro" no mes do vencimento.
+  await expect(row("fe-cache")).toContainText("Saída · vence 30/09");
+  await expect(row("fe-cache")).toContainText("− R$ 500,00");
+  await page.getByRole("button", { name: "Ações de Cachê do convidado", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Abrir no Financeiro" }).click();
+  await expect(page).toHaveURL(/\/finance\?tab=lancamentos&month=2026-09/);
 });
