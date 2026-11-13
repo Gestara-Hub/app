@@ -24,7 +24,7 @@ import {
   whatsappPendingConnectionBellAlert,
   type BellAlert,
 } from "../bell-alerts";
-import { playBellChime } from "@/lib/audio-feedback";
+import { installAudioUnlock, playBellChime } from "@/lib/audio-feedback";
 import {
   BELL_SOUND_WARMUP_MS,
   keysToRing,
@@ -110,6 +110,8 @@ function RemindersBellButton() {
   const mountedAt = useRef(0);
   useEffect(() => {
     mountedAt.current = Date.now();
+    // O Safari so toca som de um tocador liberado num toque: libera no primeiro toque da pagina.
+    installAudioUnlock();
   }, []);
   const bellSound = preferences.bellSoundEnabled !== false;
   useEffect(() => {

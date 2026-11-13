@@ -68,7 +68,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const handleBellSoundToggle = (enabled: boolean) => {
     updatePreference("bellSoundEnabled", enabled);
     if (enabled) {
-      playBellChime();
+      playBellChime({ fromClick: true });
       toast.success("Som do sino ligado.");
     } else {
       toast.info("Som do sino desligado.");

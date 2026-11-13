@@ -27,32 +27,92 @@ interface Tone {
   volume: number;
 }
 
-function playTones(tones: Tone[]) {
+/**
+ * Um tocador de audio so para o app (13/11/2026). O Safari so deixa tocar um
+ * AudioContext que foi ligado num toque ou clique: o criado depois, fora de um
+ * gesto (o sino, que toca quando chega item novo), nascia pausado e ficava
+ * mudo. Agora o tocador e criado e liberado no primeiro toque/tecla da pagina
+ * (`installAudioUnlock`) e reaproveitado por todos os sons.
+ */
+let sharedContext: AudioContext | null = null;
+
+function audioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
   const AudioCtx =
-    window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return;
-  const ctx = new AudioCtx();
-  const now = ctx.currentTime;
-  let end = 0;
-  for (const tone of tones) {
-    const start = now + (tone.at ?? 0);
-    const stop = start + tone.duration;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = tone.wave;
-    osc.frequency.setValueAtTime(tone.from, start);
-    if (tone.to && tone.to !== tone.from) osc.frequency.exponentialRampToValueAtTime(tone.to, start + tone.duration * 0.5);
-    gain.gain.setValueAtTime(tone.volume, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, stop);
-    osc.start(start);
-    osc.stop(stop);
-    end = Math.max(end, (tone.at ?? 0) + tone.duration);
+    window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedContext || sharedContext.state === "closed") sharedContext = new AudioCtx();
+  return sharedContext;
+}
+
+let unlockInstalled = false;
+
+/** Libera o tocador no primeiro toque, clique ou tecla da pagina (uma vez; depois some). */
+export function installAudioUnlock(): void {
+  if (unlockInstalled || typeof window === "undefined") return;
+  unlockInstalled = true;
+  const events = ["pointerdown", "keydown", "touchend"] as const;
+  const unlock = () => {
+    const ctx = audioContext();
+    if (!ctx) return;
+    void ctx
+      .resume()
+      .then(() => {
+        if (ctx.state !== "running") return;
+        for (const name of events) window.removeEventListener(name, unlock, true);
+      })
+      .catch(() => {});
+    // iOS: um som mudo dentro do gesto termina de liberar o audio.
+    try {
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, 22050);
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch {
+      // sem audio: segue sem som
+    }
+  };
+  for (const name of events) window.addEventListener(name, unlock, { capture: true, passive: true });
+}
+
+/**
+ * Toca as notas no tocador compartilhado. `requireRunning`: som que nao vem de
+ * um clique (o sino) so toca se o tocador ja esta liberado; senao ficaria na
+ * fila e soaria fora de hora no proximo toque.
+ */
+function playTones(tones: Tone[], options: { requireRunning?: boolean } = {}) {
+  const ctx = audioContext();
+  if (!ctx) return;
+  const schedule = () => {
+    const now = ctx.currentTime;
+    for (const tone of tones) {
+      const start = now + (tone.at ?? 0);
+      const stop = start + tone.duration;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = tone.wave;
+      osc.frequency.setValueAtTime(tone.from, start);
+      if (tone.to && tone.to !== tone.from) osc.frequency.exponentialRampToValueAtTime(tone.to, start + tone.duration * 0.5);
+      gain.gain.setValueAtTime(tone.volume, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, stop);
+      osc.start(start);
+      osc.stop(stop);
+    }
+  };
+  if (ctx.state === "running") {
+    schedule();
+    return;
   }
-  setTimeout(() => {
-    ctx.close().catch(() => {});
-  }, end * 1000 + 150);
+  if (options.requireRunning) return;
+  // Dentro de um clique (presenca, Testar): liga o tocador e toca.
+  void ctx
+    .resume()
+    .then(() => {
+      if (ctx.state === "running") schedule();
+    })
+    .catch(() => {});
 }
 
 const CHECKIN_TONES: Record<CheckinSound, Tone[]> = {
@@ -94,7 +154,7 @@ const BELL_SWING_SECONDS = 0.9;
  * ponto mais alto (20% do balanco), cada vez mais fraca, como um sino que para
  * de tocar. Timbre de sino pequeno: a nota e dois parciais agudos que somem antes.
  */
-export function playBellChime() {
+export function playBellChime(options: { fromClick?: boolean } = {}) {
   if (typeof window === "undefined") return;
   try {
     playTones(
@@ -106,6 +166,7 @@ export function playBellChime() {
           { wave: "sine", from: 6343, at, duration: 0.12, volume: volume * 0.12 },
         ];
       }),
+      { requireRunning: !options.fromClick },
     );
   } catch {
     // sem audio (navegador antigo ou sem toque na pagina ainda): so o pulsar
