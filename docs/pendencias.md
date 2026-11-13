@@ -97,7 +97,6 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | Pendência | Onde está o detalhe |
 | --- | --- |
 | Landing sem planos até decidir mostrar os planos e quem paga o WhatsApp automático e o pagamento online (os preços já foram aprovados em 19/10: Profissional R$ 79,90 e Expansão R$ 199) | `product/13-modelo-de-negocio.md`, `frontend/08-decisoes-landing-page-e-onboarding.md` §3.5 |
-| Topo da fatura do Asaas (nome, e-mail, telefone e endereço do espaço) vem do cadastro feito em "Ativar recebimentos" e não acompanha Configurações (visto em 12/11/2026). Escolher: sincronizar ao salvar Configurações (`POST /v3/myAccount/commercialInfo` com a chave da subconta) ou mostrar e editar esses dados em Recebimentos online | `product/19-levantamento-pagamentos.md` |
 
 ## Antes de ir para produção
 

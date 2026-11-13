@@ -32,6 +32,7 @@ import { useOrganization, useUnit, useUpdateOrganization, useUpdateUnit } from "
 import { SettingsSaveBar } from "./settings-save-bar";
 import { SettingsSection } from "./settings-section";
 import { useReportDirty } from "./unsaved-changes";
+import { syncSubaccountContactAction } from "@/services/onlinePayments/subaccountContactActions";
 
 const addressSchema = z.object({
   postalCode: z.string().optional(),
@@ -208,7 +209,22 @@ function GeneralForm({
         if (unitDirty) {
           await updateUnit.mutateAsync({ address: values.address as Address, phone: values.phone ?? "" });
         }
-        toast.success("Configurações salvas.");
+        // Telefone e endereco tambem no topo da fatura do parceiro (quem tem recebimentos online).
+        const invoice =
+          unitDirty && organization.settings?.onlinePayments?.gatewayAccountId
+            ? await syncSubaccountContactAction().catch(() => ({ status: "failed" as const, message: undefined }))
+            : { status: "skipped" as const };
+        if (invoice.status === "failed") {
+          toast.warning(
+            `Configurações salvas. A fatura dos recebimentos online segue com o telefone e o endereço antigos${invoice.message ? `: ${invoice.message}` : "."}`,
+          );
+        } else if (invoice.status === "pending") {
+          toast.success("Configurações salvas. O parceiro de pagamentos vai conferir o novo telefone e endereço da fatura.");
+        } else if (invoice.status === "updated") {
+          toast.success("Configurações salvas, também na fatura dos recebimentos online.");
+        } else {
+          toast.success("Configurações salvas.");
+        }
         form.reset(values);
         // O fuso da sessao vem do servidor: recarrega o layout com o novo.
         if (changed.timeZone || changed.address) router.refresh();

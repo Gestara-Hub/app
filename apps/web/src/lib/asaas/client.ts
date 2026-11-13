@@ -129,6 +129,16 @@ export async function getAccountInfo(apiKey?: string): Promise<Record<string, un
   return asaasFetch<Record<string, unknown>>("/myAccount", { apiKey });
 }
 
+/** Dados comerciais da conta dona da chave (GET /myAccount/commercialInfo): o topo da fatura. */
+export async function getCommercialInfo(apiKey: string): Promise<Record<string, unknown>> {
+  return asaasFetch<Record<string, unknown>>("/myAccount/commercialInfo/", { apiKey });
+}
+
+/** Atualiza os dados comerciais da conta dona da chave (POST /myAccount/commercialInfo). */
+export async function updateCommercialInfo(apiKey: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return asaasFetch<Record<string, unknown>>("/myAccount/commercialInfo/", { method: "POST", body, apiKey });
+}
+
 /**
  * Tarifas da conta dona da chave (GET /myAccount/fees). Com a chave da
  * subconta, devolve as tarifas do espaco; a da conta principal nunca e usada aqui.
