@@ -329,7 +329,8 @@ export interface PublicEventSignupInput {
   code: string;
   name: string;
   phone: string;
-  email?: string;
+  /** Obrigatorio (12/11/2026): recebe o link do ingresso. No menor, e o do responsavel. */
+  email: string;
   /** Menor de 18 anos: dados e aceite do responsavel. */
   isMinor?: boolean;
   guardianName?: string;

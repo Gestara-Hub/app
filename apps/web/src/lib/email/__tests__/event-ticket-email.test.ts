@@ -38,6 +38,18 @@ describe("e-mail do ingresso", () => {
     );
   });
 
+  it("evento de mais de um dia: o mesmo ingresso em todos os dias", () => {
+    expect(buildEventTicketEmailText(base)).toContain("Na entrada, mostre o QR code que aparece nele.");
+    const twoDays = { ...base, days: ["Terça-feira, 10/11 · 09:00 às 12:00", "Quarta-feira, 11/11 · 09:00 às 12:00"] };
+    expect(buildEventTicketEmailText(twoDays)).toContain("Use o mesmo ingresso em todos os dias");
+  });
+
+  it("menor: vai para o responsável e diz quem é o participante", () => {
+    const text = buildEventTicketEmailText({ ...base, toName: "Marta Rocha", participantName: "Lia Rocha" });
+    expect(text).toContain("Inscrição feita, Marta!");
+    expect(text).toContain("Participante: Lia Rocha");
+  });
+
   it("escapa o que veio digitado no HTML", () => {
     const html = buildEventTicketEmailHtml({ ...base, toName: "<b>Bruno</b>", hasInlineIcon: false });
     expect(html).not.toContain("<b>Bruno</b>");

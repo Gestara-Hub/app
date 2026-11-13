@@ -1299,6 +1299,8 @@ export async function sendPlanNoticeEmail(
 export interface SendEventTicketEmailInput {
   toEmail: string;
   toName: string;
+  /** Inscricao de menor: o nome do participante (quem recebe e o responsavel). */
+  participantName?: string;
   organizationName: string;
   eventName: string;
   /** Dias da inscricao ja escritos ("Terça-feira, 10/11 · 09:00 às 12:00"). */
@@ -1337,6 +1339,7 @@ export function buildEventTicketEmailText(input: SendEventTicketEmailInput): str
     `Inscrição feita, ${firstNameOf(input.toName)}!`,
     "",
     `${input.eventName} · ${input.organizationName}`,
+    ...(input.participantName ? [`Participante: ${input.participantName}`] : []),
     ...input.days,
     "",
     eventTicketStatusLine(input),
@@ -1350,7 +1353,8 @@ export function buildEventTicketEmailText(input: SendEventTicketEmailInput): str
 
 export function buildEventTicketEmailHtml(input: SendEventTicketEmailInput & { hasInlineIcon: boolean }): string {
   const safeUrl = escapeHtml(input.ticketUrl);
-  const days = input.days.map((d) => `${escapeHtml(d)}<br />`).join("");
+  const participant = input.participantName ? `Participante: ${escapeHtml(input.participantName)}<br />` : "";
+  const days = participant + input.days.map((d) => `${escapeHtml(d)}<br />`).join("");
   return renderEmailLayout({
     title: escapeHtml(buildEventTicketEmailSubject(input)),
     preheader: escapeHtml(eventTicketStatusLine(input)),

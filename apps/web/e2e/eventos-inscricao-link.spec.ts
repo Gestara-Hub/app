@@ -73,6 +73,7 @@ test("Inscrição pelo link: pessoa nova se inscreve, recebe o ingresso e a equi
   await expect(visitor.getByText("Mestre Convidado (Curitiba)")).toBeVisible();
   await visitor.getByRole("textbox", { name: /^Nome/ }).fill("Bruno Lima Souza");
   await visitor.getByRole("textbox", { name: /^WhatsApp/ }).fill("11966660000");
+  await visitor.getByRole("textbox", { name: /^E-mail/ }).fill("pessoa@exemplo.com");
   await visitor.getByRole("button", { name: "Inscrever", exact: true }).click();
   // Sem o aceite: o servidor recusa e diz o que falta.
   await expect(visitor.getByText("Aceite para concluir a inscrição.")).toBeVisible();
@@ -137,6 +138,7 @@ test("Inscrição pelo link: lotado entra na espera; menor com o aceite do respo
   await visitor.getByRole("switch", { name: "Participante menor de 18 anos" }).click();
   await visitor.getByLabel("Nome do responsável").fill("Marta Rocha");
   await visitor.getByLabel("WhatsApp do responsável").fill("11933330000");
+  await visitor.getByRole("textbox", { name: /^E-mail do responsável/ }).fill("marta@exemplo.com");
   await visitor.getByRole("checkbox", { name: /Sou o responsável legal/ }).click();
   await visitor.getByRole("button", { name: "Entrar na lista de espera" }).click();
   await expect(visitor.getByText("Você está na lista de espera")).toBeVisible();
@@ -170,6 +172,7 @@ test("Equipe logada abre o link do ingresso (câmera comum): confere e confirma 
   const visitor = await publicPage(browser, page, `/p/e/${code}`);
   await visitor.getByRole("textbox", { name: /^Nome/ }).fill("Davi Moura");
   await visitor.getByRole("textbox", { name: /^WhatsApp/ }).fill("11944441111");
+  await visitor.getByRole("textbox", { name: /^E-mail/ }).fill("pessoa@exemplo.com");
   await visitor.getByRole("checkbox", { name: /Li e aceito/ }).click();
   await visitor.getByRole("button", { name: "Inscrever", exact: true }).click();
   await expect(visitor.getByText("Inscrição confirmada, Davi M.")).toBeVisible();
@@ -194,6 +197,7 @@ test("Ingresso com pagamento pendente: a leitura para e a entrada é confirmada 
   await expect(visitor.getByText("R$ 50,00").first()).toBeVisible();
   await visitor.getByRole("textbox", { name: /^Nome/ }).fill("Carla Dias");
   await visitor.getByRole("textbox", { name: /^WhatsApp/ }).fill("11955550000");
+  await visitor.getByRole("textbox", { name: /^E-mail/ }).fill("pessoa@exemplo.com");
   await visitor.getByRole("checkbox", { name: /Li e aceito/ }).click();
   await visitor.getByRole("button", { name: "Inscrever (R$ 50,00)" }).click();
   await expect(visitor.getByText("Falta pagar R$ 50,00", { exact: false })).toBeVisible();

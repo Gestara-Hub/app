@@ -53,7 +53,7 @@ describe("página e inscrição pelo link", () => {
       .from("clients")
       .insert({ id: randomUUID(), organization_id: tenant.organizationId, name: "Ana Souza Lima", phone: "+5511977770000", status: "active" })
       .throwOnError();
-    await submitPublicEventSignup({ code, name: "Ana Souza Lima", phone: "11977770000", acceptTerms: true }, meta());
+    await submitPublicEventSignup({ code, name: "Ana Souza Lima", phone: "11977770000", email: "pessoa@exemplo.com", acceptTerms: true }, meta());
 
     const view = await loadPublicEvent(code);
     expect(view).toMatchObject({ eventName: "Seminário aberto", open: true, billingMode: "free", spotsLeft: 2 });
@@ -66,7 +66,7 @@ describe("página e inscrição pelo link", () => {
 
   it("pessoa nova vira visitante com a inscrição pelo link, o ingresso e a prova do aceite", async () => {
     const result = await submitPublicEventSignup(
-      { code, name: "Bruno Lima", phone: "(11) 96666-0000", acceptTerms: true, acceptWhatsapp: true },
+      { code, name: "Bruno Lima", phone: "(11) 96666-0000", email: "pessoa@exemplo.com", acceptTerms: true, acceptWhatsapp: true },
       meta(),
     );
     expect(result).toMatchObject({ status: "confirmed", displayName: "Bruno L.", amountCents: 0 });
@@ -97,7 +97,7 @@ describe("página e inscrição pelo link", () => {
       .from("clients")
       .insert({ id, organization_id: tenant.organizationId, name: "Carla Dias", phone: "+5511955550000", status: "active" })
       .throwOnError();
-    const result = await submitPublicEventSignup({ code, name: "Pedro Raul", phone: "11955550000", acceptTerms: true }, meta());
+    const result = await submitPublicEventSignup({ code, name: "Pedro Raul", phone: "11955550000", email: "pessoa@exemplo.com", acceptTerms: true }, meta());
     expect(result).toMatchObject({ status: "confirmed", displayName: "Pedro R." });
 
     const { data: carlaRegistrations } = await admin.from("event_registrations").select("id").eq("student_id", id);
@@ -130,38 +130,45 @@ describe("página e inscrição pelo link", () => {
     const { data: registrations } = await admin.from("event_registrations").select("source").eq("student_id", id);
     expect(registrations).toEqual([{ source: "public_link" }]);
 
-    const again = await submitPublicEventSignup({ code, name: "Carla Dias", phone: "11955550000", acceptTerms: true }, meta());
+    const again = await submitPublicEventSignup({ code, name: "Carla Dias", phone: "11955550000", email: "pessoa@exemplo.com", acceptTerms: true }, meta());
     expect(again).toMatchObject({ status: "already" });
     expect(again.ticketCode).toBeUndefined();
   });
 
   it("menor entra com o responsável e o aceite dele", async () => {
     const result = await submitPublicEventSignup(
-      { code, name: "Lia Rocha", phone: "11944440000", isMinor: true, guardianName: "Marta Rocha", guardianPhone: "11933330000", acceptTerms: true },
+      { code, name: "Lia Rocha", phone: "11944440000", isMinor: true, guardianName: "Marta Rocha", guardianPhone: "11933330000", email: "marta@exemplo.com", acceptTerms: true },
       meta(),
     );
     expect(result.status).toBe("confirmed");
     const { data: client } = await admin
       .from("clients")
-      .select("phone, guardians, minor_consent_status, minor_consent_by")
+      .select("phone, email, guardians, minor_consent_status, minor_consent_by")
       .eq("organization_id", tenant.organizationId)
       .eq("name", "Lia Rocha")
       .single();
-    expect(client).toMatchObject({ phone: null, minor_consent_status: "confirmed_whatsapp", minor_consent_by: "Marta Rocha" });
-    expect(client!.guardians).toEqual([expect.objectContaining({ name: "Marta Rocha", phone: "+5511933330000", financial: true })]);
+    // O e-mail do menor e o do responsavel: fica no cadastro dele, nao no do participante.
+    expect(client).toMatchObject({ phone: null, email: null, minor_consent_status: "confirmed_whatsapp", minor_consent_by: "Marta Rocha" });
+    expect(client!.guardians).toEqual([
+      expect.objectContaining({ name: "Marta Rocha", phone: "+5511933330000", email: "marta@exemplo.com", financial: true }),
+    ]);
   });
 
-  it("recusa sem aceite, com campo-armadilha, link desligado ou fora do Profissional", async () => {
-    await expect(submitPublicEventSignup({ code, name: "Dani", phone: "11922220000", acceptTerms: false }, meta())).rejects.toMatchObject({
+  it("recusa sem aceite, sem e-mail, com campo-armadilha, link desligado ou fora do Profissional", async () => {
+    // E-mail obrigatorio (12/11/2026): e por onde chega o link do ingresso.
+    await expect(
+      submitPublicEventSignup({ code, name: "Dani", phone: "11922220000", email: "", acceptTerms: true }, meta()),
+    ).rejects.toMatchObject({ fields: [expect.objectContaining({ field: "email", message: "Informe o e-mail." })] });
+    await expect(submitPublicEventSignup({ code, name: "Dani", phone: "11922220000", email: "pessoa@exemplo.com", acceptTerms: false }, meta())).rejects.toMatchObject({
       fields: [expect.objectContaining({ field: "acceptTerms" })],
     });
     await expect(
-      submitPublicEventSignup({ code, name: "Robô", phone: "11922220000", acceptTerms: true, website: "http://spam" }, meta()),
+      submitPublicEventSignup({ code, name: "Robô", phone: "11922220000", email: "pessoa@exemplo.com", acceptTerms: true, website: "http://spam" }, meta()),
     ).rejects.toMatchObject({ code: "VALIDATION" });
 
     await admin.from("organizations").update({ subscription: { tier: "free" } }).eq("id", tenant.organizationId).throwOnError();
     expect(await loadPublicEvent(code)).toMatchObject({ open: false, closedReason: "plan" });
-    await expect(submitPublicEventSignup({ code, name: "Eva", phone: "11911110000", acceptTerms: true }, meta())).rejects.toMatchObject({
+    await expect(submitPublicEventSignup({ code, name: "Eva", phone: "11911110000", email: "pessoa@exemplo.com", acceptTerms: true }, meta())).rejects.toMatchObject({
       code: "CONFLICT",
     });
 
@@ -181,12 +188,12 @@ describe("página e inscrição pelo link", () => {
       .throwOnError();
     const paid = await createEvent({ billingMode: "fixed", priceCents: 5000, maxInstallments: 1, seatGuarantee: "on_payment", holdMinutes: 30 });
     const result = await submitPublicEventSignup(
-      { code: paid.publicSignup!.code, name: "Gabi Prado", phone: "11977771234", acceptTerms: true },
+      { code: paid.publicSignup!.code, name: "Gabi Prado", phone: "11977771234", email: "pessoa@exemplo.com", acceptTerms: true },
       meta(),
     );
     expect(result).toMatchObject({ status: "reserved", amountCents: 5000 });
     expect(result.ticketCode).toMatch(/^[A-F0-9]{12}$/);
-    expect(result.emailSent).toBeUndefined();
+    expect(result.emailSent).toBe(true);
 
     const page = await loadTicketPage(result.ticketCode!);
     expect(page?.ticket).toMatchObject({ state: "reserved", pendingCents: 5000 });
@@ -197,7 +204,7 @@ describe("página e inscrição pelo link", () => {
 
   it("o ingresso aberto pelo QR mostra o nome mascarado e nenhum telefone", async () => {
     const result = await submitPublicEventSignup(
-      { code, name: "Fernanda Alves Costa", phone: "11988887777", acceptTerms: true },
+      { code, name: "Fernanda Alves Costa", phone: "11988887777", email: "pessoa@exemplo.com", acceptTerms: true },
       meta(),
     );
     const page = await loadTicketPage(result.ticketCode!.toLowerCase());

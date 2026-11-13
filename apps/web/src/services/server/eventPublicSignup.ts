@@ -168,7 +168,9 @@ export async function submitPublicEventSignup(
   if (name.length < 2 || tooLong(name, MAX.name)) fields.push({ field: "name", message: "Informe o nome." });
   if (!phone || tooLong(input.phone, MAX.phone)) fields.push({ field: "phone", message: "Informe o WhatsApp com DDD." });
   const email = (input.email ?? "").trim();
-  if (tooLong(email, MAX.email) || (email && !EMAIL_RE.test(email))) fields.push({ field: "email", message: "Informe um e-mail válido." });
+  // Obrigatorio (12/11/2026): e por onde chega o link do ingresso.
+  if (!email) fields.push({ field: "email", message: "Informe o e-mail." });
+  else if (tooLong(email, MAX.email) || !EMAIL_RE.test(email)) fields.push({ field: "email", message: "Informe um e-mail válido." });
   const guardianPhone = input.isMinor ? whatsappNumber(input.guardianPhone) : null;
   if (input.isMinor) {
     if ((input.guardianName ?? "").trim().length < 2 || tooLong(input.guardianName, MAX.name)) {
@@ -220,13 +222,14 @@ export async function submitPublicEventSignup(
       const created = await clientsServiceImpl.create({
         name,
         phone: input.isMinor ? undefined : `+${phone}`,
-        ...(input.email?.trim() ? { email: input.email.trim() } : {}),
+        // Menor: o e-mail e o do responsavel e fica no cadastro dele.
+        ...(input.isMinor ? {} : { email }),
         status: "active",
         whatsappConsentStatus: input.acceptWhatsapp ? "granted" : "unknown",
         ...(input.isMinor
           ? {
               guardians: [
-                { name: (input.guardianName ?? "").trim(), phone: `+${guardianPhone}`, relationship: "Responsável", financial: true },
+                { name: (input.guardianName ?? "").trim(), phone: `+${guardianPhone}`, email, relationship: "Responsável", financial: true },
               ],
             }
           : {}),
@@ -283,7 +286,9 @@ export async function submitPublicEventSignup(
       email && ticketCode
         ? {
             toEmail: email,
-            toName: name,
+            // Menor: quem recebe e o responsavel; o participante vai no texto.
+            toName: input.isMinor ? (input.guardianName ?? "").trim() : name,
+            ...(input.isMinor ? { participantName: name } : {}),
             organizationName: store.organization.name,
             eventName: event.name,
             days,

@@ -29,11 +29,7 @@ const signupSchema = z
   .object({
     name: z.string().trim().min(2, "Informe o nome."),
     phone: z.string().trim(),
-    email: z
-      .string()
-      .trim()
-      .optional()
-      .refine((v) => !v || EMAIL_RE.test(v), { message: "Informe um e-mail válido." }),
+    email: z.string().trim().min(1, "Informe o e-mail.").refine((v) => EMAIL_RE.test(v), { message: "Informe um e-mail válido." }),
     isMinor: z.boolean(),
     guardianName: z.string().trim().optional(),
     guardianPhone: z.string().trim().optional(),
@@ -112,7 +108,7 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
       code: event.code,
       name: values.name,
       phone: values.isMinor ? (values.guardianPhone ?? "") : values.phone,
-      ...(values.email ? { email: values.email } : {}),
+      email: values.email,
       isMinor: values.isMinor,
       ...(values.isMinor ? { guardianName: values.guardianName, guardianPhone: values.guardianPhone } : {}),
       scope: days ? "days" : "full",
@@ -190,11 +186,12 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
 
         <InputText<SignupValues>
           name="email"
-          label="E-mail"
+          label={isMinor ? "E-mail do responsável" : "E-mail"}
           type="email"
-          placeholder="Informe o e-mail (opcional)"
+          placeholder="Informe o e-mail"
           hint="Enviamos o link do ingresso para ele."
           autoComplete="email"
+          required
           disabled={pending}
         />
 
