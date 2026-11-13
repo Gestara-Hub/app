@@ -340,6 +340,7 @@ O antigo modal único "Evolução e graduação" virou **dois modais**, porque g
   - Alunos: clicar na linha abre Registros de aula; o selo da faixa abre Graduação; o menu ⋮ tem os dois. Aluno sem faixa mostra "Definir faixa".
   - Turma e chamada: menu ⋮ do aluno com os dois (na chamada, "Registrar aula", já com a aula escolhida). Na turma, tocar no aluno abre a ficha; na chamada, marca a presença.
 - **Autor do registro:** quem está logado (carimbado pelo service, nunca enviado pela tela).
+- **Graduação em grupo e troca de turma (decidido 13/11/2026, falta implementar):** "Apto" com notas, "Mudar de turma" sem cancelar a matrícula, "Graduar vários" na turma e evento de graduação; ver [product/30](30-graduacao-em-grupo-e-troca-de-turma.md).
 - Código: `StudentGraduationDialog`, `StudentRecordsDialog`, `ClassRecordsDialog`; service `clientsService.addClassRecord`, `addClassRecords`, `updateStrengths`, `addGoal`, `setGoalCompleted`, `removeGoal`; contrato `StudentGoal`, `CreateStudentClassRecord`, `CreateClassRecordsBatch`.
 
 ---
@@ -383,7 +384,7 @@ Menos informação por vez: na tela fica o que se usa toda vez; o resto vai para
 
 **Turma**
 - Cabeçalho: uma linha (modalidade quando o nome da turma não a contém, horários, instrutor, cobrança curta e vagas): "Seg 08:00 · Profissional 1 · Curso até 18/12 · 4 de 10 vagas" ("Turma lotada" quando cheia; "Curso encerrado em 18/12"; "Pacote de aulas"; "Plano {nome}"). Preço e parcelas ficam em "Editar turma".
-- Menu ⋮: "Editar turma", "Selecionar alunos" (liga a seleção em lote, com barra fixa "Todos", "Cancelar" e "Cancelar matrícula") e "Ver aulas no calendário". "Matricular alunos" segue como botão principal (largura toda no celular).
+- Menu ⋮: "Editar turma", "Selecionar alunos" (liga a seleção em lote, com barra fixa "Todos", "Cancelar", "Mudar de turma" desde 13/11/2026 e "Cancelar matrícula") e "Ver aulas no calendário". O ⋮ de cada aluno também tem "Mudar de turma" ([product/30](30-graduacao-em-grupo-e-troca-de-turma.md) §2). "Matricular alunos" segue como botão principal (largura toda no celular).
 - **Atalho da aula:** "Hoje 08:00 · Fazer chamada ›" (sem permissão de chamada: "Ver aula"); sem aula hoje, "Próxima aula Seg, 20/10, 08:00 · Ver aula ›". Hoje com mais de uma aula: a que já começou mais recente, senão a primeira (`pickNextSession`, `features/turmas/next-session.ts`). Aula cancelada não conta; procura nos próximos 14 dias.
 - Abas só quando há lista de espera (a aba aparece com alguém nela) ou avaliações; "Matriculados" virou "Alunos". Busca a partir de 9 alunos.
 - Linha: nome e nível em texto; **alertas só quando pedem atenção**: "Presença baixa" (abaixo de 75%), "Pagamento atrasado" (com `billing:view`), "Última aula do pacote" e "Sem pacote"; mais "Pacote" (mensalidade paga com pacote) e "Concluído". Tocar abre a ficha (com `clients:view`). Saíram avatar, telefone, "desde", o percentual de presença e a caixa "Selecionar todos".

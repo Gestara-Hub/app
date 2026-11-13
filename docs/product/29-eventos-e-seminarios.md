@@ -70,7 +70,7 @@ Pacote de aulas e plano de mensalidade **não** valem em evento. Evento nunca ga
 
 - Por dia do evento, mesma tela de chamada das turmas em aparência (presente, ausente, "adicionar quem apareceu").
 - Quem aparece sem inscrição: "Adicionar neste dia" cria inscrição `days` daquele dia (com cobrança do dia, se houver).
-- Presença em evento **não** entra na frequência mínima da graduação por padrão. O evento tem a opção "Conta para a graduação" (`countsForProgression`), pensada para exame de faixa coletivo; ligada, cada presença conta como uma aula na modalidade do evento.
+- Presença em evento **não** entra na frequência mínima da graduação por padrão. O evento tem a opção "Conta para a graduação" (`countsForProgression`), pensada para exame de faixa coletivo; ligada, cada presença conta como uma aula na modalidade do evento. (13/11/2026: decidido trocar por "Evento de graduação", sem contar presença; ver [product/30](30-graduacao-em-grupo-e-troca-de-turma.md) §4.)
 - Evento não tem experimental. Quem vem conhecer entra como inscrito (pago ou grátis). "Virou aluno" continua sendo matrícula, plano ou pacote em turma.
 
 ### Cobrança
@@ -202,7 +202,7 @@ Seminário com um sensei por dia, aulão com dois professores no mesmo bloco, um
 
 ## Decisões (09/11/2026)
 
-1. **Graduação:** presença em evento não conta por padrão; opção "Conta para a graduação" no evento, para exame de faixa coletivo.
+1. **Graduação:** presença em evento não conta por padrão; opção "Conta para a graduação" no evento, para exame de faixa coletivo. **Revista em 13/11/2026:** a opção vira "Evento de graduação" (aba Graduação, aptos no Inscrever, repasse à federação) e a presença em evento segue fora da frequência; ver [product/30](30-graduacao-em-grupo-e-troca-de-turma.md) §4 (falta implementar).
 2. **Visitante:** fica em Alunos com selo "Visitante" derivado e filtro; a situação do cadastro não muda sozinha.
 3. **Convidado:** só o nome (e de onde vem). Não vira profissional nem usuário.
 4. **Lote:** entra no 1º corte como configuração opcional; sem lote, o fluxo é o padrão.

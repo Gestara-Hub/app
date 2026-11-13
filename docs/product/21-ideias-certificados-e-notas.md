@@ -166,7 +166,7 @@ Aprovada com todas as recomendações acima: liga por modalidade com o padrão d
 
 **Código:** regras puras em `packages/core/src/grades.ts` (testes em `packages/core/test/grades.test.ts`); contratos em `packages/contracts/src/assessment.ts`; serviço `apps/web/src/services/grades/` (testes em `services/__tests__/grades.test.ts`); tela em `apps/web/src/features/grades`.
 
-**Fase 2 (não entrou):** recuperação e segunda chamada (maior nota), nota como critério da trilha, `{nota}` no certificado, boletim em PDF, relatórios de desempenho e aviso "nota lançada" no WhatsApp.
+**Fase 2 (não entrou):** recuperação e segunda chamada (maior nota), nota como critério da trilha (decidido em 13/11/2026: o "Apto" passa a exigir a média da etapa e a frequência mínima, ver [product/30](30-graduacao-em-grupo-e-troca-de-turma.md) §1), `{nota}` no certificado, boletim em PDF, relatórios de desempenho e aviso "nota lançada" no WhatsApp.
 
 ### 2.3 Fase A entregue (31/10/2026)
 
