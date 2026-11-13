@@ -1,4 +1,5 @@
 import type { Address, DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
+import type { StudentStageGrades } from "./assessment";
 import type { Category, ProgressionBeltColor } from "./category";
 import type { PaginationParams } from "./pagination";
 
@@ -121,6 +122,8 @@ export interface StudentModalityOverviewItem {
   presentSincePromotion: number;
   totalPresentInModality: number;
   progression?: StudentModalityProgression;
+  /** So com avaliacoes ligadas na modalidade: as notas da etapa atual (entram no "Apto"). */
+  stageGrades?: StudentStageGrades;
 }
 
 export interface StudentProgressionOverview {

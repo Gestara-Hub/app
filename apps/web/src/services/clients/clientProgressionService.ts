@@ -10,11 +10,12 @@ import type {
   StudentModalityProgression,
   StudentProgressionOverview,
 } from "@gestarahub/contracts";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { ageAt, currentLevelOf, resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { assertCanManageProgression, assertTeacherSeesStudent } from "../classes/teacherScope";
+import { studentStageGrades } from "../grades/stageGrades";
 import { progressionTermSuggestions } from "./clientProgression";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 
@@ -57,6 +58,7 @@ export const clientProgressionService = {
         }
       }
 
+      const age = ageAt(client.birthDate, todayISO());
       const items: StudentModalityOverviewItem[] = [];
       for (const modality of categoriesById.values()) {
         const groupsInModality = store.classGroups.filter(
@@ -83,6 +85,15 @@ export const clientProgressionService = {
           }
         }
 
+        // Notas da etapa atual, para o "Apto" (doc product/30 §1).
+        const track = modality.progressionTrack;
+        const stageGrades = track?.enabled
+          ? studentStageGrades(modality.id, studentId, track, {
+              levelId: currentLevelOf(track, progression, age)?.id,
+              since: promotedAt,
+            })
+          : undefined;
+
         items.push({
           modality,
           isEnrolled,
@@ -92,6 +103,7 @@ export const clientProgressionService = {
           totalPresentInModality:
             totalPresentInModality + (progression?.initialAttendanceOffset ?? 0),
           progression,
+          ...(stageGrades ? { stageGrades } : {}),
         });
       }
 

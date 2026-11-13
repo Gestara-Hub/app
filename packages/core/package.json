@@ -24,7 +24,8 @@
     "./privacy": "./src/privacy.ts",
     "./subscription-prices": "./src/subscription-prices.ts",
     "./trials": "./src/trials.ts",
-    "./events": "./src/events.ts"
+    "./events": "./src/events.ts",
+    "./progression": "./src/progression.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

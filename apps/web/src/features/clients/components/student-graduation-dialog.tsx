@@ -16,6 +16,7 @@ import type {
   StudentPromotionHistoryEntry,
 } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { promotionReadiness } from "@gestarahub/core/progression";
 import { relativeDateLabel, todayISO } from "@gestarahub/core/date";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ import { useModalityVocabulary } from "@/features/settings";
 import { useHasFeature } from "@/features/auth";
 import { usePromoteStudent, useSaveModalityProgression } from "../hooks/use-clients";
 import { GraduatePanel, type GraduateResult } from "./graduate-panel";
-import { ModalityPicker, levelOf, monthsSince, useStudentModalities } from "./progression-ui";
+import { ModalityPicker, StageGradeRows, levelOf, monthsSince, useStudentModalities } from "./progression-ui";
 import { StartingPointPanel, type StartingPointResult } from "./starting-point-panel";
 
 /** "02/2021" (mes e ano), para datas antigas da trilha. */
@@ -143,17 +144,23 @@ function CurrentLevelDetails({
   const present = item.presentSincePromotion;
   const months = monthsSince(item.progression?.promotedAt);
   const next = computeNextPromotionStep(track, currentLevel.id, subLevel, trackUsesAges(track) ? age : null);
-  const ready =
-    Boolean(next) &&
-    ((criteria === "attendance" && present >= targetAttendances) ||
-      (criteria === "time" && months >= targetMonths) ||
-      (criteria === "attendance_and_time" && present >= targetAttendances && months >= targetMonths));
+  // Regra unica do "Apto" (doc product/30 §1): trilha e, com avaliacoes, nota e frequencia.
+  const { ready } = promotionReadiness({
+    criteriaType: criteria,
+    targetAttendances,
+    targetMonths,
+    presentSincePromotion: present,
+    monthsInLevel: months,
+    hasNextStep: Boolean(next),
+    grades: item.stageGrades,
+  });
 
   return (
     <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
       {criteria === "manual_exam" ? (
         <p className="text-[11px] text-muted-foreground">
-          Por avaliação do professor · {present} {present === 1 ? "aula" : "aulas"} {vocabulary.inLevel}
+          {item.stageGrades ? "Pelas notas" : "Por avaliação do professor"} · {present} {present === 1 ? "aula" : "aulas"}{" "}
+          {vocabulary.inLevel}
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -165,6 +172,11 @@ function CurrentLevelDetails({
           ) : null}
         </div>
       )}
+      {item.stageGrades ? (
+        <ul className="space-y-1.5">
+          <StageGradeRows grades={item.stageGrades} inLevel={vocabulary.inLevel} />
+        </ul>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           {next ? (
@@ -475,6 +487,7 @@ function GraduationContent({
           currentSubLevel={subLevel}
           presentSincePromotion={active.presentSincePromotion}
           monthsInLevel={monthsSince(progression?.promotedAt)}
+          stageGrades={active.stageGrades}
           isPending={promoteMut.isPending}
           onCancel={() => setPanel(null)}
           onConfirm={handleGraduate}

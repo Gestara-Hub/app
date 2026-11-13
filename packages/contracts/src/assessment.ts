@@ -222,6 +222,19 @@ export interface ReportCardModality {
 }
 
 /** Boletim "Notas" do aluno: so modalidades com avaliacoes ligadas. */
+/**
+ * Notas do aluno na etapa atual da trilha, para o "Apto" (doc product/30 §1).
+ * Etapa atual: as avaliacoes marcadas com o nivel atual e as sem etapa desde
+ * a ultima graduacao, ja com a recuperacao (maior nota).
+ */
+export interface StudentStageGrades {
+  settings: ModalityAssessmentSettings;
+  /** Media (ou total, na soma) da etapa; null = nenhuma nota ainda. */
+  average: GradeAverage | null;
+  /** Frequencia nas turmas da modalidade (so com frequencia minima); null = sem chamada. */
+  attendancePercent: number | null;
+}
+
 export interface StudentReportCard {
   studentId: Id;
   studentName: string;

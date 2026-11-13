@@ -2,14 +2,16 @@
 
 import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
-import { AlertTriangle, ArrowRight, Award, CheckCircle2, Circle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award } from "lucide-react";
 import type {
   ModalityProgressionTrack,
   ProgressionCriteriaType,
   ProgressionLevelStep,
   ProgressionTrackStyle,
+  StudentStageGrades,
 } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
+import { promotionReadiness } from "@gestarahub/core/progression";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
@@ -32,6 +34,7 @@ import {
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { GoalRow, StageGradeRows } from "./progression-ui";
 
 export interface GraduateResult {
   level: ProgressionLevelStep;
@@ -198,20 +201,6 @@ function ChoiceCard({
   );
 }
 
-function GoalRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
-  return (
-    <li className="flex items-center gap-2 text-xs">
-      {ok ? (
-        <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-      ) : (
-        <Circle className="size-4 shrink-0 text-muted-foreground/60" />
-      )}
-      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
-      <span className="ml-auto tabular-nums text-muted-foreground">{detail}</span>
-    </li>
-  );
-}
-
 /**
  * "Graduar" (cartoes de decisao): dar o proximo grau, trocar para a proxima
  * faixa/nivel ou escolher outro (exame, transferencia, correcao). Mostra a meta
@@ -226,6 +215,7 @@ export function GraduatePanel({
   currentSubLevel,
   presentSincePromotion,
   monthsInLevel,
+  stageGrades,
   isPending,
   onCancel,
   onConfirm,
@@ -238,6 +228,8 @@ export function GraduatePanel({
   currentSubLevel: number;
   presentSincePromotion: number;
   monthsInLevel: number;
+  /** Com avaliacoes na modalidade: media e frequencia da etapa entram na meta (doc product/30 §1). */
+  stageGrades?: StudentStageGrades;
   isPending: boolean;
   onCancel: () => void;
   onConfirm: (result: GraduateResult) => void;
@@ -288,7 +280,17 @@ export function GraduatePanel({
   const timeOk = monthsInLevel >= targetMonths;
   const showAttendance = criteria === "attendance" || criteria === "attendance_and_time";
   const showTime = criteria === "time" || criteria === "attendance_and_time";
-  const goalMet = (!showAttendance || attendanceOk) && (!showTime || timeOk);
+  // Mesma regra do selo "Apto" (aulas, tempo, nota e frequencia).
+  const goalMet =
+    promotionReadiness({
+      criteriaType: criteria,
+      targetAttendances,
+      targetMonths,
+      presentSincePromotion,
+      monthsInLevel,
+      hasNextStep: true,
+      grades: stageGrades,
+    }).gaps.length === 0;
 
   const otherLevel = track.levels.find((l) => l.id === otherId);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
@@ -430,8 +432,8 @@ export function GraduatePanel({
         ) : null}
       </div>
 
-      {/* Meta da faixa/nivel atual */}
-      {criteria === "manual_exam" ? (
+      {/* Meta da faixa/nivel atual (com notas: media e frequencia da etapa) */}
+      {criteria === "manual_exam" && !stageGrades ? (
         <p className="rounded-xl border border-border/60 bg-background p-3 text-xs text-muted-foreground">
           Definido por avaliação do professor. {presentSincePromotion}{" "}
           {presentSincePromotion === 1 ? "aula" : "aulas"} desde a última {vocabulary.promotionLower}.
@@ -453,6 +455,7 @@ export function GraduatePanel({
                 detail={`${monthsInLevel}/${targetMonths} ${targetMonths === 1 ? "mês" : "meses"}`}
               />
             ) : null}
+            {stageGrades ? <StageGradeRows grades={stageGrades} inLevel={vocabulary.inLevel} /> : null}
           </ul>
           {!goalMet ? (
             <p className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">

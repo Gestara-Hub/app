@@ -3,6 +3,7 @@
 import { PillTabs } from "@/components/shared/pill-tabs";
 import { useMemo, useState } from "react";
 import { addDays, differenceInCalendarDays, parseISO } from "date-fns";
+import { CheckCircle2, Circle } from "lucide-react";
 import type {
   DateISO,
   EvaluationEntryTone,
@@ -11,7 +12,9 @@ import type {
   ProgressionLevelStep,
   StudentModalityOverviewItem,
   StudentModalityProgression,
+  StudentStageGrades,
 } from "@gestarahub/contracts";
+import { stageGradeChecks } from "@gestarahub/core/progression";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { useStudentProgressionOverview } from "../hooks/use-clients";
@@ -40,6 +43,37 @@ export const TONE_META: Record<EvaluationEntryTone, { label: string; className: 
 };
 
 export const TONES = Object.keys(TONE_META) as EvaluationEntryTone[];
+
+/** Linha de meta: certo ou nao, o nome e o valor a direita. */
+export function GoalRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <li className="flex items-center gap-2 text-xs">
+      {ok ? (
+        <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+      ) : (
+        <Circle className="size-4 shrink-0 text-muted-foreground/60" />
+      )}
+      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+      <span className="ml-auto tabular-nums text-muted-foreground">{detail}</span>
+    </li>
+  );
+}
+
+/** Media e frequencia da etapa atual (doc product/30 §1), uma linha cada. */
+export function StageGradeRows({ grades, inLevel }: { grades: StudentStageGrades; inLevel: string }) {
+  return (
+    <>
+      {stageGradeChecks(grades).map((check) => (
+        <GoalRow
+          key={check.key}
+          ok={check.ok}
+          label={check.key === "grade" ? `${check.label} ${inLevel}` : check.label}
+          detail={check.target ? `${check.value} · ${check.target}` : check.value}
+        />
+      ))}
+    </>
+  );
+}
 
 /** Meses inteiros desde a data (30 dias = 1 mes). */
 export function monthsSince(iso?: string): number {
