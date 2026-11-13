@@ -4,6 +4,28 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+  Barra de rolagem fina na cor do tema (13/11/2026): listas com rolagem dentro
+  de cartao (Painel: ocupacao e aniversariantes). A nativa aparecia grossa e
+  clara no tema escuro, colada no conteudo. Firefox e Chrome usam
+  scrollbar-width/color; o Safari, os pseudo-elementos -webkit-.
+*/
+@utility subtle-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  }
+}
+
+/*
   Tema base neutral (shadcn new-york), alinhado ao layout de referencia
   (old/gestarahub-web). A marca colorida vem da logo do GestaraHub; a UI fica
   neutra. A UI consome SEMPRE as variaveis/classes do tema, nunca hex literal.
