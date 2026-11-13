@@ -121,6 +121,24 @@ export async function renderEventCertificatesPdf(ctx: TenantContext, eventId: Id
   return { pdf, fileName: `certificados-${slugOf(batch.eventName, batch.eventId.slice(0, 8))}` };
 }
 
+/**
+ * Certificados de graduacao de quem graduou no evento (doc product/30 §4), um
+ * PDF so; cada folha com o modelo de graduacao da modalidade. Espaco inteiro:
+ * o historico de graduacao mora no cadastro de cada aluno.
+ */
+export async function renderEventGraduationCertificatesPdf(ctx: TenantContext, eventId: Id): Promise<{ pdf: Buffer; fileName: string }> {
+  const batch = await runInWorld(ctx, () => graduationCertificateService.issueEventGraduationCertificates(eventId), {
+    name: "issueEventGraduationCertificates",
+  });
+  const valid = batch.items.filter((item) => item.issued.status === "valid");
+  const pages = await Promise.all(
+    valid.map(async (item) => certificatePage(item.certificate, item.template, await loadTemplateImages(ctx.organizationId, item.template))),
+  );
+  const organizationName = valid[0]?.certificate.organizationName ?? "";
+  const pdf = await renderToBuffer(<CertificatesPdf title={`Graduação · ${batch.eventName}`} organizationName={organizationName} pages={pages} />);
+  return { pdf, fileName: `certificados-graduacao-${slugOf(batch.eventName, batch.eventId.slice(0, 8))}` };
+}
+
 /** Certificado de participacao de um inscrito em PDF: emite na 1a vez, como a tela. */
 export async function renderEventCertificatePdf(ctx: TenantContext, registrationId: Id): Promise<{ pdf: Buffer; fileName: string }> {
   const sheet = await runInWorld(ctx, () => eventCertificateService.getEventCertificate(registrationId), {

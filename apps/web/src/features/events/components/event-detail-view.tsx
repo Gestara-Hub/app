@@ -6,10 +6,25 @@ import { EventSignupLink } from "./event-signup-link";
 import { useWhatsAppSend } from "@/features/communication";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpCircle, Award, CalendarDays, ClipboardList, ListChecks, Pencil, Send, Ticket, User, UserPlus, Users, Wallet, XCircle } from "lucide-react";
+import {
+  ArrowUpCircle,
+  Award,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  ListChecks,
+  Pencil,
+  Send,
+  Ticket,
+  User,
+  UserPlus,
+  Users,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import type { EventRegistrationView, EventSession } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { formatCents, plural } from "@gestarahub/core/format";
+import { plural } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
 import { BackLink } from "@/components/shared/back-link";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -24,20 +39,26 @@ import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCancelEvent, useCancelEventRegistration, useCancelEventSession, useEvent, useEventRegistrations } from "../hooks/use-events";
-import { billingSummary, datesLabel, dayLabel, hoursLabel, instructorsLabel, occupancyLabel, sessionInstructors, sessionTimeLabel } from "../event-copy";
+import {
+  billingSummary,
+  datesLabel,
+  dayLabel,
+  hoursLabel,
+  instructorsLabel,
+  occupancyLabel,
+  registrationPaymentLabel,
+  sessionInstructors,
+  sessionTimeLabel,
+} from "../event-copy";
 import { EventFormDrawer } from "./event-form-drawer";
 import { EventStatusBadge } from "./event-badges";
 import { RegisterDrawer } from "./register-drawer";
 import { EventFinanceTab } from "./event-finance-tab";
+import { EventGraduationTab } from "./event-graduation-tab";
 
-type Tab = "registered" | "waitlist" | "days" | "finance";
+type Tab = "registered" | "waitlist" | "days" | "graduation" | "finance";
 
-function paymentLabel(r: EventRegistrationView): { text: string; tone: string } {
-  if (r.amountCents === 0) return { text: "Sem cobrança", tone: "text-muted-foreground" };
-  if (r.overdueCents > 0) return { text: `${formatCents(r.overdueCents)} vencido`, tone: "text-red-600 dark:text-red-400" };
-  if (r.openCents > 0) return { text: `${formatCents(r.openCents)} a receber`, tone: "text-amber-700 dark:text-amber-400" };
-  return { text: "Pago", tone: "text-emerald-700 dark:text-emerald-400" };
-}
+const paymentLabel = registrationPaymentLabel;
 
 export function EventDetailView({ id }: { id: string }) {
   const router = useRouter();
@@ -173,13 +194,17 @@ export function EventDetailView({ id }: { id: string }) {
     instructorsLabel(event.instructors),
     occupancyLabel(event),
     billingSummary(event),
-    ...(event.countsForProgression ? ["Conta para a graduação"] : []),
+    ...(event.graduation ? ["Evento de graduação"] : []),
   ];
 
   const tabs = [
     { value: "registered" as const, label: `Inscritos (${confirmed.length})`, icon: Users },
     ...(waiting.length > 0 ? [{ value: "waitlist" as const, label: `Espera (${waiting.length})`, icon: ListChecks }] : []),
     { value: "days" as const, label: `Dias (${event.sessions.filter((s) => s.status !== "canceled").length})`, icon: CalendarDays },
+    // Evento de graduacao (doc product/30 §4): quem pode graduar ve a aba.
+    ...(event.graduation && event.modalityId && can("progression:manage")
+      ? [{ value: "graduation" as const, label: "Graduação", icon: GraduationCap }]
+      : []),
     ...(canSeeMoney ? [{ value: "finance" as const, label: "Financeiro", icon: Wallet }] : []),
   ];
   const activeTab = tab === "waitlist" && waiting.length === 0 ? "registered" : tab;
@@ -362,6 +387,8 @@ export function EventDetailView({ id }: { id: string }) {
         <section className="space-y-3">
           <ListContainer>{waiting.map(registrationRow)}</ListContainer>
         </section>
+      ) : activeTab === "graduation" ? (
+        <EventGraduationTab event={event} registrations={all} />
       ) : activeTab === "finance" ? (
         <EventFinanceTab event={event} />
       ) : (

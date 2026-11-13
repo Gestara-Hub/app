@@ -18,7 +18,7 @@ import { ageAt, currentLevelOf, resolveModalityTrack } from "@/lib/progression-t
 import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
-import { assertCanManageProgression, assertTeacherSeesStudent } from "../classes/teacherScope";
+import { assertCanManageProgression, assertTeacherSeesStudent, teacherTeachesStudent } from "../classes/teacherScope";
 import { studentStageGrades } from "../grades/stageGrades";
 import { progressionTermSuggestions } from "./clientProgression";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
@@ -102,16 +102,20 @@ export const clientProgressionService = {
    * o nivel, as aulas desde a ultima graduacao e as notas da etapa. A tela
    * calcula o passo sugerido e o "Apto" com as mesmas regras do individual.
    */
-  listPromotionCandidates(modalityId: Id, studentIds: Id[]): Promise<PromotionCandidates> {
+  listPromotionCandidates(modalityId: Id, studentIds?: Id[]): Promise<PromotionCandidates> {
     return readOp(async () => {
       const found = store.categories.find((c) => c.id === modalityId);
       if (!found) throw notFoundError("Modalidade não encontrada.");
       const modality: Category = { ...found, progressionTrack: resolveModalityTrack(found) };
       const today = todayISO();
+      // Sem lista: os alunos com matricula ativa nas turmas da modalidade (atalho
+      // "Aptos" do evento de graduacao, doc product/30 §4); o professor, so os dele.
+      const ids = studentIds ?? studentsInModality(modalityId);
       const candidates: PromotionCandidate[] = [];
-      for (const studentId of new Set(studentIds)) {
+      for (const studentId of new Set(ids)) {
         const client = store.clients.find((c) => c.id === studentId);
         if (!client) continue;
+        if (!studentIds && !teacherTeachesStudent(studentId)) continue;
         assertTeacherSeesStudent(studentId, "Você só vê a evolução dos alunos das suas turmas.");
         const facts = progressFacts(client, modality, ageAt(client.birthDate, today));
         candidates.push({
@@ -149,6 +153,23 @@ export const clientProgressionService = {
       if (items.length === 0) {
         throw validationError([{ field: "items", message: "Escolha ao menos um aluno." }]);
       }
+      // Evento de graduacao (doc product/30 §4): so de quem esta inscrito nele.
+      if (input.eventId) {
+        const event = store.events?.find((e) => e.id === input.eventId);
+        if (!event || event.status !== "active" || !event.graduation || event.modalityId !== found.id) {
+          throw validationError([{ field: "eventId", message: "Este evento não é de graduação nesta modalidade." }]);
+        }
+        const registered = new Set(
+          (store.eventRegistrations ?? [])
+            .filter((r) => r.eventId === event.id && r.status === "confirmed")
+            .map((r) => r.studentId),
+        );
+        const outside = items.filter((i) => !registered.has(i.studentId));
+        if (outside.length > 0) {
+          const names = outside.map((i) => store.clients.find((c) => c.id === i.studentId)?.name ?? "Aluno");
+          throw validationError([{ field: "items", message: `${names.join(", ")} não ${names.length === 1 ? "está inscrito" : "estão inscritos"} no evento.` }]);
+        }
+      }
       const payloads = items.map((item): PromotionPayload => {
         assertCanManageProgression(item.studentId, { modalityId: found.id });
         const client = store.clients.find((c) => c.id === item.studentId);
@@ -177,6 +198,7 @@ export const clientProgressionService = {
           monthsInLevel: monthsBetween(prev?.promotedAt, input.date),
           notes: input.notes,
           examiner: input.examiner,
+          ...(input.eventId ? { eventId: input.eventId } : {}),
         };
       });
       for (const payload of payloads) recordPromotion(payload);
@@ -251,6 +273,8 @@ export interface PromotionPayload {
   isExam?: boolean;
   notes?: string;
   examiner?: string;
+  /** Graduou num evento de graduacao (doc product/30 §4). */
+  eventId?: Id;
 }
 
 /**
@@ -278,6 +302,7 @@ export function recordPromotion(payload: PromotionPayload): Client {
     isExam: payload.isExam,
     notes: payload.notes?.trim() || undefined,
     examiner: payload.examiner?.trim() || undefined,
+    ...(payload.eventId ? { eventId: payload.eventId } : {}),
     createdAt: ts,
   };
 
@@ -357,4 +382,10 @@ function monthsBetween(from: DateISO | undefined, to: DateISO): number {
   if (!from) return 0;
   const days = Math.floor((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from.slice(0, 10)}T12:00:00Z`)) / 86_400_000);
   return Math.max(0, Math.floor(days / 30));
+}
+
+/** Alunos com matricula ativa nas turmas da modalidade. */
+function studentsInModality(modalityId: Id): Id[] {
+  const classIds = new Set(store.classGroups.filter((g) => g.modalityId === modalityId && g.status === "active").map((g) => g.id));
+  return store.enrollments.filter((e) => e.status === "active" && classIds.has(e.classGroupId)).map((e) => e.studentId);
 }

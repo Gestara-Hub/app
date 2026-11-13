@@ -19,7 +19,9 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { toast } from "@/lib/toast";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useRetainedValue } from "@/lib/use-retained-value";
-import { useClientOptions } from "@/features/clients";
+import { candidateStep, useClientOptions, useModalityPromotionCandidates } from "@/features/clients";
+import { useCan } from "@/features/auth";
+import { Button } from "@/components/ui/button";
 import { usePromoteEventWaitlist, useRegisterForEvent } from "../hooks/use-events";
 import { registerFormSchema, type RegisterFormValues } from "../event-schema";
 import { dayLabel, sessionTimeLabel } from "../event-copy";
@@ -92,6 +94,23 @@ function RegisterForm({ event, registrations, promote, onClose }: Omit<RegisterD
     lastSuggested.current = next;
     form.setValue("amountCents", next);
   }, [dayScope, sessionIds.length, activeDays.length, event, today, form]);
+
+  // Evento de graduacao (doc product/30 §4): atalho que marca quem ja esta apto na modalidade.
+  const can = useCan();
+  const showAptos = Boolean(event.graduation && event.modalityId && !promote && can("progression:manage"));
+  const { data: modalityCandidates } = useModalityPromotionCandidates(event.modalityId, showAptos);
+  const track = modalityCandidates?.modality.progressionTrack;
+  const taken = new Set(registrations.filter((r) => r.status !== "canceled").map((r) => r.studentId));
+  const aptoIds =
+    track?.enabled && modalityCandidates
+      ? modalityCandidates.candidates
+          .filter((c) => !taken.has(c.studentId) && candidateStep(track, c, today).readiness.ready)
+          .map((c) => c.studentId)
+      : [];
+  const markAptos = () => {
+    const current = form.getValues("studentIds");
+    form.setValue("studentIds", [...new Set([...current, ...aptoIds])], { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+  };
 
   // Ja inscrito ou na espera aparece desabilitado com o motivo, em vez de sumir.
   const rows: StudentPickRow[] = (clients ?? []).map((c) => {
@@ -188,6 +207,15 @@ function RegisterForm({ event, registrations, promote, onClose }: Omit<RegisterD
             </p>
           ) : (
             <FieldShell label="Alunos" required error={form.formState.errors.studentIds?.message}>
+              {showAptos && modalityCandidates ? (
+                aptoIds.length > 0 ? (
+                  <Button type="button" variant="outline" className="mb-2" onClick={markAptos} disabled={busy}>
+                    Marcar os aptos de {event.modalityName ?? "modalidade"} ({aptoIds.length})
+                  </Button>
+                ) : (
+                  <p className="mb-2 text-xs text-muted-foreground">Ninguém apto em {event.modalityName ?? "modalidade"} agora.</p>
+                )
+              ) : null}
               <StudentMultiSelect rows={rows} selected={selected} onToggle={toggleStudent} disabled={busy} listClassName="max-h-64" />
               {overCapacity && !toWaitlist ? (
                 <p className="text-xs text-amber-700 dark:text-amber-500">

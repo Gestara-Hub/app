@@ -22,6 +22,8 @@ const SELF_CHECKED: Record<string, string> = {
   // Certificado de graduacao (doc 21 §1.6): abrir emite; quem gere a evolucao emite e cancela.
   "clients.getGraduationCertificate": "assertCanManageProgression",
   "clients.cancelGraduationCertificate": "assertCanManageProgression",
+  // Certificados de graduacao do evento num PDF (doc product/30 §4): confere cada aluno.
+  "clients.issueEventGraduationCertificates": "assertCanManageProgression",
   // Abrir o certificado emite (doc 21 §1.3): quem ve a turma emite, e o professor so a dele
   // (`endedCourseOf` chama assertTeacherSeesClass e confere o plano e o fim do curso).
   "turmas.getCourseCertificate": "endedCourseOf",

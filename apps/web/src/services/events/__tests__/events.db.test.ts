@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Client, EventRegistrationView, EventSessionDetail, EventView } from "@gestarahub/contracts";
+import { PROGRESSION_TEMPLATES } from "@/lib/progression-tracks";
+import { createCategoryAction } from "@/services/catalog/categoriesActions";
 import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
 import { serviceAction } from "@/services/world/serviceActions";
 
@@ -94,5 +96,35 @@ describe("eventos no banco", () => {
     expect(list.map((r) => `${r.studentName} ${r.status}`)).toEqual(["Bia confirmed", "Ana canceled"]);
     const { data: auditRows } = await admin.from("audit_logs").select("summary").eq("organization_id", tenant.organizationId);
     expect(auditRows?.some((a) => String(a.summary).includes("promoveu Bia da lista de espera"))).toBe(true);
+  });
+
+  it("evento de graduacao grava a opcao, o repasse e a graduacao ligada ao evento (doc product/30 §4)", async () => {
+    const admin = adminClient();
+    const created = await createCategoryAction({ name: "Jiu-Jitsu", progressionTrack: structuredClone(PROGRESSION_TEMPLATES.bjj_adult.track) });
+    if (!created.ok) throw new Error(JSON.stringify(created.error));
+    const modalityId = created.data.id;
+    const event = await call<EventView>("events.create", {
+      name: "Exame de faixa",
+      modalityId,
+      instructors: [{ id: "i-rui", guestName: "Mestre Rui" }],
+      billingMode: "free",
+      graduation: true,
+      federationFeeCents: 6000,
+      sessions: [{ date: today(), start: "09:00", end: "12:00" }],
+    });
+    const { data: row } = await admin.from("events").select("graduation, federation_fee_cents").eq("id", event.id).single();
+    expect(row).toEqual({ graduation: true, federation_fee_cents: 6000 });
+
+    const ana = await call<Client>("clients.create", { name: "Ana", phone: "11977773333", status: "active" });
+    await call("events.register", { eventId: event.id, studentId: ana.id });
+    const white = PROGRESSION_TEMPLATES.bjj_adult.track.levels[0];
+    await call("clients.promoteStudents", {
+      modalityId,
+      eventId: event.id,
+      date: today(),
+      items: [{ studentId: ana.id, toLevelId: white.id, toSubLevel: 1 }],
+    });
+    const saved = await call<Client>("clients.getById", ana.id);
+    expect(saved.progressions?.[modalityId]?.promotionHistory[0]).toMatchObject({ eventId: event.id, toSubLevel: 1 });
   });
 });

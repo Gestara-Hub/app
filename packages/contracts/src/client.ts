@@ -84,6 +84,8 @@ export interface StudentPromotionHistoryEntry {
   notes?: string;
   /** Quem graduou (professor ou banca), texto livre. */
   examiner?: string;
+  /** Graduou num evento de graduacao (doc product/30 §4): repasse e certificados do evento. */
+  eventId?: Id;
   createdAt: DateTimeISO;
 }
 
@@ -152,6 +154,8 @@ export interface PromotionCandidates {
 /** Graduar varios de uma vez (doc product/30 §3): tudo ou nada, mesma data e examinador. */
 export interface PromoteStudentsInput {
   modalityId: Id;
+  /** Evento de graduacao (doc product/30 §4): cada aluno precisa estar inscrito nele. */
+  eventId?: Id;
   date: DateISO;
   examiner?: string;
   notes?: string;

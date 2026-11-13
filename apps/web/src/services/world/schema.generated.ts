@@ -1160,7 +1160,7 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "nullable": true,
         "hasDefault": false
       },
-      "counts_for_progression": {
+      "graduation": {
         "type": "boolean",
         "nullable": false,
         "hasDefault": true
@@ -1209,6 +1209,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "integer",
         "nullable": false,
         "hasDefault": true
+      },
+      "federation_fee_cents": {
+        "type": "integer",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

@@ -10,6 +10,7 @@ import type {
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { isIsoDate } from "@gestarahub/core/date";
 import { daysOverlap } from "@gestarahub/core/events";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { teamWords } from "@/services/world/nouns";
 import { validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -40,6 +41,8 @@ export function normalizeEvent<T extends Partial<EventPayload>>(payload: T): T {
     next.earlyBirdPriceCents = undefined;
     next.earlyBirdUntil = undefined;
   }
+  // Repasse a federacao so no evento de graduacao (doc product/30 §4).
+  if (!next.graduation || !next.federationFeeCents) next.federationFeeCents = undefined;
   return next as T;
 }
 
@@ -89,6 +92,15 @@ export function validateEvent(payload: EventPayload, current?: Pick<Event, "inst
   validateInstructors(payload.instructors, fields, known);
   if (payload.modalityId && !store.categories.some((c) => c.id === payload.modalityId)) {
     fields.push({ field: "modalityId", message: "Modalidade não encontrada." });
+  }
+  if (payload.graduation) {
+    const modality = payload.modalityId ? store.categories.find((c) => c.id === payload.modalityId) : undefined;
+    if (!modality || !resolveModalityTrack(modality).enabled) {
+      fields.push({ field: "graduation", message: "Escolha uma modalidade com trilha de níveis." });
+    }
+    if (payload.federationFeeCents !== undefined && (!Number.isInteger(payload.federationFeeCents) || payload.federationFeeCents <= 0)) {
+      fields.push({ field: "federationFeeCents", message: "Informe o repasse por aluno." });
+    }
   }
   if (payload.capacity !== undefined && (!Number.isInteger(payload.capacity) || payload.capacity < 1)) {
     fields.push({ field: "capacity", message: "As vagas precisam ser um número inteiro maior que zero." });

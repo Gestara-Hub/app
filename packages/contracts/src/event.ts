@@ -1,5 +1,5 @@
 import type { ChargeView } from "./billing";
-import type { CertificateTemplate, CourseCertificateDocument } from "./certificate";
+import type { CertificateTemplate, CourseCertificateDocument, GraduationCertificateDocument } from "./certificate";
 import type { CourseCertificate } from "./class";
 import type { DateISO, DateTimeISO, Id, TenantScopeFields, TimeISO } from "./common";
 import type { FinancialEntry } from "./finance";
@@ -80,8 +80,14 @@ export interface Event {
   /** Lote (opcional, so `fixed`): valor menor ate `earlyBirdUntil` (inclusive). */
   earlyBirdPriceCents?: number;
   earlyBirdUntil?: DateISO;
-  /** Presenca conta como aula na frequencia da graduacao (exame de faixa coletivo). Padrao: nao. */
-  countsForProgression?: boolean;
+  /**
+   * Evento de graduacao (exame ou cerimonia; doc product/30 §4): aba
+   * Graduacao, aptos no Inscrever e repasse a federacao. So com modalidade de
+   * trilha. Presenca em evento nao conta na frequencia da graduacao.
+   */
+  graduation?: boolean;
+  /** Repasse a federacao por aluno graduado no evento (opcional, so evento de graduacao). */
+  federationFeeCents?: number;
   /** Inscricao pelo link (ausente = desligada). */
   publicSignup?: EventPublicSignup;
   /** Evento pago, inscricao pelo link: vaga garantida na inscricao (padrao) ou so com o pagamento. */
@@ -281,6 +287,13 @@ export interface EventCertificatesBatch {
   eventName: string;
   template: CertificateTemplate;
   items: { certificate: CourseCertificate; issued: CourseCertificateDocument["issued"] }[];
+}
+
+/** Certificados de graduacao de quem graduou no evento (doc product/30 §4), num PDF so. */
+export interface EventGraduationCertificatesBatch {
+  eventId: Id;
+  eventName: string;
+  items: GraduationCertificateDocument[];
 }
 
 export interface EventSessionView extends EventSession {

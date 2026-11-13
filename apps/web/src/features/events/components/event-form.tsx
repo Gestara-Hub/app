@@ -30,6 +30,7 @@ import { newId } from "@/lib/new-id";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useCategories } from "@/features/categories";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { useProfessionals } from "@/features/professionals";
 import { useOrganization, useTeamWords } from "@/features/settings";
 import { useHasFeature } from "@/features/auth";
@@ -74,7 +75,8 @@ function defaults(event?: EventView): EventFormValues {
     earlyBirdPriceCents: event?.earlyBirdPriceCents ?? null,
     earlyBirdUntil: event?.earlyBirdUntil ?? "",
     dayPriceCents: event?.dayPriceCents ?? null,
-    countsForProgression: event?.countsForProgression ?? false,
+    graduation: event?.graduation ?? false,
+    federationFeeCents: event?.federationFeeCents ?? null,
     publicSignupEnabled: Boolean(event?.publicSignup?.enabled),
     publicSignupUntil: event?.publicSignup?.until ?? "",
     seatGuarantee: event?.seatGuarantee ?? "on_signup",
@@ -111,7 +113,8 @@ function toPayload(values: EventFormValues): CreateEvent {
     earlyBirdPriceCents: fixed && values.hasEarlyBird ? (values.earlyBirdPriceCents ?? undefined) : undefined,
     earlyBirdUntil: fixed && values.hasEarlyBird ? values.earlyBirdUntil || undefined : undefined,
     dayPriceCents: values.billingMode === "per_day" ? (values.dayPriceCents ?? undefined) : undefined,
-    countsForProgression: values.countsForProgression || undefined,
+    graduation: values.graduation,
+    federationFeeCents: values.graduation ? (values.federationFeeCents ?? undefined) : undefined,
     // O codigo do link e do servidor; aqui so ligado e a data limite.
     publicSignup: { enabled: values.publicSignupEnabled, code: "", ...(values.publicSignupUntil ? { until: values.publicSignupUntil } : {}) },
     seatGuarantee: values.billingMode === "free" ? "on_signup" : values.seatGuarantee,
@@ -157,6 +160,11 @@ export function EventForm({ event, onSuccess, onCancel }: { event?: EventView; o
   const hasEarlyBird = useWatch({ control: form.control, name: "hasEarlyBird" });
   const publicSignupEnabled = useWatch({ control: form.control, name: "publicSignupEnabled" });
   const seatGuarantee = useWatch({ control: form.control, name: "seatGuarantee" });
+  const modalityId = useWatch({ control: form.control, name: "modalityId" });
+  const graduation = useWatch({ control: form.control, name: "graduation" });
+  // "Evento de graduacao" so com modalidade de trilha (doc product/30 §4); ja ligado, segue visivel para desligar.
+  const modality = (categories ?? []).find((c) => c.id === modalityId);
+  const canBeGraduation = Boolean(modality && resolveModalityTrack(modality).enabled) || graduation;
   const hasFeature = useHasFeature();
   const signupInPlan = hasFeature("event_signup");
   const { data: organization } = useOrganization();
@@ -306,12 +314,26 @@ export function EventForm({ event, onSuccess, onCancel }: { event?: EventView; o
                 <InputCurrency<EventFormValues> name="dayPriceCents" label="Valor do dia" required hint="A inscrição pode ser em todos os dias ou só em alguns." disabled={pending} />
               </div>
             ) : null}
-            <SwitchField<EventFormValues>
-              name="countsForProgression"
-              label="Conta para a graduação"
-              hint="Presença vale como aula na frequência mínima (exame de faixa coletivo)."
-              disabled={pending}
-            />
+            {canBeGraduation ? (
+              <>
+                <SwitchField<EventFormValues>
+                  name="graduation"
+                  label="Evento de graduação"
+                  hint="Exame ou cerimônia: abre a aba Graduação e mostra os aptos."
+                  disabled={pending}
+                />
+                {graduation ? (
+                  <div className="sm:w-1/2 sm:pr-2">
+                    <InputCurrency<EventFormValues>
+                      name="federationFeeCents"
+                      label="Repasse à federação por aluno"
+                      hint="Opcional. Ajuda a lançar a saída depois."
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </FormSection>
 
           <FormSection title="Inscrição pelo link">

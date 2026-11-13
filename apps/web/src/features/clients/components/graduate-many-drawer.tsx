@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Award } from "lucide-react";
-import type { Id, ProgressionLevelStep } from "@gestarahub/contracts";
+import type { Id, ModalityProgressionTrack, PromotionCandidate, ProgressionLevelStep } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { todayISO } from "@gestarahub/core/date";
 import { plural } from "@gestarahub/core/format";
@@ -51,6 +51,13 @@ interface GraduateManyDrawerProps {
   students: GraduateManyStudent[];
   /** De onde veio a lista ("Turma Inglês A"), para o subtitulo. */
   contextLabel?: string;
+  /** Evento de graduacao (doc product/30 §4): cada registro fica ligado a ele. */
+  eventId?: Id;
+  /** Data e examinador sugeridos (no evento: o dia e quem conduz). */
+  defaultDate?: string;
+  defaultExaminer?: string;
+  /** Linha a mais por aluno (no evento: a situacao do pagamento) e se ainda deve. */
+  extraOf?: (studentId: Id) => { text: string; tone: string; owes: boolean } | undefined;
   onDone?: () => void;
 }
 
@@ -62,10 +69,43 @@ interface Option {
   sub: number;
 }
 
+/**
+ * Passo de um aluno na trilha (mesmas regras do Graduar individual): nivel de
+ * hoje, as opcoes (proximo grau e/ou proximo nivel, sem os de outra idade) e o
+ * "Apto". Usado no "Graduar vários", na aba Graduação do evento e nos aptos do
+ * Inscrever (doc product/30 §3 e §4).
+ */
+export function candidateStep(track: ModalityProgressionTrack, c: PromotionCandidate, onDate: string, inLevel?: string) {
+  const age = trackUsesAges(track) ? ageAt(c.birthDate, onDate || todayISO()) : null;
+  const current = levelOf(track, c.progression, age);
+  const sub = c.progression?.subLevel ?? 0;
+  const suggested = current ? computeNextPromotionStep(track, current.id, sub, age) : null;
+  const options: Option[] = [];
+  if (current && suggested && !suggested.isNewBelt) options.push({ choice: "degree", level: current, sub: sub + 1 });
+  const next = nextLevelFor(track, current, age);
+  if (next) options.push({ choice: "level", level: next, sub: 0 });
+  const readiness = promotionReadiness({
+    criteriaType: track.criteriaType ?? "attendance",
+    targetAttendances: track.targetAttendances ?? 30,
+    targetMonths: track.targetMonths ?? 6,
+    presentSincePromotion: c.presentSincePromotion,
+    monthsInLevel: monthsSince(c.progression?.promotedAt),
+    hasNextStep: options.length > 0,
+    grades: c.stageGrades,
+    inLevel,
+  });
+  const defaultChoice: Choice = suggested?.isNewBelt || !options.some((o) => o.choice === "degree") ? "level" : "degree";
+  return { current, sub, options, readiness, defaultChoice };
+}
+
 function GraduateManyForm({
   modalityId,
   students,
   contextLabel,
+  eventId,
+  defaultDate,
+  defaultExaminer,
+  extraOf,
   onClose,
   onDone,
 }: Omit<GraduateManyDrawerProps, "open" | "onOpenChange"> & { onClose: () => void }) {
@@ -79,8 +119,8 @@ function GraduateManyForm({
   const vocabulary = useModalityVocabulary(track);
   const isBelt = style === "belt";
 
-  const [date, setDate] = useState(todayISO());
-  const [examiner, setExaminer] = useState("");
+  const [date, setDate] = useState(defaultDate && defaultDate <= todayISO() ? defaultDate : todayISO());
+  const [examiner, setExaminer] = useState(defaultExaminer ?? "");
   const [notes, setNotes] = useState("");
   const [checked, setChecked] = useState<Set<Id> | null>(null);
   const [choices, setChoices] = useState<Record<Id, Choice>>({});
@@ -88,29 +128,7 @@ function GraduateManyForm({
 
   const rows = useMemo(() => {
     if (!data || !track?.enabled) return [];
-    const usesAges = trackUsesAges(track);
-    return data.candidates.map((c) => {
-      const age = usesAges ? ageAt(c.birthDate, date || todayISO()) : null;
-      const current = levelOf(track, c.progression, age);
-      const sub = c.progression?.subLevel ?? 0;
-      const suggested = current ? computeNextPromotionStep(track, current.id, sub, age) : null;
-      const options: Option[] = [];
-      if (current && suggested && !suggested.isNewBelt) options.push({ choice: "degree", level: current, sub: sub + 1 });
-      const next = nextLevelFor(track, current, age);
-      if (next) options.push({ choice: "level", level: next, sub: 0 });
-      const readiness = promotionReadiness({
-        criteriaType: track.criteriaType ?? "attendance",
-        targetAttendances: track.targetAttendances ?? 30,
-        targetMonths: track.targetMonths ?? 6,
-        presentSincePromotion: c.presentSincePromotion,
-        monthsInLevel: monthsSince(c.progression?.promotedAt),
-        hasNextStep: options.length > 0,
-        grades: c.stageGrades,
-        inLevel: vocabulary.inLevel,
-      });
-      const defaultChoice: Choice = suggested?.isNewBelt || !options.some((o) => o.choice === "degree") ? "level" : "degree";
-      return { candidate: c, current, sub, options, readiness, defaultChoice };
-    });
+    return data.candidates.map((c) => ({ candidate: c, ...candidateStep(track, c, date, vocabulary.inLevel) }));
   }, [data, track, date, vocabulary.inLevel]);
 
   // Quem esta apto ja vem marcado; depois vale o que a pessoa marcar.
@@ -138,11 +156,17 @@ function GraduateManyForm({
     }
     if (!date || futureDate) return;
     const notReady = picked.filter((r) => !r.readiness.ready).length;
+    // No evento: quem ainda deve entra, mas a confirmacao avisa (doc product/30 §4).
+    const owing = picked.filter((r) => extraOf?.(r.candidate.studentId)?.owes).length;
+    const warnings = [
+      notReady > 0 ? `${plural(notReady, "aluno ainda não está apto", "alunos ainda não estão aptos")}.` : "",
+      owing > 0 ? `${plural(owing, "aluno ainda deve", "alunos ainda devem")} o evento.` : "",
+    ].filter(Boolean);
     const ok = await confirm({
       title: `${vocabulary.promoteVerb} ${plural(picked.length, "aluno", "alunos")}?`,
       description:
-        notReady > 0
-          ? `${plural(notReady, "aluno ainda não está apto", "alunos ainda não estão aptos")}. Fica registrado no histórico como os outros.`
+        warnings.length > 0
+          ? `${warnings.join(" ")} Fica registrado no histórico como os outros.`
           : "Cada aluno ganha o registro no histórico.",
       confirmLabel: vocabulary.promoteVerb,
       variant: "default",
@@ -151,6 +175,7 @@ function GraduateManyForm({
     try {
       const result = await promoteMut.mutateAsync({
         modalityId,
+        ...(eventId ? { eventId } : {}),
         date,
         examiner: examiner.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -273,6 +298,10 @@ function GraduateManyForm({
                             ? row.readiness.gaps.join(" · ")
                             : "Por avaliação do professor"}
                     </p>
+                    {(() => {
+                      const extra = extraOf?.(id);
+                      return extra ? <p className={cn("text-xs", extra.tone)}>{extra.text}</p> : null;
+                    })()}
                   </div>
                 </li>
               );
@@ -353,7 +382,7 @@ function GraduateManyForm({
   );
 }
 
-export function GraduateManyDrawer({ open, onOpenChange, modalityId, students, contextLabel, onDone }: GraduateManyDrawerProps) {
+export function GraduateManyDrawer({ open, onOpenChange, students, ...rest }: GraduateManyDrawerProps) {
   const present = useDialogPresence(open);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -365,10 +394,8 @@ export function GraduateManyDrawer({ open, onOpenChange, modalityId, students, c
         {present && students.length > 0 ? (
           <GraduateManyForm
             key={students.map((s) => s.id).join(",")}
-            modalityId={modalityId}
+            {...rest}
             students={students}
-            contextLabel={contextLabel}
-            onDone={onDone}
             onClose={() => onOpenChange(false)}
           />
         ) : null}

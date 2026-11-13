@@ -1,4 +1,4 @@
-import type { EventBillingMode, EventSession, EventStage, EventView } from "@gestarahub/contracts";
+import type { EventBillingMode, EventRegistrationView, EventSession, EventStage, EventView } from "@gestarahub/contracts";
 import { formatCents, plural } from "@gestarahub/core/format";
 
 /** Textos curtos do evento, usados na lista, no detalhe e no dia. */
@@ -12,6 +12,28 @@ function joinPt(names: string[]): string {
 }
 
 const withGuestMark = (i: NamedInstructor) => (i.isGuest ? `${i.name} (convidado)` : i.name);
+
+/** So os nomes de quem conduz ("Ana e Kenji"): o examinador sugerido na graduacao do evento. */
+export function instructorNamesLabel(list: NamedInstructor[]): string {
+  return joinPt(list.map((i) => i.name));
+}
+
+/** Situacao do pagamento da inscricao: "Pago", "R$ x a receber", "R$ x vencido" ou "Sem cobrança". */
+export function registrationPaymentLabel(r: EventRegistrationView): { text: string; tone: string; owes: boolean } {
+  if (r.amountCents === 0) return { text: "Sem cobrança", tone: "text-muted-foreground", owes: false };
+  if (r.overdueCents > 0) return { text: `${formatCents(r.overdueCents)} vencido`, tone: "text-red-600 dark:text-red-400", owes: true };
+  if (r.openCents > 0) return { text: `${formatCents(r.openCents)} a receber`, tone: "text-amber-700 dark:text-amber-400", owes: true };
+  return { text: "Pago", tone: "text-emerald-700 dark:text-emerald-400", owes: false };
+}
+
+/** Ultimo dia do evento ate hoje (nao cancelado): a data sugerida da graduacao. */
+export function lastHeldDay(event: Pick<EventView, "sessions">, today: string): string | undefined {
+  return event.sessions
+    .filter((s) => s.status !== "canceled" && s.date <= today)
+    .map((s) => s.date)
+    .sort()
+    .at(-1);
+}
 
 /** Todos que conduzem: "Ana e Sensei Kenji (convidado)" (detalhe, dia, calendario). */
 export function instructorsLabel(list: NamedInstructor[]): string {

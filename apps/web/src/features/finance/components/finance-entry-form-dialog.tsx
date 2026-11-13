@@ -165,6 +165,7 @@ function EntryForm({
   defaultType,
   defaultDueDate,
   eventId,
+  preset,
   onSuccess,
   onCancel,
 }: {
@@ -173,6 +174,8 @@ function EntryForm({
   defaultDueDate: string;
   /** Lancamento de um evento (doc product/29): gravado com o vinculo. */
   eventId?: string;
+  /** Novo lancamento ja preenchido (ex.: repasse a federacao, doc product/30 §4); a pessoa confere e salva. */
+  preset?: { description: string; amountCents: number };
   onSuccess: () => void;
   onCancel?: () => void;
 }) {
@@ -206,8 +209,8 @@ function EntryForm({
       : {
           type: defaultType,
           categoryId: "",
-          description: "",
-          amountCents: undefined as unknown as number,
+          description: preset?.description ?? "",
+          amountCents: preset?.amountCents ?? (undefined as unknown as number),
           dueDate: defaultDueDate,
           paidNow: false,
           method: undefined,
@@ -452,6 +455,7 @@ export function FinanceEntryFormDialog({
   competence,
   eventId,
   eventName,
+  preset,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -462,6 +466,8 @@ export function FinanceEntryFormDialog({
   /** Lancamento de um evento (doc product/29): fica ligado a ele e aparece no Financeiro geral tambem. */
   eventId?: string;
   eventName?: string;
+  /** Novo lancamento ja preenchido (descricao e valor). */
+  preset?: { description: string; amountCents: number };
 }) {
   // Retem o lancamento enquanto o dialog anima a saida: sem isso o formulario
   // sumia (corpo encolhia) e o titulo voltava para "Novo lancamento" no fechar.
@@ -498,6 +504,7 @@ export function FinanceEntryFormDialog({
           key={`${shown.session}-${current?.id ?? "new"}`}
           entry={current}
           eventId={eventId}
+          preset={current ? undefined : preset}
           defaultType={defaultType}
           defaultDueDate={defaultDueDate}
           onSuccess={() => onOpenChange(false)}

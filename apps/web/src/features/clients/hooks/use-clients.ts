@@ -120,6 +120,15 @@ export function usePromotionCandidates(modalityId: Id | undefined, studentIds: I
   });
 }
 
+/** Alunos ativos nas turmas da modalidade, com o mesmo retrato (atalho "Aptos" do evento, doc product/30 §4). */
+export function useModalityPromotionCandidates(modalityId: Id | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.clients.all, "promotion-candidates", modalityId ?? "", "modality"],
+    queryFn: () => clientsService.listPromotionCandidates(modalityId!),
+    enabled: enabled && Boolean(modalityId),
+  });
+}
+
 export function usePromoteStudents() {
   const qc = useQueryClient();
   return useMutation({

@@ -1,4 +1,5 @@
 import type {
+  EventGraduationCertificatesBatch,
   GraduationCertificate,
   GraduationCertificateDocument,
   GraduationOption,
@@ -176,6 +177,34 @@ export const graduationCertificateService = {
       const promotion = promotionOf(studentId, promotionId);
       assertCanManageProgression(studentId, { modalityId: promotion.modalityId });
       return clone(documentOf(issueFor(promotion), promotion.modalityId));
+    });
+  },
+
+  /**
+   * Certificados de quem graduou no evento de graduacao (doc product/30 §4),
+   * para um PDF so, em ordem de nome. Emite quem ainda nao tinha; os
+   * cancelados ficam de fora do PDF. Confere cada aluno como o individual.
+   */
+  issueEventGraduationCertificates(eventId: Id): Promise<EventGraduationCertificatesBatch> {
+    return writeOp(async () => {
+      assertFeature("certificates");
+      const event = store.events?.find((e) => e.id === eventId);
+      if (!event) throw notFoundError("Evento não encontrado.");
+      const promotions: Promotion[] = [];
+      for (const client of store.clients) {
+        for (const [modalityId, progression] of Object.entries(client.progressions ?? {})) {
+          for (const entry of progression.promotionHistory) {
+            if (entry.eventId === eventId) promotions.push({ client, modalityId, progression, entry });
+          }
+        }
+      }
+      if (promotions.length === 0) throw notFoundError("Ninguém graduou neste evento ainda.");
+      promotions.sort((a, b) => a.client.name.localeCompare(b.client.name, "pt-BR"));
+      const items = promotions.map((promotion) => {
+        assertCanManageProgression(promotion.client.id, { modalityId: promotion.modalityId });
+        return documentOf(issueFor(promotion), promotion.modalityId);
+      });
+      return clone({ eventId: event.id, eventName: event.name, items });
     });
   },
 

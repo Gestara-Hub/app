@@ -15,7 +15,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { paymentMethodLabel } from "@/lib/labels";
-import { textIncludes } from "@/lib/text";
+import { normalizeText, textIncludes } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
 import { FinanceEntryFormDialog, currentCompetence, financeHref } from "@/features/finance";
@@ -34,7 +34,8 @@ import {
   useChargeActions,
   type StatusFilterValue,
 } from "@/features/turmas";
-import { useEventFinance } from "../hooks/use-events";
+import { useEventFinance, useEventRegistrations } from "../hooks/use-events";
+import { useEventGraduation } from "../hooks/use-event-graduation";
 
 /**
  * Aba Financeiro do evento (doc product/29 §Financeiro do evento), com os
@@ -64,6 +65,11 @@ export function EventFinanceTab({ event }: { event: EventView }) {
   const { data, isPending, isError } = useEventFinance(event.id);
   const actions = useChargeActions();
   const [entryOpen, setEntryOpen] = useState(false);
+  const [entryPreset, setEntryPreset] = useState<{ description: string; amountCents: number } | undefined>();
+  // Repasse a federacao (doc product/30 §4): por aluno graduado neste evento.
+  const fee = event.graduation ? (event.federationFeeCents ?? 0) : 0;
+  const { data: registrations } = useEventRegistrations(event.id);
+  const { graduatedCount } = useEventGraduation(event, registrations, fee > 0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("open");
   const entriesRef = useRef<HTMLElement>(null);
@@ -101,6 +107,17 @@ export function EventFinanceTab({ event }: { event: EventView }) {
     );
   }
 
+  const REPASSE = "Repasse à federação";
+  const repasseExpected = fee * graduatedCount;
+  const repasseLaunched = (data?.entries ?? [])
+    .filter((e) => e.type === "expense" && e.status !== "canceled" && normalizeText(e.description).startsWith(normalizeText(REPASSE)))
+    .reduce((sum, e) => sum + e.amountCents, 0);
+  const repasseMissing = repasseExpected - repasseLaunched;
+  const openEntry = (preset?: { description: string; amountCents: number }) => {
+    setEntryPreset(preset);
+    setEntryOpen(true);
+  };
+
   const paidCount = charges.filter((c) => c.status === "paid").length;
   const openCount = charges.filter((c) => c.status === "pending" || c.status === "overdue").length;
   const entries = data?.entries ?? [];
@@ -129,7 +146,7 @@ export function EventFinanceTab({ event }: { event: EventView }) {
         title="Nenhuma saída lançada"
         description="Cachê do convidado, passagem, hospedagem e material entram aqui e no Financeiro geral."
         actionLabel={canManageFinance ? "Nova saída" : undefined}
-        onAction={canManageFinance ? () => setEntryOpen(true) : undefined}
+        onAction={canManageFinance ? () => openEntry() : undefined}
       />
     ) : null;
 
@@ -143,6 +160,7 @@ export function EventFinanceTab({ event }: { event: EventView }) {
         competence={today.slice(0, 7)}
         eventId={event.id}
         eventName={event.name}
+        preset={entryPreset}
       />
 
       {/* Os cartoes de Cobrancas: cada um com o link que filtra a lista do numero. */}
@@ -289,12 +307,33 @@ export function EventFinanceTab({ event }: { event: EventView }) {
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Lançamentos do evento</h2>
           {canManageFinance ? (
-            <Button variant="outline" onClick={() => setEntryOpen(true)}>
+            <Button variant="outline" onClick={() => openEntry()}>
               <Plus className="size-4" />
               Nova saída
             </Button>
           ) : null}
         </div>
+        {fee > 0 && graduatedCount > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="break-words text-sm font-medium text-foreground">
+                {REPASSE}: {plural(graduatedCount, "graduado", "graduados")} × {formatCents(fee)} = {formatCents(repasseExpected)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {repasseLaunched === 0
+                  ? "Ainda não lançado."
+                  : repasseMissing > 0
+                    ? `Lançado ${formatCents(repasseLaunched)}; faltam ${formatCents(repasseMissing)}.`
+                    : `Lançado ${formatCents(repasseLaunched)}.`}
+              </p>
+            </div>
+            {canManageFinance && repasseMissing > 0 ? (
+              <Button variant="outline" onClick={() => openEntry({ description: REPASSE, amountCents: repasseMissing })}>
+                {repasseLaunched > 0 ? "Lançar a diferença" : "Lançar repasse"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <ListContainer emptyState={entriesEmpty}>
           {entries.map((e) => {
             const isIncome = e.type === "income";

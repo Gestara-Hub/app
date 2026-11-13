@@ -40,7 +40,9 @@ export const eventFormSchema = z
     earlyBirdPriceCents: z.number().int().min(0).nullish(),
     earlyBirdUntil: z.string().optional(),
     dayPriceCents: z.number().int().min(0).nullish(),
-    countsForProgression: z.boolean(),
+    /** Evento de graduacao (doc product/30 §4) e o repasse opcional a federacao. */
+    graduation: z.boolean(),
+    federationFeeCents: z.number().int().min(0).nullish(),
     /** Inscricao pelo link (Plano Profissional; doc product/29). */
     publicSignupEnabled: z.boolean(),
     publicSignupUntil: z.string().optional(),
