@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createPortal } from "react-dom";
-import { format, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { AlertCircle, MessageCircle } from "lucide-react";
 import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import { formatCents, formatDate } from "@gestarahub/core/format";
+import { formatCents, formatDate, plural } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
 import { withKind } from "@/lib/text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -538,3 +538,69 @@ export function statementTitle(c: ChargeView): string {
   if (isInstallmentKind(c)) return chargeSubject(c);
   return `Mensalidade ${competenceLabel(c.competence ?? c.dueDate.slice(0, 7))}`;
 }
+
+// --- Linha de cobranca (tela de Cobrancas e aba Financeiro do evento, 12/11/2026) ---
+
+/**
+ * Selo de situacao so quando diz algo que a aba nao diz (10/11/2026): em "Em
+ * atraso" todo mundo esta atrasado, em "Pagas" todo mundo pagou, e em "A
+ * receber" o normal e pendente; ali so o atrasado ganha selo.
+ */
+export function statusRepeatsTab(label: string, filter: StatusFilterValue): boolean {
+  // Atraso nao tem selo na lista (11/11/2026): a data "venceu 10/11 · 1 dia" fica
+  // em vermelho. Selo em quase toda linha virava ruido.
+  if (label === STATUS_LABEL.overdue) return true;
+  if (filter === "open") return label === STATUS_LABEL.pending;
+  if (filter === "overdue") return label === STATUS_LABEL.overdue;
+  if (filter === "paid") return label === STATUS_LABEL.paid;
+  return false;
+}
+
+/** Trecho do subtitulo; `overdue` pinta de vermelho (o vencimento passado). */
+export interface SubtitlePart {
+  text: string;
+  overdue?: boolean;
+}
+
+export function renderSubtitle(parts: SubtitlePart[]) {
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 ? " · " : null}
+      {part.overdue ? <span className="text-overdue">{part.text}</span> : part.text}
+    </Fragment>
+  ));
+}
+
+/** "venceu 10/11 · 3 dias" para a vencida (vermelho na lista); senao "vence 10/11". */
+export function duePart(c: ChargeView): SubtitlePart {
+  if (c.status !== "overdue") return { text: `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}` };
+  const days = Math.max(1, differenceInCalendarDays(parseISO(todayISO()), parseISO(c.dueDate)));
+  return { text: `venceu ${shortDate(c.dueDate)} · ${plural(days, "dia", "dias")}`, overdue: true };
+}
+
+export function cleanSingleSubtitle(c: ChargeView): SubtitlePart[] {
+  const parts: SubtitlePart[] = [];
+  const push = (text: string) => parts.push({ text });
+  if (c.kind === "dropin") {
+    push(c.className ? `Aula avulsa · ${c.className}` : "Aula avulsa");
+    parts.push(c.status === "overdue" ? duePart(c) : { text: `aula em ${shortDate(c.dueDate)}` });
+  } else if (isInstallmentKind(c)) {
+    const inst = installmentLabel(c);
+    push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
+    parts.push(duePart(c));
+  } else {
+    if (c.className) push(c.className);
+    if (c.planName) push(c.planName);
+    parts.push(duePart(c));
+  }
+  const reason = cancelReasonOf(c);
+  if (reason) push(reason);
+  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
+  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) push("link aberto");
+  if (c.status === "paid") {
+    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
+    push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
+  }
+  return parts;
+}
+

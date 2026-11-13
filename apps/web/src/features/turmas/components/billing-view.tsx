@@ -2,7 +2,6 @@
 
 import { PausedTag } from "@/features/clients";
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { differenceInCalendarDays, parseISO } from "date-fns";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
@@ -52,7 +51,6 @@ import {
   statusLabelOf,
   ScholarshipBadge,
   WhatsAppSentBadge,
-  cancelReasonOf,
   chargeSubject,
   getCycleTitle,
   installmentLabel,
@@ -64,10 +62,15 @@ import {
   matchesStatusFilter,
   shortDate,
   type StatusFilterValue,
+  type SubtitlePart,
+  cleanSingleSubtitle,
+  duePart,
   dueVerb,
+  renderSubtitle,
+  statusRepeatsTab,
 } from "./charge-parts";
 import { useChargeActions } from "./use-charge-actions";
-import { dateInSpace, todayISO } from "@gestarahub/core/date";
+import { dateInSpace } from "@gestarahub/core/date";
 
 interface StudentConsolidatedGroup {
   studentId: string;
@@ -157,21 +160,6 @@ function groupByStudent(charges: ChargeView[]): StudentConsolidatedGroup[] {
   );
 }
 
-/**
- * Selo de situacao so quando diz algo que a aba nao diz (10/11/2026): em "Em
- * atraso" todo mundo esta atrasado, em "Pagas" todo mundo pagou, e em "A
- * receber" o normal e pendente; ali so o atrasado ganha selo.
- */
-function statusRepeatsTab(label: string, filter: StatusFilterValue): boolean {
-  // Atraso nao tem selo na lista (11/11/2026): a data "venceu 10/11 · 1 dia" fica
-  // em vermelho. Selo em quase toda linha virava ruido.
-  if (label === STATUS_LABEL.overdue) return true;
-  if (filter === "open") return label === STATUS_LABEL.pending;
-  if (filter === "overdue") return label === STATUS_LABEL.overdue;
-  if (filter === "paid") return label === STATUS_LABEL.paid;
-  return false;
-}
-
 function studentGroupBadge(g: StudentConsolidatedGroup): {
   label: string;
   className: string;
@@ -207,54 +195,6 @@ function studentGroupBadge(g: StudentConsolidatedGroup): {
     return { label: STATUS_LABEL.pending, className: STATUS_CLASS.pending };
   }
   return { label: STATUS_LABEL.paid, className: STATUS_CLASS.paid };
-}
-
-/** Trecho do subtitulo; `overdue` pinta de vermelho (o vencimento passado). */
-interface SubtitlePart {
-  text: string;
-  overdue?: boolean;
-}
-
-function renderSubtitle(parts: SubtitlePart[]) {
-  return parts.map((part, i) => (
-    <Fragment key={i}>
-      {i > 0 ? " · " : null}
-      {part.overdue ? <span className="text-overdue">{part.text}</span> : part.text}
-    </Fragment>
-  ));
-}
-
-/** "venceu 10/11 · 3 dias" para a vencida (vermelho na lista); senao "vence 10/11". */
-function duePart(c: ChargeView): SubtitlePart {
-  if (c.status !== "overdue") return { text: `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}` };
-  const days = Math.max(1, differenceInCalendarDays(parseISO(todayISO()), parseISO(c.dueDate)));
-  return { text: `venceu ${shortDate(c.dueDate)} · ${plural(days, "dia", "dias")}`, overdue: true };
-}
-
-function cleanSingleSubtitle(c: ChargeView): SubtitlePart[] {
-  const parts: SubtitlePart[] = [];
-  const push = (text: string) => parts.push({ text });
-  if (c.kind === "dropin") {
-    push(c.className ? `Aula avulsa · ${c.className}` : "Aula avulsa");
-    parts.push(c.status === "overdue" ? duePart(c) : { text: `aula em ${shortDate(c.dueDate)}` });
-  } else if (isInstallmentKind(c)) {
-    const inst = installmentLabel(c);
-    push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
-    parts.push(duePart(c));
-  } else {
-    if (c.className) push(c.className);
-    if (c.planName) push(c.planName);
-    parts.push(duePart(c));
-  }
-  const reason = cancelReasonOf(c);
-  if (reason) push(reason);
-  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
-  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) push("link aberto");
-  if (c.status === "paid") {
-    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
-    push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
-  }
-  return parts;
 }
 
 function cleanGroupSubtitle(g: StudentConsolidatedGroup): SubtitlePart[] {

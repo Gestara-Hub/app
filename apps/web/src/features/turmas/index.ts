@@ -23,6 +23,20 @@ export { ModalityFormDrawer } from "./components/modality-form-drawer";
 export { CourseCertificateView, CourseCertificateLocked } from "./components/course-certificate-view";
 export { ClassCertificatesView } from "./components/class-certificates-view";
 export { useChargeActions } from "./components/use-charge-actions";
-export { ChargeAmount, ChargeStatusBadge, installmentLabel, shortDate } from "./components/charge-parts";
+export {
+  ChargeAmount,
+  ChargeStatusBadge,
+  PaidViaBadge,
+  ScholarshipBadge,
+  WhatsAppSentBadge,
+  cleanSingleSubtitle,
+  installmentLabel,
+  matchesStatusFilter,
+  renderSubtitle,
+  shortDate,
+  statusLabelOf,
+  statusRepeatsTab,
+  type StatusFilterValue,
+} from "./components/charge-parts";
 export { pickNextSession } from "./next-session";
 export { ScheduleNoticeHost } from "./components/schedule-notice-host";

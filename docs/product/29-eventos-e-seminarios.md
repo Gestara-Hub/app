@@ -94,6 +94,7 @@ Aba "Financeiro" no detalhe do evento, lendo as cobranças com `eventId` e os la
 - Lista das cobranças do evento (inscrito, valor, vencimento, situação) e dos lançamentos de saída (cachê do convidado, passagem, hospedagem, material), com "+ Nova saída" que abre o formulário de lançamento já ligado ao evento.
 - Tudo o que é lançado aqui aparece também no Financeiro geral, no mês do lançamento, com a categoria "Eventos" e o nome do evento. Nada fica só no evento.
 - Repasse ao convidado é lançamento de saída normal, sem automação no 1º corte.
+- **Com os conceitos das telas de dinheiro (12/11/2026, pedido do dono):** os 4 cartões são `StatCard` com o link que filtra a lista (Recebido "Ver pagas", A receber "Ver a receber", Saídas "Ver saídas" desce até os lançamentos, Resultado "Ver no Financeiro"). As cobranças das inscrições seguem a tela de Cobranças: busca "Buscar aluno...", abas A receber, Em atraso, Pagas, Isentas e encerradas (quando há) e Todas com contagem, e a mesma linha (iniciais, nome com link para a ficha, "venceu 10/11 · 2 dias" em vermelho no lugar do selo, valor à direita e as ações de Cobranças). Os lançamentos do evento seguem o Financeiro: ícone de entrada ou saída, "Saída · vence 10/11", valor com sinal e ⋮ "Abrir no Financeiro" (no mês do vencimento), sem selo. As funções da linha de cobrança (`cleanSingleSubtitle`, `renderSubtitle`, `statusRepeatsTab`) saíram de `billing-view.tsx` para `charge-parts.tsx` e servem às duas telas.
 
 ### Encerramento
 
