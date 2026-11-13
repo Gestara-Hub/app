@@ -200,4 +200,29 @@ describe("mais fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     const after = await call<Charge[]>("billing.listCharges", { competence });
     expect(after.some((c) => c.studentId === first.id && c.planId === planB.id)).toBe(true);
   });
+
+  it("mudar de turma grava a matricula antiga com a turma de destino (doc product/30 §2)", async () => {
+    const admin = adminClient();
+    const modality = await unwrap(createCategoryAction({ name: "Natação" }));
+    const teacher = await unwrap(
+      createProfessionalAction({ name: "Prof Rui", status: "active", workingHours: [], serviceIds: [], modalityIds: [modality.id] }),
+    );
+    const slot = (start: string, end: string) => [{ weekday: 2, start, end }];
+    const base = { modalityId: modality.id, instructorId: teacher.id, capacity: 10, startDate: "2026-01-05", status: "active" };
+    const a = await call<ClassGroupView>("turmas.create", { ...base, name: "Natação A", meetingSlots: slot("08:00", "09:00") });
+    const b = await call<ClassGroupView>("turmas.create", { ...base, name: "Natação B", meetingSlots: slot("10:00", "11:00") });
+    const ana = await call<Client>("clients.create", { name: "Ana", phone: "11977772222", status: "active" });
+    await call("turmas.enroll", { classGroupId: a.id, studentId: ana.id });
+
+    await call("turmas.moveStudents", { fromClassGroupId: a.id, toClassGroupId: b.id, studentIds: [ana.id] });
+
+    const { data: rows } = await admin
+      .from("enrollments")
+      .select("class_group_id, status, moved_to_class_group_id, cancellation_reason")
+      .eq("student_id", ana.id)
+      .order("class_group_id");
+    const byClass = new Map((rows ?? []).map((r) => [r.class_group_id, r]));
+    expect(byClass.get(a.id)).toMatchObject({ status: "canceled", moved_to_class_group_id: b.id, cancellation_reason: "Mudou para Natação B" });
+    expect(byClass.get(b.id)).toMatchObject({ status: "active", moved_to_class_group_id: null });
+  });
 });

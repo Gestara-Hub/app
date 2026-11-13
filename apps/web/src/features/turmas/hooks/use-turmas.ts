@@ -17,6 +17,7 @@ import type {
   DateISO,
   EnrollmentCourseChoice,
   Id,
+  MoveStudentsInput,
   ReservationKind,
   SubstituteInstructorPayload,
   UpdateClassGroup,
@@ -191,6 +192,19 @@ export function useCancelEnrollment() {
     mutationFn: ({ id, reason }: { id: Id; reason?: string }) =>
       turmasService.cancelEnrollment(id, reason),
     onSuccess: () => invalidateEnrollmentMoney(qc),
+  });
+}
+
+/** Mudar de turma, um ou varios alunos (doc product/30 §2); com "subir de nivel", mexe na graduacao. */
+export function useMoveStudents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ input, allowOverCapacity }: { input: MoveStudentsInput; allowOverCapacity?: boolean }) =>
+      turmasService.moveStudents(input, { allowOverCapacity }),
+    onSuccess: () => {
+      invalidateEnrollmentMoney(qc);
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+    },
   });
 }
 

@@ -601,6 +601,20 @@ export function isAgedOutOfLevel(level: ProgressionLevelStep | undefined, age: n
 }
 
 /**
+ * Proximo nivel inteiro (sem grau), pulando os de outra faixa etaria: o que o
+ * aluno ganha ao mudar de turma com "Subir de nivel junto" (doc product/30 §2).
+ * No ultimo nivel, undefined.
+ */
+export function nextLevelFor(
+  track: ModalityProgressionTrack,
+  current: ProgressionLevelStep | undefined,
+  age: number | null,
+): ProgressionLevelStep | undefined {
+  const index = current ? track.levels.findIndex((l) => l.id === current.id) : -1;
+  return track.levels.slice(index + 1).find((l) => isLevelAllowedForAge(l, age));
+}
+
+/**
  * Proximo passo na trilha. Com `age`, pula os niveis de outra faixa etaria:
  * um aluno de 16 anos na Verde (ate 15) vai direto para a Azul; e nao ganha
  * grau num nivel que ja nao vale para a idade dele.

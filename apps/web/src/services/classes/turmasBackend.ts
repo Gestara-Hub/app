@@ -53,6 +53,7 @@ function mapRowToEnrollment(row: Record<string, unknown>): Enrollment {
     cancellationReason: row.cancellation_reason ? String(row.cancellation_reason) : undefined,
     course: (row.course as Enrollment["course"]) || undefined,
     paysWithPackage: Boolean(row.pays_with_package),
+    movedToClassGroupId: row.moved_to_class_group_id ? String(row.moved_to_class_group_id) : undefined,
   };
 }
 

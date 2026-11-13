@@ -56,6 +56,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
           "enroll",
           "setEnrollmentPayment",
           "cancelEnrollment",
+          "moveStudents",
           "addToWaitlist",
           "promoteFromWaitlist",
           "removeFromWaitlist",

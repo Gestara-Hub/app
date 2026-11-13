@@ -65,6 +65,8 @@ function validateInstructorScheduleConflict(
 export function validateStudentScheduleConflict(
   studentId: Id,
   targetClassGroupId: Id,
+  /** Turma que o aluno esta deixando (mudar de turma): nao conta como choque. */
+  leavingClassGroupId?: Id,
 ): void {
   const targetGroup = store.classGroups.find((g) => g.id === targetClassGroupId);
   if (!targetGroup || targetGroup.status !== "active") return;
@@ -76,7 +78,8 @@ export function validateStudentScheduleConflict(
     (e) =>
       e.studentId === studentId &&
       e.status === "active" &&
-      e.classGroupId !== targetClassGroupId,
+      e.classGroupId !== targetClassGroupId &&
+      e.classGroupId !== leavingClassGroupId,
   );
 
   for (const slot of targetGroup.meetingSlots) {

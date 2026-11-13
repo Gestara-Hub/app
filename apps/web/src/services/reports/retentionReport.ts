@@ -34,12 +34,21 @@ export async function buildChurnRetention({ competence, periodLabel }: ReportCon
     const oneDecimal = (n: number) => Math.round(n * 10) / 10;
     const churnRatePercent = startSet.size > 0 ? oneDecimal((cancellations / startSet.size) * 100) : 0;
 
-    // Por turma: ativos no fim e quem saiu dela no mes.
+    // Por turma: ativos no fim e quem saiu dela no mes. Quem mudou de turma
+    // nao saiu (doc product/30 §2): fica fora da conta da turma de origem.
+    const movedOut = (classGroupId: string) =>
+      new Set(
+        store.enrollments
+          .filter((e) => e.classGroupId === classGroupId && e.movedToClassGroupId && e.canceledAt)
+          .filter((e) => localDateOf(e.canceledAt!) > dayBefore && localDateOf(e.canceledAt!) <= endDay)
+          .map((e) => e.studentId),
+      );
     const modalitiesBreakdown = store.classGroups
       .map((cg) => {
         const before = activeOn(dayBefore, cg.id);
         const after = activeOn(endDay, cg.id);
-        const left = [...before].filter((id) => !after.has(id)).length;
+        const moved = movedOut(cg.id);
+        const left = [...before].filter((id) => !after.has(id) && !moved.has(id)).length;
         return {
           modalityName: cg.name,
           activeCount: after.size,

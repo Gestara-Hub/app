@@ -879,6 +879,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "moved_to_class_group_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

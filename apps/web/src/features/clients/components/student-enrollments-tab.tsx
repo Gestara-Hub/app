@@ -44,6 +44,15 @@ function detailOf(e: StudentSummaryEnrollment): string {
 function StatusText({ e }: { e: StudentSummaryEnrollment }) {
   if (e.state === "paused") return <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Trancada</span>;
   if (e.state === "completed") return <span className="text-xs font-medium text-sky-700 dark:text-sky-300">Concluído</span>;
+  if (e.state === "canceled" && e.movedToClassName) {
+    // Troca de turma nao e saida (doc product/30 §2).
+    return (
+      <span className="min-w-0 break-words text-xs text-muted-foreground">
+        Mudou para {e.movedToClassName}
+        {e.canceledAt ? ` em ${brDate(e.canceledAt).slice(0, 5)}` : ""}
+      </span>
+    );
+  }
   if (e.state === "canceled") {
     return (
       <span className="text-xs text-muted-foreground">

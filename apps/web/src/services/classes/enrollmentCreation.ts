@@ -17,6 +17,8 @@ export async function createEnrollment(
   studentId: Id,
   course?: EnrollmentCourseChoice,
   paysWithPackage?: boolean,
+  /** Mudar de turma grava a propria linha na Auditoria ("mudou ... de ... para ..."). */
+  opts: { skipAudit?: boolean } = {},
 ): Promise<Enrollment> {
   const ts = nowIso();
   const enrollment: Enrollment = {
@@ -56,6 +58,7 @@ export async function createEnrollment(
     store.charges.push(...courseCharges);
   }
   store.enrollments.push(enrollment);
+  if (opts.skipAudit) return enrollment;
   auditLogService.record({
     action: "created",
     target: { type: "enrollment", id: enrollment.id, label: `${name} em ${g.name}` },

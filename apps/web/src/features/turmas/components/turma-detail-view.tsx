@@ -9,6 +9,7 @@ import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
+  ArrowRightLeft,
   Award,
   CalendarDays,
   ChevronLeft,
@@ -96,6 +97,7 @@ import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { TurmaFormDrawer } from "./turma-form-drawer";
+import { MoveStudentsDrawer, type MovingStudent } from "./move-students-drawer";
 import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
@@ -278,6 +280,13 @@ export function TurmaDetailView({
   const [bulkPending, setBulkPending] = useState(false);
   // Selecao em lote: so quando pedida em "Selecionar alunos" (menu do cabecalho).
   const [selecting, setSelecting] = useState(false);
+  // Mudar de turma (doc product/30 §2): um aluno pelo menu ou os selecionados.
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moving, setMoving] = useState<MovingStudent[]>([]);
+  const openMove = (students: MovingStudent[]) => {
+    setMoving(students);
+    setMoveOpen(true);
+  };
 
   const handleEnrollOpenChange = (open: boolean) => {
     setEnrollOpen(open);
@@ -486,6 +495,8 @@ export function TurmaDetailView({
   // Turma desativada e curso terminado nao recebem matricula nova (o servico tambem recusa).
   const canEnroll = canManage && !isInactive && !(isCourse && turma.isEnded);
   const selectedHasCourse = selectedRows.some((e) => e.course && !e.isCompleted);
+  // Curso nao muda de turma: o proximo modulo e uma matricula nova (doc product/30 §2).
+  const canMove = canManage && !isInactive && !isCourse;
 
   // Uma linha de informacao; preco e regras do curso ficam em "Editar turma".
   const billingShort = (() => {
@@ -632,6 +643,15 @@ export function TurmaDetailView({
       </div>
 
       <TurmaFormDrawer open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      <MoveStudentsDrawer
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        from={turma}
+        students={moving}
+        onMoved={() => {
+          if (selecting) stopSelecting();
+        }}
+      />
       <PromoteToCourseDialog
         turma={turma}
         entry={promoteCourseEntry}
@@ -856,6 +876,16 @@ export function TurmaDetailView({
                               ...grades,
                             ],
                           },
+                          ...(canMove
+                            ? [
+                                {
+                                  key: "move",
+                                  label: "Mudar de turma",
+                                  icon: <ArrowRightLeft className="size-4" />,
+                                  onSelect: () => openMove([{ id: e.studentId, name: e.studentName }]),
+                                },
+                              ]
+                            : []),
                           {
                             key: "cancel",
                             label: "Cancelar matrícula",
@@ -995,6 +1025,16 @@ export function TurmaDetailView({
                     <Button variant="ghost" onClick={stopSelecting}>
                       Sair da seleção
                     </Button>
+                    {canMove ? (
+                      <Button
+                        variant="outline"
+                        disabled={selectedRows.length === 0}
+                        onClick={() => openMove(selectedRows.map((r) => ({ id: r.studentId, name: r.studentName })))}
+                      >
+                        <ArrowRightLeft className="size-4" />
+                        Mudar de turma
+                      </Button>
+                    ) : null}
                     <Button
                       variant="outline"
                       disabled={selectedRows.length === 0}

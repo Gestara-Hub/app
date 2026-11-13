@@ -164,86 +164,97 @@ export const clientProgressionService = {
     });
   },
 
-  promoteStudent(payload: {
-    studentId: Id;
-    modalityId: Id;
-    modalityName?: string;
-    toLevelId?: string;
-    toLevelName: string;
-    toLevelColor?: ProgressionBeltColor;
-    toSubLevel: number;
-    maxSubLevels?: number;
-    date: DateISO;
-    attendancesCompleted?: number;
-    monthsInLevel?: number;
-    isExam?: boolean;
-    notes?: string;
-    examiner?: string;
-  }): Promise<Client> {
+  promoteStudent(payload: PromotionPayload): Promise<Client> {
     return writeOp(async () => {
       assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
       if (payload.date > todayISO()) {
         throw validationError([{ field: "date", message: "A data não pode ser futura." }]);
       }
-
-      const idx = store.clients.findIndex((c) => c.id === payload.studentId);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
-      const current = store.clients[idx];
-      const ts = nowIso();
-      const prev = current.progressions?.[payload.modalityId];
-
-      const historyEntry = {
-        id: newId(),
-        date: payload.date,
-        fromLevelName: prev?.levelName,
-        fromSubLevel: prev?.subLevel,
-        toLevelName: payload.toLevelName,
-        toLevelColor: payload.toLevelColor,
-        toSubLevel: payload.toSubLevel,
-        attendancesCompleted: payload.attendancesCompleted,
-        monthsInLevel: payload.monthsInLevel,
-        isExam: payload.isExam,
-        notes: payload.notes?.trim() || undefined,
-        examiner: payload.examiner?.trim() || undefined,
-        createdAt: ts,
-      };
-
-      const nextProgression: StudentModalityProgression = {
-        modalityId: payload.modalityId,
-        modalityName: payload.modalityName ?? prev?.modalityName,
-        levelId: payload.toLevelId,
-        levelName: payload.toLevelName,
-        levelColor: payload.toLevelColor,
-        subLevel: payload.toSubLevel,
-        maxSubLevels: payload.maxSubLevels ?? prev?.maxSubLevels ?? 4,
-        promotedAt: payload.date,
-        initialAttendanceOffset: 0,
-        origin: prev?.origin,
-        originAcademy: prev?.originAcademy,
-        originTeacher: prev?.originTeacher,
-        nextExamDate: undefined,
-        strengths: prev?.strengths ?? [],
-        goals: prev?.goals ?? [],
-        evaluations: prev?.evaluations ?? [],
-        promotionHistory: [historyEntry, ...(prev?.promotionHistory ?? [])],
-        updatedAt: ts,
-      };
-
-      const updated: Client = {
-        ...current,
-        progressions: {
-          ...(current.progressions ?? {}),
-          [payload.modalityId]: nextProgression,
-        },
-        updatedAt: ts,
-      };
-      store.clients[idx] = updated;
-      auditLogService.record({
-        action: "updated",
-        target: { type: "client", id: updated.id, label: updated.name },
-        predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
-      });
-      return clone(clientForActor(updated));
+      return clone(clientForActor(recordPromotion(payload)));
     });
   },
 };
+
+export interface PromotionPayload {
+  studentId: Id;
+  modalityId: Id;
+  modalityName?: string;
+  toLevelId?: string;
+  toLevelName: string;
+  toLevelColor?: ProgressionBeltColor;
+  toSubLevel: number;
+  maxSubLevels?: number;
+  date: DateISO;
+  attendancesCompleted?: number;
+  monthsInLevel?: number;
+  isExam?: boolean;
+  notes?: string;
+  examiner?: string;
+}
+
+/**
+ * Grava uma graduacao no historico do aluno e na Auditoria, sem conferir
+ * permissao nem data (quem chama confere): o Graduar e a troca de turma com
+ * "Subir de nivel junto" (doc product/30 §2) usam a mesma gravacao.
+ */
+export function recordPromotion(payload: PromotionPayload): Client {
+  const idx = store.clients.findIndex((c) => c.id === payload.studentId);
+  if (idx === -1) throw notFoundError(NOT_FOUND);
+  const current = store.clients[idx];
+  const ts = nowIso();
+  const prev = current.progressions?.[payload.modalityId];
+
+  const historyEntry = {
+    id: newId(),
+    date: payload.date,
+    fromLevelName: prev?.levelName,
+    fromSubLevel: prev?.subLevel,
+    toLevelName: payload.toLevelName,
+    toLevelColor: payload.toLevelColor,
+    toSubLevel: payload.toSubLevel,
+    attendancesCompleted: payload.attendancesCompleted,
+    monthsInLevel: payload.monthsInLevel,
+    isExam: payload.isExam,
+    notes: payload.notes?.trim() || undefined,
+    examiner: payload.examiner?.trim() || undefined,
+    createdAt: ts,
+  };
+
+  const nextProgression: StudentModalityProgression = {
+    modalityId: payload.modalityId,
+    modalityName: payload.modalityName ?? prev?.modalityName,
+    levelId: payload.toLevelId,
+    levelName: payload.toLevelName,
+    levelColor: payload.toLevelColor,
+    subLevel: payload.toSubLevel,
+    maxSubLevels: payload.maxSubLevels ?? prev?.maxSubLevels ?? 4,
+    promotedAt: payload.date,
+    initialAttendanceOffset: 0,
+    origin: prev?.origin,
+    originAcademy: prev?.originAcademy,
+    originTeacher: prev?.originTeacher,
+    nextExamDate: undefined,
+    strengths: prev?.strengths ?? [],
+    goals: prev?.goals ?? [],
+    evaluations: prev?.evaluations ?? [],
+    promotionHistory: [historyEntry, ...(prev?.promotionHistory ?? [])],
+    updatedAt: ts,
+  };
+
+  const updated: Client = {
+    ...current,
+    progressions: {
+      ...(current.progressions ?? {}),
+      [payload.modalityId]: nextProgression,
+    },
+    updatedAt: ts,
+  };
+  store.clients[idx] = updated;
+  auditLogService.record({
+    action: "updated",
+    target: { type: "client", id: updated.id, label: updated.name },
+    predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
+  });
+  return updated;
+}
+

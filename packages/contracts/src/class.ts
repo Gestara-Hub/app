@@ -127,6 +127,27 @@ export interface Enrollment {
    * turma. Permite alunos de mensalidade e de pacote na mesma turma.
    */
   paysWithPackage?: boolean;
+  /**
+   * Matricula encerrada por troca de turma (doc product/30 §2): a turma para
+   * onde o aluno foi. Vem com `status: "canceled"` (encerrada) e o motivo
+   * "Mudou para {turma}", mas nao e saida do aluno (relatorios e Auditoria).
+   */
+  movedToClassGroupId?: Id;
+}
+
+/** Mudar alunos de turma num passo (doc product/30 §2). */
+export interface MoveStudentsInput {
+  fromClassGroupId: Id;
+  toClassGroupId: Id;
+  studentIds: Id[];
+  /** Registra junto a graduacao para o proximo nivel de cada aluno (trilha da modalidade da turma de destino). */
+  promote?: boolean;
+}
+
+export interface MoveStudentsResult {
+  moved: number;
+  /** Quantos subiram de nivel (quem ja esta no ultimo nivel fica como esta). */
+  promoted: number;
 }
 
 /**

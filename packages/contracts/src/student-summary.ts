@@ -45,6 +45,8 @@ export interface StudentSummaryEnrollment {
   state: StudentEnrollmentState;
   enrolledAt: DateTimeISO;
   canceledAt?: DateTimeISO;
+  /** Encerrada por troca de turma: o nome da turma para onde foi (doc product/30 §2). */
+  movedToClassName?: string;
   /** Fim da turma (curso). */
   endDate?: DateISO;
   presentCount: number;

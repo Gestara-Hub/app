@@ -187,6 +187,9 @@ export function enrollmentsOf(
       state,
       enrolledAt: e.enrolledAt,
       canceledAt: e.canceledAt,
+      ...(e.movedToClassGroupId
+        ? { movedToClassName: store.classGroups.find((x) => x.id === e.movedToClassGroupId)?.name ?? "outra turma" }
+        : {}),
       endDate: g.endDate,
       presentCount: present,
       absentCount: absent,

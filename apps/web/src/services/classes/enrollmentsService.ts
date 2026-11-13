@@ -1,7 +1,16 @@
 import { teacherSeesClassRoster } from "./teacherScope";
-import type { CreateEnrollment, EnrollmentView, Id } from "@gestarahub/contracts";
+import type {
+  ClassGroup,
+  CreateEnrollment,
+  Enrollment,
+  EnrollmentView,
+  Id,
+  MoveStudentsInput,
+  MoveStudentsResult,
+} from "@gestarahub/contracts";
 import { classBillingMode, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
+import { ageAt, currentLevelOf, nextLevelFor, resolveModalityTrack } from "@/lib/progression-tracks";
 import { withKind } from "@/lib/text";
 import {
   apiError,
@@ -13,10 +22,12 @@ import {
 } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
+import { recordPromotion, type PromotionPayload } from "../clients/clientProgressionService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { clone, todayISO, studentName, activeEnrollments } from "./classShared";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
 import { toEnrollmentView } from "./classViews";
+import { assertCanManageProgression } from "./teacherScope";
 import { createEnrollment, resolvePaysWithPackage } from "./enrollmentCreation";
 
 export const enrollmentsService = {
@@ -177,6 +188,89 @@ export const enrollmentsService = {
     });
   },
 
+  /**
+   * Mudar de turma (doc product/30 §2): fecha a matricula na turma de origem
+   * como "Mudou para {turma}" (encerrada, mas nao e saida do aluno) e abre a
+   * nova na mesma hora, para um ou varios alunos. Tudo ou nada: confere todos
+   * antes de gravar. Lotacao e regra mole (CLASS_FULL; a tela confirma e
+   * reenvia). Curso fica de fora: o proximo modulo e uma matricula nova, com
+   * cobranca. Com `promote`, cada aluno sobe para o proximo nivel da trilha.
+   */
+  moveStudents(
+    input: MoveStudentsInput,
+    opts: { allowOverCapacity?: boolean } = {},
+  ): Promise<MoveStudentsResult> {
+    return writeOp(async () => {
+      const from = store.classGroups.find((g) => g.id === input.fromClassGroupId);
+      if (!from) throw notFoundError("Turma não encontrada.");
+      const to = store.classGroups.find((g) => g.id === input.toClassGroupId);
+      const field = "toClassGroupId";
+      if (!to) throw validationError([{ field, message: "Escolha a turma de destino." }]);
+      if (to.id === from.id) throw validationError([{ field, message: "Escolha outra turma." }]);
+      if (to.status !== "active") throw validationError([{ field, message: "Esta turma está inativada." }]);
+      if (classBillingMode(from) === "course" || classBillingMode(to) === "course") {
+        throw validationError([{ field, message: "Curso não muda de turma: matricule no próximo curso." }]);
+      }
+
+      const studentIds = [...new Set(input.studentIds)];
+      if (studentIds.length === 0) {
+        throw validationError([{ field: "studentIds", message: "Escolha ao menos um aluno." }]);
+      }
+      const moving: Enrollment[] = studentIds.map((studentId) => {
+        const found = store.enrollments.find(
+          (e) => e.classGroupId === from.id && e.studentId === studentId && e.status === "active",
+        );
+        if (!found) {
+          throw validationError([{ field: "studentIds", message: `${studentName(studentId)} não está ativo nesta turma.` }]);
+        }
+        return found;
+      });
+      const inDestination = new Set(activeEnrollments(to.id).map((e) => e.studentId));
+      const already = moving.filter((e) => inDestination.has(e.studentId)).map((e) => studentName(e.studentId));
+      if (already.length > 0) {
+        throw validationError([
+          { field: "studentIds", message: `${already.join(", ")} já ${already.length === 1 ? "está" : "estão"} em ${to.name}.` },
+        ]);
+      }
+      for (const e of moving) validateStudentScheduleConflict(e.studentId, to.id, from.id);
+      // Quem paga com pacote segue assim (precisa de pacote que valha na turma nova).
+      const withPackage = new Map(moving.map((e) => [e.id, resolvePaysWithPackage(to, e.studentId, e.paysWithPackage)]));
+      const free = to.capacity - inDestination.size;
+      if (!opts.allowOverCapacity && moving.length > free) {
+        throw apiError(
+          "CLASS_FULL",
+          free <= 0
+            ? `Turma lotada (${to.capacity} vagas).`
+            : `${to.name} tem ${plural(free, "vaga livre", "vagas livres")} para ${plural(moving.length, "aluno", "alunos")}.`,
+          { httpStatus: 409 },
+        );
+      }
+      const promotions = input.promote ? promotionsFor(to, studentIds) : new Map<Id, PromotionPayload>();
+
+      const ts = nowIso();
+      let promoted = 0;
+      for (const e of moving) {
+        e.status = "canceled";
+        e.canceledAt = ts;
+        e.cancellationReason = `Mudou para ${to.name}`;
+        e.movedToClassGroupId = to.id;
+        const created = await createEnrollment(to, e.studentId, undefined, withPackage.get(e.id), { skipAudit: true });
+        const name = studentName(e.studentId);
+        auditLogService.record({
+          action: "updated",
+          target: { type: "enrollment", id: created.id, label: `${name} em ${to.name}` },
+          predicate: `mudou ${name} da turma ${from.name} para ${to.name}`,
+        });
+        const promotion = promotions.get(e.studentId);
+        if (promotion) {
+          recordPromotion(promotion);
+          promoted += 1;
+        }
+      }
+      return { moved: moving.length, promoted };
+    });
+  },
+
   /** Pares aluno x modalidade das matriculas ativas (uma linha por par). */
   listEnrolledModalities(): Promise<{ studentId: Id; modalityId: Id }[]> {
     return readOp(() => {
@@ -194,3 +288,40 @@ export const enrollmentsService = {
     });
   },
 };
+
+/**
+ * "Subir de nivel junto" (doc product/30 §2): o proximo nivel inteiro de cada
+ * aluno na trilha da modalidade da turma de destino, na data de hoje. Quem ja
+ * esta no ultimo nivel fica como esta. Pede quem pode graduar o aluno.
+ */
+function promotionsFor(to: ClassGroup, studentIds: Id[]): Map<Id, PromotionPayload> {
+  const modality = store.categories.find((c) => c.id === to.modalityId);
+  const track = modality ? resolveModalityTrack(modality) : undefined;
+  if (!modality || !track?.enabled) {
+    throw validationError([{ field: "promote", message: "A modalidade desta turma não tem trilha de níveis." }]);
+  }
+  const today = todayISO();
+  const out = new Map<Id, PromotionPayload>();
+  for (const studentId of studentIds) {
+    assertCanManageProgression(studentId, { modalityId: modality.id });
+    const student = store.clients.find((c) => c.id === studentId);
+    if (!student) continue;
+    const age = ageAt(student.birthDate, today);
+    const progression = student.progressions?.[modality.id];
+    const next = nextLevelFor(track, currentLevelOf(track, progression, age), age);
+    if (!next) continue;
+    out.set(studentId, {
+      studentId,
+      modalityId: modality.id,
+      modalityName: modality.name,
+      toLevelId: next.id,
+      toLevelName: next.name,
+      toLevelColor: next.color,
+      toSubLevel: 0,
+      maxSubLevels: next.maxSubLevels,
+      date: today,
+      notes: `Mudou para a turma ${to.name}`,
+    });
+  }
+  return out;
+}
