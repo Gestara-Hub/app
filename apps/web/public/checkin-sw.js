@@ -4,15 +4,27 @@
  * internet" no dia do evento. Guarda:
  *  - a tela do dia do evento (/events/sessions/...): rede primeiro, a copia
  *    guardada so quando a rede falha;
- *  - os arquivos do app (/_next/static/...): nunca mudam (o nome tem o hash),
- *    entao a copia guardada vale.
+ *  - os arquivos do app (/_next/static/...) que o servidor marca como
+ *    "immutable" (producao: o nome muda a cada versao, a copia guardada vale).
+ *    Em desenvolvimento o servidor manda "no-cache" e o nome NAO muda com o
+ *    codigo: guardar fazia o navegador usar JS e CSS velhos e a pagina
+ *    recarregar sem parar (12/11/2026). Esses passam direto, sem guardar.
  * O resto do app passa direto, como sem service worker.
  */
-const PAGES = "checkin-pages-v1";
-const STATIC = "checkin-static-v1";
+const PAGES = "checkin-pages-v2";
+const STATIC = "checkin-static-v2";
+const KEEP = [PAGES, STATIC];
 
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+// Versao nova: apaga os caches antigos (o v1 guardava arquivos de desenvolvimento).
+self.addEventListener("activate", (event) =>
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("checkin-") && !KEEP.includes(key)).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  ),
+);
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -42,7 +54,8 @@ self.addEventListener("fetch", (event) => {
           (hit) =>
             hit ||
             fetch(request).then((response) => {
-              if (response.ok) cache.put(request, response.clone());
+              const immutable = /immutable/i.test(response.headers.get("cache-control") || "");
+              if (response.ok && immutable) cache.put(request, response.clone());
               return response;
             }),
         ),
