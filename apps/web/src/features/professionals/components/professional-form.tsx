@@ -283,6 +283,9 @@ export function ProfessionalForm({
       const openDays = (unit.businessHours ?? []).filter((d) => !d.closed);
       if (openDays.length > 0) {
         // Sugestao vira o valor inicial: nao conta como alteracao (doc 07 §2.8).
+        // A secao de horarios comeca fechada (campo nao montado) e o resetField
+        // so age em campo registrado: registra antes (13/11/2026).
+        form.register("workingHours");
         form.resetField("workingHours", { defaultValue: getDefaultWorkingHours(unit) });
       }
     }

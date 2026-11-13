@@ -125,6 +125,9 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+/** Campos do endereco do cadastro (o `AddressFields` com prefixo "address"). */
+const ADDRESS_FIELDS = ["postalCode", "street", "number", "complement", "neighborhood", "city", "state"] as const;
+
 interface ActivateSubaccountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -169,6 +172,10 @@ export function ActivateSubaccountDialog({
   const unitAddress = typeof unit?.address === "object" ? unit.address : undefined;
   useEffect(() => {
     if (!unitAddress || form.getFieldState("address").isDirty) return;
+    // O formulario existe antes da gaveta abrir (campos nao montados) e o
+    // resetField so age em campo registrado: registra cada campo antes
+    // (13/11/2026; sem isso o endereco quase nunca vinha preenchido).
+    for (const field of ADDRESS_FIELDS) form.register(`address.${field}`);
     form.resetField("address", {
       defaultValue: {
         postalCode: unitAddress.postalCode ?? "",

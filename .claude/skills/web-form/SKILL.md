@@ -33,7 +33,7 @@ All wrap `FieldShell` (label + error). NOTE: clicking the label must NOT open th
 a value written with `setValue` (no `shouldDirty`) becomes "dirty" on the next change in ANY other field.
 Never gate a suggestion on `getFieldState(x).isDirty` / `dirtyFields.x` after a programmatic `setValue`
 (real bug 2026-11-10: event registration amount froze at R$ 0, registrations saved with no charge).
-- Suggestion that is not a user edit (space defaults, unit hours, suggested slot): `form.resetField(x, { defaultValue })`.
+- Suggestion that is not a user edit (space defaults, unit hours, suggested slot): `form.resetField(x, { defaultValue })`. `resetField` does nothing on a field that is not registered yet (collapsed section, closed sheet or tab): `form.register(x)` first; for a group, register each leaf (`address.city`...); a `useFieldArray` list needs `setValue` instead (doc 07 §2.8).
 - Suggestion that follows another field and must be saved (amount by days, time zone by state): keep the
   last suggested value in a `useRef`; update only while the field still shows it; `shouldDirty: true` when the
   screen saves only `dirtyFields`. References: `register-drawer.tsx`, `organization-settings-card.tsx`.
