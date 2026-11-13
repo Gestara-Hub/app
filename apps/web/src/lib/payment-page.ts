@@ -16,3 +16,9 @@ export function chargeInvoiceUrl(chargeId: string): string {
   const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
   return `${base.replace(/\/+$/, "")}/p/c/${chargeId}`;
 }
+
+/** Endereço público do ingresso, que também é a página da inscrição no evento (/p/i/<código>). */
+export function ticketPageUrl(ticketCode: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base.replace(/\/+$/, "")}/p/i/${ticketCode}`;
+}

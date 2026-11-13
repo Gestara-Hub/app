@@ -346,8 +346,10 @@ export interface PublicEventSignupInput {
 
 export interface PublicEventSignupResult {
   status: "confirmed" | "reserved" | "waitlist" | "already";
-  /** Ingresso (inscricao confirmada). */
+  /** Codigo do ingresso (confirmada ou reservada): `/p/i/<codigo>` e a pagina da inscricao. */
   ticketCode?: string;
+  /** O link do ingresso foi para o e-mail informado (12/11/2026). */
+  emailSent?: boolean;
   /** Cobranca a pagar agora (evento pago). */
   chargeId?: string;
   amountCents: number;
@@ -399,6 +401,14 @@ export interface PublicTicketView {
   address?: string;
   instructors: string[];
   state: "confirmed" | "payment_pending" | "reserved" | "canceled" | "waitlist";
+  /** Valor em aberto da inscricao (cobrancas pendentes ou atrasadas). */
+  pendingCents?: number;
+  /** Cobranca para pagar online (so com o pagamento online ligado no espaco): `/p/c/<id>`. */
+  payChargeId?: Id;
+  /** Reserva valendo: ate quando a vaga fica guardada sem pagamento. */
+  holdUntil?: DateTimeISO;
+  /** A reserva venceu sem pagamento (a vaga voltou para o evento). */
+  reservationExpired?: boolean;
 }
 
 /** Lista do dia para conferir ingresso sem internet (doc product/29, "Leitura sem internet"). */

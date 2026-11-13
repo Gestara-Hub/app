@@ -128,7 +128,9 @@ function createCharges(event: Event, registration: EventRegistration, payment: E
 
 /**
  * Confirma (ou reserva, na "vaga so com o pagamento") e gera as parcelas.
- * Confirmada ganha o ingresso; reservada so ganha ao pagar (doc product/29 P5).
+ * As duas ganham o codigo do ingresso na hora (12/11/2026): o endereco
+ * `/p/i/<codigo>` e a pagina da inscricao, onde a reserva paga e, ao pagar,
+ * vira o ingresso. Na entrada, codigo de reserva e recusado ("reserved").
  */
 function confirm(
   event: Event,
@@ -143,7 +145,7 @@ function confirm(
   const reserves = Boolean(hold && pay && pay.amountCents > 0);
   registration.status = reserves ? "reserved" : "confirmed";
   if (reserves) registration.holdUntil = new Date(Date.now() + hold!.minutes * 60_000).toISOString();
-  else registration.ticketCode ??= newTicketCode();
+  registration.ticketCode ??= newTicketCode();
   registration.amountCents = pay?.amountCents ?? 0;
   registration.installments = dayScope ? 1 : (pay?.installments ?? 1);
   if (pay && pay.amountCents > 0) {

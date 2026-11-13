@@ -6,7 +6,7 @@ import { dateInSpace } from "@gestarahub/core/date";
 import { forgetCachedWorld, runInWorld } from "@/services/world/runWorld";
 import { store } from "@/services/world/store";
 import { normalizeTicketCode } from "@/services/events/eventCheckInService";
-import { findEvent, registrationCoversDay } from "@/services/events/eventShared";
+import { activeReservation, findEvent, registrationCoversDay } from "@/services/events/eventShared";
 import { systemTenantContext } from "./systemContext";
 import { requireTenant } from "./tenant";
 
@@ -58,15 +58,29 @@ export async function loadTicketPage(code: string): Promise<TicketPageData | nul
     const days = (store.eventSessions ?? [])
       .filter((s) => s.eventId === event.id && s.status !== "canceled" && registrationCoversDay(registration, s.id))
       .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
-    const open = store.charges.some(
-      (c) => c.eventRegistrationId === registration.id && (c.status === "pending" || c.status === "overdue") && c.amountCents > 0,
-    );
+    // Em aberto: a soma e a primeira a vencer (a que o "Pagar agora" abre).
+    const openCharges = store.charges
+      .filter((c) => c.eventRegistrationId === registration.id && (c.status === "pending" || c.status === "overdue") && c.amountCents > 0)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const open = openCharges.length > 0;
+    const pendingCents = openCharges.reduce((sum, c) => sum + c.amountCents, 0);
+    const onlinePayments = Boolean(store.organization.settings?.onlinePayments?.enabled);
+    // Reserva que passou do prazo e a rotina ainda nao cancelou, ou ja cancelada por isso.
+    const expired =
+      (registration.status === "reserved" && !activeReservation(registration)) ||
+      (registration.status === "canceled" && registration.cancellationReason === "Reserva vencida sem pagamento");
     const instructors = event.instructors.map((i) =>
       i.professionalId ? (store.professionals.find((p) => p.id === i.professionalId)?.name ?? "") : (i.guestName ?? ""),
     );
     const today = dateInSpace(new Date(), ctx.timeZone);
-    const state: PublicTicketView["state"] =
-      registration.status === "confirmed" ? (open ? "payment_pending" : "confirmed") : registration.status;
+    const state: PublicTicketView["state"] = expired
+      ? "canceled"
+      : registration.status === "confirmed"
+        ? open
+          ? "payment_pending"
+          : "confirmed"
+        : registration.status;
+    const payable = state === "payment_pending" || state === "reserved";
     return {
       view: {
         code: registration.ticketCode ?? "",
@@ -77,6 +91,10 @@ export async function loadTicketPage(code: string): Promise<TicketPageData | nul
         ...(addressLine(unit?.address) ? { address: addressLine(unit?.address) } : {}),
         instructors: instructors.filter(Boolean),
         state,
+        ...(payable && pendingCents > 0 ? { pendingCents } : {}),
+        ...(payable && onlinePayments && openCharges[0] ? { payChargeId: openCharges[0].id } : {}),
+        ...(state === "reserved" && registration.holdUntil ? { holdUntil: registration.holdUntil } : {}),
+        ...(expired ? { reservationExpired: true } : {}),
       },
       todaySession: days.find((s) => s.date === today)?.id ?? null,
     };

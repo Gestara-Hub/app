@@ -93,7 +93,9 @@ describe("reserva até pagar e ingresso", () => {
 
     const reserved = registerInWorld({ eventId: event.id, studentId: ana.id }, { source: "public_link", hold: { minutes: 30 } });
     expect(reserved).toMatchObject({ status: "reserved", source: "public_link" });
-    expect(reserved.ticketCode).toBeUndefined();
+    // O codigo nasce com a reserva (pagina da inscricao) e e o mesmo depois de pagar.
+    const code = reserved.ticketCode;
+    expect(code).toMatch(/^[A-F0-9]{12}$/);
     // A reserva valendo ocupa a vaga: a proxima vai para a espera.
     expect(registerInWorld({ eventId: event.id, studentId: bia.id }).status).toBe("waitlist");
     expect((await eventsService.getById(event.id)).availableSpots).toBe(0);
@@ -102,7 +104,7 @@ describe("reserva até pagar e ingresso", () => {
     const charge = store.charges.find((c) => c.eventRegistrationId === reserved.id)!;
     await billingService.markPaid(charge.id, "pix");
     expect(reserved.status).toBe("confirmed");
-    expect(reserved.ticketCode).toMatch(/^[A-F0-9]{12}$/);
+    expect(reserved.ticketCode).toBe(code);
     expect(reserved.holdUntil).toBeUndefined();
   });
 

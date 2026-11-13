@@ -23,7 +23,12 @@ import { nowIso } from "@/services/world/ops";
 import { clientsServiceImpl } from "@/services/clients";
 import { samePhone } from "@/services/communication/whatsappOptOut";
 import { registerInWorld } from "@/services/events/eventRegistrationsService";
-import { activeReservation, findEvent, seatHolders } from "@/services/events/eventShared";
+import { activeReservation, findEvent, registrationCoversDay, seatHolders } from "@/services/events/eventShared";
+import { sendEventTicketEmail, type SendEventTicketEmailInput } from "@/lib/email/mailersend";
+import { logError } from "@/lib/log";
+import { ticketPageUrl } from "@/lib/payment-page";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { systemTenantContext } from "./systemContext";
 import { EVENT_SIGNUP_TERMS } from "@/lib/event-signup-terms";
 
@@ -144,6 +149,9 @@ export async function loadPublicEvent(code: string): Promise<PublicEventView | n
 }
 
 const tooLong = (value: string | undefined, max: number) => (value ?? "").trim().length > max;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * Inscreve pelo link. Travas: campo-armadilha, tamanho dos textos, telefone com
@@ -159,7 +167,8 @@ export async function submitPublicEventSignup(
   const fields = [];
   if (name.length < 2 || tooLong(name, MAX.name)) fields.push({ field: "name", message: "Informe o nome." });
   if (!phone || tooLong(input.phone, MAX.phone)) fields.push({ field: "phone", message: "Informe o WhatsApp com DDD." });
-  if (tooLong(input.email, MAX.email)) fields.push({ field: "email", message: "Confira o e-mail." });
+  const email = (input.email ?? "").trim();
+  if (tooLong(email, MAX.email) || (email && !EMAIL_RE.test(email))) fields.push({ field: "email", message: "Informe um e-mail válido." });
   const guardianPhone = input.isMinor ? whatsappNumber(input.guardianPhone) : null;
   if (input.isMinor) {
     if ((input.guardianName ?? "").trim().length < 2 || tooLong(input.guardianName, MAX.name)) {
@@ -181,7 +190,7 @@ export async function submitPublicEventSignup(
 
   const { today } = await unitAddressOf(row.organization_id);
   const ctx = await systemTenantContext(row.organization_id, "Inscrição pelo link");
-  return runInWorld(ctx, async () => {
+  const outcome = await runInWorld(ctx, async () => {
     const event = findEvent(row.id);
     const proPlan = tierHasFeature(tierOf(store.organization), "event_signup");
     const reason = closedReason(event, today, proPlan);
@@ -247,7 +256,7 @@ export async function submitPublicEventSignup(
     } catch (error) {
       // Ja inscrito: responde sem mostrar nada da inscricao (o ingresso a equipe reenvia).
       if (isApiError(error) && /já está inscrito/.test(error.message)) {
-        return { status: "already" as const, amountCents: 0, displayName: maskPersonName(name) };
+        return { result: { status: "already" as const, amountCents: 0, displayName: maskPersonName(name) } };
       }
       throw error;
     }
@@ -255,13 +264,45 @@ export async function submitPublicEventSignup(
       (c) => c.eventRegistrationId === registration.id && (c.status === "pending" || c.status === "overdue"),
     );
     const status = registration.status === "reserved" && activeReservation(registration) ? "reserved" : registration.status;
-    return {
+    // Confirmada ou reservada: o codigo e o endereco da pagina da inscricao (12/11/2026).
+    const ticketCode = (status === "confirmed" || status === "reserved") && registration.ticketCode ? registration.ticketCode : undefined;
+    const result: PublicEventSignupResult = {
       status: status as PublicEventSignupResult["status"],
-      ...(registration.status === "confirmed" && registration.ticketCode ? { ticketCode: registration.ticketCode } : {}),
+      ...(ticketCode ? { ticketCode } : {}),
       ...(charge ? { chargeId: charge.id } : {}),
       amountCents: registration.amountCents,
       ...(registration.holdUntil ? { holdUntil: registration.holdUntil } : {}),
       displayName: maskPersonName(name),
     };
+    // E-mail com o link do ingresso (so o que a propria pessoa digitou, enviado depois de gravar).
+    const days = (store.eventSessions ?? [])
+      .filter((s) => s.eventId === event.id && s.status !== "canceled" && registrationCoversDay(registration, s.id))
+      .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`))
+      .map((s) => `${capitalize(format(parseISO(s.date), "EEEE, dd/MM", { locale: ptBR }))} · ${s.start} às ${s.end}`);
+    const mail: SendEventTicketEmailInput | undefined =
+      email && ticketCode
+        ? {
+            toEmail: email,
+            toName: name,
+            organizationName: store.organization.name,
+            eventName: event.name,
+            days,
+            ticketUrl: ticketPageUrl(ticketCode),
+            status: status === "reserved" ? "reserved" : "confirmed",
+            pendingCents: store.charges
+              .filter((c) => c.eventRegistrationId === registration.id && (c.status === "pending" || c.status === "overdue"))
+              .reduce((sum, c) => sum + c.amountCents, 0),
+            holdMinutes: event.holdMinutes ?? 30,
+          }
+        : undefined;
+    return { result, mail };
   });
+
+  if (!outcome.mail) return outcome.result;
+  // A inscricao ja esta gravada: falha no e-mail nao desfaz nada, so nao avisa que enviou.
+  const sent = await sendEventTicketEmail(outcome.mail).catch((err: unknown) => {
+    logError("[eventPublicSignup] Falha ao enviar o ingresso por e-mail:", err);
+    return { ok: false as const, error: "" };
+  });
+  return { ...outcome.result, ...(sent.ok ? { emailSent: true } : {}) };
 }

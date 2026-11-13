@@ -236,9 +236,15 @@ async function confirmPaidEventReservationInDb(adminClient: SupabaseClient, char
     const { data: charge } = await adminClient.from("charges").select("event_registration_id").eq("id", chargeId).maybeSingle();
     const registrationId = charge?.event_registration_id as string | null | undefined;
     if (!registrationId) return;
+    // A reserva ja tem o codigo desde a inscricao (o endereco da pagina): mantem.
+    const { data: registration } = await adminClient
+      .from("event_registrations")
+      .select("ticket_code")
+      .eq("id", registrationId)
+      .maybeSingle();
     const { error } = await adminClient
       .from("event_registrations")
-      .update({ status: "confirmed", hold_until: null, ticket_code: newTicketCode() })
+      .update({ status: "confirmed", hold_until: null, ticket_code: registration?.ticket_code ?? newTicketCode() })
       .eq("id", registrationId)
       .eq("status", "reserved");
     if (error) logError("[onlinePaymentsBackend] Erro ao confirmar a reserva do evento:", error);

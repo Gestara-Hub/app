@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { COMPANY_ADDRESS, COMPANY_CNPJ, COMPANY_NAME, INSTAGRAM_HANDLE, INSTAGRAM_URL, SITE_URL, SUPPORT_EMAIL } from "@/config/site";
 import { logError, logWarn } from "@/lib/log";
+import { formatCents } from "@gestarahub/core/format";
 
 const MAILERSEND_API_URL = "https://api.mailersend.com/v1/email";
 
@@ -1291,4 +1292,94 @@ export async function sendPlanNoticeEmail(
       "Não foi possível enviar o aviso do plano.",
     );
   }
+}
+
+// --- Ingresso do evento pelo link (12/11/2026) -------------------------------------
+
+export interface SendEventTicketEmailInput {
+  toEmail: string;
+  toName: string;
+  organizationName: string;
+  eventName: string;
+  /** Dias da inscricao ja escritos ("Terça-feira, 10/11 · 09:00 às 12:00"). */
+  days: string[];
+  ticketUrl: string;
+  status: "confirmed" | "reserved";
+  /** Valor em aberto (0: nada a pagar). */
+  pendingCents: number;
+  /** Reserva: por quantos minutos a vaga fica guardada. */
+  holdMinutes?: number;
+}
+
+/** A frase do que falta: vaga garantida, falta pagar ou reserva com prazo. */
+export function eventTicketStatusLine({ status, pendingCents, holdMinutes }: SendEventTicketEmailInput): string {
+  if (status === "reserved") {
+    return `Sua vaga fica reservada por ${holdMinutes ?? 30} minutos. Pague ${formatCents(pendingCents)} pela página do ingresso para garantir a vaga.`;
+  }
+  return pendingCents > 0
+    ? `Sua vaga está garantida. Falta pagar ${formatCents(pendingCents)}: pague pela página do ingresso.`
+    : "Sua vaga está garantida. Mostre o ingresso na entrada.";
+}
+
+export function buildEventTicketEmailSubject({ eventName }: SendEventTicketEmailInput): string {
+  return `Seu ingresso: ${eventName}`;
+}
+
+export function buildEventTicketEmailText(input: SendEventTicketEmailInput): string {
+  return [
+    `Inscrição feita, ${firstNameOf(input.toName)}!`,
+    "",
+    `${input.eventName} · ${input.organizationName}`,
+    ...input.days,
+    "",
+    eventTicketStatusLine(input),
+    "",
+    `Seu ingresso: ${input.ticketUrl}`,
+    "Guarde este link. Na entrada, mostre o QR code que aparece nele.",
+    "",
+    `Você recebeu este e-mail porque se inscreveu em ${input.eventName} pelo link de ${input.organizationName}. Se não foi você, ignore esta mensagem.`,
+  ].join("\n");
+}
+
+export function buildEventTicketEmailHtml(input: SendEventTicketEmailInput & { hasInlineIcon: boolean }): string {
+  const safeUrl = escapeHtml(input.ticketUrl);
+  const days = input.days.map((d) => `${escapeHtml(d)}<br />`).join("");
+  return renderEmailLayout({
+    title: escapeHtml(buildEventTicketEmailSubject(input)),
+    preheader: escapeHtml(eventTicketStatusLine(input)),
+    heading: `Inscrição feita, ${escapeHtml(firstNameOf(input.toName))}!`,
+    intro: `${escapeHtml(input.eventName)} · ${escapeHtml(input.organizationName)}`,
+    body: `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#475569;">${days}</p>
+              <p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">${escapeHtml(eventTicketStatusLine(input))}</p>
+              ${emailButton(safeUrl, "Ver meu ingresso")}
+              ${emailNotice("Guarde este link. Na entrada, mostre o QR code que aparece nele.")}
+              ${emailFallbackLink(safeUrl)}`,
+    footer: `Você recebeu este e-mail porque se inscreveu em ${escapeHtml(input.eventName)} pelo link de ${escapeHtml(input.organizationName)}. Se não foi você, ignore esta mensagem.<br />
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+    hasInlineIcon: input.hasInlineIcon,
+  });
+}
+
+/**
+ * Link do ingresso para o e-mail informado na inscricao pelo link. Em
+ * desenvolvimento (e nos e2e) nao envia: imprime a mensagem no terminal do
+ * servidor, como sairia, para pegar o link.
+ */
+export async function sendEventTicketEmail(input: SendEventTicketEmailInput): Promise<{ ok: true } | { ok: false; error: string }> {
+  const subject = buildEventTicketEmailSubject(input);
+  const text = buildEventTicketEmailText(input);
+  if (process.env.NODE_ENV !== "production" || process.env.E2E_NOW) {
+    // Saida de proposito (o link e lido daqui em desenvolvimento): nao e erro, nao vai ao registro.
+    console.info(`\n[e-mail não enviado: desenvolvimento]\nPara: ${input.toEmail}\nAssunto: ${subject}\n\n${text}\n`);
+    return { ok: true };
+  }
+  return sendSimpleEmail({
+    toEmail: input.toEmail,
+    toName: input.toName,
+    subject,
+    html: (hasInlineIcon) => buildEventTicketEmailHtml({ ...input, hasInlineIcon }),
+    text,
+    devText: input.ticketUrl,
+    context: "ingresso do evento",
+  });
 }

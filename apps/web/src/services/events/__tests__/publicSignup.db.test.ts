@@ -123,7 +123,8 @@ describe("página e inscrição pelo link", () => {
       { code, name: " carla  DIAS", phone: "11955550000", email: "novo@depois.com", acceptTerms: true, acceptWhatsapp: true },
       meta(),
     );
-    expect(first.status).toBe("confirmed");
+    // O e-mail digitado recebe o link do ingresso (em teste, impresso no terminal).
+    expect(first).toMatchObject({ status: "confirmed", emailSent: true });
     const { data: after } = await admin.from("clients").select("name, email, whatsapp_consent_status").eq("id", id).single();
     expect(after).toEqual({ name: "Carla Dias", email: "carla@antes.com", whatsapp_consent_status: "unknown" });
     const { data: registrations } = await admin.from("event_registrations").select("source").eq("student_id", id);
@@ -168,6 +169,30 @@ describe("página e inscrição pelo link", () => {
     const ctx = await systemTenantContext(tenant.organizationId, "Teste");
     await runInWorld(ctx, () => eventsServiceImpl.update(eventId, { publicSignup: { enabled: false, code: "" } }));
     expect(await loadPublicEvent(code)).toMatchObject({ open: false, closedReason: "disabled" });
+  });
+
+  it("vaga só com o pagamento: a reserva já tem o endereço, com o valor, o prazo e o Pagar agora", async () => {
+    const { data: org } = await admin.from("organizations").select("settings").eq("id", tenant.organizationId).single();
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    await admin
+      .from("organizations")
+      .update({ settings: { ...settings, onlinePayments: { ...((settings.onlinePayments as object) ?? {}), enabled: true } } })
+      .eq("id", tenant.organizationId)
+      .throwOnError();
+    const paid = await createEvent({ billingMode: "fixed", priceCents: 5000, maxInstallments: 1, seatGuarantee: "on_payment", holdMinutes: 30 });
+    const result = await submitPublicEventSignup(
+      { code: paid.publicSignup!.code, name: "Gabi Prado", phone: "11977771234", acceptTerms: true },
+      meta(),
+    );
+    expect(result).toMatchObject({ status: "reserved", amountCents: 5000 });
+    expect(result.ticketCode).toMatch(/^[A-F0-9]{12}$/);
+    expect(result.emailSent).toBeUndefined();
+
+    const page = await loadTicketPage(result.ticketCode!);
+    expect(page?.ticket).toMatchObject({ state: "reserved", pendingCents: 5000 });
+    expect(page?.ticket.holdUntil).toBeDefined();
+    // Pagamento online ligado: o "Pagar agora" abre a cobranca da inscricao.
+    expect(page?.ticket.payChargeId).toBe(result.chargeId);
   });
 
   it("o ingresso aberto pelo QR mostra o nome mascarado e nenhum telefone", async () => {

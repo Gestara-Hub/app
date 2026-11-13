@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle2, Clock, Hourglass, Ticket } from "lucide-react";
+import { CheckCircle2, Hourglass, Ticket } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { PublicEventSignupResult, PublicEventView } from "@gestarahub/contracts";
@@ -16,8 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EVENT_SIGNUP_TERMS } from "@/lib/event-signup-terms";
 import { handleFormApiError } from "@/lib/form-errors";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { submitEventSignupAction } from "./actions";
+import { readRememberedSignups, rememberSignup } from "./signup-memory";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -63,8 +66,13 @@ type SignupValues = z.infer<typeof signupSchema>;
  * WhatsApp opcional. Nada vem preenchido (regra das paginas publicas).
  */
 export function EventSignupForm({ event }: { event: PublicEventView }) {
+  const router = useRouter();
   const [result, setResult] = useState<PublicEventSignupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Indo para a pagina do ingresso: o botao segue ocupado ate a troca de pagina.
+  const [leaving, setLeaving] = useState(false);
+  const isClient = useIsClient();
+  const remembered = useMemo(() => (isClient ? readRememberedSignups(event.code) : []), [isClient, event.code]);
   const form = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
     mode: "onSubmit",
@@ -88,7 +96,7 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
   const sessionIds = useWatch({ control: form.control, name: "sessionIds" });
   const termsError = form.formState.errors.acceptTerms?.message;
   const daysError = form.formState.errors.sessionIds?.message;
-  const pending = form.formState.isSubmitting;
+  const pending = form.formState.isSubmitting || leaving;
 
   const perDay = event.billingMode === "per_day" && event.sessions.length > 1;
   const chosenDays = perDay && scope === "days" ? sessionIds.length : event.sessions.length;
@@ -114,7 +122,16 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
       website: values.website,
     });
     if (response.ok) {
-      setResult(response.result);
+      const done = response.result;
+      // Confirmada ou reservada: vai para a pagina do ingresso, que tem endereco
+      // proprio (atualizar a pagina nao perde o ingresso) e o "Pagar agora".
+      if (done.ticketCode && (done.status === "confirmed" || done.status === "reserved")) {
+        rememberSignup(event.code, { ticketCode: done.ticketCode, displayName: done.displayName });
+        setLeaving(true);
+        router.replace(`/p/i/${done.ticketCode}?nova=1${done.emailSent ? "&email=1" : ""}`);
+        return;
+      }
+      setResult(done);
       return;
     }
     // Erro por campo: embaixo do campo, com o foco nele; o resto, no fim.
@@ -128,7 +145,23 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="space-y-4 border-t pt-4">
-        <h2 className="text-base font-semibold text-foreground">Inscrição</h2>
+        {remembered.length > 0 ? (
+          <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+            <p className="text-sm font-medium text-foreground">Você se inscreveu neste aparelho</p>
+            {remembered.map((item) => (
+              <div key={item.ticketCode} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 break-words text-sm text-foreground">{item.displayName}</span>
+                <Button asChild variant="outline">
+                  <a href={`/p/i/${item.ticketCode}`}>
+                    <Ticket className="size-4" />
+                    Ver ingresso
+                  </a>
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <h2 className="text-base font-semibold text-foreground">{remembered.length > 0 ? "Inscrever outra pessoa" : "Inscrição"}</h2>
 
         <InputText<SignupValues>
           name="name"
@@ -160,6 +193,7 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
           label="E-mail"
           type="email"
           placeholder="Informe o e-mail (opcional)"
+          hint="Enviamos o link do ingresso para ele."
           autoComplete="email"
           disabled={pending}
         />
@@ -271,7 +305,9 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
 
         <Button type="submit" className="w-full" disabled={pending}>
           {pending
-            ? "Enviando..."
+            ? leaving
+              ? "Abrindo o ingresso..."
+              : "Enviando..."
             : event.isFull
               ? "Entrar na lista de espera"
               : amount > 0
@@ -288,23 +324,12 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
   );
 }
 
-/** Minutos e segundos que faltam para a reserva vencer. */
-function useCountdown(until?: string): string | null {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!until) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [until]);
-  if (!until) return null;
-  const left = Math.max(0, Date.parse(until) - now);
-  const minutes = Math.floor(left / 60_000);
-  const seconds = Math.floor((left % 60_000) / 1000);
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
 
+/**
+ * O que fica nesta pagina: ja inscrito e lista de espera. Confirmada ou
+ * reservada vai para a pagina do ingresso (ver `onSubmit`).
+ */
 function SignupResult({ result, event }: { result: PublicEventSignupResult; event: PublicEventView }) {
-  const countdown = useCountdown(result.status === "reserved" ? result.holdUntil : undefined);
   const payHref = result.chargeId && event.onlinePayments ? `/p/c/${result.chargeId}` : null;
   const ticketHref = result.ticketCode ? `/p/i/${result.ticketCode}` : null;
 
@@ -326,28 +351,10 @@ function SignupResult({ result, event }: { result: PublicEventSignupResult; even
   );
 
   if (result.status === "already") {
-    return box(<CheckCircle2 className="size-6" />, "Você já está inscrito", "Este telefone já tem inscrição neste evento. Se perdeu o ingresso, peça ao espaço.");
+    return box(<CheckCircle2 className="size-6" />, "Você já está inscrito", "Este telefone já tem inscrição neste evento. O link do ingresso está no e-mail da inscrição; se não tiver, peça ao espaço.");
   }
   if (result.status === "waitlist") {
     return box(<Hourglass className="size-6" />, "Você está na lista de espera", "O evento lotou. O espaço avisa se abrir vaga.", "wait");
-  }
-  if (result.status === "reserved") {
-    return (
-      <div className="space-y-4">
-        {box(
-          <Clock className="size-6" />,
-          `Vaga reservada para ${result.displayName}`,
-          `Pague ${formatCents(result.amountCents)} em até ${countdown ?? ""} para garantir a vaga. Depois disso, a reserva cai.`,
-          "wait",
-        )}
-        {payHref ? (
-          <Button asChild className="w-full">
-            <a href={payHref}>Pagar agora</a>
-          </Button>
-        ) : null}
-        <p className="text-center text-xs text-muted-foreground">O ingresso chega assim que o pagamento cair.</p>
-      </div>
-    );
   }
   const pending = result.amountCents > 0;
   return (

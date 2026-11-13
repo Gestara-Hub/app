@@ -204,6 +204,8 @@ export interface ChargeInvoiceView {
   acceptedMethods: OnlinePaymentMethod[];
   amountsByMethod: Partial<Record<OnlinePaymentMethod, number>>;
   passFeeByMethod: Partial<Record<OnlinePaymentMethod, boolean>>;
+  /** Cobranca de inscricao em evento: o codigo do ingresso, para o "Ver ingresso" (12/11/2026). */
+  ticketCode?: string;
 }
 
 /**
@@ -222,12 +224,13 @@ export async function loadChargeInvoice(
   let client: Record<string, unknown> | null = null;
   let units: Record<string, unknown>[] | null = null;
   let existingPaymentRow: Record<string, unknown> | null = null;
+  let ticketCode: string | undefined;
 
   try {
     const [chargeRes, existingRes] = await Promise.all([
       admin
         .from("charges")
-        .select("id, organization_id, student_id, amount_cents, due_date, status, kind, description, paid_at, paid_via")
+        .select("id, organization_id, student_id, amount_cents, due_date, status, kind, description, paid_at, paid_via, event_registration_id")
         .eq("id", chargeId)
         .maybeSingle(),
       admin
@@ -245,7 +248,8 @@ export async function loadChargeInvoice(
     existingPaymentRow = (existingRes.data as Record<string, unknown> | null) ?? null;
 
     if (charge) {
-      const [orgRes, clientRes, unitsRes] = await Promise.all([
+      const registrationId = charge.event_registration_id as string | null | undefined;
+      const [orgRes, clientRes, unitsRes, registrationRes] = await Promise.all([
         admin
           .from("organizations")
           .select("id, name, settings, subscription, gateway_api_key")
@@ -262,7 +266,11 @@ export async function loadChargeInvoice(
           .eq("organization_id", charge.organization_id)
           .order("created_at", { ascending: true })
           .limit(1),
+        registrationId
+          ? admin.from("event_registrations").select("ticket_code").eq("id", registrationId).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
+      ticketCode = (registrationRes.data as { ticket_code?: string | null } | null)?.ticket_code ?? undefined;
       org = (orgRes.data as Record<string, unknown> | null) ?? null;
       client = (clientRes.data as Record<string, unknown> | null) ?? null;
       units = (unitsRes.data as Record<string, unknown>[] | null) ?? null;
@@ -298,6 +306,7 @@ export async function loadChargeInvoice(
       acceptedMethods: [],
       amountsByMethod: {},
       passFeeByMethod: {},
+      ...(ticketCode ? { ticketCode } : {}),
     };
   }
 
@@ -318,6 +327,7 @@ export async function loadChargeInvoice(
       acceptedMethods: [],
       amountsByMethod: {},
       passFeeByMethod: {},
+      ...(ticketCode ? { ticketCode } : {}),
     };
   }
 
@@ -338,6 +348,7 @@ export async function loadChargeInvoice(
       acceptedMethods: [],
       amountsByMethod: {},
       passFeeByMethod: {},
+      ...(ticketCode ? { ticketCode } : {}),
     };
   }
 
@@ -412,5 +423,6 @@ export async function loadChargeInvoice(
     acceptedMethods,
     amountsByMethod,
     passFeeByMethod,
+    ...(ticketCode ? { ticketCode } : {}),
   };
 }

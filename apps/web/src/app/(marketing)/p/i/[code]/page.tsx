@@ -10,6 +10,7 @@ import { whatsappShareLink } from "@/lib/whatsapp";
 import { loadTicketPage } from "@/services/server/eventTickets";
 import { StaffCheckIn } from "./staff-check-in";
 import { TicketCard } from "./ticket-card";
+import { TicketStatus } from "./ticket-status";
 
 /**
  * Ingresso do evento (doc product/29 T1 a T7): publico, dados mascarados,
@@ -26,8 +27,16 @@ function appUrl(path: string): string {
   return `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}${path}`;
 }
 
-export default async function TicketPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function TicketPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  /** `nova=1`: acabou de se inscrever (vem da pagina do evento); `email=1`: o link foi para o e-mail. */
+  searchParams: Promise<{ nova?: string; email?: string }>;
+}) {
   const { code } = await params;
+  const query = await searchParams;
   const data = await loadTicketPage(code);
   if (!data) notFound();
   const { ticket, staff } = data;
@@ -52,16 +61,20 @@ export default async function TicketPage({ params }: { params: Promise<{ code: s
           )
         ) : null}
 
+        {!staff ? <TicketStatus ticket={ticket} isNew={query.nova === "1"} emailSent={query.email === "1"} /> : null}
+
         <TicketCard ticket={ticket} url={url} />
 
-        {valid && !staff ? (
+        {(valid || ticket.state === "reserved") && !ticket.reservationExpired && !staff ? (
           <div className="grid grid-cols-1 gap-2">
-            <Button asChild>
-              <a href={`/p/i/${ticket.code}/image`} download={`ingresso-${ticket.code}.png`}>
-                <Download className="size-4" />
-                Salvar ingresso
-              </a>
-            </Button>
+            {valid ? (
+              <Button asChild variant={ticket.payChargeId ? "outline" : "default"}>
+                <a href={`/p/i/${ticket.code}/image`} download={`ingresso-${ticket.code}.png`}>
+                  <Download className="size-4" />
+                  Salvar ingresso
+                </a>
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <a href={whatsappShareLink(`Meu ingresso para ${ticket.eventName}: ${url}`)} target="_blank" rel="noopener noreferrer">
                 <Send className="size-4" />

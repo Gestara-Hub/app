@@ -78,13 +78,20 @@ test("Inscrição pelo link: pessoa nova se inscreve, recebe o ingresso e a equi
   await expect(visitor.getByText("Aceite para concluir a inscrição.")).toBeVisible();
   await visitor.getByRole("checkbox", { name: /Li e aceito/ }).click();
   await visitor.getByRole("button", { name: "Inscrever", exact: true }).click();
+  // Vai direto para a pagina do ingresso: endereco proprio, atualizar nao perde.
+  await expect(visitor).toHaveURL(/\/p\/i\/[A-F0-9]{12}\?nova=1/);
   await expect(visitor.getByText("Inscrição confirmada, Bruno L. S.")).toBeVisible();
-
-  await visitor.getByRole("link", { name: "Ver ingresso" }).click();
-  await expect(visitor.getByText("Bruno L. S.")).toBeVisible();
-  await expect(visitor.getByText("Confirmado")).toBeVisible();
+  await visitor.reload();
+  await expect(visitor.getByText("Bruno L. S.", { exact: true })).toBeVisible();
+  await expect(visitor.getByText("Confirmado", { exact: true })).toBeVisible();
   await expect(visitor.getByRole("img", { name: "QR code do ingresso" })).toBeVisible();
   await expect(visitor.getByText("Souza")).toHaveCount(0);
+
+  // O aparelho lembra: reabrir o link do evento mostra o ingresso de quem se inscreveu aqui.
+  await visitor.goto(`/p/e/${code}`);
+  await expect(visitor.getByText("Você se inscreveu neste aparelho")).toBeVisible();
+  await expect(visitor.getByRole("link", { name: "Ver ingresso" })).toHaveAttribute("href", /\/p\/i\/[A-F0-9]{12}$/);
+  await expect(visitor.getByRole("heading", { name: "Inscrever outra pessoa" })).toBeVisible();
 
   const world = await readAcademy();
   const registration = (world.eventRegistrations ?? []).find((r: { source?: string }) => r.source === "public_link");

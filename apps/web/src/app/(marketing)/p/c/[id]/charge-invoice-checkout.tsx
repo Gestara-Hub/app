@@ -10,6 +10,7 @@ import {
   CreditCard,
   QrCode,
   ShieldCheck,
+  Ticket,
 } from "lucide-react";
 import type { OnlinePaymentMethod } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
@@ -121,6 +122,17 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
     }
   };
 
+  // Inscricao em evento (12/11/2026): sempre ha caminho de volta para o ingresso.
+  const ticketButton = (variant: "default" | "outline") =>
+    invoice.ticketCode ? (
+      <Button asChild variant={variant} className="w-full">
+        <a href={`/p/i/${invoice.ticketCode}`}>
+          <Ticket className="size-4" />
+          Ver ingresso
+        </a>
+      </Button>
+    ) : null;
+
   // 1. Tela de Sucesso / Já pago
   if (isPaid || invoice.state === "paid") {
     return (
@@ -133,7 +145,15 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
             Pagamento Confirmado!
           </h2>
           <p className="text-sm text-muted-foreground">
-            Sua mensalidade na <strong className="font-semibold text-foreground">{invoice.organizationName}</strong> já consta como quitada.
+            {invoice.ticketCode ? (
+              <>
+                Sua inscrição em <strong className="font-semibold text-foreground">{invoice.label}</strong> está paga.
+              </>
+            ) : (
+              <>
+                Sua mensalidade na <strong className="font-semibold text-foreground">{invoice.organizationName}</strong> já consta como quitada.
+              </>
+            )}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground space-y-1">
@@ -144,6 +164,7 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
             Referência: <strong className="text-foreground">{invoice.label}</strong>
           </p>
         </div>
+        {ticketButton("default")}
       </div>
     );
   }
@@ -199,6 +220,7 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
             Escolher outra forma de pagamento
           </Button>
         </div>
+        {ticketButton("outline")}
       </div>
     );
   }
@@ -361,6 +383,7 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
           </>
         )}
       </Button>
+      {ticketButton("outline")}
     </div>
   );
 }
