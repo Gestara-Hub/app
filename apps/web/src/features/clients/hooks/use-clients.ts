@@ -18,6 +18,7 @@ import type {
   DateISO,
   Id,
   ProgressionBeltColor,
+  PromoteStudentsInput,
   StudentModalityProgression,
   UpdateClient,
 } from "@gestarahub/contracts";
@@ -107,6 +108,26 @@ export function useStudentProgressionOverview(studentId?: Id) {
     queryKey: [...queryKeys.clients.all, "progression", studentId ?? ""],
     queryFn: () => clientsService.getProgressionOverview(studentId!),
     enabled: Boolean(studentId),
+  });
+}
+
+/** "Graduar vários" (doc product/30 §3): os alunos escolhidos na modalidade, com nivel, aulas e notas. */
+export function usePromotionCandidates(modalityId: Id | undefined, studentIds: Id[], enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.clients.all, "promotion-candidates", modalityId ?? "", [...studentIds].sort().join(",")],
+    queryFn: () => clientsService.listPromotionCandidates(modalityId!, studentIds),
+    enabled: enabled && Boolean(modalityId) && studentIds.length > 0,
+  });
+}
+
+export function usePromoteStudents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PromoteStudentsInput) => clientsService.promoteStudents(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+      qc.invalidateQueries({ queryKey: queryKeys.audit.all });
+    },
   });
 }
 

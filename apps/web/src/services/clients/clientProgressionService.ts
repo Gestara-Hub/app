@@ -4,11 +4,15 @@ import type {
   Client,
   DateISO,
   Id,
+  PromoteStudentsInput,
+  PromotionCandidate,
+  PromotionCandidates,
   ProgressionBeltColor,
   ProgressionTermSuggestions,
   StudentModalityOverviewItem,
   StudentModalityProgression,
   StudentProgressionOverview,
+  StudentStageGrades,
 } from "@gestarahub/contracts";
 import { ageAt, currentLevelOf, resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
@@ -61,49 +65,19 @@ export const clientProgressionService = {
       const age = ageAt(client.birthDate, todayISO());
       const items: StudentModalityOverviewItem[] = [];
       for (const modality of categoriesById.values()) {
-        const groupsInModality = store.classGroups.filter(
-          (g) => g.modalityId === modality.id,
-        );
-        const groupIdsInModality = new Set(groupsInModality.map((g) => g.id));
         const studentGroupsInModality = enrolledGroups.filter(
           (g) => g.modalityId === modality.id,
         );
-        const isEnrolled = studentGroupsInModality.length > 0;
         const progression = existingProgressions[modality.id];
-        const promotedAt = progression?.promotedAt;
-
-        let totalPresentInModality = 0;
-        let presentSincePromotion = 0;
-
-        for (const att of store.attendances) {
-          if (att.studentId !== studentId || att.status !== "present") continue;
-          const [groupId, sessionDate] = att.sessionId.split("~");
-          if (!groupIdsInModality.has(groupId)) continue;
-          totalPresentInModality += 1;
-          if (!promotedAt || (sessionDate && sessionDate >= promotedAt)) {
-            presentSincePromotion += 1;
-          }
-        }
-
-        // Notas da etapa atual, para o "Apto" (doc product/30 §1).
-        const track = modality.progressionTrack;
-        const stageGrades = track?.enabled
-          ? studentStageGrades(modality.id, studentId, track, {
-              levelId: currentLevelOf(track, progression, age)?.id,
-              since: promotedAt,
-            })
-          : undefined;
-
+        const facts = progressFacts(client, modality, age);
         items.push({
           modality,
-          isEnrolled,
+          isEnrolled: studentGroupsInModality.length > 0,
           enrolledClassNames: studentGroupsInModality.map((g) => g.name),
-          presentSincePromotion:
-            presentSincePromotion + (progression?.initialAttendanceOffset ?? 0),
-          totalPresentInModality:
-            totalPresentInModality + (progression?.initialAttendanceOffset ?? 0),
+          presentSincePromotion: facts.presentSincePromotion,
+          totalPresentInModality: facts.totalPresentInModality,
           progression,
-          ...(stageGrades ? { stageGrades } : {}),
+          ...(facts.stageGrades ? { stageGrades: facts.stageGrades } : {}),
         });
       }
 
@@ -120,6 +94,93 @@ export const clientProgressionService = {
         studentName: client.name,
         items,
       });
+    });
+  },
+
+  /**
+   * "Graduar vários" (doc product/30 §3): os alunos pedidos na modalidade, com
+   * o nivel, as aulas desde a ultima graduacao e as notas da etapa. A tela
+   * calcula o passo sugerido e o "Apto" com as mesmas regras do individual.
+   */
+  listPromotionCandidates(modalityId: Id, studentIds: Id[]): Promise<PromotionCandidates> {
+    return readOp(async () => {
+      const found = store.categories.find((c) => c.id === modalityId);
+      if (!found) throw notFoundError("Modalidade não encontrada.");
+      const modality: Category = { ...found, progressionTrack: resolveModalityTrack(found) };
+      const today = todayISO();
+      const candidates: PromotionCandidate[] = [];
+      for (const studentId of new Set(studentIds)) {
+        const client = store.clients.find((c) => c.id === studentId);
+        if (!client) continue;
+        assertTeacherSeesStudent(studentId, "Você só vê a evolução dos alunos das suas turmas.");
+        const facts = progressFacts(client, modality, ageAt(client.birthDate, today));
+        candidates.push({
+          studentId,
+          studentName: client.name,
+          ...(client.birthDate ? { birthDate: client.birthDate } : {}),
+          ...(client.progressions?.[modalityId] ? { progression: client.progressions[modalityId] } : {}),
+          presentSincePromotion: facts.presentSincePromotion,
+          ...(facts.stageGrades ? { stageGrades: facts.stageGrades } : {}),
+        });
+      }
+      candidates.sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
+      return clone({ modality, candidates });
+    });
+  },
+
+  /**
+   * Graduar varios de uma vez (doc product/30 §3): mesma data, examinador e
+   * observacao; cada aluno ganha o registro normal no historico e a linha na
+   * Auditoria. Tudo ou nada: confere todos antes de gravar. Quem nao esta apto
+   * pode entrar (a tela confirma antes; decisao 3 do doc 30).
+   */
+  promoteStudents(input: PromoteStudentsInput): Promise<{ promoted: number }> {
+    return writeOp(async () => {
+      if (!input.date || input.date > todayISO()) {
+        throw validationError([{ field: "date", message: "A data não pode ser futura." }]);
+      }
+      const found = store.categories.find((c) => c.id === input.modalityId);
+      const track = found ? resolveModalityTrack(found) : undefined;
+      if (!found || !track?.enabled) {
+        throw validationError([{ field: "modalityId", message: "A modalidade não tem trilha de níveis." }]);
+      }
+      const seen = new Set<Id>();
+      const items = input.items.filter((i) => !seen.has(i.studentId) && seen.add(i.studentId));
+      if (items.length === 0) {
+        throw validationError([{ field: "items", message: "Escolha ao menos um aluno." }]);
+      }
+      const payloads = items.map((item): PromotionPayload => {
+        assertCanManageProgression(item.studentId, { modalityId: found.id });
+        const client = store.clients.find((c) => c.id === item.studentId);
+        if (!client) throw notFoundError(NOT_FOUND);
+        const level = track.levels.find((l) => l.id === item.toLevelId);
+        if (!level || item.toSubLevel < 0 || item.toSubLevel > level.maxSubLevels) {
+          throw validationError([{ field: "items", message: `Escolha para onde ${client.name} vai.` }]);
+        }
+        const prev = client.progressions?.[found.id];
+        const age = ageAt(client.birthDate, input.date);
+        const current = currentLevelOf(track, prev, age);
+        if (current?.id === level.id && (prev?.subLevel ?? 0) === item.toSubLevel) {
+          throw validationError([{ field: "items", message: `${client.name} já está em ${level.name}.` }]);
+        }
+        return {
+          studentId: client.id,
+          modalityId: found.id,
+          modalityName: found.name,
+          toLevelId: level.id,
+          toLevelName: level.name,
+          toLevelColor: level.color,
+          toSubLevel: item.toSubLevel,
+          maxSubLevels: level.maxSubLevels,
+          date: input.date,
+          attendancesCompleted: progressFacts(client, { ...found, progressionTrack: track }, age).presentSincePromotion,
+          monthsInLevel: monthsBetween(prev?.promotedAt, input.date),
+          notes: input.notes,
+          examiner: input.examiner,
+        };
+      });
+      for (const payload of payloads) recordPromotion(payload);
+      return { promoted: payloads.length };
     });
   },
 
@@ -258,3 +319,42 @@ export function recordPromotion(payload: PromotionPayload): Client {
   return updated;
 }
 
+/**
+ * Numa modalidade (com a trilha ja resolvida): presencas totais e desde a
+ * ultima graduacao (com o ponto de partida) e as notas da etapa atual.
+ */
+function progressFacts(
+  client: Client,
+  modality: Category,
+  age: number | null,
+): { presentSincePromotion: number; totalPresentInModality: number; stageGrades?: StudentStageGrades } {
+  const groupIds = new Set(store.classGroups.filter((g) => g.modalityId === modality.id).map((g) => g.id));
+  const progression = client.progressions?.[modality.id];
+  const promotedAt = progression?.promotedAt;
+  let total = 0;
+  let since = 0;
+  for (const att of store.attendances) {
+    if (att.studentId !== client.id || att.status !== "present") continue;
+    const [groupId, sessionDate] = att.sessionId.split("~");
+    if (!groupIds.has(groupId)) continue;
+    total += 1;
+    if (!promotedAt || (sessionDate && sessionDate >= promotedAt)) since += 1;
+  }
+  const offset = progression?.initialAttendanceOffset ?? 0;
+  // Notas da etapa atual, para o "Apto" (doc product/30 §1).
+  const track = modality.progressionTrack;
+  const stageGrades = track?.enabled
+    ? studentStageGrades(modality.id, client.id, track, {
+        levelId: currentLevelOf(track, progression, age)?.id,
+        since: promotedAt,
+      })
+    : undefined;
+  return { presentSincePromotion: since + offset, totalPresentInModality: total + offset, ...(stageGrades ? { stageGrades } : {}) };
+}
+
+/** Meses inteiros (30 dias) entre duas datas, como o "Tempo no nivel" da tela. */
+function monthsBetween(from: DateISO | undefined, to: DateISO): number {
+  if (!from) return 0;
+  const days = Math.floor((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from.slice(0, 10)}T12:00:00Z`)) / 86_400_000);
+  return Math.max(0, Math.floor(days / 30));
+}

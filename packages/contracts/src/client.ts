@@ -132,6 +132,32 @@ export interface StudentProgressionOverview {
   items: StudentModalityOverviewItem[];
 }
 
+/** Aluno no "Graduar vários" (doc product/30 §3): o que a tela precisa para o passo e o "Apto". */
+export interface PromotionCandidate {
+  studentId: Id;
+  studentName: string;
+  birthDate?: DateISO;
+  progression?: StudentModalityProgression;
+  /** Aulas desde a ultima graduacao (com o ponto de partida). */
+  presentSincePromotion: number;
+  stageGrades?: StudentStageGrades;
+}
+
+export interface PromotionCandidates {
+  /** A modalidade com a trilha ja resolvida. */
+  modality: Category;
+  candidates: PromotionCandidate[];
+}
+
+/** Graduar varios de uma vez (doc product/30 §3): tudo ou nada, mesma data e examinador. */
+export interface PromoteStudentsInput {
+  modalityId: Id;
+  date: DateISO;
+  examiner?: string;
+  notes?: string;
+  items: { studentId: Id; toLevelId: string; toSubLevel: number }[];
+}
+
 /** Novo registro de aula de um aluno (o autor vem da sessao). */
 export interface CreateStudentClassRecord {
   studentId: Id;

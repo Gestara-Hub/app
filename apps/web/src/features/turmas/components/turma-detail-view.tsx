@@ -59,7 +59,7 @@ import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useModalityVocabulary } from "@/features/settings";
-import { normalizeText } from "@/lib/text";
+import { normalizeText, withKind } from "@/lib/text";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { nowTime, todayISO } from "@gestarahub/core/date";
 import { plural, pluralWord } from "@gestarahub/core/format";
@@ -77,7 +77,13 @@ import {
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCategories } from "@/features/categories";
-import { StudentGraduationDialog, StudentRecordsDialog, useClientsByIds } from "@/features/clients";
+import {
+  GraduateManyDrawer,
+  StudentGraduationDialog,
+  StudentRecordsDialog,
+  useClientsByIds,
+  type GraduateManyStudent,
+} from "@/features/clients";
 import { ClassAssessmentsTab, StudentGradesDialog, useClassAssessments } from "@/features/grades";
 import {
   useCancelEnrollment,
@@ -287,6 +293,9 @@ export function TurmaDetailView({
     setMoving(students);
     setMoveOpen(true);
   };
+  // Graduar varios (doc product/30 §3): os selecionados, com o passo de cada um.
+  const [graduateManyOpen, setGraduateManyOpen] = useState(false);
+  const [graduatingMany, setGraduatingMany] = useState<GraduateManyStudent[]>([]);
 
   const handleEnrollOpenChange = (open: boolean) => {
     setEnrollOpen(open);
@@ -643,6 +652,18 @@ export function TurmaDetailView({
       </div>
 
       <TurmaFormDrawer open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      {turma.modalityId ? (
+        <GraduateManyDrawer
+          open={graduateManyOpen}
+          onOpenChange={setGraduateManyOpen}
+          modalityId={turma.modalityId}
+          students={graduatingMany}
+          contextLabel={withKind("Turma", turma.name)}
+          onDone={() => {
+            if (selecting) stopSelecting();
+          }}
+        />
+      ) : null}
       <MoveStudentsDrawer
         open={moveOpen}
         onOpenChange={setMoveOpen}
@@ -1025,6 +1046,19 @@ export function TurmaDetailView({
                     <Button variant="ghost" onClick={stopSelecting}>
                       Sair da seleção
                     </Button>
+                    {modalityTrack && turma.modalityId && can("progression:manage") ? (
+                      <Button
+                        variant="outline"
+                        disabled={selectedRows.length === 0}
+                        onClick={() => {
+                          setGraduatingMany(selectedRows.map((r) => ({ id: r.studentId, name: r.studentName })));
+                          setGraduateManyOpen(true);
+                        }}
+                      >
+                        <Award className="size-4" />
+                        {vocabulary.promoteVerb}
+                      </Button>
+                    ) : null}
                     {canMove ? (
                       <Button
                         variant="outline"

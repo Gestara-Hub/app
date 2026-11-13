@@ -11,6 +11,8 @@ const SELF_CHECKED: Record<string, string> = {
   // Evolucao: assertCanManageProgression (permissao progression:manage e recorte do professor).
   "clients.saveModalityProgression": "assertCanManageProgression",
   "clients.promoteStudent": "assertCanManageProgression",
+  // Graduar varios (doc product/30 §3): confere cada aluno.
+  "clients.promoteStudents": "assertCanManageProgression",
   "clients.addClassRecord": "assertCanManageProgression",
   "clients.addClassRecords": "assertCanManageProgression",
   "clients.updateStrengths": "assertCanManageProgression",
