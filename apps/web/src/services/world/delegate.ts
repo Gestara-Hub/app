@@ -1,5 +1,5 @@
 import { isSupabaseOrganization } from "@/lib/session";
-import { inServerWorld, store } from "./store";
+import { hasLocalWorld, inServerWorld, store } from "./store";
 import { networkError } from "@gestarahub/core/api-error";
 import { unwrap, type ActionResult } from "../server/action";
 import { serviceAction } from "./serviceActions";
@@ -11,6 +11,11 @@ import { encodeArgs } from "./transport";
  * do espaco da requisicao) e na demonstracao, roda local.
  */
 export function delegatesToServer(): boolean {
+  // Pagina publica aberta pela equipe logada (ingresso pela camera, doc 29 T4):
+  // o navegador nao carrega espaco nenhum, entao nao da para perguntar qual e a
+  // conta. O servidor sabe o espaco pela sessao (12/11/2026: antes o ingresso
+  // mostrava "Sem espaço carregado").
+  if (typeof window !== "undefined" && !inServerWorld() && !hasLocalWorld()) return true;
   return realAccountInBrowser();
 }
 

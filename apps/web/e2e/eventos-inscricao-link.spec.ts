@@ -155,6 +155,29 @@ test("Inscrição pelo link: lotado entra na espera; menor com o aceite do respo
   await closed.context().close();
 });
 
+test("Equipe logada abre o link do ingresso (câmera comum): confere e confirma a entrada na página", async ({ page, browser }) => {
+  const code = newCode();
+  await seedLinkEvent(page, code);
+  await page.goto("/dashboard");
+
+  const visitor = await publicPage(browser, page, `/p/e/${code}`);
+  await visitor.getByRole("textbox", { name: /^Nome/ }).fill("Davi Moura");
+  await visitor.getByRole("textbox", { name: /^WhatsApp/ }).fill("11944441111");
+  await visitor.getByRole("checkbox", { name: /Li e aceito/ }).click();
+  await visitor.getByRole("button", { name: "Inscrever", exact: true }).click();
+  await expect(visitor.getByText("Inscrição confirmada, Davi M.")).toBeVisible();
+  await visitor.context().close();
+
+  // A pagina publica nao carrega o espaco no navegador: a conferencia vai ao servidor pela sessao.
+  const world = await readAcademy();
+  const registration = (world.eventRegistrations ?? []).find((r: { source?: string }) => r.source === "public_link");
+  await page.goto(`/p/i/${registration.ticketCode}`);
+  await expect(page.getByText("Ingresso válido")).toBeVisible();
+  await expect(page.getByText(/Sem espaço carregado/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByText("Pode entrar")).toBeVisible();
+});
+
 test("Ingresso com pagamento pendente: a leitura para e a entrada é confirmada com o aviso", async ({ page, browser }) => {
   const code = newCode();
   await seedLinkEvent(page, code, { billingMode: "fixed", priceCents: 5000, maxInstallments: 1 });

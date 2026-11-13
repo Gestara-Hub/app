@@ -20,6 +20,11 @@ export function setLocalWorldResolver(resolver: () => TenantWorld): void {
   local = resolver;
 }
 
+/** Ha mundo local registrado (testes de regra, demonstracao ou o app logado)? */
+export function hasLocalWorld(): boolean {
+  return local !== null;
+}
+
 /** Rodando dentro de uma action com o espaco carregado do banco? */
 export function inServerWorld(): boolean {
   return scoped?.() !== undefined;
