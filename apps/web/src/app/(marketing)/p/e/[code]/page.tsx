@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { CalendarDays, Clock, MapPin, User } from "lucide-react";
+import { AlignLeft, CalendarDays, Clock, MapPin, User } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatCents } from "@gestarahub/core/format";
@@ -9,6 +9,7 @@ import type { PublicEventView } from "@gestarahub/contracts";
 import logoLightImage from "@/assets/logo-light.svg";
 import logoDarkImage from "@/assets/logo-dark.svg";
 import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
+import { Perforation, TicketDetail, TicketHeader, TicketLabel, TicketSheet } from "../../_components/ticket-parts";
 import { loadPublicEvent } from "@/services/server/eventPublicSignup";
 import { EventSignupForm } from "./event-signup-form";
 
@@ -65,70 +66,80 @@ export default async function EventSignupPage({ params }: Props) {
   const instructors = event.instructors.map((i) => (i.isGuest && i.origin ? `${i.name} (${i.origin})` : i.name)).join(", ");
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-muted/20 px-4 py-8">
+    // Fundo solido: e a cor dos recortes do picote (mesmo visual do ingresso).
+    <div className="flex min-h-screen flex-col items-center bg-muted px-4 py-8">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <Image src={logoLightImage} alt="GestaraHub" className="h-9 w-auto dark:hidden" priority />
           <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-9 w-auto dark:block" priority />
         </div>
 
-        <div className="space-y-5 rounded-2xl border border-border bg-card p-6 shadow-lg">
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">{event.organizationName}</p>
-            <h1 className="min-w-0 break-words text-xl font-semibold text-foreground">{event.eventName}</h1>
-            {event.modalityName ? <p className="text-sm text-muted-foreground">{event.modalityName}</p> : null}
-          </div>
+        <TicketSheet>
+          <TicketHeader organizationName={event.organizationName} eventName={event.eventName} modalityName={event.modalityName} />
 
-          <ul className="space-y-2 text-sm text-foreground">
-            {event.sessions.map((s) => (
-              <li key={s.id} className="flex items-start gap-2">
-                <CalendarDays className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <span>
-                  {dayLine(s.date)} · {s.start} às {s.end}
-                </span>
-              </li>
-            ))}
-            {instructors ? (
-              <li className="flex items-start gap-2">
-                <User className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0 break-words">{instructors}</span>
-              </li>
-            ) : null}
+          <Perforation />
+
+          <div className="space-y-4 p-6 text-sm text-foreground">
+            <TicketDetail icon={CalendarDays} label={event.sessions.length > 1 ? "Dias" : "Dia"}>
+              <ul className="space-y-1">
+                {event.sessions.map((s) => (
+                  // Data e horario inteiros: no celular o horario desce junto, sem quebrar no meio.
+                  <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span>{dayLine(s.date)}</span>
+                    <span className="text-muted-foreground">
+                      {s.start} às {s.end}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </TicketDetail>
             {event.address ? (
-              <li className="flex items-start gap-2">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0 break-words">{event.address}</span>
-              </li>
+              <TicketDetail icon={MapPin} label="Local">
+                <p className="min-w-0 break-words">{event.address}</p>
+              </TicketDetail>
             ) : null}
-          </ul>
-
-          {event.description ? <p className="min-w-0 break-words text-sm text-foreground/80">{event.description}</p> : null}
-
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-t pt-4">
-            <p className="text-lg font-semibold text-foreground">{priceLine(event)}</p>
-            {event.earlyBird ? (
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                Lote até {format(parseISO(event.earlyBird.until), "dd/MM")}
-              </p>
+            {instructors ? (
+              <TicketDetail icon={User} label="Quem conduz">
+                <p className="min-w-0 break-words">{instructors}</p>
+              </TicketDetail>
             ) : null}
-            {event.isFull ? (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Lotado: entre na lista de espera</p>
-            ) : event.spotsLeft ? (
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                {event.spotsLeft === 1 ? "Última vaga" : `Últimas ${event.spotsLeft} vagas`}
-              </p>
+            {event.description ? (
+              <TicketDetail icon={AlignLeft} label="Sobre">
+                <p className="min-w-0 whitespace-pre-line break-words text-foreground/80">{event.description}</p>
+              </TicketDetail>
             ) : null}
           </div>
 
-          {event.open ? (
-            <EventSignupForm event={event} />
-          ) : (
-            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <p>{CLOSED_TEXT[event.closedReason ?? "disabled"]}</p>
+          <div className="mx-6 flex flex-wrap items-end justify-between gap-3 border-t border-border pb-6 pt-5">
+            <div className="space-y-1">
+              <TicketLabel>Valor</TicketLabel>
+              <p className="text-2xl font-semibold leading-none text-foreground">{priceLine(event)}</p>
+              {event.earlyBird ? (
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  Lote até {format(parseISO(event.earlyBird.until), "dd/MM")}
+                </p>
+              ) : null}
             </div>
-          )}
-        </div>
+            {event.isFull || event.spotsLeft ? (
+              <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                {event.isFull ? "Lotado: entre na lista de espera" : event.spotsLeft === 1 ? "Última vaga" : `Últimas ${event.spotsLeft} vagas`}
+              </span>
+            ) : null}
+          </div>
+
+          <Perforation />
+
+          <div className="p-6">
+            {event.open ? (
+              <EventSignupForm event={event} />
+            ) : (
+              <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                <Clock className="mt-0.5 size-5 shrink-0" aria-hidden />
+                <p>{CLOSED_TEXT[event.closedReason ?? "disabled"]}</p>
+              </div>
+            )}
+          </div>
+        </TicketSheet>
 
         <PublicLegalFooter />
       </div>

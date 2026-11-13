@@ -199,7 +199,7 @@ test("Ingresso com pagamento pendente: a leitura para e a entrada é confirmada 
   await visitor.getByRole("textbox", { name: /^WhatsApp/ }).fill("11955550000");
   await visitor.getByRole("textbox", { name: /^E-mail/ }).fill("pessoa@exemplo.com");
   await visitor.getByRole("checkbox", { name: /Li e aceito/ }).click();
-  await visitor.getByRole("button", { name: "Inscrever (R$ 50,00)" }).click();
+  await visitor.getByRole("button", { name: "Inscrever", exact: true }).click();
   await expect(visitor.getByText("Falta pagar R$ 50,00", { exact: false })).toBeVisible();
   await visitor.context().close();
 

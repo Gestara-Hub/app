@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, CreditCard, XCircle } from "lucide-react";
 import type { PublicTicketView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,17 @@ function useCountdown(until?: string): string | null {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+const TONE = {
+  ok: { box: "border-emerald-500/30 bg-emerald-500/5", icon: "text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
+  pay: { box: "border-amber-500/30 bg-amber-500/5", icon: "text-amber-600 dark:text-amber-400", Icon: CreditCard },
+  wait: { box: "border-amber-500/30 bg-amber-500/5", icon: "text-amber-600 dark:text-amber-400", Icon: Clock },
+  off: { box: "border-destructive/30 bg-destructive/5", icon: "text-destructive", Icon: XCircle },
+};
+
 /**
- * Topo da pagina da inscricao (12/11/2026): a pessoa chega aqui logo depois de
- * se inscrever e o endereco fica, entao atualizar a pagina nao perde o
- * ingresso. Mostra o que falta (pagar, prazo da reserva) e o "Pagar agora".
+ * Aviso acima do ingresso (12/11/2026): o que acabou de acontecer e o que
+ * falta, com o "Pagar agora". A pessoa chega aqui logo depois de se inscrever
+ * e o endereco fica, entao atualizar a pagina nao perde o ingresso.
  */
 export function TicketStatus({ ticket, isNew, emailSent }: { ticket: PublicTicketView; isNew: boolean; emailSent: boolean }) {
   const router = useRouter();
@@ -46,53 +53,48 @@ export function TicketStatus({ ticket, isNew, emailSent }: { ticket: PublicTicke
   }, [waitingPayment, router]);
 
   const keepLink = `Guarde este endereço: ele é o seu ingresso.${emailSent ? " Também enviamos para o seu e-mail." : ""}`;
-  let tone: "ok" | "wait" | "off" = "ok";
-  let title: string | null = null;
-  let text: string | null = null;
+  const payElsewhere = ticket.payChargeId ? "" : " Combine o pagamento com o espaço.";
+  let tone: keyof typeof TONE;
+  let title: string;
+  let text: string;
   if (ticket.reservationExpired) {
     tone = "off";
     title = "A reserva venceu";
     text = "O prazo para pagar acabou e a vaga voltou para o evento. Se ainda houver vaga, faça a inscrição de novo.";
   } else if (ticket.state === "reserved") {
     tone = "wait";
-    title = `Vaga reservada, ${ticket.holderName}`;
-    text = `Pague ${formatCents(pending)} em até ${countdown ?? ""} para garantir a vaga.${isNew ? ` ${keepLink}` : ""}`;
-  } else if (ticket.state === "payment_pending") {
-    title = isNew ? `Inscrição confirmada, ${ticket.holderName}` : null;
-    text = `A vaga é sua. Falta pagar ${formatCents(pending)}${ticket.payChargeId ? "." : ": combine o pagamento com o espaço."}${isNew ? ` ${keepLink}` : ""}`;
+    title = `Vaga reservada por ${countdown ?? ""}`;
+    text = `Pague ${formatCents(pending)} para garantir a vaga. O ingresso aparece aqui quando o pagamento cair.${payElsewhere}${isNew ? ` ${keepLink}` : ""}`;
+  } else if (ticket.state === "payment_pending" && pending > 0) {
+    tone = "pay";
+    title = `Falta pagar ${formatCents(pending)}`;
+    text = `${isNew ? `Inscrição confirmada, ${ticket.holderName}: a vaga é sua.` : "A vaga é sua."}${payElsewhere}${isNew ? ` ${keepLink}` : ""}`;
   } else if (ticket.state === "confirmed" && isNew) {
+    tone = "ok";
     title = `Inscrição confirmada, ${ticket.holderName}`;
-    text = `A vaga é sua. ${keepLink}`;
+    text = keepLink;
+  } else {
+    return null;
   }
-  if (!title && !text) return null;
 
-  const Icon = tone === "ok" ? CheckCircle2 : tone === "wait" ? Clock : XCircle;
+  const style = TONE[tone];
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-card p-5 text-center shadow-sm">
-      {title ? (
-        <div
-          className={cn(
-            "mx-auto flex size-11 items-center justify-center rounded-full",
-            tone === "ok" && "bg-emerald-500/10 text-emerald-600",
-            tone === "wait" && "bg-amber-500/10 text-amber-600",
-            tone === "off" && "bg-destructive/10 text-destructive",
-          )}
-        >
-          <Icon className="size-6" />
+    <section className={cn("space-y-3 rounded-2xl border p-4", style.box)} aria-live="polite">
+      <div className="flex gap-3">
+        <style.Icon className={cn("mt-0.5 size-5 shrink-0", style.icon)} aria-hidden />
+        <div className="min-w-0 space-y-0.5">
+          <h2 className="min-w-0 break-words text-sm font-semibold text-foreground">{title}</h2>
+          <p className="text-sm text-muted-foreground">{text}</p>
         </div>
-      ) : null}
-      <div className="space-y-1">
-        {title ? <h2 className="min-w-0 break-words text-base font-semibold text-foreground">{title}</h2> : null}
-        {text ? <p className="text-sm text-muted-foreground">{text}</p> : null}
       </div>
-      {waitingPayment && ticket.payChargeId ? (
+      {waitingPayment && ticket.payChargeId && !ticket.reservationExpired ? (
         <Button asChild className="w-full">
-          <a href={`/p/c/${ticket.payChargeId}`}>Pagar agora</a>
+          <a href={`/p/c/${ticket.payChargeId}`}>
+            <CreditCard className="size-4" />
+            Pagar agora
+          </a>
         </Button>
       ) : null}
-      {ticket.state === "reserved" && !ticket.reservationExpired ? (
-        <p className="text-xs text-muted-foreground">Pagou? O ingresso aparece aqui sozinho.</p>
-      ) : null}
-    </div>
+    </section>
   );
 }

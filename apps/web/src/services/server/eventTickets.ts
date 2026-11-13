@@ -89,6 +89,9 @@ export async function loadTicketPage(code: string): Promise<TicketPageData | nul
         code: registration.ticketCode ?? "",
         organizationName: store.organization.name,
         eventName: event.name,
+        ...(event.modalityId && store.categories.find((c) => c.id === event.modalityId)
+          ? { modalityName: store.categories.find((c) => c.id === event.modalityId)!.name }
+          : {}),
         holderName: maskPersonName(student?.name ?? ""),
         days: allDays.map((s) => {
           const mark = marks.find((a) => a.sessionId === s.id);

@@ -398,6 +398,8 @@ export interface PublicTicketView {
   code: string;
   organizationName: string;
   eventName: string;
+  /** Modalidade do evento ("Jiu-Jitsu"), quando tem. */
+  modalityName?: string;
   /** Nome mascarado ("Ana S. L."). */
   holderName: string;
   /**

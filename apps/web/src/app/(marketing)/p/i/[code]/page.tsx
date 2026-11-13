@@ -6,6 +6,7 @@ import logoLightImage from "@/assets/logo-light.svg";
 import logoDarkImage from "@/assets/logo-dark.svg";
 import { Button } from "@/components/ui/button";
 import { PublicLegalFooter } from "@/components/shared/public-legal-footer";
+import { cn } from "@/lib/utils";
 import { whatsappShareLink } from "@/lib/whatsapp";
 import { loadTicketPage } from "@/services/server/eventTickets";
 import { StaffCheckIn } from "./staff-check-in";
@@ -44,8 +45,9 @@ export default async function TicketPage({
   const valid = ticket.state === "confirmed" || ticket.state === "payment_pending";
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-muted/20 px-4 py-8">
-      <div className="w-full max-w-sm space-y-5">
+    // Fundo solido: e a cor dos recortes do picote no cartao.
+    <div className="flex min-h-screen flex-col items-center bg-muted px-4 py-8">
+      <div className="w-full max-w-md space-y-5">
         <div className="flex justify-center">
           <Image src={logoLightImage} alt="GestaraHub" className="h-9 w-auto dark:hidden" priority />
           <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-9 w-auto dark:block" priority />
@@ -66,7 +68,7 @@ export default async function TicketPage({
         <TicketCard ticket={ticket} url={url} />
 
         {(valid || ticket.state === "reserved") && !ticket.reservationExpired && !staff ? (
-          <div className="grid grid-cols-1 gap-2">
+          <div className={cn("grid grid-cols-1 gap-2", valid && "sm:grid-cols-2")}>
             {valid ? (
               <Button asChild variant={ticket.payChargeId ? "outline" : "default"}>
                 <a href={`/p/i/${ticket.code}/image`} download={`ingresso-${ticket.code}.png`}>
@@ -78,7 +80,7 @@ export default async function TicketPage({
             <Button asChild variant="outline">
               <a href={whatsappShareLink(`Meu ingresso para ${ticket.eventName}: ${url}`)} target="_blank" rel="noopener noreferrer">
                 <Send className="size-4" />
-                Enviar para o meu WhatsApp
+                Enviar no WhatsApp
               </a>
             </Button>
           </div>

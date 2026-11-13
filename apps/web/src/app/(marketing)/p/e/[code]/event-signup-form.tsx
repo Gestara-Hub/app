@@ -140,12 +140,15 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4 border-t pt-4">
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
         {remembered.length > 0 ? (
-          <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-            <p className="text-sm font-medium text-foreground">Você se inscreveu neste aparelho</p>
+          <section className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <div className="flex gap-3">
+              <Ticket className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <p className="text-sm font-semibold text-foreground">Você se inscreveu neste aparelho</p>
+            </div>
             {remembered.map((item) => (
-              <div key={item.ticketCode} className="flex items-center justify-between gap-3">
+              <div key={item.ticketCode} className="flex items-center justify-between gap-3 pl-8">
                 <span className="min-w-0 break-words text-sm text-foreground">{item.displayName}</span>
                 <Button asChild variant="outline">
                   <a href={`/p/i/${item.ticketCode}`}>
@@ -155,9 +158,14 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
                 </Button>
               </div>
             ))}
-          </div>
+          </section>
         ) : null}
-        <h2 className="text-base font-semibold text-foreground">{remembered.length > 0 ? "Inscrever outra pessoa" : "Inscrição"}</h2>
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-foreground">{remembered.length > 0 ? "Inscrever outra pessoa" : "Inscrição"}</h2>
+          <p className="text-sm text-muted-foreground">
+            {event.isFull ? "O evento lotou: entre na lista de espera." : "Preencha os dados para garantir a vaga."}
+          </p>
+        </div>
 
         <InputText<SignupValues>
           name="name"
@@ -235,6 +243,13 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
                 />
               </FieldShell>
             ) : null}
+            {/* Por dia o total muda com os dias escolhidos: aparece aqui (o valor do topo e por dia). */}
+            {!event.isFull ? (
+              <p className="flex items-baseline justify-between text-sm text-muted-foreground">
+                Total
+                <span className="text-base font-semibold text-foreground">{formatCents(amount)}</span>
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -307,9 +322,7 @@ export function EventSignupForm({ event }: { event: PublicEventView }) {
               : "Enviando..."
             : event.isFull
               ? "Entrar na lista de espera"
-              : amount > 0
-                ? `Inscrever (${formatCents(amount)})`
-                : "Inscrever"}
+              : "Inscrever"}
         </Button>
         {amount > 0 && !event.isFull && event.seatGuarantee === "on_payment" ? (
           <p className="text-center text-xs text-muted-foreground">
@@ -331,7 +344,7 @@ function SignupResult({ result, event }: { result: PublicEventSignupResult; even
   const ticketHref = result.ticketCode ? `/p/i/${result.ticketCode}` : null;
 
   const box = (icon: React.ReactNode, title: string, text: string, tone: "ok" | "wait" = "ok") => (
-    <div className="space-y-3 border-t pt-4 text-center">
+    <div className="space-y-3 text-center">
       <div
         className={cn(
           "mx-auto flex size-12 items-center justify-center rounded-full",
