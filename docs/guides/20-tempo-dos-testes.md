@@ -36,7 +36,7 @@ Medido no Vitest: sem isolar arquivos (`--isolate=false`), **6 s em vez de 20 s*
 
 > Decisão de 23/10/2026: fica para quando formos publicar (antes do primeiro deploy, ver o checklist de produção). Até lá, localmente rodam só as checagens rápidas (seção 7).
 
-**Como vai funcionar.** Um arquivo em `.github/workflows/` faz o GitHub rodar, em máquinas dele, a cada push e PR:
+**Como vai funcionar.** Um arquivo em `.github/workflows/` faz o GitHub rodar, em máquinas dele, a cada push na `develop` e em todo PR para a `main` (desde 13/11/2026 a `main` é só produção e recebe a `develop`; protegida, só aceita com tudo verde):
 - **Checagens rápidas (~2 a 3 min):** typecheck, lint, Vitest e os testes do `packages/core`.
 - **e2e completo em 4 máquinas ao mesmo tempo (~10 a 15 min):** cada uma instala as dependências, sobe o próprio Supabase local (`supabase start` + migrações), gera o build de produção e roda 1/4 dos testes (`--shard=1/4` ... `4/4`). Banco próprio por máquina: os ids fixos dos cenários não colidem. Os relatórios das 4 se juntam num só, com vídeo, captura e trace de cada falha anexados ao PR.
 

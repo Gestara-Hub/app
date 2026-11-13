@@ -1,6 +1,6 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
-> **Current state (30/10/2026):** work happens on `main` (`painel-admin` and the overnight branch were merged and deleted on 30/10; nothing is pushed until the user asks). What is decided and still to do, the tests left for the final round, the decisions waiting for the user and the pre-production checklist are in [`docs/pendencias.md`](docs/pendencias.md); the "Mapa por assunto" of [`docs/README.md`](docs/README.md) says where each subject lives. The overnight run of 24/10 is finished (report in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md)). `CLAUDE.md` has the full, current rules (this file is a summary). `.agents/` (read by Antigravity) is a copy of this file and of `.claude/skills`: refresh it with `pnpm agents:sync` after changing either.
+> **Current state (13/11/2026):** work happens on `develop`; `main` is production only and receives `develop` when the user decides to publish (nothing is pushed or merged into `main` until the user asks). What is decided and still to do, the tests left for the final round, the decisions waiting for the user and the pre-production checklist are in [`docs/pendencias.md`](docs/pendencias.md); the "Mapa por assunto" of [`docs/README.md`](docs/README.md) says where each subject lives. The overnight run of 24/10 is finished (report in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md)). `CLAUDE.md` has the full, current rules (this file is a summary). `.agents/` (read by Antigravity) is a copy of this file and of `.claude/skills`: refresh it with `pnpm agents:sync` after changing either.
 
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
@@ -67,6 +67,7 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ## 5. Git Workflow (USER RULE)
 - **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
 - **Commit:** every agent commits only when the user asks (user rule of 09/11/2026, `CLAUDE.md` §6): leave changes in the working tree and tell the user what changed. When asked, small commits, one subject each.
+- **Branches (13/11/2026):** commit on `develop`, never directly on `main`. `main` is production: it receives `develop` only when the user decides to publish (`guides/28`); an urgent fix starts from `main` in its own branch and goes back to `develop` too.
 
 ---
 

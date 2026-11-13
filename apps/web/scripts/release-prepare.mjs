@@ -81,7 +81,15 @@ console.log(
     ? "- Novidades: entrada da versão encontrada."
     : `- Novidades: FALTA a entrada "${version}" em apps/web/src/features/releases/release-notes.ts (peça ao agente para redigir). Sem ela, ninguém vê o ponto de novidade.`,
 );
-console.log("\nDepois de revisar:");
+// A versao se prepara na develop; a main (producao) recebe a develop inteira (13/11/2026, CLAUDE.md §6).
+const branch = git("rev-parse --abbrev-ref HEAD");
+if (branch !== "develop") console.log(`\nATENÇÃO: você está na "${branch}". A versão se prepara na develop.`);
+console.log("\nDepois de revisar (na develop):");
 console.log(`  git add -A && git commit -m "chore(release): ${version}"`);
+console.log("  git push");
+console.log("Migração nova? Rode `supabase db push` no banco de produção antes do próximo passo (guides/28).");
+console.log("Publicar (o push na main dispara o deploy):");
+console.log("  git checkout main && git merge --ff-only develop");
 console.log(`  git tag v${version}`);
-console.log("  git push && git push --tags\n");
+console.log("  git push && git push --tags");
+console.log("  git checkout develop\n");

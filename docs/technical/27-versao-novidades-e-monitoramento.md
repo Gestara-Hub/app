@@ -18,7 +18,7 @@
 ## 2. Como funciona
 
 - **Versão no app:** `apps/web/package.json` guarda a versão; `next.config.ts` lê no build e expõe `NEXT_PUBLIC_APP_VERSION` e `NEXT_PUBLIC_APP_COMMIT` (commit curto da Vercel ou do git local). Uso por `@/config/release` (`APP_VERSION`, `APP_COMMIT`, `APP_VERSION_LABEL`). A versão aparece no pé da sidebar (texto pequeno e cinza, só a versão, some com a barra recolhida; clicar abre as Novidades, por `openReleaseNotes`) e no rodapé da gaveta de Novidades, com o commit.
-- **Preparar a versão:** `pnpm release:prepare` (`apps/web/scripts/release-prepare.mjs`; `--dry` só mostra). Atualiza a versão em `apps/web` e `apps/admin`, escreve a seção no `CHANGELOG.md`, avisa se faltam as Novidades da versão e imprime os comandos de commit, tag e push. **Não faz commit, tag nem push** (regra do repo: só a pedido).
+- **Preparar a versão:** `pnpm release:prepare` (`apps/web/scripts/release-prepare.mjs`; `--dry` só mostra). Atualiza a versão em `apps/web` e `apps/admin`, escreve a seção no `CHANGELOG.md`, avisa se faltam as Novidades da versão e imprime os comandos de commit na `develop`, de passar a `develop` para a `main` (fast-forward), tag e push. **Não faz commit, tag nem push** (regra do repo: só a pedido).
 - **Novidades vistas:** preferência `lastSeenRelease` do usuário (`UserPreferences`), comparada com a versão mais nova de `RELEASE_NOTES` (`useUnseenRelease`). Abrir a gaveta marca como vista.
 - **Versão nos erros:** `recordErrorToDb` grava `release` no contexto de cada ocorrência (`error_occurrences.context`), sem mudar a tabela.
 - **Alerta na hora:** `record_error` devolve `true` quando a impressão digital nunca apareceu em nenhum espaço (migração 95, índice `error_logs_fingerprint_idx`). Nesse caso, com nível `error`, o servidor manda e-mail para `ERROR_DIGEST_EMAIL` com o assunto "erro novo agora", a versão e o código. No máximo 10 alertas por hora por servidor; o resto fica para o resumo diário, que continua igual (o erro alertado também aparece nele). Sem `ERROR_DIGEST_EMAIL` ou nos testes (`E2E_NOW`), não envia.
@@ -28,7 +28,7 @@
 
 1. Pedir ao agente as Novidades da versão (ele lê o diff desde a última tag e redige em `release-notes.ts`); revisar.
 2. `pnpm release:prepare`.
-3. Commit, tag e push (comandos impressos pelo script).
+3. Commit e push na `develop`; a `main` recebe a `develop` (fast-forward), com a tag e o push, que publica (comandos impressos pelo script, que avisa se você não está na `develop`).
 4. Depois do deploy: conferir `https://<domínio>/api/health` com a versão nova.
 
 ## 4. Falta configurar fora do código

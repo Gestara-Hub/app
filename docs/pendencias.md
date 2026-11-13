@@ -106,6 +106,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 
 | Pendência | Onde está o detalhe |
 | --- | --- |
+| Branches (13/11/2026): na Vercel, a branch de produção na `main`; prévia da `develop` só com Supabase de homologação (a `develop` já é a branch padrão no GitHub) | `guides/28-publicacao-em-producao.md`, início |
 | Volta automática do cartão para o ingresso: cadastrar o domínio do app na conta do Asaas e mandar `callback.successUrl` (página do ingresso) ao criar o link de pagamento de inscrição em evento; hoje a pessoa volta pelo "voltar" do navegador | `product/29-eventos-e-seminarios.md`, "Página da inscrição e e-mail do ingresso" |
 | Monitoramento: monitor externo gratuito (UptimeRobot ou Better Stack) em `/api/health` com aviso por e-mail; ligar "Web vitals autocapture" no projeto do PostHog; `ERROR_DIGEST_EMAIL` na Vercel para o alerta na hora; primeira versão com `pnpm release:prepare` e tag no primeiro deploy | `technical/27-versao-novidades-e-monitoramento.md` §3 e §4 |
 | Asaas em produção: conta-pai PJ (CNPJ da MHMJ), pedir a homologação logo após o primeiro espaço real (período de avaliação: 10 subcontas, R$ 2.000 cada, 60 dias) e a confirmação anual dos dados comerciais das subcontas; cadastros da Meta e do Google com as URLs de Termos, Privacidade e exclusão de dados | `product/27-juridico-termos-e-identificacao.md` §5 e §6 |

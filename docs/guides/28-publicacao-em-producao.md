@@ -6,6 +6,8 @@ Ordem para subir o GestaraHub pela primeira vez: **Supabase, depois Vercel (app 
 
 Nunca suba um segredo para o repositório, para o chat ou para um log. Valores ficam só no painel de cada serviço.
 
+**Branches (decidido em 13/11/2026):** o trabalho do dia a dia fica na `develop`; a `main` é a produção e só recebe a `develop` quando você decide publicar (passo 5). Na Vercel, a branch de produção é a `main`. Prévia da `develop` só com um projeto Supabase separado (homologação): sem ele, a prévia usaria o banco de produção, então fica desligada. Correção urgente sai da `main` numa branch própria e volta também para a `develop`.
+
 ## 0. Antes de começar
 
 | Item | Quem | Por quê |
@@ -15,8 +17,9 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 | Conta-pai PJ no Asaas (CNPJ da MHMJ) | Você | Pagamento online, assinatura do plano e a taxa do GestaraHub |
 | Conta do MailerSend aprovada ("Get approved") e domínio de envio verificado | Você | Hoje só entrega para 1 destinatário |
 | Plano do Supabase com conexões suficientes | Você | Pico de uso: o limite é o banco (doc `technical/19` §14) |
-| Árvore limpa, `main` com tudo commitado e as conferências rápidas verdes | Agente | Typecheck, lint, `pnpm test` e o smoke |
-| GitHub Actions com as conferências rápidas e o e2e completo, e a `main` protegida (decidido em 23/10/2026: antes da primeira publicação) | Agente + você | O push na `main` publica: nada entra sem as conferências (doc `guides/20` etapa 2) |
+| Árvore limpa, `develop` com tudo commitado e as conferências rápidas verdes | Agente | Typecheck, lint, `pnpm test` e o smoke |
+| GitHub Actions com as conferências rápidas e o e2e completo, e a `main` protegida (decidido em 23/10/2026: antes da primeira publicação) | Agente + você | O push na `main` publica: ela só recebe a `develop`, e nada entra sem as conferências (doc `guides/20` etapa 2) |
+| Branch de produção da Vercel na `main` (a `develop` já é a padrão no GitHub desde 13/11/2026) | Você | O dia a dia não publica sozinho |
 | Plano da Vercel com Fluid Compute | Você | As rotinas (`/api/cron/*`) rodam até 300 s (`maxDuration`) |
 
 ## 1. Supabase (banco, Auth, rotinas)
@@ -138,7 +141,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 
 1. Pedir ao agente as Novidades da versão (`apps/web/src/features/releases/release-notes.ts`) e revisar.
 2. `pnpm release:prepare` (atualiza a versão do app e do painel e o `CHANGELOG.md`; não faz commit, tag nem push).
-3. Commit, tag e push (você pede ao agente, ou roda os comandos que o script imprime). O push na `main` dispara o deploy na Vercel.
+3. Commit e push na `develop`; depois a `main` recebe a `develop` (`git merge --ff-only develop`), com a tag e o push (você pede ao agente, ou roda os comandos que o script imprime). O push na `main` dispara o deploy na Vercel.
 
 ## 6. Ordem do dia da publicação
 

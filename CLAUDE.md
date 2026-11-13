@@ -125,4 +125,4 @@ pnpm e2e                                 # all browser flows (Playwright, one at
 ## 6. Git Workflow (USER RULE, 2026-11-09)
 - **Never commit on your own.** Make the change, run the checks of §5 and leave the tree dirty; the user asks for the commit. When asked, group the pending work in small commits, one subject each, in the repo message style (`feat(area): ...`), and tell the user the hashes. (Until 2026-11-09 commits were autonomous.)
 - **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
-- Work happens on `main` (`painel-admin` and the overnight branch were merged and deleted on 2026-10-30).
+- **Branches (2026-11-13):** daily work happens on `develop` (the GitHub default branch since 2026-11-13). `main` is production only: it receives `develop` when the user decides to publish (release with version, Novidades and tag, doc `technical/27`), and a push to `main` deploys (doc `guides/28`). Never commit on `main` directly; an urgent fix starts from `main` in its own branch and goes back to `develop` too. Merging into `main` follows the same rule as push: only when the user asks.
