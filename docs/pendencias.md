@@ -126,6 +126,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 
 | Pendência | Onde está o detalhe |
 | --- | --- |
+| Integração com Wellhub e TotalPass (levantamento de 13/11/2026, adiado): fases 0 a 3, parceria com as plataformas antes do código e as perguntas abertas (piloto, Grátis ou Profissional, Termos e Privacidade) | `product/31-integracao-wellhub-e-totalpass.md` |
 | Escopo por vínculo no acesso de alunos e responsáveis (ex.: só o financeiro) | `technical/13-acesso-de-alunos-e-responsaveis.md` |
 | Rodada de testes pendentes (regras da mensalidade e horários na primeira vez, configuração inicial e landing atualizadas sem rodar, sessão, esqueletos, agenda) | Lista na memória do agente; vira doc quando a rodada começar |
 | Ideias de certificado e notas | `product/21-ideias-certificados-e-notas.md` |
