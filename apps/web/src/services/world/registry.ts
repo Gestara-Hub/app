@@ -89,7 +89,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     load: async () => (await import("../billing")).billingServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../billing/billingSlices")).billingSlices,
     permissions: {
-      ...all(["listCharges", "listChargesPaginated"], VIEW_BILLING),
+      ...all(["listCharges", "listChargesPaginated", "listOverdueStudentIds"], VIEW_BILLING),
       ...all(
         ["generateCharges", "createExtraCharge", "markPaid", "markPending", "cancelCharge", "reopenCharge"],
         MANAGE_BILLING,

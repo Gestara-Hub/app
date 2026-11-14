@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { billingService } from "@/services/billing";
 import { clientsService } from "@/services/clients";
 import { studentSummaryService } from "@/services/clients/studentSummaryService";
 import { legalConsentService } from "@/services/legalConsent/legalConsentService";
@@ -73,6 +74,15 @@ export function useVisitorIds(enabled = true) {
   return useQuery({
     queryKey: queryKeys.clients.visitors,
     queryFn: () => clientsService.listVisitorIds(),
+    enabled,
+  });
+}
+
+/** Alunos com cobranca vencida: selo "Em atraso" na lista (so os ids; pede billing:view). */
+export function useOverdueStudentIds(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.billing.overdueStudents,
+    queryFn: () => billingService.listOverdueStudentIds(),
     enabled,
   });
 }

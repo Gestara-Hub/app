@@ -157,6 +157,8 @@ export const queryKeys = {
     all: ["billing"] as const,
     plans: (filter?: PlanFilter) => ["billing", "plans", filter] as const,
     charges: (filter?: ChargeFilter) => ["billing", "charges", filter] as const,
+    // Alunos com cobranca vencida (etiqueta "Em atraso" na lista de Alunos).
+    overdueStudents: ["billing", "overdue-students"] as const,
   },
   // Pacotes de aulas: catalogo e saldo dos alunos (a chamada muda o saldo).
   packages: {

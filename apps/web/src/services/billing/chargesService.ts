@@ -13,12 +13,29 @@ import { store } from "@/services/world/store";
 import { newId, nowIso, readOp, writeOp, validationError, persistLocal } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { applyRecurringAutoPayments } from "../onlinePayments";
-import { clone, competenceLabel } from "./billingHelpers";
+import { clone, competenceLabel, todayISO } from "./billingHelpers";
 import { validateExtraCharge } from "./billingValidation";
 import { toChargeView } from "./billingViews";
 import { ensureMembershipCharges, generateMembershipChargesFor } from "./membershipCharges";
 
 export const chargesService = {
+  /**
+   * Alunos com alguma cobranca vencida, de qualquer tipo (etiqueta "Em atraso"
+   * na lista de Alunos, decisao 10A do teste geral). So os ids: a lista de
+   * alunos nao carrega as cobrancas. Le sem gerar nada (as mensalidades nascem
+   * na rotina diaria e na tela de Cobrancas).
+   */
+  listOverdueStudentIds(): Promise<Id[]> {
+    return readOp(async () => {
+      const today = todayISO();
+      const ids = new Set<Id>();
+      for (const c of store.charges) {
+        if ((c.status === "pending" || c.status === "overdue") && c.dueDate < today) ids.add(c.studentId);
+      }
+      return [...ids];
+    });
+  },
+
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return readOp(async () => {

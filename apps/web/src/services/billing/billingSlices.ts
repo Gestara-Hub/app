@@ -37,7 +37,15 @@ export async function billingWorld(load: SliceLoader): Promise<void> {
 
 const billing: MethodSlice = async (_args, load) => billingWorld(load);
 
-export const billingSlices: Record<string, MethodSlice> = Object.fromEntries(
+/** Etiqueta "Em atraso": so as cobrancas em aberto. */
+const overdueStudents: MethodSlice = async (_args, load) => {
+  await load.where("charges", "status", ["pending", "overdue"]);
+  load.none("auditLog");
+};
+
+export const billingSlices: Record<string, MethodSlice> = {
+  listOverdueStudentIds: overdueStudents,
+  ...Object.fromEntries(
   [
     "listCharges",
     "listChargesPaginated",
@@ -48,4 +56,5 @@ export const billingSlices: Record<string, MethodSlice> = Object.fromEntries(
     "cancelCharge",
     "reopenCharge",
   ].map((name) => [name, billing]),
-);
+  ),
+};

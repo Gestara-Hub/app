@@ -30,7 +30,8 @@ export const SCOPE_FIELDS: Record<string, readonly string[]> = {
   enrollments: ["id", "classGroupId", "studentId"],
   attendances: ["sessionId", "studentId"],
   reservations: ["sessionId", "classGroupId", "studentId", "kind"],
-  charges: ["id", "studentId", "classGroupId", "eventId"],
+  // status: selo "Em atraso" da lista de Alunos le so as em aberto (13/11/2026).
+  charges: ["id", "studentId", "classGroupId", "eventId", "status"],
   events: ["id"],
   eventSessions: ["id", "eventId"],
   eventRegistrations: ["id", "eventId", "studentId", "ticketCode"],

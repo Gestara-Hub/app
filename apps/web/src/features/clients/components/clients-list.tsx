@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/auth";
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -65,9 +66,10 @@ import { useCategories } from "@/features/categories";
 import {
   useEnrolledModalities,
 } from "@/features/turmas";
-import { usePaginatedClients, useTrialStudents, useVisitorIds } from "../hooks/use-clients";
+import { useOverdueStudentIds, usePaginatedClients, useTrialStudents, useVisitorIds } from "../hooks/use-clients";
 import { TrialBadge } from "./trial-badge";
 import { VisitorBadge } from "./visitor-badge";
+import { OverdueBadge } from "./overdue-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserPreferences } from "@/features/preferences";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
@@ -279,6 +281,7 @@ function ClientRow({
   onNewCharge,
   trial,
   visitor,
+  overdue,
   onInactivate,
   onReactivate,
 }: {
@@ -297,6 +300,8 @@ function ClientRow({
   trial?: TrialOutcome;
   /** So veio para evento: selo "Visitante" (11/11/2026). */
   visitor?: boolean;
+  /** Tem cobranca vencida: selo "Em atraso" (13/11/2026; so para quem ve cobrancas). */
+  overdue?: boolean;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -401,6 +406,7 @@ function ClientRow({
               {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
               <TrialBadge trial={trial} compact />
               <VisitorBadge visitor={visitor} />
+              <OverdueBadge overdue={overdue} />
               <MinorConsentBadge client={client} compact />
               {isClasses ? (
                 <ClientProgressionBadges
@@ -451,6 +457,7 @@ function ClientCard({
   onNewCharge,
   trial,
   visitor,
+  overdue,
   onInactivate,
   onReactivate,
 }: {
@@ -469,6 +476,8 @@ function ClientCard({
   trial?: TrialOutcome;
   /** So veio para evento: selo "Visitante" (11/11/2026). */
   visitor?: boolean;
+  /** Tem cobranca vencida: selo "Em atraso" (13/11/2026; so para quem ve cobrancas). */
+  overdue?: boolean;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -563,6 +572,7 @@ function ClientCard({
                 {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
               <TrialBadge trial={trial} compact />
               <VisitorBadge visitor={visitor} />
+              <OverdueBadge overdue={overdue} />
                 <MinorConsentBadge client={client} compact />
                 {isClasses ? (
                   <ClientProgressionBadges
@@ -742,6 +752,10 @@ export function ClientsList({
   const trialById = useMemo(() => new Map((trialStudents ?? []).map((t) => [t.studentId, t])), [trialStudents]);
   const { data: visitorIdList } = useVisitorIds(isClasses);
   const visitorIds = useMemo(() => new Set(visitorIdList ?? []), [visitorIdList]);
+  // "Em atraso" (decisao 10A): so para quem ve cobrancas.
+  const canSeeBilling = useCan()("billing:view");
+  const { data: overdueIdList } = useOverdueStudentIds(canSeeBilling);
+  const overdueIds = useMemo(() => new Set(overdueIdList ?? []), [overdueIdList]);
   const clients = paginatedData?.items ?? [];
   const total = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
@@ -831,6 +845,7 @@ export function ClientsList({
         client={client}
         trial={trialById.get(client.id)}
         visitor={visitorIds.has(client.id)}
+        overdue={overdueIds.has(client.id)}
         categoryById={categoryById}
         canManage={canManage}
         isClasses={isClasses}
@@ -929,6 +944,7 @@ export function ClientsList({
               client={client}
               trial={trialById.get(client.id)}
               visitor={visitorIds.has(client.id)}
+              overdue={overdueIds.has(client.id)}
               categoryById={categoryById}
               canManage={canManage}
               isClasses={isClasses}
