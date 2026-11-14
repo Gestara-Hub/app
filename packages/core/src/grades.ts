@@ -198,7 +198,18 @@ export function isGradeBelowPassing(settings: ResultSettings, value: GradeValue,
  * conta nos pontos dados (vale zero). O vermelho segue o ritmo: o total contra
  * os pontos ja dados.
  */
-function sumResult(settings: ResultSettings, items: readonly ResultItem[]): GradeAverage | null {
+/**
+ * Periodo fechado (curso que terminou, etapa da trilha ja passada ou sendo
+ * decidida no "Apto"): na soma dos pontos, o vermelho deixa de seguir o ritmo
+ * e compara o total com o minimo (4 de 6 dados, minimo 6 de 10: abaixo).
+ * Revisao geral de 31/10/2026, sobra feita em 13/11/2026. Nas outras formas de
+ * fechar nao muda nada (a media ja compara com a minima).
+ */
+export interface ResultOptions {
+  closed?: boolean;
+}
+
+function sumResult(settings: ResultSettings, items: readonly ResultItem[], opts: ResultOptions = {}): GradeAverage | null {
   const top = scaleMax(settings.scale) as number;
   let total = 0;
   let outOf = 0;
@@ -216,13 +227,13 @@ function sumResult(settings: ResultSettings, items: readonly ResultItem[]): Grad
   const decimals = settings.scale === "zero_ten" ? 1 : 0;
   const numeric = roundHalfUp(Math.min(total, top), decimals);
   const passing = typeof settings.passingGrade === "number" ? settings.passingGrade : 0;
-  const belowPassing = outOf > 0 ? numeric / Math.min(outOf, top) < passing / top : numeric < passing;
+  const belowPassing = opts.closed || outOf === 0 ? numeric < passing : numeric / Math.min(outOf, top) < passing / top;
   return { value: numeric, numeric, count, belowPassing, outOf: roundHalfUp(Math.min(outOf, top), decimals) };
 }
 
 /** Resultado do aluno: media com pesos ou, na soma dos pontos, o total. */
-export function resultOf(settings: ResultSettings, items: readonly ResultItem[]): GradeAverage | null {
-  return usesPointsSum(settings) ? sumResult(settings, items) : averageGrades(settings, items);
+export function resultOf(settings: ResultSettings, items: readonly ResultItem[], opts: ResultOptions = {}): GradeAverage | null {
+  return usesPointsSum(settings) ? sumResult(settings, items, opts) : averageGrades(settings, items);
 }
 
 /** Media de uma avaliacao (peso 1 por aluno); na soma, o vermelho e proporcional ao que ela vale. */
@@ -303,6 +314,7 @@ export function averageGrades(
 export function averageOfAverages(
   settings: ResultSettings,
   averages: readonly (GradeAverage | null)[],
+  opts: ResultOptions = {},
 ): GradeAverage | null {
   const present = averages.filter((a): a is GradeAverage => a !== null);
   if (present.length === 0) return null;
@@ -313,7 +325,9 @@ export function averageOfAverages(
     const numeric = roundHalfUp(present.reduce((s, a) => s + a.numeric, 0) / present.length, decimals);
     const outOf = roundHalfUp(present.reduce((s, a) => s + (a.outOf ?? top), 0) / present.length, decimals);
     const passing = typeof settings.passingGrade === "number" ? settings.passingGrade : 0;
-    return { value: numeric, numeric, count: present.length, belowPassing: outOf > 0 && numeric / outOf < passing / top, outOf };
+    // Fechado: o total medio contra o minimo; aberto, pelo ritmo medio.
+    const belowPassing = opts.closed ? numeric < passing : outOf > 0 && numeric / outOf < passing / top;
+    return { value: numeric, numeric, count: present.length, belowPassing, outOf };
   }
   // Reusa a media ponderada em cima da escala interna (peso 1 por aluno).
   const { scale } = settings;
@@ -349,6 +363,8 @@ export function averagesByLevel(
   settings: ResultSettings,
   items: readonly LevelGrade[],
   levelOrder: readonly string[],
+  /** Etapas ja passadas pelo aluno: fechadas (o total contra o minimo, na soma). */
+  closedLevels: ReadonlySet<string> = new Set(),
 ): { levelId?: string; average: GradeAverage | null }[] {
   const known = new Set(levelOrder);
   const groups = new Map<string | undefined, LevelGrade[]>();
@@ -359,7 +375,7 @@ export function averagesByLevel(
   const out: { levelId?: string; average: GradeAverage | null }[] = [];
   for (const levelId of levelOrder) {
     const group = groups.get(levelId);
-    if (group) out.push({ levelId, average: resultOf(settings, group) });
+    if (group) out.push({ levelId, average: resultOf(settings, group, { closed: closedLevels.has(levelId) }) });
   }
   const loose = groups.get(undefined);
   if (loose) out.push({ average: resultOf(settings, loose) });

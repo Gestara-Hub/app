@@ -242,6 +242,28 @@ describe("soma dos pontos, recuperação e frequência mínima (fase A, 31/10/20
     assert.deepEqual(averageOfAverages(sumTen, [a, b]), { value: 2, numeric: 2, count: 2, belowPassing: false, outOf: 3 });
   });
 
+  it("período fechado na soma: o total contra o mínimo, não o ritmo (13/11/2026)", () => {
+    // 4 de 6 pontos dados, mínimo 6 de 10: no meio do período segue o ritmo (66%); fechado, fica abaixo.
+    const items = [p(3, 3), p(1, 3)];
+    assert.equal(resultOf(sumTen, items)?.belowPassing, false);
+    assert.equal(resultOf(sumTen, items, { closed: true })?.belowPassing, true);
+    assert.equal(resultOf(sumTen, [p(3, 3), p(3, 3), p(2, 4)], { closed: true })?.belowPassing, false);
+    // Média da turma: o total médio contra o mínimo.
+    const a = resultOf(sumTen, [p(3, 3)]);
+    const b = resultOf(sumTen, [p(1, 3)]);
+    assert.equal(averageOfAverages(sumTen, [a, b], { closed: true })?.belowPassing, true);
+    // Por etapa: só a etapa passada fecha.
+    const rows = averagesByLevel(
+      sumTen,
+      [{ ...p(4, 6), levelId: "l1" }, { ...p(4, 6), levelId: "l2" }],
+      ["l1", "l2"],
+      new Set(["l1"]),
+    );
+    assert.deepEqual(rows.map((r) => [r.levelId, r.average?.belowPassing]), [["l1", true], ["l2", false]]);
+    // Fora da soma, fechar não muda nada.
+    assert.equal(resultOf(ten, [g(7)], { closed: true })?.belowPassing, false);
+  });
+
   it("avaliação na soma: vermelho proporcional ao que ela vale", () => {
     assert.equal(isGradeBelowPassing(sumTen, 2, 3), false);
     assert.equal(isGradeBelowPassing(sumTen, 1.5, 3), true);

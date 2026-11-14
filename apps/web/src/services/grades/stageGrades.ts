@@ -28,7 +28,8 @@ export function studentStageGrades(
   const recoveries = all.filter((a) => a.recoveryOf && ids.has(a.recoveryOf));
   return {
     settings,
-    average: resultOf(settings, effectiveItems(settings, [...originals, ...recoveries], studentId)),
+    // Graduar fecha a etapa: na soma dos pontos, o total contra o minimo (nao o ritmo).
+    average: resultOf(settings, effectiveItems(settings, [...originals, ...recoveries], studentId), { closed: true }),
     attendancePercent: settings.minAttendancePercent ? modalityAttendancePercent(modalityId, studentId) : null,
   };
 }

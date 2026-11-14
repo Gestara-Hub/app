@@ -2,7 +2,9 @@ import type { Id, ReportCardEntry, ReportCardModality, StudentReportCard } from 
 import { averagesByLevel, isGradeBelowPassing, resultOf } from "@gestarahub/core/grades";
 import { notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { isCourseEnded } from "@gestarahub/core/billing";
+import { dateInSpace } from "@gestarahub/core/date";
+import { ageAt, currentLevelOf, resolveModalityTrack } from "@/lib/progression-tracks";
 import { assertTeacherSeesStudent } from "../classes/teacherScope";
 import {
   clone,
@@ -84,6 +86,21 @@ export const reportCardService = {
           };
         });
         const levelOrder = track.enabled ? track.levels.map((l) => l.id) : [];
+        // Periodo fechado (13/11/2026): as etapas ja passadas pelo aluno e, no
+        // geral, quando todas as turmas dele na modalidade sao cursos que
+        // terminaram. Na soma dos pontos, o total passa a valer contra o minimo.
+        const today = dateInSpace();
+        const current = track.enabled
+          ? currentLevelOf(track, student.progressions?.[category.id], ageAt(student.birthDate, today))
+          : undefined;
+        const currentIndex = current ? track.levels.findIndex((l) => l.id === current.id) : -1;
+        const closedLevels = new Set(currentIndex > 0 ? track.levels.slice(0, currentIndex).map((l) => l.id) : []);
+        const classIds = new Set([
+          ...list.map((a) => a.classGroupId),
+          ...[...activeClassIds].filter((id) => store.classGroups.find((g) => g.id === id)?.modalityId === category.id),
+        ]);
+        const groups = [...classIds].map((id) => store.classGroups.find((g) => g.id === id));
+        const periodClosed = groups.length > 0 && groups.every((g) => g !== undefined && isCourseEnded(g, today));
         const minAttendance = settings.minAttendancePercent;
         const attendancePct = minAttendance ? modalityAttendancePercent(category.id, studentId) : null;
         modalities.push({
@@ -91,11 +108,11 @@ export const reportCardService = {
           modalityName: category.name,
           settings,
           entries,
-          levels: averagesByLevel(settings, effective, levelOrder).map((row) => ({
+          levels: averagesByLevel(settings, effective, levelOrder, closedLevels).map((row) => ({
             ...(row.levelId ? { levelId: row.levelId, levelName: levelName(category.id, row.levelId) } : {}),
             average: row.average,
           })),
-          overall: resultOf(settings, effective),
+          overall: resultOf(settings, effective, { closed: periodClosed }),
           ...(minAttendance
             ? { attendance: { percent: attendancePct, below: attendancePct !== null && attendancePct < minAttendance } }
             : {}),

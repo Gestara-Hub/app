@@ -1,3 +1,5 @@
+import { isCourseEnded } from "@gestarahub/core/billing";
+import { dateInSpace } from "@gestarahub/core/date";
 import type {
   ApiErrorField,
   Assessment,
@@ -46,10 +48,12 @@ export const assessmentsService = {
       assertTeacherSeesClass(group, "Você só vê as avaliações das suas turmas.");
       const settings = enabledSettings(group.modalityId);
       const list = sortAssessments(assessmentsStore().filter((a) => a.classGroupId === classGroupId));
+      // Curso que terminou fecha o periodo: na soma, o total medio contra o minimo (13/11/2026).
       const classAverage = settings
         ? averageOfAverages(
             settings,
             activeEnrollments(classGroupId).map((e) => studentAverage(settings, list, e.studentId)),
+            { closed: isCourseEnded(group, dateInSpace()) },
           )
         : null;
       return clone({
