@@ -25,7 +25,8 @@
     "./subscription-prices": "./src/subscription-prices.ts",
     "./trials": "./src/trials.ts",
     "./events": "./src/events.ts",
-    "./progression": "./src/progression.ts"
+    "./progression": "./src/progression.ts",
+    "./modality-colors": "./src/modality-colors.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

@@ -1,3 +1,4 @@
+import { nextModalityColor } from "@gestarahub/core/modality-colors";
 import type {
   Category,
   CategoryFilter,
@@ -145,6 +146,8 @@ export const categoriesService = {
         progressionTrack: payload.progressionTrack,
         ...(assessments ? { assessments } : {}),
         ...(payload.measurements ? { measurements: normalizedMeasurements(payload) } : {}),
+        // Sem escolha, a primeira cor livre (a mesma regra do banco, migracao 100).
+        color: payload.color ?? nextModalityColor(store.categories),
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,

@@ -264,6 +264,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "jsonb",
         "nullable": true,
         "hasDefault": false
+      },
+      "color": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

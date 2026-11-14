@@ -12,6 +12,8 @@ import { validateMeasures } from "@gestarahub/core/measurements";
 export const modalityFormSchema = z
   .object({
     name: z.string().trim().min(1, "Informe o nome da modalidade."),
+    /** Cor no Calendario (doc product/29, versao 2). Vazio = a sugerida (a atual ou a primeira livre). */
+    color: z.string(),
     active: z.boolean(),
     assessmentsEnabled: z.boolean(),
     assessmentScale: z.enum(["zero_ten", "zero_hundred", "concept", "pass_fail"]),

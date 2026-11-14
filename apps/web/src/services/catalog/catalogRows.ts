@@ -1,4 +1,5 @@
 import type { Category, Professional, Role } from "@gestarahub/contracts";
+import { isModalityColor } from "@gestarahub/core/modality-colors";
 
 /** Linhas do catalogo (modalidades, equipe, cargos) no contrato. */
 
@@ -15,6 +16,7 @@ export function categoryFromRow(row: Record<string, unknown>): Category {
     progressionTrack: (row.progression_track as Category["progressionTrack"]) || undefined,
     assessments: (row.assessments as Category["assessments"]) || undefined,
     measurements: (row.measurements as Category["measurements"]) || undefined,
+    ...(isModalityColor(row.color) ? { color: row.color } : {}),
     status: (row.status as Category["status"]) || "active",
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),

@@ -86,6 +86,8 @@ import { useBusinessSegment } from "@/features/settings";
 import { useClients } from "@/features/clients";
 import { plural } from "@gestarahub/core/format";
 import { modalityFormSchema, type ModalityFormValues } from "../modality-schema";
+import { isModalityColor, modalityColorKeys, nextModalityColor } from "@gestarahub/core/modality-colors";
+import { ModalityColorPicker } from "./modality-color-picker";
 
 const QUICK_MODALITY_SUGGESTIONS = [
   "Jiu-Jitsu",
@@ -114,6 +116,7 @@ function toDefaults(modality: Category | undefined, segment: BusinessSegmentPres
   const scale = assessments?.scale ?? "zero_ten";
   return {
     name: modality?.name ?? "",
+    color: modality?.color ?? "",
     active: modality ? modality.status === "active" : true,
     assessmentsEnabled: Boolean(assessments?.enabled),
     assessmentScale: scale,
@@ -267,6 +270,15 @@ export function ModalityForm({
       : vocabulary.levelPlural;
   // So o que ainda nao existe: clicar numa modalidade ja criada so levaria ao erro de nome repetido (achado 24).
   const { data: existingModalities } = useCategories();
+  // Cor no Calendario: a escolhida; sem escolha, a atual da modalidade (salva
+  // ou pela ordem) ou, na nova, a primeira livre. Calculada na hora, porque as
+  // modalidades podem chegar depois de abrir (doc 07 §2.8).
+  const pickedColor = useWatch({ control: form.control, name: "color" });
+  const shownColor = isModalityColor(pickedColor)
+    ? pickedColor
+    : modality
+      ? (modalityColorKeys(existingModalities ?? [modality]).get(modality.id) ?? "blue")
+      : nextModalityColor(existingModalities ?? []);
   const quickSuggestions: readonly string[] = suggestionsNotTaken(
     segment.id === "martial_arts" ? QUICK_MODALITY_SUGGESTIONS : segment.defaultModalities,
     (existingModalities ?? []).map((category) => category.name),
@@ -449,6 +461,7 @@ export function ModalityForm({
           id: modality.id,
           payload: {
             name: values.name,
+            ...(isModalityColor(values.color) ? { color: values.color } : {}),
             progressionTrack: sanitizedTrack,
             assessments,
             ...(sendMeasurements ? { measurements } : {}),
@@ -459,6 +472,8 @@ export function ModalityForm({
       } else {
         const payload: CreateCategory = {
           name: values.name,
+          // Sem escolha, o servico poe a primeira cor livre (a mesma sugerida aqui).
+          ...(isModalityColor(values.color) ? { color: values.color } : {}),
           progressionTrack: sanitizedTrack,
           assessments,
           ...(sendMeasurements ? { measurements } : {}),
@@ -551,6 +566,8 @@ export function ModalityForm({
               </div>
             ) : null}
           </div>
+
+          <ModalityColorPicker value={shownColor} onChange={(color) => form.setValue("color", color, { shouldDirty: true })} disabled={pending} />
 
           {/* Bloco da trilha de progresso (titulo conforme a area) */}
           <div className={toggleSectionClass(track.enabled)}>

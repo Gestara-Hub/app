@@ -137,4 +137,22 @@ describe("catálogo no banco (doc 15, fatia 2.1)", () => {
     expect(anonymous.ok).toBe(false);
     if (!anonymous.ok) expect(anonymous.error.httpStatus).toBe(401);
   });
+
+  it("cor da modalidade: a nova ganha a primeira livre, a escolhida vale e cor de fora da paleta é recusada (doc product/29, versão 2)", async () => {
+    const first = await unwrap(createCategoryAction({ name: "Jiu-Jitsu" }));
+    expect(first.color).toBe("blue");
+    const chosen = await unwrap(createCategoryAction({ name: "Muay Thai", color: "rose" }));
+    expect(chosen.color).toBe("rose");
+    const third = await unwrap(createCategoryAction({ name: "Boxe" }));
+    expect(third.color).toBe("emerald");
+
+    const { category } = await unwrap(updateCategoryAction(first.id, { color: "amber" }));
+    expect(category.color).toBe("amber");
+    const { data: row } = await adminClient().from("categories").select("color").eq("id", first.id).single();
+    expect(row?.color).toBe("amber");
+
+    const invalid = await updateCategoryAction(first.id, { color: "violet" as never });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.error.fields).toEqual([{ field: "color", message: "Escolha uma das cores." }]);
+  });
 });

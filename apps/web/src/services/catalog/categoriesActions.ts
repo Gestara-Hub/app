@@ -102,6 +102,8 @@ export async function createCategoryAction(payload: CreateCategory): Promise<Act
         progression_track: payload.progressionTrack ?? null,
         assessments: assessments ?? null,
         measurements: normalizedMeasurements(payload) ?? null,
+        // Sem escolha, o banco poe a primeira cor livre (gatilho da migracao 100).
+        color: payload.color ?? null,
         status: payload.status ?? "active",
       })
       .select()
@@ -141,6 +143,7 @@ export async function updateCategoryAction(
     if (payload.progressionTrack !== undefined) patch.progression_track = payload.progressionTrack ?? null;
     if (payload.assessments !== undefined) patch.assessments = normalizedAssessments(payload) ?? null;
     if (payload.measurements !== undefined) patch.measurements = normalizedMeasurements(payload) ?? null;
+    if (payload.color !== undefined) patch.color = payload.color ?? null;
     if (payload.status !== undefined) patch.status = payload.status;
 
     const { data, error } = await createSupabaseAdminClient()

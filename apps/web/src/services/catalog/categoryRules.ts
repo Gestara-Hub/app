@@ -1,3 +1,4 @@
+import { isModalityColor } from "@gestarahub/core/modality-colors";
 import type {
   ApiErrorField,
   Category,
@@ -60,6 +61,11 @@ export function validateCategoryPayload(
       const check = validateMinAttendance(minAttendancePercent);
       if (!check.ok) fields.push({ field: "assessments.minAttendancePercent", message: check.message });
     }
+  }
+
+  // Cor no Calendario (doc product/29, versao 2): so as da paleta.
+  if (payload.color !== undefined && payload.color !== null && !isModalityColor(payload.color)) {
+    fields.push({ field: "color", message: "Escolha uma das cores." });
   }
 
   if (payload.measurements) {

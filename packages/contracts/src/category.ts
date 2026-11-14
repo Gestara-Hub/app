@@ -69,6 +69,13 @@ export interface ModalityProgressionTrack {
 }
 
 /**
+ * Cor da modalidade no Calendario e na lista de Modalidades (doc product/29
+ * §Calendario, versao 2 de 13/11/2026). Ordem = a da versao 1 (cor pela ordem
+ * de criacao). O roxo fica so para Evento.
+ */
+export type ModalityColorKey = "blue" | "emerald" | "amber" | "rose" | "cyan" | "orange" | "lime" | "stone";
+
+/**
  * Categoria de servico / Modalidade — entidade da organizacao.
  * Semeada por segmento e editavel pelo tenant. `position` controla a ordem de
  * exibicao; `progressionTrack` define a trilha opcional de graduacao/niveis.
@@ -87,6 +94,8 @@ export interface Category {
   certificateTemplate?: CertificateTemplate;
   /** Modelo do certificado de graduacao so desta modalidade (doc 21 §1.6); ausente = o do espaco. */
   graduationCertificateTemplate?: CertificateTemplate;
+  /** Cor no Calendario. Ausente (dado antigo do mock) = a cor pela ordem de criacao. */
+  color?: ModalityColorKey;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
@@ -102,7 +111,7 @@ export type CreateCategory = Omit<
   status?: RecordStatus;
 };
 export type UpdateCategory = Partial<
-  Pick<Category, "name" | "position" | "progressionTrack" | "assessments" | "measurements" | "status">
+  Pick<Category, "name" | "position" | "progressionTrack" | "assessments" | "measurements" | "color" | "status">
 >;
 
 export interface CategoryFilter {
