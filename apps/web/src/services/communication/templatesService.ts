@@ -8,6 +8,16 @@ import { ensureTemplates } from "./communicationRules";
 import { whatsappClient } from "./whatsappClient";
 import { logWarn } from "@/lib/log";
 
+/** Faixas validas de prazo por gatilho configuravel. */
+const DAYS_OFFSET_LIMITS: Partial<Record<MessageTemplate["trigger"], { min: number; max: number; message: string }>> = {
+  billing_before_due: { min: -30, max: -1, message: "Use entre 1 e 30 dias antes do vencimento." },
+  charge_reminder: { min: -30, max: -1, message: "Use entre 1 e 30 dias antes do vencimento." },
+  billing_after_due: { min: 1, max: 30, message: "Use entre 1 e 30 dias após o vencimento." },
+  billing_critical: { min: 2, max: 60, message: "Use entre 2 e 60 dias após o vencimento." },
+  absence_alert: { min: 1, max: 15, message: "Use entre 1 e 15 faltas seguidas." },
+  package_ending: { min: 1, max: 30, message: "Use entre 1 e 30 dias antes de vencer." },
+};
+
 /** Modelos de mensagem do espaco. */
 export const templatesService = {
   listTemplates(): Promise<MessageTemplate[]> {
@@ -52,6 +62,18 @@ export const templatesService = {
           throw validationError([{ field: "enabled", message: "Este modelo é só de envio manual." }]);
         }
         assertFeature("messaging");
+      }
+      if (payload.sendHour !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(payload.sendHour)) {
+        throw validationError([{ field: "sendHour", message: "Informe um horário válido (HH:MM)." }]);
+      }
+      if (payload.daysOffset !== undefined) {
+        if (!Number.isInteger(payload.daysOffset)) {
+          throw validationError([{ field: "daysOffset", message: "Informe um número inteiro." }]);
+        }
+        const limit = DAYS_OFFSET_LIMITS[template.trigger];
+        if (limit && (payload.daysOffset < limit.min || payload.daysOffset > limit.max)) {
+          throw validationError([{ field: "daysOffset", message: limit.message }]);
+        }
       }
 
       let contentChanged = false;

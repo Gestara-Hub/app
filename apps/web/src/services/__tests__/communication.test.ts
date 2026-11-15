@@ -10,14 +10,16 @@ import {
 import { whatsappClient } from "@/services/communication/whatsappClient";
 import { setEffectsResolver, type WorldEffect } from "@/services/world/effects";
 import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
+import { billingRemindersSlice } from "@/services/communication/billingRemindersCron";
 import { checkSlice } from "@/services/world/sliceCheck";
 import { billingService } from "@/services/billing";
+import { turmasService } from "@/services/classes";
 import { clientsService } from "@/services/clients";
 import { communicationService } from "@/services/communication";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { fillMessage } from "@/lib/whatsapp";
 import { chargeReminder, packageRemainingText } from "@/features/communication/message-values";
-import { ACADEMY_ORG, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
+import { ACADEMY_ORG, createClass, createInstructor, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 
 // "No servidor" so no teste da fila de envio: o resto do arquivo roda como no navegador.
 const serverWorld = vi.hoisted(() => ({ on: false }));
@@ -821,5 +823,134 @@ describe("limite de caracteres com emoji (ALU-38)", () => {
     await expect(communicationService.updateTemplate({ id, content: "🎉".repeat(901) })).rejects.toMatchObject({
       fields: [{ field: "content", message: "Use no máximo 900 caracteres." }],
     });
+  });
+
+  it("valida formato de horario e faixa de prazo ao atualizar modelo no Pro", async () => {
+    setTier("pro");
+    await expect(communicationService.updateTemplate({ id: tmpl("before"), sendHour: "25:99" })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "sendHour" }],
+    });
+    await expect(communicationService.updateTemplate({ id: tmpl("before"), daysOffset: 3 })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "daysOffset" }],
+    });
+  });
+});
+
+describe("lembretes automaticos de cobranca (oficial)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("separa mensalidade (`billing_*`), outras cobrancas (`charge_reminder`) e ignora avulsa de aula (`dropin`)", async () => {
+    at("12:00");
+    await connectOfficial();
+    const plan = await createPlan("monthly", 18000);
+    const student = await clientsService.create({
+      name: "Lucas Silva",
+      phone: "11999990001",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    store.charges.push({
+      id: "chg-membership-1",
+      organizationId: ACADEMY_ORG,
+      studentId: student.id,
+      kind: "membership",
+      planId: plan.id,
+      dueDate: "2026-09-25",
+      amountCents: 18000,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await billingService.createExtraCharge({
+      studentId: student.id,
+      description: "Kimono",
+      totalCents: 25000,
+      firstDueDate: "2026-09-25",
+      installments: 1,
+    });
+    store.charges.push({
+      id: "chg-dropin-1",
+      organizationId: ACADEMY_ORG,
+      studentId: student.id,
+      kind: "dropin",
+      dueDate: "2026-09-25",
+      amountCents: 5000,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const sent = await checkSlice("cron.billingReminders", billingRemindersSlice, [], async () => runBillingReminders());
+    expect(sent).toBe(2);
+
+    const triggers = store.messageLogs.map((l) => l.trigger).sort();
+    expect(triggers).toEqual(["billing_before_due", "charge_reminder"]);
+    const reminder = store.messageLogs.find((l) => l.trigger === "charge_reminder");
+    expect(reminder?.content).toContain("cobrança Kimono");
+    expect(reminder?.content).not.toContain("{referencia}");
+  });
+});
+
+describe("compositor e filtro por periodo", () => {
+  beforeEach(() => resetAcademy());
+
+  it("retorna destinatarios com WhatsApp, turmas ativas e contagem de autorizacoes", async () => {
+    const consented = await clientsService.create({
+      name: "Ana Autorizada",
+      phone: "11999991111",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    await clientsService.create({
+      name: "Beto Pendente",
+      phone: "11999992222",
+      status: "active",
+    });
+    await clientsService.create({
+      name: "Carla Recusada",
+      phone: "11999993333",
+      status: "active",
+      whatsappConsentStatus: "revoked",
+    });
+    await clientsService.create({
+      name: "Duda Sem Telefone",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    const inactive = await clientsService.create({
+      name: "Eduardo Inativo",
+      phone: "11999994444",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    await clientsService.remove(inactive.id);
+
+    const instructor = await createInstructor("Carlos");
+    const cls = await createClass({
+      name: "Jiu-Jitsu Manhã",
+      instructorId: instructor.id,
+      slots: [{ weekday: 1, start: "08:00", end: "09:00" }],
+    });
+    await turmasService.enroll({ classGroupId: cls.id, studentId: consented.id });
+
+    const ctx = await communicationService.getComposerContext();
+    expect(ctx.activeStudentsCount).toBe(4);
+    expect(ctx.consentedCount).toBe(2);
+    expect(ctx.missingConsentCount).toBe(1);
+    expect(ctx.revokedConsentCount).toBe(1);
+    expect(ctx.recipients.map((r) => r.name)).toEqual(["Ana Autorizada", "Beto Pendente", "Carla Recusada"]);
+    expect(ctx.classGroups).toEqual([{ id: cls.id, name: "Jiu-Jitsu Manhã", studentIds: [consented.id] }]);
+  });
+
+  it("filtra historico por dateFrom e dateTo no fuso do espaco", async () => {
+    at("12:00", "2026-09-10");
+    await communicationService.registerAssistedMessage(message({ recipientName: "Antiga" }));
+    at("12:00", "2026-09-22");
+    await communicationService.registerAssistedMessage(message({ recipientName: "Recente" }));
+
+    const page = await communicationService.listLogsPaginated({ dateFrom: "2026-09-20", dateTo: "2026-09-22" });
+    expect(page.items.map((l) => l.recipientName)).toEqual(["Recente"]);
   });
 });

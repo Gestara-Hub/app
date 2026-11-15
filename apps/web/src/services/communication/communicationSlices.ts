@@ -53,11 +53,24 @@ const reminderSources: MethodSlice = async (_args, load) => {
   ]);
 };
 
+/** Compositor de nova mensagem: alunos com WhatsApp, turmas ativas e matriculas. */
+const composerContext: MethodSlice = async (_args, load) => {
+  await Promise.all([
+    load.all("users"),
+    load.all("clients"),
+    load.all("classGroups"),
+    load.all("enrollments"),
+    load.all("reservations"),
+    load.all("sessionOverrides"),
+  ]);
+};
+
 export const communicationSlices: Record<string, MethodSlice> = {
   // Sino e topo (toda pagina): a conexao e a organizacao sao de uma linha so.
   getConnection: async () => undefined,
   listLogs: logs,
   listLogsPaginated: logs,
+  getComposerContext: composerContext,
   getReminderSources: reminderSources,
   getReminderSummary: reminderSources,
 };

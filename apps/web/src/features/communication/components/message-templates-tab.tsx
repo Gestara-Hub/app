@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
-import { TRIGGER_META, TRIGGER_ORDER, automationTiming, metaStatusNotice, sampleValues, templatePreview } from "../message-meta";
+import { TRIGGER_META, TRIGGER_ORDER, metaStatusNotice, sampleValues, templatePreview, templateSubtitle } from "../message-meta";
 
 const NOTICE_TONE = {
   warning: "text-amber-700 dark:text-amber-400",
@@ -55,7 +55,8 @@ function TemplateCard({
   const meta = TRIGGER_META[template.trigger];
   const preview = templatePreview(template.trigger, fillMessage(template.content, sampleValues(orgName, withPaymentLink)));
   // Modelo so de envio manual: sem interruptor nem prazo, nem no oficial.
-  const automatic = official && !isManualTrigger(template.trigger);
+  const manual = isManualTrigger(template.trigger);
+  const automatic = official && !manual;
   const notice = official ? metaStatusNotice(template.metaStatus) : null;
 
   function toggle(enabled: boolean) {
@@ -89,7 +90,7 @@ function TemplateCard({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{meta.label}</p>
           <p className="text-xs text-muted-foreground break-words">
-            {automatic ? automationTiming(template) : meta.where}
+            {templateSubtitle(template, official)}
             {notice ? (
               <>
                 {" · "}
@@ -147,7 +148,7 @@ function TemplateCard({
             <TooltipContent>{showPreview ? "Ocultar exemplo" : "Ver exemplo"}</TooltipContent>
           </Tooltip>
 
-          {canManage ? (
+          {canManage && !manual ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

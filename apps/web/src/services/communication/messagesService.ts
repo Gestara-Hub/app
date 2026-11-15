@@ -1,19 +1,24 @@
 import type {
   CommunicationMetrics,
+  DateISO,
   Id,
+  MessageClassGroupOption,
+  MessageComposerContext,
   MessageLog,
   MessageLogFilter,
   MessageLogKind,
+  MessageRecipientOption,
   PaginatedResult,
   SendMessagePayload,
 } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
-import { isManualTrigger } from "@/lib/whatsapp";
+import { isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { inServerWorld, store } from "@/services/world/store";
 import { afterWorldCommit } from "@/services/world/effects";
 import { auditLogService } from "../audit/auditLogService";
 import { whatsappConsentGranted } from "../clients/clientConsentRules";
+import { teacherSeesClass, teacherStudentIds } from "../classes/teacherScope";
 import { assertFeature } from "../subscription/subscriptionService";
 import {
   ensureConnection,
@@ -44,13 +49,28 @@ export function messageKindMatches(log: Pick<MessageLog, "trigger" | "category">
 
 /** Mensagens: historico, envio assistido ou oficial, reenvio e metricas. */
 export const messagesService = {
-  listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
+  listLogs(filter?: {
+    trigger?: string;
+    status?: string;
+    search?: string;
+    clientId?: Id;
+    dateFrom?: DateISO;
+    dateTo?: DateISO;
+  }): Promise<MessageLog[]> {
     return readOp(async () => {
       let logs = [...ensureLogs()];
       // Ficha do aluno: so as mensagens dele.
       if (filter?.clientId) logs = logs.filter((l) => l.clientId === filter.clientId);
       if (filter?.trigger && filter.trigger !== "all") logs = logs.filter((l) => l.trigger === filter.trigger);
       if (filter?.status && filter.status !== "all") logs = logs.filter((l) => l.status === filter.status);
+      if (filter?.dateFrom) {
+        const from = filter.dateFrom.slice(0, 10);
+        logs = logs.filter((l) => dateInSpace(l.sentAt) >= from);
+      }
+      if (filter?.dateTo) {
+        const to = filter.dateTo.slice(0, 10);
+        logs = logs.filter((l) => dateInSpace(l.sentAt) <= to);
+      }
       if (filter?.search) {
         const q = filter.search.toLowerCase().trim();
         logs = logs.filter(
@@ -229,6 +249,8 @@ export const messagesService = {
       const sent = monthLogs.filter((l) => l.status !== "opened");
       const delivered = sent.filter((l) => l.status === "delivered" || l.status === "read").length;
       const read = sent.filter((l) => l.status === "read").length;
+      const failed = monthLogs.filter((l) => l.status === "failed").length;
+      const inProgress = sent.filter((l) => l.status === "queued" || l.status === "sent").length;
 
       // Recuperado: mensalidade paga no mes depois de um lembrete de cobranca
       // ligado a ela (ou ao aluno) pelo WhatsApp.
@@ -255,8 +277,69 @@ export const messagesService = {
         deliveryRate:
           view.mode === "official" && sent.length > 0 ? Math.round((delivered / sent.length) * 1000) / 10 : null,
         readRate: view.mode === "official" && sent.length > 0 ? Math.round((read / sent.length) * 1000) / 10 : null,
+        sentCount: sent.length,
+        deliveredCount: delivered,
+        readCount: read,
+        failedCount: failed,
+        inProgressCount: inProgress,
         recoveredAmountCents,
         activeAutomationsCount: ensureTemplates().filter((t) => t.enabled && !isManualTrigger(t.trigger)).length,
+      };
+    });
+  },
+  /** Alunos com WhatsApp, turmas ativas e contagem de autorizacoes para o compositor. */
+  getComposerContext(): Promise<MessageComposerContext> {
+    return readOp(async () => {
+      const allowedStudentIds = teacherStudentIds();
+      const visibleClients = store.clients.filter(
+        (c) => c.status === "active" && (allowedStudentIds === undefined || allowedStudentIds.has(c.id)),
+      );
+      const recipients: MessageRecipientOption[] = visibleClients
+        .filter((c) => Boolean(whatsappNumber(c.phone)))
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          whatsappConsentStatus: c.whatsappConsentStatus ?? "unknown",
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+      const recipientIds = new Set(recipients.map((r) => r.id));
+      const classGroups: MessageClassGroupOption[] = (store.classGroups ?? [])
+        .filter((g) => g.status === "active" && teacherSeesClass(g))
+        .map((g) => {
+          const studentIds = Array.from(
+            new Set(
+              (store.enrollments ?? [])
+                .filter((e) => e.classGroupId === g.id && e.status === "active" && recipientIds.has(e.studentId))
+                .map((e) => e.studentId),
+            ),
+          );
+          return { id: g.id, name: g.name, studentIds };
+        })
+        .filter((g) => g.studentIds.length > 0)
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+      let consentedCount = 0;
+      let revokedConsentCount = 0;
+      let missingConsentCount = 0;
+      for (const client of visibleClients) {
+        if (whatsappConsentGranted(client)) {
+          consentedCount += 1;
+        } else if (client.whatsappConsentStatus === "revoked") {
+          revokedConsentCount += 1;
+        } else {
+          missingConsentCount += 1;
+        }
+      }
+
+      return {
+        recipients,
+        classGroups,
+        activeStudentsCount: visibleClients.length,
+        consentedCount,
+        missingConsentCount,
+        revokedConsentCount,
       };
     });
   },

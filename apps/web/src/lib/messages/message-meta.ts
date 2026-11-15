@@ -6,6 +6,7 @@ import type {
   MessageTrigger,
   MetaTemplateStatus,
 } from "@gestarahub/contracts";
+import { isManualTrigger } from "@/lib/whatsapp";
 
 /** Nome curto de cada tipo de mensagem e onde o botao aparece no sistema. */
 export const TRIGGER_META: Record<MessageTrigger, { label: string; where: string }> = {
@@ -80,6 +81,19 @@ export function automationTiming(template: MessageTemplate): string {
   if (daysOffset < 0) return `${Math.abs(daysOffset)} ${Math.abs(daysOffset) === 1 ? "dia" : "dias"} antes do vencimento`;
   if (daysOffset === 0) return "No dia do vencimento";
   return `${daysOffset} ${daysOffset === 1 ? "dia" : "dias"} depois do vencimento`;
+}
+
+/** Subtitulo exibido no cartao e no painel do modelo, diferenciando escopo e envio manual. */
+export function templateSubtitle(template: MessageTemplate, official: boolean): string {
+  const where = TRIGGER_META[template.trigger]?.where ?? "";
+  if (isManualTrigger(template.trigger)) {
+    return official ? `Envio manual · ${where}` : where;
+  }
+  if (!official) return where;
+  const timing = automationTiming(template);
+  if (template.trigger === "billing_before_due") return `Mensalidades · ${timing}`;
+  if (template.trigger === "charge_reminder") return `Avulsa, curso, pacote e evento · ${timing}`;
+  return timing;
 }
 
 /** Valores de exemplo para a previa dos modelos. */

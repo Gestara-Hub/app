@@ -1,4 +1,5 @@
-import type { DateTimeISO, Id } from "./common";
+import type { DateISO, DateTimeISO, Id } from "./common";
+import type { WhatsAppConsentStatus } from "./client";
 import type { PaginationParams } from "./pagination";
 
 /**
@@ -135,6 +136,16 @@ export interface CommunicationMetrics {
   /** So no oficial; `null` sem envios no mes. */
   deliveryRate: number | null;
   readRate: number | null;
+  /** Quantidade absoluta de envios considerados nas taxas do mes (oficial). */
+  sentCount?: number;
+  /** Mensagens entregues ou lidas no mes (oficial). */
+  deliveredCount?: number;
+  /** Mensagens lidas no mes (oficial). */
+  readCount?: number;
+  /** Mensagens com falha no mes atual. */
+  failedCount?: number;
+  /** Mensagens na fila ou enviadas aguardando confirmacao de entrega no mes. */
+  inProgressCount?: number;
   /** Mensalidades pagas no mes depois de um lembrete pelo WhatsApp. */
   recoveredAmountCents: number;
   activeAutomationsCount: number;
@@ -173,4 +184,31 @@ export interface MessageLogFilter extends PaginationParams {
   search?: string;
   clientId?: Id;
   kind?: MessageLogKind;
+  dateFrom?: DateISO;
+  dateTo?: DateISO;
+}
+
+/** Aluno elegivel no compositor de nova mensagem (dados minimos + autorizacao de WhatsApp). */
+export interface MessageRecipientOption {
+  id: Id;
+  name: string;
+  phone?: string;
+  whatsappConsentStatus?: WhatsAppConsentStatus;
+}
+
+/** Turma ativa com alunos matriculados para selecao rapida em "Nova mensagem". */
+export interface MessageClassGroupOption {
+  id: Id;
+  name: string;
+  studentIds: Id[];
+}
+
+/** Contexto do compositor de "Nova mensagem" e resumo de autorizacoes do espaco. */
+export interface MessageComposerContext {
+  recipients: MessageRecipientOption[];
+  classGroups: MessageClassGroupOption[];
+  activeStudentsCount: number;
+  consentedCount: number;
+  missingConsentCount: number;
+  revokedConsentCount: number;
 }

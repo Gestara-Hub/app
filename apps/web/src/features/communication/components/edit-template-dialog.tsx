@@ -2,9 +2,9 @@
 
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { MessageTemplate } from "@gestarahub/contracts";
+import type { MessageTemplate, MessageTrigger } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
@@ -21,9 +21,23 @@ import { Switch } from "@/components/ui/switch";
 import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
-import { useUpdateTemplate } from "../hooks/use-communication";
-import { TRIGGER_META, automationTiming, sampleValues, templatePreview } from "../message-meta";
+import { useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
+import { TRIGGER_META, automationTiming, sampleValues, templatePreview, templateSubtitle } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
+
+const DAYS_OFFSET_CONFIG: Partial<
+  Record<
+    MessageTrigger,
+    { label: string; suffix: string; min: number; max: number; negative?: boolean }
+  >
+> = {
+  billing_before_due: { label: "Prazo", suffix: "dias antes do vencimento", min: 1, max: 30, negative: true },
+  charge_reminder: { label: "Prazo", suffix: "dias antes do vencimento", min: 1, max: 30, negative: true },
+  billing_after_due: { label: "Prazo", suffix: "dias após o vencimento", min: 1, max: 30 },
+  billing_critical: { label: "Prazo", suffix: "dias após o vencimento", min: 2, max: 60 },
+  absence_alert: { label: "Prazo", suffix: "faltas seguidas", min: 1, max: 15 },
+  package_ending: { label: "Prazo", suffix: "dias antes de vencer", min: 1, max: 30 },
+};
 
 function TemplateConfigForm({
   template,
@@ -35,21 +49,46 @@ function TemplateConfigForm({
   onClose: () => void;
 }) {
   const updateMut = useUpdateTemplate();
+  const { data: connection } = useWhatsAppConnection();
   const { data: organization } = useOrganization();
   const hasFeature = useHasFeature();
+  const offsetConfig = DAYS_OFFSET_CONFIG[template.trigger];
   const [enabled, setEnabled] = useState(template.enabled);
   const [sendHour, setSendHour] = useState(template.sendHour);
+  const [daysInput, setDaysInput] = useState(() =>
+    String(offsetConfig?.negative ? Math.abs(template.daysOffset) : template.daysOffset),
+  );
 
   // Modelo só de envio manual (sem rotina automática nem horário).
   const automatic = official && !isManualTrigger(template.trigger);
+  const parsedDays = Number.parseInt(daysInput, 10);
+  const isValidDays =
+    !offsetConfig || (Number.isInteger(parsedDays) && parsedDays >= offsetConfig.min && parsedDays <= offsetConfig.max);
+  const nextDaysOffset = offsetConfig
+    ? isValidDays
+      ? offsetConfig.negative
+        ? -parsedDays
+        : parsedDays
+      : template.daysOffset
+    : template.daysOffset;
+
+  const allowed = connection?.allowedSendHours;
+  const outsideAllowedHours = Boolean(
+    automatic && enabled && allowed && sendHour && (sendHour < allowed.start || sendHour > allowed.end),
+  );
 
   async function save() {
+    if (automatic && offsetConfig && !isValidDays) {
+      toast.error(`Informe um prazo entre ${offsetConfig.min} e ${offsetConfig.max} (${offsetConfig.suffix}).`);
+      return;
+    }
     try {
       if (automatic) {
         await updateMut.mutateAsync({
           id: template.id,
           enabled,
           sendHour,
+          ...(offsetConfig ? { daysOffset: nextDaysOffset } : {}),
         });
       }
       toast.success("Configuração da mensagem salva.");
@@ -97,6 +136,26 @@ function TemplateConfigForm({
                 disabled={updateMut.isPending}
               />
             </div>
+            {offsetConfig ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+                <Label htmlFor="template-days-offset" className="text-sm font-medium text-foreground">
+                  {offsetConfig.label}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="template-days-offset"
+                    type="number"
+                    min={offsetConfig.min}
+                    max={offsetConfig.max}
+                    value={daysInput}
+                    onChange={(e) => setDaysInput(e.target.value)}
+                    disabled={!enabled || updateMut.isPending}
+                    className="h-8 w-20 text-base md:text-sm bg-background"
+                  />
+                  <span className="text-xs text-muted-foreground">{offsetConfig.suffix}</span>
+                </div>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
               <Label htmlFor="template-hour" className="text-sm font-medium text-foreground">
                 Horário de envio
@@ -110,7 +169,17 @@ function TemplateConfigForm({
                 className="h-8 w-28 text-base md:text-sm bg-background"
               />
             </div>
-            <p className="text-xs text-muted-foreground pt-0.5">{automationTiming(template)}.</p>
+            {outsideAllowedHours ? (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
+                <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <span>
+                  Fora do horário permitido em Conexão ({allowed?.start}–{allowed?.end}). O envio automático só dispara dentro dessa janela.
+                </span>
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground pt-0.5">
+              {automationTiming({ ...template, daysOffset: nextDaysOffset })}.
+            </p>
           </div>
         ) : null}
 
@@ -171,11 +240,7 @@ export function EditTemplateDialog({
             {template ? TRIGGER_META[template.trigger].label : "Mensagem"}
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
-            {template
-              ? official && !isManualTrigger(template.trigger)
-                ? automationTiming(template)
-                : TRIGGER_META[template.trigger].where
-              : ""}
+            {template ? templateSubtitle(template, official) : ""}
           </SheetDescription>
         </SheetHeader>
         {template ? (

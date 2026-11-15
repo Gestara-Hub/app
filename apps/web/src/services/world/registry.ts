@@ -152,7 +152,18 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../communication/communicationSlices")).communicationSlices,
     permissions: {
       ...all(
-        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage", "syncMetaTemplates"],
+        [
+          "getConnection",
+          "listTemplates",
+          "listLogs",
+          "listLogsPaginated",
+          "getMetrics",
+          "getComposerContext",
+          "registerAssistedMessage",
+          "sendMessage",
+          "retryFailedMessage",
+          "syncMetaTemplates",
+        ],
         VIEW_COMMUNICATION,
       ),
       // Lembretes: o professor ve so os dos alunos dele (faltas seguidas e aniversarios).

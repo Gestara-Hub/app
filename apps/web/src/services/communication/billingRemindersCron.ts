@@ -7,10 +7,12 @@ import { runInWorld } from "../world/runWorld";
 import { runBillingReminders } from "./communicationRules";
 import { reportError, dbError } from "@/lib/log";
 
-/** Recorte: cobranças, alunos, modelos e lembretes de cobrança já registrados. */
+/** Recorte: cobranças, pagamentos online, turmas, alunos, modelos e lembretes já registrados. */
 export const billingRemindersSlice: MethodSlice = async (_args, load) => {
   await Promise.all([
     load.all("charges"),
+    load.all("onlinePayments"),
+    load.all("classGroups"),
     load.all("clients"),
     load.all("messageTemplates"),
     load.where("messageLogs", "category", ["billing"]),

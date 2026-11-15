@@ -12,6 +12,7 @@ import {
 import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
 import { MESSAGE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
+import { chargeReference } from "@/lib/messages/message-values";
 import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
@@ -238,14 +239,26 @@ export function runBillingReminders(): number {
 
     const offset =
       template.daysOffset ??
-      (template.trigger === "billing_before_due" ? -3 : template.trigger === "billing_after_due" ? 3 : 0);
+      (template.trigger === "billing_before_due" || template.trigger === "charge_reminder"
+        ? -3
+        : template.trigger === "billing_after_due"
+          ? 3
+          : template.trigger === "billing_critical"
+            ? 10
+            : 0);
 
     const targetDateObj = new Date(now.getTime() - offset * 86_400_000);
     const targetDueDate = format(targetDateObj, "yyyy-MM-dd");
 
-    const targetCharges = (store.charges ?? []).filter(
-      (c) => (c.status === "pending" || c.status === "overdue") && c.dueDate === targetDueDate,
-    );
+    // Mensalidade segue os lembretes proprios (`billing_*`); avulsa, curso,
+    // pacote e evento usam `charge_reminder`; aula avulsa nao recebe lembrete.
+    const wantsOtherCharges = template.trigger === "charge_reminder";
+    const targetCharges = (store.charges ?? []).filter((c) => {
+      if (c.status !== "pending" && c.status !== "overdue") return false;
+      if (c.dueDate !== targetDueDate) return false;
+      if (c.kind === "dropin") return false;
+      return wantsOtherCharges ? c.kind !== "membership" : c.kind === "membership";
+    });
 
     for (const charge of targetCharges) {
       if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
@@ -283,12 +296,22 @@ export function runBillingReminders(): number {
             ? chargeInvoiceUrl(charge.id)
             : "";
 
+      const className = charge.classGroupId
+        ? (store.classGroups ?? []).find((cg) => cg.id === charge.classGroupId)?.name
+        : undefined;
       const content = fillMessage(template.content, {
         aluno: client.name,
         valor: amountFormatted,
         vencimento: formattedDueDate,
         empresa: store.organization.name,
         link_pagamento: paymentLink,
+        referencia: chargeReference({
+          kind: charge.kind,
+          description: charge.description,
+          className,
+          cycleIndex: charge.cycleIndex,
+          cycleTotal: charge.cycleTotal,
+        }),
       });
 
       const log = newLog(

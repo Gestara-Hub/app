@@ -1,10 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { History, MessageCircle, MessageSquareText, Plus, Smartphone } from "lucide-react";
-import type { CommunicationMetrics, WhatsAppConnectionView } from "@gestarahub/contracts";
+import {
+  AlertTriangle,
+  CheckCheck,
+  ChevronRight,
+  Eye,
+  History,
+  MessageCircle,
+  MessageSquareText,
+  Plus,
+  Send,
+  Smartphone,
+  Wallet,
+} from "lucide-react";
+import type {
+  CommunicationMetrics,
+  MessageLogKind,
+  MessageLogStatus,
+  WhatsAppConnectionView,
+} from "@gestarahub/contracts";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
 import { PageHeader } from "@/components/layout/page-header";
 import { PLAN_SETTINGS_HREF } from "@/components/shared/feature-locked";
@@ -14,13 +31,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { type PageTab, PageTabs } from "@/components/shared/page-tabs";
 import { useCan } from "@/features/auth";
 import { cn } from "@/lib/utils";
-import { useCommunicationMetrics, useWhatsAppConnection } from "../hooks/use-communication";
+import {
+  useCommunicationMetrics,
+  useMessageComposerContext,
+  useWhatsAppConnection,
+} from "../hooks/use-communication";
 import { ConnectionSettingsTab } from "./connection-settings-tab";
 import { MessageLogsTab } from "./message-logs-tab";
 import { MessageTemplatesTab } from "./message-templates-tab";
 import { SendMessageDialog } from "./send-message-dialog";
 
 type Tab = "messages" | "history" | "connection";
+type LogPeriod = "all" | "today" | "7d" | "month";
+interface HistoryPreset {
+  status?: "all" | MessageLogStatus;
+  kind?: MessageLogKind;
+  period?: LogPeriod;
+}
 
 /** Como as mensagens saem hoje: assistido (gratis) ou WhatsApp oficial (Pro). */
 function ModeBanner({
@@ -125,13 +152,62 @@ function ModeBanner({
   );
 }
 
-function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+type SummaryTone = "neutral" | "success" | "warning";
+
+const SUMMARY_ICON_TONE: Record<SummaryTone, string> = {
+  neutral: "bg-muted text-muted-foreground",
+  success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+};
+
+const SUMMARY_VALUE_TONE: Record<SummaryTone, string> = {
+  neutral: "text-foreground",
+  success: "text-emerald-600 dark:text-emerald-400",
+  warning: "text-amber-700 dark:text-amber-400",
+};
+
+function SummaryCard({
+  label,
+  value,
+  hint,
+  icon,
+  tone = "neutral",
+  action,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: ReactNode;
+  tone?: SummaryTone;
+  action?: { label: string; onClick: () => void };
+}) {
   return (
     <Card className="py-0 shadow-2xs">
-      <CardContent className="space-y-1 p-4">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="text-xl font-semibold tabular-nums text-foreground">{value}</p>
-        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      {/* Rotulo e valor seguem irmaos diretos no mesmo CardContent (invariante dos testes de resumo). */}
+      <CardContent className="grid h-full grid-cols-[1fr_auto] items-start gap-x-2 p-4">
+        <p className="min-w-0 text-xs font-medium text-muted-foreground">{label}</p>
+        <div
+          className={cn(
+            "row-span-2 flex size-7 shrink-0 items-center justify-center rounded-md [&_svg]:size-4",
+            SUMMARY_ICON_TONE[tone],
+          )}
+        >
+          {icon}
+        </div>
+        <p className={cn("col-start-1 mt-1 text-xl font-bold tabular-nums sm:text-2xl", SUMMARY_VALUE_TONE[tone])}>
+          {value}
+        </p>
+        <p className="col-span-2 mt-0.5 text-xs text-muted-foreground">{hint}</p>
+        {action ? (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="col-span-2 mt-auto inline-flex cursor-pointer items-center gap-1 pt-2.5 text-xs font-medium text-primary hover:underline focus-visible:underline focus-visible:outline-none"
+          >
+            {action.label}
+            <ChevronRight className="size-3" />
+          </button>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -141,48 +217,108 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
 function SummaryCards({
   metrics,
   canViewFinance,
+  onOpenHistory,
 }: {
   metrics: CommunicationMetrics;
   canViewFinance: boolean;
+  onOpenHistory: (preset: HistoryPreset) => void;
 }) {
   const rate = (value: number | null) => (value === null ? "—" : `${value.toLocaleString("pt-BR")}%`);
   if (metrics.mode === "assisted") {
     return (
-      <div className={cn("grid gap-3 sm:gap-4", canViewFinance ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         <SummaryCard
           label="Abertas no WhatsApp"
           value={String(metrics.messagesThisMonth)}
           hint="Mensagens prontas abertas neste mês"
+          icon={<MessageCircle />}
+          action={{ label: "Ver histórico do mês", onClick: () => onOpenHistory({ period: "month" }) }}
         />
         {canViewFinance ? (
           <SummaryCard
             label="Recebido depois de lembrete"
             value={formatCents(metrics.recoveredAmountCents)}
             hint="Cobranças pagas neste mês depois de um lembrete"
+            icon={<Wallet />}
+            tone={metrics.recoveredAmountCents > 0 ? "success" : "neutral"}
+            action={{ label: "Ver cobranças enviadas", onClick: () => onOpenHistory({ kind: "billing", period: "month" }) }}
           />
         ) : null}
       </div>
     );
   }
+
+  const sentCount = metrics.sentCount ?? metrics.messagesThisMonth;
+  const deliveredCount = metrics.deliveredCount;
+  const readCount = metrics.readCount;
+  const failedCount = metrics.failedCount ?? 0;
+  const inProgressCount = metrics.inProgressCount ?? 0;
+
   return (
     <div
       className={cn(
         "grid gap-3 sm:gap-4",
-        canViewFinance ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-3",
+        canViewFinance ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3",
       )}
     >
       <SummaryCard
         label="Enviadas no mês"
         value={String(metrics.messagesThisMonth)}
-        hint={`De ${metrics.monthlyQuota} da franquia`}
+        hint={
+          failedCount > 0
+            ? `De ${metrics.monthlyQuota} da franquia · ${failedCount} com falha`
+            : `De ${metrics.monthlyQuota} da franquia`
+        }
+        icon={<Send />}
+        tone={failedCount > 0 ? "warning" : "neutral"}
+        action={
+          failedCount > 0
+            ? { label: `Ver ${failedCount} com falha`, onClick: () => onOpenHistory({ status: "failed", period: "month" }) }
+            : { label: "Ver histórico do mês", onClick: () => onOpenHistory({ period: "month" }) }
+        }
       />
-      <SummaryCard label="Entregues" value={rate(metrics.deliveryRate)} hint="Das enviadas no mês" />
-      <SummaryCard label="Lidas" value={rate(metrics.readRate)} hint="Das enviadas no mês" />
+      <SummaryCard
+        label="Entregues"
+        value={rate(metrics.deliveryRate)}
+        hint={
+          sentCount > 0 && deliveredCount !== undefined
+            ? `${deliveredCount} de ${sentCount}${inProgressCount > 0 ? ` · ${inProgressCount} a caminho` : ""}`
+            : "Sem envios neste mês"
+        }
+        icon={<CheckCheck />}
+        tone={
+          sentCount === 0
+            ? "neutral"
+            : failedCount > 0 && (metrics.deliveryRate ?? 100) < 85
+              ? "warning"
+              : "success"
+        }
+        action={
+          failedCount > 0
+            ? { label: "Ver falhas", onClick: () => onOpenHistory({ status: "failed", period: "month" }) }
+            : { label: "Ver entregues", onClick: () => onOpenHistory({ status: "delivered", period: "month" }) }
+        }
+      />
+      <SummaryCard
+        label="Lidas"
+        value={rate(metrics.readRate)}
+        hint={
+          sentCount > 0 && readCount !== undefined
+            ? `${readCount} de ${sentCount} enviadas`
+            : "Sem envios neste mês"
+        }
+        icon={<Eye />}
+        tone={readCount && readCount > 0 ? "success" : "neutral"}
+        action={{ label: "Ver lidas", onClick: () => onOpenHistory({ status: "read", period: "month" }) }}
+      />
       {canViewFinance ? (
         <SummaryCard
           label="Recebido depois de lembrete"
           value={formatCents(metrics.recoveredAmountCents)}
           hint="Cobranças pagas no mês depois de um lembrete"
+          icon={<Wallet />}
+          tone={metrics.recoveredAmountCents > 0 ? "success" : "neutral"}
+          action={{ label: "Ver cobranças enviadas", onClick: () => onOpenHistory({ kind: "billing", period: "month" }) }}
         />
       ) : null}
     </div>
@@ -194,6 +330,7 @@ export function CommunicationView() {
   const canManage = can("communication:manage");
   const canManagePlan = can("subscription:manage");
   const canViewFinance = can("finance:view");
+  const canViewClients = can("clients:view") || can("clients:view_own");
 
   const availableTabs: PageTab<Tab>[] = [
     { value: "messages", label: "Mensagens", icon: MessageSquareText },
@@ -217,9 +354,20 @@ export function CommunicationView() {
     window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
   };
   const [sendOpen, setSendOpen] = useState(false);
+  const [historyPreset, setHistoryPreset] = useState<HistoryPreset & { key: number }>({ key: 0 });
   const { data: connection } = useWhatsAppConnection();
   const { data: metrics, isPending: metricsPending } = useCommunicationMetrics();
   const official = connection?.mode === "official";
+  const { data: composerContext } = useMessageComposerContext(official);
+
+  const openHistory = (preset: HistoryPreset) => {
+    setHistoryPreset((prev) => ({ key: prev.key + 1, ...preset }));
+    setTab("history");
+  };
+
+  const withoutConsent = composerContext
+    ? composerContext.missingConsentCount + composerContext.revokedConsentCount
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -249,13 +397,36 @@ export function CommunicationView() {
         <Skeleton className="h-20 w-full rounded-xl" />
       )}
 
+      {official && composerContext && withoutConsent > 0 && composerContext.activeStudentsCount > 0 ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-medium">
+                {withoutConsent === 1
+                  ? "1 aluno ativo ainda sem autorização para envio automático no WhatsApp"
+                  : `${withoutConsent} alunos ativos ainda sem autorização para envio automático no WhatsApp`}
+              </p>
+              <p className="text-muted-foreground">
+                {composerContext.consentedCount} de {composerContext.activeStudentsCount} autorizados. Sem autorização no cadastro, os avisos automáticos não são disparados.
+              </p>
+            </div>
+          </div>
+          {canViewClients ? (
+            <Button type="button" variant="outline" size="sm" className="shrink-0 self-start sm:self-center" asChild>
+              <Link href="/clients">Revisar em Alunos</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       {metricsPending || !metrics ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-24 rounded-xl" />
         </div>
       ) : (
-        <SummaryCards metrics={metrics} canViewFinance={canViewFinance} />
+        <SummaryCards metrics={metrics} canViewFinance={canViewFinance} onOpenHistory={openHistory} />
       )}
 
       <div className="space-y-4">
@@ -263,7 +434,14 @@ export function CommunicationView() {
 
         <div role="tabpanel">
           {tab === "messages" ? <MessageTemplatesTab /> : null}
-          {tab === "history" ? <MessageLogsTab /> : null}
+          {tab === "history" ? (
+            <MessageLogsTab
+              key={historyPreset.key}
+              initialStatus={historyPreset.status}
+              initialKind={historyPreset.kind}
+              initialPeriod={historyPreset.period}
+            />
+          ) : null}
           {tab === "connection" && canManage ? <ConnectionSettingsTab /> : null}
         </div>
       </div>

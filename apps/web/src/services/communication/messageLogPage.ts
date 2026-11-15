@@ -1,4 +1,5 @@
 import type { MessageLog, MessageLogFilter, PaginatedResult } from "@gestarahub/contracts";
+import { endOfDayInSpace, startOfDayInSpace } from "@gestarahub/core/date";
 import type { TenantContext } from "../server/tenant";
 import { dbError } from "@/lib/log";
 
@@ -50,6 +51,13 @@ export async function messageLogPageFor(
   if (filter?.kind === "billing") query = query.eq("category", "billing");
   if (filter?.kind === "retention") query = query.eq("category", "retention");
   if (filter?.kind === "notices") query = query.eq("category", "administrative").neq("trigger", "manual_broadcast");
+  // Dias do periodo no fuso do espaco (nao em UTC).
+  if (filter?.dateFrom) {
+    query = query.gte("sent_at", filter.dateFrom.length === 10 ? startOfDayInSpace(filter.dateFrom) : filter.dateFrom);
+  }
+  if (filter?.dateTo) {
+    query = query.lte("sent_at", filter.dateTo.length === 10 ? endOfDayInSpace(filter.dateTo) : filter.dateTo);
+  }
   const term = filter?.search?.trim();
   if (term) {
     const digits = term.replace(/\D/g, "");

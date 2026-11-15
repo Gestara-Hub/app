@@ -225,8 +225,15 @@ export const queryKeys = {
     all: ["communication"] as const,
     session: ["communication", "session"] as const,
     templates: ["communication", "templates"] as const,
-    logs: (filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }) =>
-      ["communication", "logs", filter] as const,
+    composerContext: ["communication", "composer-context"] as const,
+    logs: (filter?: {
+      trigger?: string;
+      status?: string;
+      search?: string;
+      clientId?: Id;
+      dateFrom?: string;
+      dateTo?: string;
+    }) => ["communication", "logs", filter] as const,
     // Pagina do historico (mesma raiz: gravar mensagem invalida as duas).
     logsPage: (filter?: MessageLogFilter) => ["communication", "logs", "page", filter] as const,
     metrics: ["communication", "metrics"] as const,

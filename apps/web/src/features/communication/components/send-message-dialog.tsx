@@ -5,11 +5,20 @@ import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check } from "lucide-react";
+import { AlertTriangle, Check } from "lucide-react";
+import type { WhatsAppConsentStatus } from "@gestarahub/contracts";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatPhone, plural } from "@gestarahub/core/format";
 import { MultiSelectField, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -17,12 +26,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { MESSAGE_MAX_LENGTH, personalizeMessage, whatsappNumber } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
 import { useOrganization } from "@/features/settings";
 import {
-  useMessageRecipients,
+  useMessageComposerContext,
   useMessageSuggestions,
   useWhatsAppSend,
 } from "../hooks/use-communication";
@@ -48,6 +58,7 @@ export interface MessageRecipient {
   id: string;
   name: string;
   phone?: string;
+  whatsappConsentStatus?: WhatsAppConsentStatus;
 }
 
 function SendMessageForm({
@@ -60,9 +71,11 @@ function SendMessageForm({
   onSequence: (group: ReminderGroup) => void;
   fixed?: MessageRecipient;
 }) {
-  const { data: activeClients = [] } = useMessageRecipients();
-  const clients: MessageRecipient[] = fixed ? [fixed] : activeClients;
+  const { data: composerContext } = useMessageComposerContext(!fixed);
+  const clients: MessageRecipient[] = fixed ? [fixed] : (composerContext?.recipients ?? []);
+  const classGroups = fixed ? [] : (composerContext?.classGroups ?? []);
   const whatsapp = useWhatsAppSend();
+  const official = whatsapp.mode === "official";
   const { data: organization } = useOrganization();
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -79,11 +92,23 @@ function SendMessageForm({
   const many = picked.length > 1;
   const noPhone = Boolean(recipient && !whatsappNumber(recipient.phone));
   const withoutPhone = picked.filter((c) => !whatsappNumber(c.phone)).length;
+  const hasOfficialConsent = (c: MessageRecipient) =>
+    !official || c.whatsappConsentStatus === undefined || c.whatsappConsentStatus === "granted";
+  const unauthorizedPicked = official
+    ? picked.filter((c) => c.whatsappConsentStatus !== undefined && c.whatsappConsentStatus !== "granted")
+    : [];
+  const eligiblePicked = picked.filter((c) => Boolean(whatsappNumber(c.phone)) && hasOfficialConsent(c));
+  const quotaInfo = whatsapp.connection?.monthlyQuota;
+  const remainingQuota = quotaInfo ? Math.max(0, quotaInfo.included - quotaInfo.used) : Infinity;
+
   const suggestions = useMessageSuggestions(recipient?.id);
   // Modelo escolhido (o envio leva o tipo dele e a cobranca ligada).
   const [chosen, setChosen] = useState<MessageSuggestion | null>(null);
   // Texto que o modelo montou: trocar o aluno com ele intacto limpa o campo.
   const chosenText = useRef<string | null>(null);
+  const [confirmingBatch, setConfirmingBatch] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const batchSending = batchProgress !== null;
 
   useEffect(
     () =>
@@ -91,6 +116,7 @@ function SendMessageForm({
         name: ["clientIds", "content"],
         formState: { values: true },
         callback: ({ values, name }) => {
+          setConfirmingBatch(false);
           const switchedStudent = name === "clientIds";
           if (!switchedStudent && values.content?.trim()) return;
           if (
@@ -135,20 +161,124 @@ function SendMessageForm({
       form.setFocus("content");
   }
 
-  const options = clients.map((c) => ({
-    value: c.id,
-    label: c.phone
-      ? `${c.name} · ${formatPhone(c.phone)}`
-      : `${c.name} · sem telefone`,
-  }));
+  function applyClientSelection(nextIds: string[]) {
+    form.setValue("clientIds", nextIds, {
+      shouldDirty: true,
+      shouldValidate: form.formState.isSubmitted,
+    });
+  }
 
-  const onSubmit = form.handleSubmit((values) => {
+  function selectAllEligible() {
+    const withPhone = clients.filter((c) => Boolean(whatsappNumber(c.phone)));
+    const eligible = withPhone.filter(hasOfficialConsent);
+    if (eligible.length === 0) {
+      if (official && withPhone.length > 0) {
+        toast.info("Nenhum aluno com WhatsApp tem autorização para envio oficial.");
+      }
+      return;
+    }
+    applyClientSelection(eligible.map((c) => c.id));
+    if (official && withPhone.length > eligible.length) {
+      const skipped = withPhone.length - eligible.length;
+      toast.info(
+        `${plural(skipped, "aluno sem autorização ficou de fora", "alunos sem autorização ficaram de fora")}.`,
+      );
+    }
+  }
+
+  function selectByClassGroup(classGroupId: string) {
+    const group = classGroups.find((g) => g.id === classGroupId);
+    if (!group) return;
+    const inGroup = new Set(group.studentIds);
+    const groupClients = clients.filter((c) => inGroup.has(c.id) && Boolean(whatsappNumber(c.phone)));
+    const eligible = groupClients.filter(hasOfficialConsent);
+    if (eligible.length === 0) {
+      toast.info("Nenhum aluno desta turma tem autorização e WhatsApp para envio oficial.");
+      return;
+    }
+    applyClientSelection(Array.from(new Set([...clientIds, ...eligible.map((c) => c.id)])));
+    if (official && groupClients.length > eligible.length) {
+      const skipped = groupClients.length - eligible.length;
+      toast.info(
+        `${plural(skipped, "aluno da turma sem autorização ficou de fora", "alunos da turma sem autorização ficaram de fora")}.`,
+      );
+    }
+  }
+
+  const options = clients.map((c) => {
+    const base = c.phone ? `${c.name} · ${formatPhone(c.phone)}` : `${c.name} · sem telefone`;
+    const missingConsent = official && c.whatsappConsentStatus !== undefined && c.whatsappConsentStatus !== "granted";
+    return {
+      value: c.id,
+      label: missingConsent ? `${base} (sem autorização)` : base,
+    };
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
     const chosenClients = clients.filter((c) =>
       values.clientIds.includes(c.id),
     );
     if (chosenClients.length === 0) return;
     if (chosenClients.length > 1) {
-      // Em sequencia: um toque por aluno (o navegador nao abre varias abas sozinho).
+      if (official) {
+        const toSend = chosenClients.filter((c) => Boolean(whatsappNumber(c.phone)) && hasOfficialConsent(c));
+        if (toSend.length === 0) {
+          form.setError("clientIds", {
+            message: "Nenhum aluno selecionado tem autorização para envio oficial.",
+          });
+          return;
+        }
+        if (remainingQuota <= 0) {
+          toast.error("Franquia mensal do WhatsApp oficial esgotada.");
+          return;
+        }
+        if (!confirmingBatch) {
+          setConfirmingBatch(true);
+          return;
+        }
+        const capped = Number.isFinite(remainingQuota) ? toSend.slice(0, remainingQuota) : toSend;
+        let sentCount = 0;
+        let queuedCount = 0;
+        let failedCount = 0;
+        let lastError = "";
+        for (let i = 0; i < capped.length; i += 1) {
+          setBatchProgress({ done: i, total: capped.length });
+          const c = capped[i];
+          const phone = whatsappNumber(c.phone);
+          if (!phone) continue;
+          try {
+            const log = await whatsapp.sendOfficialDirect({
+              trigger: "manual_broadcast",
+              recipientName: c.name,
+              recipientPhone: phone,
+              content: personalizeMessage(values.content, c.name, organization?.name),
+              clientId: c.id,
+            });
+            if (log.status === "queued") queuedCount += 1;
+            else sentCount += 1;
+          } catch (err) {
+            failedCount += 1;
+            lastError = getErrorMessage(err, "Falha ao enviar");
+            if (lastError.toLowerCase().includes("franquia")) break;
+          }
+        }
+        setBatchProgress(null);
+        setConfirmingBatch(false);
+        const totalOk = sentCount + queuedCount;
+        if (failedCount === 0) {
+          toast.success(
+            `${plural(totalOk, "mensagem enviada", "mensagens enviadas")}${queuedCount > 0 ? ` (${queuedCount} na fila)` : ""}.`,
+          );
+        } else if (totalOk > 0) {
+          toast.info(`${totalOk} enviada(s) e ${failedCount} falha(s). Confira os detalhes em Histórico.`);
+        } else {
+          toast.error(lastError || "Não foi possível enviar as mensagens.");
+        }
+        onDone();
+        return;
+      }
+
+      // Assistido: em sequencia, um toque por aluno (o navegador nao abre varias abas sozinho).
       onSequence({
         key: "broadcast",
         category: "notice",
@@ -179,6 +309,12 @@ function SendMessageForm({
     if (!whatsappNumber(client.phone)) {
       form.setError("clientIds", {
         message: "Este aluno não tem WhatsApp com DDD no cadastro.",
+      });
+      return;
+    }
+    if (!hasOfficialConsent(client)) {
+      form.setError("clientIds", {
+        message: "Este aluno ainda não autorizou mensagens pelo WhatsApp oficial.",
       });
       return;
     }
@@ -231,29 +367,61 @@ function SendMessageForm({
                     : many && withoutPhone > 0
                       ? `${plural(withoutPhone, "aluno sem WhatsApp com DDD será pulado", "alunos sem WhatsApp com DDD serão pulados")}.`
                       : many
-                        ? "A mensagem vai para cada aluno, em sequência. Use {aluno} para o nome."
+                        ? official
+                          ? "A mensagem vai automaticamente para cada aluno autorizado. Use {aluno} para o nome."
+                          : "A mensagem vai para cada aluno, em sequência. Use {aluno} para o nome."
                         : undefined
                 }
               />
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-xs"
-                onClick={() =>
-                  form.setValue(
-                    "clientIds",
-                    clients
-                      .filter((c) => whatsappNumber(c.phone))
-                      .map((c) => c.id),
-                    {
-                      shouldDirty: true,
-                      shouldValidate: form.formState.isSubmitted,
-                    },
-                  )
-                }
-              >
-                Selecionar todos com WhatsApp
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={selectAllEligible}
+                >
+                  Selecionar todos com WhatsApp
+                </Button>
+                {classGroups.length > 0 ? (
+                  <Select value="" onValueChange={selectByClassGroup}>
+                    <SelectTrigger className="h-7 w-auto min-w-36 text-xs" aria-label="Adicionar por turma">
+                      <SelectValue placeholder="Por turma..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classGroups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name} ({group.studentIds.length})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                {clientIds.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={() => {
+                      applyClientSelection([]);
+                      setConfirmingBatch(false);
+                    }}
+                  >
+                    Limpar ({clientIds.length})
+                  </Button>
+                ) : null}
+              </div>
+              {official && unauthorizedPicked.length > 0 ? (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    {picked.length === 1
+                      ? "Este aluno ainda não autorizou mensagens pelo WhatsApp oficial. Registre a autorização na ficha do aluno."
+                      : `${plural(unauthorizedPicked.length, "aluno selecionado não autorizou o envio oficial e será pulado", "alunos selecionados não autorizaram o envio oficial e serão pulados")}.`}
+                  </span>
+                </div>
+              ) : null}
             </div>
           )}
           <div className="space-y-1">
@@ -303,19 +471,53 @@ function SendMessageForm({
               </div>
             </div>
           ) : null}
+          {confirmingBatch && official && many ? (
+            <div className="space-y-1 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
+              <p className="font-semibold">
+                Confirmar envio oficial para {plural(Math.min(eligiblePicked.length, remainingQuota), "aluno", "alunos")}?
+              </p>
+              {quotaInfo ? (
+                <p className="text-muted-foreground">
+                  {remainingQuota < eligiblePicked.length
+                    ? `Sua franquia restante (${remainingQuota}) comporta apenas ${remainingQuota} de ${eligiblePicked.length} envios; os demais não serão disparados.`
+                    : `Consome ${eligiblePicked.length} de ${remainingQuota} mensagens restantes na franquia do ciclo.`}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </DialogBody>
         <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
-          <Button type="button" variant="outline" onClick={onDone}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={noPhone || whatsapp.isSending}>
-            {many
-              ? `Começar o envio (${picked.length})`
-              : whatsapp.mode === "official"
-                ? whatsapp.isSending
-                  ? "Enviando..."
-                  : "Enviar"
-                : "Abrir no WhatsApp"}
+          {confirmingBatch && !batchSending ? (
+            <Button type="button" variant="outline" onClick={() => setConfirmingBatch(false)}>
+              Voltar
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" onClick={onDone} disabled={batchSending}>
+              Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={
+              noPhone ||
+              whatsapp.isSending ||
+              batchSending ||
+              (official && eligiblePicked.length === 0 && picked.length > 0)
+            }
+          >
+            {batchSending
+              ? `Enviando (${batchProgress.done}/${batchProgress.total})...`
+              : many
+                ? official
+                  ? confirmingBatch
+                    ? `Confirmar envio (${Math.min(eligiblePicked.length, remainingQuota)})`
+                    : `Enviar para ${eligiblePicked.length}`
+                  : `Começar o envio (${picked.length})`
+                : official
+                  ? whatsapp.isSending
+                    ? "Enviando..."
+                    : "Enviar"
+                  : "Abrir no WhatsApp"}
           </Button>
         </DialogFooter>
       </form>

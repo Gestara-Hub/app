@@ -80,7 +80,14 @@ export function useUpdateTemplate() {
 }
 
 export function useMessageLogs(
-  filter?: { trigger?: string; status?: string; search?: string; clientId?: Id },
+  filter?: {
+    trigger?: string;
+    status?: string;
+    search?: string;
+    clientId?: Id;
+    dateFrom?: string;
+    dateTo?: string;
+  },
   enabled = true,
 ) {
   return useQuery({
@@ -110,6 +117,16 @@ export function useMessageRecipients() {
   return useQuery({
     queryKey: queryKeys.clients.options({ status: "active" }),
     queryFn: () => clientsService.listOptions({ status: "active" }),
+  });
+}
+
+/** Alunos com WhatsApp, turmas ativas e status de autorizacao para o compositor de mensagens. */
+export function useMessageComposerContext(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.communication.composerContext,
+    queryFn: () => communicationService.getComposerContext(),
+    enabled,
+    staleTime: 0,
   });
 }
 
@@ -243,6 +260,7 @@ export function useWhatsAppSend() {
 
   return {
     mode,
+    connection,
     /** Modelos carregados: os botoes podem montar a mensagem. */
     ready: Boolean(templates && organization),
     /** O modelo esta ligado em Comunicacao (os envios automaticos respeitam o desligado). */
@@ -250,5 +268,7 @@ export function useWhatsAppSend() {
     isSending: send.isPending,
     compose,
     send: sendMessage,
+    /** Disparo direto pela API oficial (para lote apos confirmacao unica no dialogo). */
+    sendOfficialDirect: (payload: SendMessagePayload) => send.mutateAsync(payload),
   };
 }

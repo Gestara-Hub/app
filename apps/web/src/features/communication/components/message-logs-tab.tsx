@@ -32,7 +32,8 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { DialogBody } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
@@ -48,10 +49,13 @@ import { STATUS_META, TRIGGER_META } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
 type KindFilter = MessageLogKind;
+type PeriodFilter = "all" | "today" | "7d" | "month";
 
 const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
   { value: "all", label: "Todos os status" },
   { value: "opened", label: "Aberto no WhatsApp" },
+  { value: "queued", label: "Na fila" },
+  { value: "sent", label: "Enviada" },
   { value: "delivered", label: "Entregue" },
   { value: "read", label: "Lida" },
   { value: "failed", label: "Falhou" },
@@ -64,6 +68,23 @@ const KIND_FILTERS: { value: KindFilter; label: string }[] = [
   { value: "notices", label: "Avisos" },
   { value: "manual", label: "Avulsa" },
 ];
+
+const PERIOD_FILTERS: { value: PeriodFilter; label: string }[] = [
+  { value: "all", label: "Todo o período" },
+  { value: "today", label: "Hoje" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "month", label: "Este mês" },
+];
+
+function periodRange(period: PeriodFilter): { dateFrom?: string; dateTo?: string } {
+  if (period === "all") return {};
+  const today = dateInSpace();
+  if (period === "today") return { dateFrom: today, dateTo: today };
+  if (period === "month") return { dateFrom: `${today.slice(0, 7)}-01`, dateTo: today };
+  const anchor = new Date(`${today}T12:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() - 6);
+  return { dateFrom: anchor.toISOString().slice(0, 10), dateTo: today };
+}
 
 /** Os tiques do WhatsApp: enviada ✓, entregue e lida ✓✓ (a cor diferencia a lida). */
 const STATUS_ICON: Record<MessageLogStatus, LucideIcon> = {
@@ -94,10 +115,19 @@ export function phoneLabel(phone: string): string {
   return formatPhone(phone.replace(/^55(?=\d{10,11}$)/, ""));
 }
 
-export function MessageLogsTab() {
+export function MessageLogsTab({
+  initialStatus = "all",
+  initialKind = "all",
+  initialPeriod = "all",
+}: {
+  initialStatus?: "all" | MessageLogStatus;
+  initialKind?: KindFilter;
+  initialPeriod?: PeriodFilter;
+} = {}) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | MessageLogStatus>("all");
-  const [kind, setKind] = useState<KindFilter>("all");
+  const [status, setStatus] = useState<"all" | MessageLogStatus>(initialStatus);
+  const [kind, setKind] = useState<KindFilter>(initialKind);
+  const [period, setPeriod] = useState<PeriodFilter>(initialPeriod);
   const [selected, setSelected] = useState<MessageLog | null>(null);
   const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
@@ -105,7 +135,14 @@ export function MessageLogsTab() {
     () => preferences.pageSizes?.communication ?? preferences.defaultPageSize ?? 25,
   );
   // Filtros e paginacao no banco (doc 19, secao 12): a tela traz so a pagina.
-  const { data, isPending } = useMessageLogsPage({ search: search.trim() || undefined, status, kind, page, pageSize });
+  const { data, isPending } = useMessageLogsPage({
+    search: search.trim() || undefined,
+    status,
+    kind,
+    ...periodRange(period),
+    page,
+    pageSize,
+  });
   const { data: connection } = useWhatsAppConnection();
   const retryMut = useRetryMessage();
   const official = connection?.mode === "official";
@@ -115,10 +152,11 @@ export function MessageLogsTab() {
   const totalPages = data?.totalPages ?? 1;
 
   const hasSearch = search.trim().length > 0;
-  const hasFilters = status !== "all" || kind !== "all";
+  const hasFilters = status !== "all" || kind !== "all" || period !== "all";
   const clearFilters = () => {
     setStatus("all");
     setKind("all");
+    setPeriod("all");
     setPage(1);
   };
 
@@ -140,7 +178,7 @@ export function MessageLogsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <SearchInput
           value={search}
           onChange={(val) => {
@@ -148,9 +186,9 @@ export function MessageLogsTab() {
             setPage(1);
           }}
           placeholder="Buscar por aluno, telefone ou texto..."
-          className="sm:max-w-sm"
+          className="lg:max-w-sm"
         />
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           <Select
             value={status}
             onValueChange={(v) => {
@@ -158,7 +196,7 @@ export function MessageLogsTab() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-full sm:w-auto sm:min-w-48" aria-label="Status">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -176,11 +214,29 @@ export function MessageLogsTab() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Tipo">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-40" aria-label="Tipo">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {KIND_FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={period}
+            onValueChange={(v) => {
+              setPeriod(v as PeriodFilter);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-40" aria-label="Período">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_FILTERS.map((f) => (
                 <SelectItem key={f.value} value={f.value}>
                   {f.label}
                 </SelectItem>
@@ -249,6 +305,9 @@ export function MessageLogsTab() {
                     <span>·</span>
                     <span title={formatDateTime(log.sentAt)}>{relativeDateLabel(dateInSpace(log.sentAt))}</span>
                   </p>
+                  {log.status === "failed" && log.errorReason ? (
+                    <p className="truncate text-xs text-destructive">{log.errorReason}</p>
+                  ) : null}
                 </div>
               </ListRow>
             </ListItemContextMenu>
@@ -286,6 +345,10 @@ export function MessageDetailSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const selected = useRetainedValue(message);
+  const { data: connection } = useWhatsAppConnection();
+  const retryMut = useRetryMessage();
+  const canRetry = connection?.mode === "official" && selected?.status === "failed";
+
   return (
     <Sheet open={Boolean(message)} onOpenChange={onOpenChange}>
       <SheetContent
@@ -301,23 +364,48 @@ export function MessageDetailSheet({
           </SheetDescription>
         </SheetHeader>
         {selected ? (
-          <DialogBody className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <MessageStatusBadge status={selected.status} />
-              <span>{formatDateTime(selected.sentAt)}</span>
-            </div>
-            <MessageBubble text={selected.content} />
-            {selected.status === "opened" ? (
-              <p className="text-xs text-muted-foreground">
-                O WhatsApp foi aberto com esta mensagem. O envio é feito por quem estava no aparelho.
-              </p>
-            ) : null}
-            {selected.errorReason ? (
-              <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                {selected.errorReason}
-              </p>
-            ) : null}
-          </DialogBody>
+          <>
+            <DialogBody className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <MessageStatusBadge status={selected.status} />
+                <span>{formatDateTime(selected.sentAt)}</span>
+              </div>
+              <MessageBubble text={selected.content} />
+              {selected.status === "opened" ? (
+                <p className="text-xs text-muted-foreground">
+                  O WhatsApp foi aberto com esta mensagem. O envio é feito por quem estava no aparelho.
+                </p>
+              ) : null}
+              {selected.errorReason ? (
+                <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  {selected.errorReason}
+                </p>
+              ) : null}
+            </DialogBody>
+            <DialogFooter className="shrink-0 border-t border-border/40 bg-background px-6 py-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Fechar
+              </Button>
+              {canRetry ? (
+                <Button
+                  type="button"
+                  disabled={retryMut.isPending}
+                  onClick={() => {
+                    retryMut.mutate(selected.id, {
+                      onSuccess: () => {
+                        toast.success(`Mensagem reenviada para ${selected.recipientName}.`);
+                        onOpenChange(false);
+                      },
+                      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reenviar a mensagem.")),
+                    });
+                  }}
+                >
+                  <RefreshCw className={cn("size-4", retryMut.isPending && "animate-spin")} />
+                  {retryMut.isPending ? "Reenviando..." : "Reenviar"}
+                </Button>
+              ) : null}
+            </DialogFooter>
+          </>
         ) : null}
       </SheetContent>
     </Sheet>
