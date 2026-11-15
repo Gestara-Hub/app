@@ -78,6 +78,7 @@ export function toSessionView(session: EventSession): EventSessionView {
     eventName: event.name,
     instructors: sessionInstructorViews(event, session),
     modalityName: modalityName(event.modalityId),
+    capacity: event.capacity,
     confirmedCount: confirmedRegistrations(event.id).filter((r) => registrationCoversDay(r, session.id)).length,
   };
 }

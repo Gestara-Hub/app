@@ -301,6 +301,7 @@ export interface EventSessionView extends EventSession {
   /** Quem conduz este bloco (os escolhidos no dia ou, sem escolha, todos do evento). */
   instructors: EventInstructorView[];
   modalityName?: string;
+  capacity?: number;
   confirmedCount: number;
 }
 

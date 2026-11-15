@@ -5,7 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { nowTime, todayISO } from "@gestarahub/core/date";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CalendarEntry } from "../calendar-entries";
@@ -240,24 +240,41 @@ export function TurmasWeekGrid({ days, entries, colors }: TurmasWeekGridProps) {
                               className={cn(
                                 "block rounded-md border border-l-[3px] px-2 py-1.5 transition-[colors,opacity]",
                                 entryColor(entry, colors).card,
-                                when === "past" && "opacity-40 hover:opacity-100",
+                                when === "past" && "opacity-55 hover:opacity-100",
                                 when === "now" && cn("ring-2 ring-offset-1 ring-offset-card", entryColor(entry, colors).ring),
                               )}
                             >
                               <span className="sr-only">{entry.accessibleLabel}</span>
                               <div aria-hidden="true">
+                                {entry.kind === "event" ? (
+                                  <div className="mb-1 flex min-w-0 items-center gap-1.5">
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-violet-500/20 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                                      <Ticket className="size-2.5" />
+                                      Evento
+                                    </span>
+                                    {entry.modalityName ? (
+                                      <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                                        <span
+                                          className={cn(
+                                            "size-1.5 shrink-0 rounded-full",
+                                            colors.get(entry.modalityName)?.dot ?? NEUTRAL_MODALITY_COLOR.dot,
+                                          )}
+                                        />
+                                        <span className="truncate">{entry.modalityName}</span>
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                                 <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">{entry.title}</p>
-                                {/* "Evento" na linha do horario: o titulo fica com a largura toda. */}
+                                {/* Ocupacao + horario; ambar quando a turma ou o evento esta lotado. */}
                                 <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
-                                  {/* Sem "Evento" escrito (11/11/2026): o roxo e a legenda dizem; o leitor de tela le no sr-only. */}
                                   {entry.start}–{entry.end}
-                                  {/* Ocupacao, ambar quando a turma esta lotada. */}
                                   <span className={cn(entry.isFull && "font-medium text-amber-700 dark:text-amber-400")}>
                                     {" · "}
-                                    {entry.isFull ? "Lotada" : entry.occupancyShort}
+                                    {entry.isFull ? (entry.kind === "event" ? "Lotado" : "Lotada") : entry.occupancyShort}
                                   </span>
                                 </p>
-                                <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
+                                <p className="min-w-0 truncate text-[0.7rem] leading-tight text-muted-foreground">
                                   {entry.isSubstitute ? (
                                     <span className="font-medium text-amber-700 dark:text-amber-400">{entry.instructorName} (Subst.)</span>
                                   ) : (

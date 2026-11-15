@@ -69,11 +69,25 @@ export interface ModalityProgressionTrack {
 }
 
 /**
- * Cor da modalidade no Calendario e na lista de Modalidades (doc product/29
- * §Calendario, versao 2 de 13/11/2026). Ordem = a da versao 1 (cor pela ordem
- * de criacao). O roxo fica so para Evento.
+ * Cor da modalidade no Calendario e nas listas (doc product/29
+ * §Calendario, versao 2 de 13/11/2026, expandida para 14 cores).
+ * Ordem inicial = a da versao 1. O roxo (`violet`) fica so para Evento.
  */
-export type ModalityColorKey = "blue" | "emerald" | "amber" | "rose" | "cyan" | "orange" | "lime" | "stone";
+export type ModalityColorKey =
+  | "blue"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "cyan"
+  | "orange"
+  | "lime"
+  | "stone"
+  | "indigo"
+  | "teal"
+  | "pink"
+  | "red"
+  | "sky"
+  | "yellow";
 
 /**
  * Categoria de servico / Modalidade — entidade da organizacao.

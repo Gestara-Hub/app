@@ -1,7 +1,22 @@
 import type { ModalityColorKey } from "@gestarahub/contracts";
 
-/** As cores, na ordem da versao 1 (cor pela ordem de criacao). O roxo fica so para Evento. */
-export const MODALITY_COLORS: readonly ModalityColorKey[] = ["blue", "emerald", "amber", "rose", "cyan", "orange", "lime", "stone"];
+/** As cores, na ordem da versao 1 + expansao (14 tons). O roxo fica so para Evento. */
+export const MODALITY_COLORS: readonly ModalityColorKey[] = [
+  "blue",
+  "emerald",
+  "amber",
+  "rose",
+  "cyan",
+  "orange",
+  "lime",
+  "stone",
+  "indigo",
+  "teal",
+  "pink",
+  "red",
+  "sky",
+  "yellow",
+];
 
 export function isModalityColor(value: unknown): value is ModalityColorKey {
   return typeof value === "string" && (MODALITY_COLORS as readonly string[]).includes(value);

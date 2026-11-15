@@ -40,3 +40,4 @@ export {
 } from "./components/charge-parts";
 export { pickNextSession } from "./next-session";
 export { ScheduleNoticeHost } from "./components/schedule-notice-host";
+export { NEUTRAL_MODALITY_COLOR, modalityColorMap, type ModalityColor } from "./modality-colors";

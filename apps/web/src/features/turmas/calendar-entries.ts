@@ -52,12 +52,12 @@ export function classEntry(s: ClassSessionListItem, accessibleLabel: string): Ca
   };
 }
 
-/** Primeiro de quem conduz e quantos mais: "Ana Souza +1", "Mika Galvão (convidado)". */
+/** Primeiro de quem conduz e quantos mais: "Ana Souza +1", "Mika Galvão (conv.) +1". */
 function blockInstructorsShort(s: EventSessionView): string | undefined {
   const named = s.instructors.filter((i) => i.name);
   if (named.length <= 1) return undefined;
   const first = named[0];
-  return `${first.isGuest ? `${first.name} (convidado)` : first.name} +${named.length - 1}`;
+  return `${first.isGuest ? `${first.name} (conv.)` : first.name} +${named.length - 1}`;
 }
 
 /** "Ana e Sensei Kenji (convidado)": quem conduz o bloco, convidado marcado. */
@@ -68,6 +68,9 @@ function blockInstructors(s: EventSessionView): string {
 }
 
 export function eventEntry(s: EventSessionView): CalendarEntry {
+  const hasCapacity = s.capacity !== undefined && s.capacity > 0;
+  const full = hasCapacity && s.confirmedCount >= s.capacity!;
+  const openOccupancy = s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`;
   return {
     id: `event:${s.id}`,
     kind: "event",
@@ -82,9 +85,9 @@ export function eventEntry(s: EventSessionView): CalendarEntry {
     instructorShort: blockInstructorsShort(s),
     isSubstitute: false,
     isGuest: false,
-    occupancy: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
-    occupancyShort: s.confirmedCount === 1 ? "1 inscrito" : `${s.confirmedCount} inscritos`,
-    isFull: false,
+    occupancy: full ? "Evento lotado" : hasCapacity ? `${s.confirmedCount} de ${s.capacity} vagas` : openOccupancy,
+    occupancyShort: hasCapacity ? `${s.confirmedCount}/${s.capacity}` : openOccupancy,
+    isFull: full,
     accessibleLabel: `Evento ${s.eventName}, ${s.start} às ${s.end}, ${blockInstructors(s)}`,
   };
 }

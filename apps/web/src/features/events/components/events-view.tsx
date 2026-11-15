@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, CalendarRange, Clock, Pencil, Plus, Ticket, User, XCircle } from "lucide-react";
@@ -24,8 +24,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useCan } from "@/features/auth";
+import { useCategories } from "@/features/categories";
+import { NEUTRAL_MODALITY_COLOR, modalityColorMap, type ModalityColor } from "@/features/turmas";
 import { useCancelEvent, useEvents } from "../hooks/use-events";
 import { billingSummary, datesLabel, hoursLabel, instructorsShortLabel, occupancyLabel, STAGE_LABEL } from "../event-copy";
 import { EventFormDrawer } from "./event-form-drawer";
@@ -57,9 +60,27 @@ function eventActions(
   ];
 }
 
-const MODALITY_CHIP = "inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground";
+const MODALITY_CHIP =
+  "inline-flex items-center gap-1.5 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground";
 const OCCUPANCY_CHIP =
   "inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground";
+
+function modalityColorFor(
+  event: EventView,
+  colorByModality: Map<string, ModalityColor>,
+): ModalityColor {
+  if (!event.modalityName) return NEUTRAL_MODALITY_COLOR;
+  return colorByModality.get(event.modalityName) ?? NEUTRAL_MODALITY_COLOR;
+}
+
+function EventModalityChip({ name, color }: { name: string; color: ModalityColor }) {
+  return (
+    <span className={MODALITY_CHIP}>
+      <span className={cn("size-2 shrink-0 rounded-full", color.dot)} aria-hidden />
+      {name}
+    </span>
+  );
+}
 
 function instructorLabel(event: EventView): string {
   return instructorsShortLabel(event.instructors);
@@ -67,11 +88,13 @@ function instructorLabel(event: EventView): string {
 
 function EventRow({
   event,
+  modalityColor,
   canManage,
   onEdit,
   onCancel,
 }: {
   event: EventView;
+  modalityColor: ModalityColor;
   canManage: boolean;
   onEdit: (event: EventView) => void;
   onCancel: (event: EventView) => void;
@@ -87,7 +110,7 @@ function EventRow({
     >
       <div className="flex flex-wrap items-center gap-2">
         <p className="min-w-0 break-words text-sm font-medium text-foreground transition-colors group-hover:text-primary">{event.name}</p>
-        {event.modalityName ? <span className={MODALITY_CHIP}>{event.modalityName}</span> : null}
+        {event.modalityName ? <EventModalityChip name={event.modalityName} color={modalityColor} /> : null}
         <EventStatusBadge event={event} />
         <span className={OCCUPANCY_CHIP}>{occupancyLabel(event)}</span>
       </div>
@@ -115,11 +138,13 @@ function EventRow({
 /** Cartao no modo "Cartões", no mesmo desenho do cartao de turma. */
 function EventCard({
   event,
+  modalityColor,
   canManage,
   onEdit,
   onCancel,
 }: {
   event: EventView;
+  modalityColor: ModalityColor;
   canManage: boolean;
   onEdit: (event: EventView) => void;
   onCancel: (event: EventView) => void;
@@ -150,7 +175,7 @@ function EventCard({
               {event.name}
             </p>
             <div className="flex flex-wrap items-center gap-1.5">
-              {event.modalityName ? <span className={MODALITY_CHIP}>{event.modalityName}</span> : null}
+              {event.modalityName ? <EventModalityChip name={event.modalityName} color={modalityColor} /> : null}
               <EventStatusBadge event={event} />
             </div>
           </div>
@@ -242,6 +267,8 @@ export function EventsView() {
     ...(stage === "canceled" ? { status: "canceled" as const } : stage !== "all" ? { stage, status: "active" as const } : {}),
   };
   const { data, isPending } = useEvents(filter);
+  const { data: categories } = useCategories();
+  const colorByModality = useMemo(() => modalityColorMap(categories), [categories]);
   const events = useRetainedValue(data) ?? [];
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EventView | undefined>();
@@ -313,7 +340,7 @@ export function EventsView() {
         />
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -321,7 +348,7 @@ export function EventsView() {
               placeholder="Buscar evento ou convidado..."
               aria-label="Buscar evento ou convidado"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Select value={stage} onValueChange={(v) => setStage(v as StageFilter)}>
                 <SelectTrigger className="w-full sm:w-44" aria-label="Situação">
                   <SelectValue />
@@ -362,7 +389,14 @@ export function EventsView() {
           ) : events.length > 0 && viewMode === "grid" ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => (
-                <EventCard key={event.id} event={event} canManage={canManage} onEdit={openEdit} onCancel={(e) => void cancelEvent(e)} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  modalityColor={modalityColorFor(event, colorByModality)}
+                  canManage={canManage}
+                  onEdit={openEdit}
+                  onCancel={(e) => void cancelEvent(e)}
+                />
               ))}
             </div>
           ) : (
@@ -380,7 +414,14 @@ export function EventsView() {
               }
             >
               {events.map((event) => (
-                <EventRow key={event.id} event={event} canManage={canManage} onEdit={openEdit} onCancel={(e) => void cancelEvent(e)} />
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  modalityColor={modalityColorFor(event, colorByModality)}
+                  canManage={canManage}
+                  onEdit={openEdit}
+                  onCancel={(e) => void cancelEvent(e)}
+                />
               ))}
             </ListContainer>
           )}

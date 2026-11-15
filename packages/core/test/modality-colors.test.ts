@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { modalityColorKeys, nextModalityColor } from "../src/modality-colors.ts";
+import { MODALITY_COLORS, modalityColorKeys, nextModalityColor } from "../src/modality-colors.ts";
 
 /** Cor da modalidade, versao 2 (doc product/29 §Calendario). */
 const m = (id: string, createdAt: string, color?: string) => ({ id, createdAt, ...(color ? { color: color as never } : {}) });
@@ -30,7 +30,9 @@ describe("nextModalityColor", () => {
   });
 
   it("todas usadas: segue a ordem e repete", () => {
-    const all = ["blue", "emerald", "amber", "rose", "cyan", "orange", "lime", "stone"].map((c, i) => m(`m${i}`, `2026-01-0${i + 1}`, c));
+    const all = MODALITY_COLORS.map((c, i) =>
+      m(`m${i}`, `2026-01-${String(i + 1).padStart(2, "0")}`, c),
+    );
     assert.equal(nextModalityColor(all), "blue");
     assert.equal(nextModalityColor([...all, m("x", "2026-02-01", "blue")]), "emerald");
   });

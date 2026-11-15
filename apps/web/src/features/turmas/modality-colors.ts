@@ -31,6 +31,12 @@ export const MODALITY_COLOR_STYLES: Record<ModalityColorKey, ModalityColor> = {
   orange: { card: "border-l-orange-500 bg-orange-500/[0.06] hover:bg-orange-500/10", tint: "bg-orange-500/[0.06]", dot: "bg-orange-500", ring: "ring-orange-500/70", avatar: "border-orange-500/25 bg-orange-500/15 text-orange-800 dark:text-orange-200" },
   lime: { card: "border-l-lime-500 bg-lime-500/[0.07] hover:bg-lime-500/12", tint: "bg-lime-500/[0.07]", dot: "bg-lime-500", ring: "ring-lime-500/70", avatar: "border-lime-500/25 bg-lime-500/15 text-lime-800 dark:text-lime-200" },
   stone: { card: "border-l-stone-500 bg-stone-500/[0.06] hover:bg-stone-500/10", tint: "bg-stone-500/[0.06]", dot: "bg-stone-500", ring: "ring-stone-500/70", avatar: "border-stone-500/25 bg-stone-500/15 text-stone-800 dark:text-stone-200" },
+  indigo: { card: "border-l-indigo-500 bg-indigo-500/[0.06] hover:bg-indigo-500/10", tint: "bg-indigo-500/[0.06]", dot: "bg-indigo-500", ring: "ring-indigo-500/70", avatar: "border-indigo-500/25 bg-indigo-500/15 text-indigo-800 dark:text-indigo-200" },
+  teal: { card: "border-l-teal-500 bg-teal-500/[0.06] hover:bg-teal-500/10", tint: "bg-teal-500/[0.06]", dot: "bg-teal-500", ring: "ring-teal-500/70", avatar: "border-teal-500/25 bg-teal-500/15 text-teal-800 dark:text-teal-200" },
+  pink: { card: "border-l-pink-500 bg-pink-500/[0.06] hover:bg-pink-500/10", tint: "bg-pink-500/[0.06]", dot: "bg-pink-500", ring: "ring-pink-500/70", avatar: "border-pink-500/25 bg-pink-500/15 text-pink-800 dark:text-pink-200" },
+  red: { card: "border-l-red-500 bg-red-500/[0.06] hover:bg-red-500/10", tint: "bg-red-500/[0.06]", dot: "bg-red-500", ring: "ring-red-500/70", avatar: "border-red-500/25 bg-red-500/15 text-red-800 dark:text-red-200" },
+  sky: { card: "border-l-sky-500 bg-sky-500/[0.06] hover:bg-sky-500/10", tint: "bg-sky-500/[0.06]", dot: "bg-sky-500", ring: "ring-sky-500/70", avatar: "border-sky-500/25 bg-sky-500/15 text-sky-800 dark:text-sky-200" },
+  yellow: { card: "border-l-yellow-500 bg-yellow-500/[0.07] hover:bg-yellow-500/12", tint: "bg-yellow-500/[0.07]", dot: "bg-yellow-500", ring: "ring-yellow-500/70", avatar: "border-yellow-500/25 bg-yellow-500/15 text-yellow-800 dark:text-yellow-200" },
 };
 
 /** Nome de cada cor no seletor (leitor de tela e dica). */
@@ -43,6 +49,12 @@ export const MODALITY_COLOR_LABELS: Record<ModalityColorKey, string> = {
   orange: "Laranja",
   lime: "Verde-limão",
   stone: "Cinza",
+  indigo: "Índigo",
+  teal: "Verde-água",
+  pink: "Pink",
+  red: "Vermelho",
+  sky: "Azul-céu",
+  yellow: "Ouro",
 };
 
 /** Sem modalidade: card neutro, como antes. */

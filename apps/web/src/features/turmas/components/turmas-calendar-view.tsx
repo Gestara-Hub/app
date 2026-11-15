@@ -524,7 +524,7 @@ function CalendarLegend({
           className="inline-flex shrink-0 items-center gap-1.5 px-1 text-xs text-muted-foreground"
           title="Aulas e eventos que já aconteceram ficam apagados. Clique neles para ver a chamada."
         >
-          <span className="h-3 w-5 shrink-0 rounded-[3px] border border-l-[3px] border-blue-500/40 border-l-blue-500 bg-blue-500/10 opacity-40" aria-hidden />
+          <span className="h-3 w-5 shrink-0 rounded-[3px] border border-l-[3px] border-blue-500/40 border-l-blue-500 bg-blue-500/10 opacity-55" aria-hidden />
           Apagado = já passou
         </span>
       ) : null}

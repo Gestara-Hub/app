@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -65,6 +65,7 @@ import type {
   Category,
   CreateCategory,
   ModalityAssessmentSettings,
+  ModalityColorKey,
   ModalityProgressionTrack,
   ProgressionBeltColor,
   ProgressionCriteriaType,
@@ -279,6 +280,18 @@ export function ModalityForm({
     : modality
       ? (modalityColorKeys(existingModalities ?? [modality]).get(modality.id) ?? "blue")
       : nextModalityColor(existingModalities ?? []);
+  const colorUsedBy = useMemo(() => {
+    if (!existingModalities) return undefined;
+    const map: Partial<Record<ModalityColorKey, string[]>> = {};
+    const assigned = modalityColorKeys(existingModalities);
+    for (const item of existingModalities) {
+      if (item.id === modality?.id) continue;
+      const color = assigned.get(item.id);
+      if (!color) continue;
+      (map[color] ??= []).push(item.name);
+    }
+    return map;
+  }, [existingModalities, modality?.id]);
   const quickSuggestions: readonly string[] = suggestionsNotTaken(
     segment.id === "martial_arts" ? QUICK_MODALITY_SUGGESTIONS : segment.defaultModalities,
     (existingModalities ?? []).map((category) => category.name),
@@ -567,7 +580,12 @@ export function ModalityForm({
             ) : null}
           </div>
 
-          <ModalityColorPicker value={shownColor} onChange={(color) => form.setValue("color", color, { shouldDirty: true })} disabled={pending} />
+          <ModalityColorPicker
+            value={shownColor}
+            onChange={(color) => form.setValue("color", color, { shouldDirty: true })}
+            usedBy={colorUsedBy}
+            disabled={pending}
+          />
 
           {/* Bloco da trilha de progresso (titulo conforme a area) */}
           <div className={toggleSectionClass(track.enabled)}>
