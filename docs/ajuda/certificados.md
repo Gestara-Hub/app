@@ -1,5 +1,5 @@
 # Certificados de conclusão
-Onde: /settings?tab=certificado
+Onde: /certificates
 
 ## O que é
 Em cursos, o aluno que concluiu recebe um certificado em PDF. Faz parte do plano Profissional.
@@ -9,19 +9,19 @@ Na turma de curso encerrada, abra o menu ⋮ do aluno e escolha "Certificado". D
 
 ## Comece por um modelo
 Resumo: Escolha um modelo pronto da sua área e ajuste só o que quiser.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + texto "Comece por um modelo": Cada cartão é um modelo pronto. O da sua área vem primeiro. Clique em um para preencher layout, cor, título, texto e assinaturas.
 + texto "Aparência": Os ajustes ficam em blocos fechados. Clique no título para abrir cada um. Depois, salve na barra que aparece embaixo.
-Sem configurar nada, seus certificados já saem com o modelo da sua área. Em Configurações, aba Certificado, a galeria "Comece por um modelo" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em "Modelos prontos", fechada; abra para trocar.
+Sem configurar nada, seus certificados já saem com o modelo da sua área. Em [Certificados](/certificates), na aba Gestão do menu lateral, a galeria "Comece por um modelo" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em "Modelos prontos", fechada; abra para trocar.
 
 ## Personalizar o texto
 Resumo: Edite título, texto, assinaturas e cor do certificado.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + texto "Texto": Clique aqui para abrir o bloco do texto.
 + campo "Título": Escreva o título do certificado.
 + campo "Texto": Edite o texto. Digite { para escolher um dado do aluno na lista, ou use os botões "Inserir no texto". Os dados aparecem destacados no campo.
 + texto "Assinaturas": Abra aqui para escolher quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo.
-Em Configurações, aba Certificado, os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de "Inserir no texto". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.
+Em [Certificados](/certificates), os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de "Inserir no texto". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.
 
 ## Ver o PDF antes de salvar
 Resumo: Confira como o certificado sai no papel, com dados de exemplo.
@@ -29,14 +29,14 @@ Ao lado da prévia, "Ver em PDF" abre o PDF do modelo como está na tela, sem sa
 
 ## Um modelo por modalidade
 Resumo: Cursos de uma modalidade podem ter o próprio certificado.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + campo "Vale para": Escolha "Todo o espaço" ou uma modalidade.
 + campo "Título": Com a modalidade escolhida, mude o que quiser. Depois, salve na barra que aparece embaixo.
 Por padrão, todos os cursos usam o modelo do espaço. Escolhendo uma modalidade em "Vale para" e salvando, os cursos dela passam a sair com esse modelo; as outras continuam com o do espaço. Para desfazer, abra a modalidade e clique em "Usar o modelo do espaço".
 
 ## Usar a minha própria arte
 Resumo: Use a imagem que você já tem como fundo do certificado.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + botão "Minha arte": Escolha este layout para usar a sua imagem de fundo.
 + texto "Arte de fundo": Envie uma imagem PNG ou JPG, no formato de folha deitada, até 2 MB.
 + texto "Posição do texto": Escolha se o texto fica em cima, no centro ou embaixo da arte.
@@ -45,7 +45,7 @@ Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas 
 
 ## Voltar ao texto padrão
 Resumo: Volte o título e o texto do certificado aos originais.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + botão "Voltar ao texto padrão": Clique aqui para voltar o título e o texto originais. O sistema pede confirmação. Depois, salve na barra que aparece embaixo.
 O botão só aparece quando o texto está diferente do padrão. Layout, cor, assinaturas e logo não mudam.
 
@@ -65,10 +65,10 @@ Faz parte do plano Profissional. O certificado nasce do registro de graduação 
 
 ## Modelo do certificado de graduação
 Resumo: O certificado de graduação tem modelo, texto e modelos prontos próprios.
-Guia: /settings?tab=certificado
+Guia: /certificates
 + aba "Graduação": Escolha "Graduação" para editar o modelo desse tipo; "Conclusão de curso" é o outro.
 + texto "Comece por um modelo": Um modelo pronto por área, no tom de cada uma (faixa, nível, módulo ou fase).
-Em Configurações, aba Certificado, a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio "Vale para" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.
+Em [Certificados](/certificates), a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio "Vale para" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.
 
 ## Código de verificação
 Resumo: Quem recebe o certificado confere se ele é verdadeiro.

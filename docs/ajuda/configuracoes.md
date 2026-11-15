@@ -72,4 +72,4 @@ Guia: /dashboard
 
 ## Certificado e plano
 Resumo: Onde ficam o modelo de certificado e o plano do GestaraHub.
-O modelo do certificado está em [Certificado](/settings?tab=certificado), e o plano do GestaraHub em [Plano GestaraHub](/settings?tab=plano). Veja os artigos "Certificados de conclusão" e "Plano do GestaraHub". Segurança da conta fica no menu do usuário, no topo.
+O modelo do certificado está em [Certificados](/certificates), no menu lateral, e o plano do GestaraHub em [Plano GestaraHub](/settings?tab=plano). Veja os artigos "Certificados de conclusão" e "Plano do GestaraHub". Segurança da conta fica no menu do usuário, no topo.

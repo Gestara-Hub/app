@@ -33,7 +33,7 @@
 15. **Barra lateral com seletor de contexto ("Dia a dia" vs "Gestão").**
     - A barra lateral agrupa os itens de navegação em dois contextos (`NavContext` em `components/layout/nav.ts`):
       - **Dia a dia (`operations`):** Operação diária (Calendário, Agenda, Turmas, Alunos/Clientes, Comunicação, Cobranças).
-      - **Gestão (`management`):** Financeiro, Recebimentos online, Relatórios, Modalidades, Planos e pacotes, Serviços, Equipe, Usuários, Auditoria.
+      - **Gestão (`management`):** Financeiro, Recebimentos online, Relatórios, Modalidades, Planos e pacotes, Certificados (14/11/2026), Serviços, Equipe, Usuários, Auditoria.
       - Compartilhados em ambos: **Painel** e **Configurações**.
     - No topo da sidebar, há um controle segmentado `[ Dia a dia ] [ Gestão ]` (e botão compacto `[DIA]` / `[GES]` no modo ícone).
     - **Sincronização flexível:** O clique do usuário altera a aba livremente. Navegações do navegador ajustam a aba durante o render (`if (pathname !== prevPathname)`).

@@ -152,7 +152,7 @@ test.describe("eventos das ações principais", () => {
     await form.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Avaliação criada.")).toBeVisible();
 
-    await page.goto("/settings?tab=certificado");
+    await page.goto("/certificates");
     // O bloco "Texto" comeca recolhido (31/10/2026).
     await page.getByRole("button", { name: /^Texto/ }).click();
     await page.getByLabel("Título").fill("Certificado de Formatura");

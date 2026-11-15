@@ -1,4 +1,5 @@
 import {
+  Award,
   CalendarDays,
   CalendarRange,
   Contact,
@@ -222,6 +223,16 @@ export const MAIN_NAV: NavItem[] = [
     permission: "billing:view",
     section: "catalog",
     models: ["classes"],
+    contexts: ["management"],
+  },
+  {
+    label: "Certificados",
+    href: "/certificates",
+    icon: Award,
+    permission: "classes:manage",
+    section: "catalog",
+    models: ["classes"],
+    feature: "certificates",
     contexts: ["management"],
   },
   {

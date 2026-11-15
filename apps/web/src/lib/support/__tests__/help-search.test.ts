@@ -92,7 +92,8 @@ describe("nome das telas", () => {
   });
 
   it("ignora a query da rota", () => {
-    expect(screenName("/settings?tab=certificado")).toBe("Configurações");
+    expect(screenName("/settings?tab=horarios")).toBe("Configurações");
+    expect(screenName("/certificates")).toBe("Certificados");
     expect(screenName("/classes/calendar")).toBe("Calendário de turmas");
   });
 });
@@ -149,7 +150,7 @@ describe("resumo e links dos trechos", () => {
   });
 
   it("os links dos artigos apontam para telas que existem", () => {
-    const known = new Set(["/clients", "/classes", "/classes/calendar", "/classes/billing", "/classes/modalities", "/classes/plans", "/audit", "/users", "/team", "/settings", "/finance", "/communication", "/reports", "/online-payments", "/plans", "/dashboard"]);
+    const known = new Set(["/clients", "/classes", "/classes/calendar", "/classes/billing", "/classes/modalities", "/classes/plans", "/certificates", "/audit", "/users", "/team", "/settings", "/finance", "/communication", "/reports", "/online-payments", "/plans", "/dashboard"]);
     const broken: string[] = [];
     for (const chunk of HELP_CHUNKS) {
       for (const part of parseHelpLinks(chunk.text)) {

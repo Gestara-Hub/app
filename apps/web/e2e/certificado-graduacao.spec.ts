@@ -98,8 +98,8 @@ test("abrir pela evolução emite; a página pública confirma a graduação; ca
 
 test("editor: o modelo de graduação tem galeria, variáveis e prévia próprias", async ({ page }) => {
   await seedGraduated(page);
-  await page.goto("/settings?tab=certificado");
-  const panel = page.locator("#settings-panel-certificado");
+  await page.goto("/certificates");
+  const panel = page.getByRole("main");
   await panel.getByRole("tab", { name: "Graduação" }).click();
   const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
   await expect(sheet).toContainText("Certificado de graduação");

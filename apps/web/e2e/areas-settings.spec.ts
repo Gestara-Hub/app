@@ -313,11 +313,11 @@ async function logoFiles(testInfo: TestInfo) {
 const DEFAULT_BODY_PREVIEW =
   "Certificamos que Ana Souza concluiu o curso Confeitaria Básica, de 04/08/2026 a 22/09/2026, que teve 8 aulas, com frequência de 92%.";
 
-test.describe("Configurações: Certificado", () => {
-  test("Plano Grátis: aba com o cadeado e o caminho para o Pro", async ({ page }) => {
+test.describe("Certificados", () => {
+  test("Plano Grátis: tela com o cadeado e o caminho para o Pro", async ({ page }) => {
     await seedAcademy(page);
-    await page.goto("/settings?tab=certificado");
-    const panel = page.locator("#settings-panel-certificado");
+    await page.goto("/certificates");
+    const panel = page.getByRole("main");
     await expect(panel.getByText("Disponível no Plano Profissional")).toBeVisible();
     await expect(panel.getByRole("heading", { name: "Modelo de certificado" })).toBeVisible();
     await expect(panel.getByText("Modelo de certificado no Plano Profissional.")).toBeVisible();
@@ -332,8 +332,8 @@ test.describe("Configurações: Certificado", () => {
   async function openEditor(page: Page) {
     await seedAcademy(page);
     await activatePro(page);
-    await page.goto("/settings?tab=certificado");
-    const panel = page.locator("#settings-panel-certificado");
+    await page.goto("/certificates");
+    const panel = page.getByRole("main");
     await openBlocks(panel);
     return panel;
   }
@@ -356,8 +356,8 @@ test.describe("Configurações: Certificado", () => {
       t.organization.classSegment = "gastronomy";
     });
     await activatePro(page);
-    await page.goto("/settings?tab=certificado");
-    const panel = page.locator("#settings-panel-certificado");
+    await page.goto("/certificates");
+    const panel = page.getByRole("main");
     const sheet = panel.getByTestId("certificate-preview").locator("article.certificate-sheet");
     // Sem modelo salvo, o espaco ja emite com o modelo da sua area (Gastronomia: dourado, carga horaria).
     await expect(sheet).toContainText("Certificamos que Ana Souza concluiu o curso Confeitaria Básica, com carga horária de 16 horas, realizado de 04/08/2026 a 22/09/2026, com frequência de 92%, dominando as técnicas e as receitas do programa.");
@@ -823,20 +823,20 @@ test.describe("Configurações: Certificado", () => {
     await expect(save).toHaveCount(0);
   });
 
-  test("Pro: alteração não salva pede confirmação ao trocar de aba", async ({ page }) => {
+  test("Pro: alteração não salva pede confirmação ao sair da tela", async ({ page }) => {
     const panel = await openEditor(page);
     await panel.getByLabel("Título").fill("Título novo");
     await expect(panel.getByText("Alterações não salvas")).toBeVisible();
-    await page.getByRole("tab", { name: /Geral/ }).click();
-    const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
-    await expect(confirm).toContainText("Você tem alterações não salvas na aba Certificado");
+    await page.getByRole("link", { name: "Configurações" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Sair sem salvar?" });
+    await expect(confirm).toContainText("As alterações não salvas desta tela serão perdidas.");
     await confirm.getByRole("button", { name: "Continuar editando" }).click();
-    await expect(page).toHaveURL(/tab=certificado/);
+    await expect(page).toHaveURL(/\/certificates$/);
     await expect(panel.getByLabel("Título")).toHaveValue("Título novo");
 
-    await page.getByRole("tab", { name: /Geral/ }).click();
-    await confirm.getByRole("button", { name: "Trocar de aba" }).click();
-    await expect(page).toHaveURL(/tab=geral/);
+    await page.getByRole("link", { name: "Configurações" }).click();
+    await confirm.getByRole("button", { name: "Sair sem salvar" }).click();
+    await expect(page).toHaveURL(/\/settings/);
     expect((await readTenant(page)).certificateTemplate).toBeUndefined();
   });
 });

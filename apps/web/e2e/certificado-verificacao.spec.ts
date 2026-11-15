@@ -131,8 +131,8 @@ test("página para digitar o código e prévia do editor com um aluno de verdade
   await anonymous.close();
 
   // Editor: "Previa com" um aluno concluido mostra o nome e o curso reais, sem emitir de novo.
-  await page.goto("/settings?tab=certificado");
-  const panel = page.locator("#settings-panel-certificado");
+  await page.goto("/certificates");
+  const panel = page.getByRole("main");
   await panel.getByRole("combobox", { name: "Prévia com" }).click();
   await page.getByRole("option", { name: "Ana Souza · Defesa Pessoal" }).click();
   await expect(panel.getByTestId("certificate-preview").locator("article.certificate-sheet")).toContainText("Ana Souza concluiu o curso Defesa Pessoal");

@@ -12,6 +12,7 @@ const SCREEN_NAMES: Record<string, string> = {
   "/audit": "Auditoria",
   "/classes/billing": "Cobranças",
   "/classes/plans": "Planos e pacotes",
+  "/certificates": "Certificados",
   "/clients": "Alunos",
   "/team": "Equipe",
   "/finance": "Financeiro",

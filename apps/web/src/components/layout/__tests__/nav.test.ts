@@ -81,6 +81,14 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute(as("manager"), "/settings", "scheduling")).toBe(false);
   });
 
+  it("/certificates fica so no modelo de turmas e exige classes:manage", () => {
+    expect(isRouteInModel("/certificates", "scheduling")).toBe(false);
+    expect(isRouteInModel("/certificates", "classes")).toBe(true);
+    expect(canAccessRoute(as("attendant"), "/certificates", "classes")).toBe(false);
+    expect(canAccessRoute(as("manager"), "/certificates", "classes")).toBe(true);
+    expect(canAccessRoute(as("owner"), "/certificates", "classes")).toBe(true);
+  });
+
   it("dashboard /dashboard exige dashboard:view", () => {
     expect(canAccessRoute(as("owner"), "/dashboard", "classes")).toBe(true);
     expect(canAccessRoute(as("professional"), "/dashboard", "classes")).toBe(false);

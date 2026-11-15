@@ -344,25 +344,25 @@
     "id": "certificados#o-que-e",
     "article": "Certificados de conclusão",
     "title": "O que é",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Em cursos, o aluno que concluiu recebe um certificado em PDF. Faz parte do plano Profissional."
   },
   {
     "id": "certificados#emitir",
     "article": "Certificados de conclusão",
     "title": "Emitir",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Na turma de curso encerrada, abra o menu ⋮ do aluno e escolha \"Certificado\". Dá para imprimir ou salvar em PDF."
   },
   {
     "id": "certificados#comece-por-um-modelo",
     "article": "Certificados de conclusão",
     "title": "Comece por um modelo",
-    "route": "/settings?tab=certificado",
-    "text": "Sem configurar nada, seus certificados já saem com o modelo da sua área. Em Configurações, aba Certificado, a galeria \"Comece por um modelo\" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em \"Modelos prontos\", fechada; abra para trocar.",
+    "route": "/certificates",
+    "text": "Sem configurar nada, seus certificados já saem com o modelo da sua área. Em [Certificados](/certificates), na aba Gestão do menu lateral, a galeria \"Comece por um modelo\" mostra um cartão por área (lutas, pilates, dança, música, idiomas, gastronomia e as outras) com a prévia de cada um. Um clique preenche tudo; a logo continua a mesma. Depois de salvar, a galeria fica em \"Modelos prontos\", fechada; abra para trocar.",
     "summary": "Escolha um modelo pronto da sua área e ajuste só o que quiser.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "texto",
@@ -381,11 +381,11 @@
     "id": "certificados#personalizar-o-texto",
     "article": "Certificados de conclusão",
     "title": "Personalizar o texto",
-    "route": "/settings?tab=certificado",
-    "text": "Em Configurações, aba Certificado, os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de \"Inserir no texto\". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.",
+    "route": "/certificates",
+    "text": "Em [Certificados](/certificates), os blocos Aparência, Texto e Assinaturas abrem pelo título. No texto, os dados do aluno entram entre chaves (aluno, curso, início, fim, aulas, carga horária, frequência, professor, nome do espaço, cidade, data de emissão): digite { e escolha na lista, ou clique num botão de \"Inserir no texto\". No campo eles aparecem destacados; um nome que não existe fica em vermelho. Trecho com dado sem valor some sozinho da frase.",
     "summary": "Edite título, texto, assinaturas e cor do certificado.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "texto",
@@ -414,7 +414,7 @@
     "id": "certificados#ver-o-pdf-antes-de-salvar",
     "article": "Certificados de conclusão",
     "title": "Ver o PDF antes de salvar",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Ao lado da prévia, \"Ver em PDF\" abre o PDF do modelo como está na tela, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar. Em \"Prévia com\" dá para trocar os dados de exemplo por um aluno que concluiu um curso: assim você vê como fica com nome e curso de verdade.",
     "summary": "Confira como o certificado sai no papel, com dados de exemplo."
   },
@@ -422,11 +422,11 @@
     "id": "certificados#um-modelo-por-modalidade",
     "article": "Certificados de conclusão",
     "title": "Um modelo por modalidade",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Por padrão, todos os cursos usam o modelo do espaço. Escolhendo uma modalidade em \"Vale para\" e salvando, os cursos dela passam a sair com esse modelo; as outras continuam com o do espaço. Para desfazer, abra a modalidade e clique em \"Usar o modelo do espaço\".",
     "summary": "Cursos de uma modalidade podem ter o próprio certificado.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "campo",
@@ -445,11 +445,11 @@
     "id": "certificados#usar-a-minha-propria-arte",
     "article": "Certificados de conclusão",
     "title": "Usar a minha própria arte",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Faz parte do plano Profissional. Com a arte, o título, o texto, as assinaturas e a logo continuam vindo do modelo; o sistema desenha tudo por cima da imagem. Se a arte for escura, escolha o texto claro. Na prévia, dá para arrastar a logo, o texto, as assinaturas e o QR Code para onde a arte deixa espaço; em \"Blocos\", \"Voltar ao lugar\" desfaz. Lá também se escolhe o tamanho da logo e do QR. Depois, salve na barra que aparece embaixo.",
     "summary": "Use a imagem que você já tem como fundo do certificado.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "botão",
@@ -478,11 +478,11 @@
     "id": "certificados#voltar-ao-texto-padrao",
     "article": "Certificados de conclusão",
     "title": "Voltar ao texto padrão",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "O botão só aparece quando o texto está diferente do padrão. Layout, cor, assinaturas e logo não mudam.",
     "summary": "Volte o título e o texto do certificado aos originais.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "botão",
@@ -496,7 +496,7 @@
     "id": "certificados#emitir-todos-de-uma-vez",
     "article": "Certificados de conclusão",
     "title": "Emitir todos de uma vez",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Sai um PDF com um certificado por aluno, cada um com o próprio código de verificação. Quem já tinha certificado continua com o mesmo código; os cancelados ficam de fora. Também dá para imprimir pela tela, com uma folha por aluno.",
     "summary": "No fim do curso, os certificados de toda a turma num PDF só.",
     "guide": {
@@ -519,7 +519,7 @@
     "id": "certificados#certificado-de-graduacao",
     "article": "Certificados de conclusão",
     "title": "Certificado de graduação",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Faz parte do plano Profissional. O certificado nasce do registro de graduação do aluno, não da turma: ao abrir pela primeira vez, ele é emitido com o código de verificação; depois, o código é o mesmo. Logo depois de Graduar, o aviso oferece \"Ver certificado\". Quem assina como professor é o examinador informado na graduação; sem ele, o professor da turma do aluno na modalidade. Dá para baixar em PDF, imprimir e cancelar, como no de curso.",
     "summary": "Faixa, nível, módulo ou fase: cada graduação registrada pode virar certificado.",
     "guide": {
@@ -542,11 +542,11 @@
     "id": "certificados#modelo-do-certificado-de-graduacao",
     "article": "Certificados de conclusão",
     "title": "Modelo do certificado de graduação",
-    "route": "/settings?tab=certificado",
-    "text": "Em Configurações, aba Certificado, a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio \"Vale para\" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.",
+    "route": "/certificates",
+    "text": "Em [Certificados](/certificates), a escolha no topo troca entre o modelo de conclusão de curso e o de graduação. Cada um tem o próprio \"Vale para\" por modalidade, a própria galeria e os próprios dados: na graduação, os dados do aluno são aluno, modalidade, etapa alcançada, etapa anterior, grau, data da graduação, professor, nome do espaço e cidade. Sem configurar nada, a graduação já sai com o modelo da sua área.",
     "summary": "O certificado de graduação tem modelo, texto e modelos prontos próprios.",
     "guide": {
-      "route": "/settings?tab=certificado",
+      "route": "/certificates",
       "steps": [
         {
           "kind": "aba",
@@ -565,7 +565,7 @@
     "id": "certificados#codigo-de-verificacao",
     "article": "Certificados de conclusão",
     "title": "Código de verificação",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) lê o QR, ou abre o endereço curto do rodapé e digita o código, e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.",
     "summary": "Quem recebe o certificado confere se ele é verdadeiro."
   },
@@ -573,7 +573,7 @@
     "id": "certificados#cancelar-um-certificado",
     "article": "Certificados de conclusão",
     "title": "Cancelar um certificado",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "Na tela do certificado, \"Cancelar certificado\" pede confirmação e não dá para desfazer. O PDF e a impressão somem, e a página do código passa a dizer que o certificado foi cancelado. Para emitir de novo, fale com o suporte.",
     "summary": "Emitiu errado? Cancele e a página de verificação passa a dizer que não vale.",
     "guide": {
@@ -591,7 +591,7 @@
     "id": "certificados#frequencia",
     "article": "Certificados de conclusão",
     "title": "Frequência",
-    "route": "/settings?tab=certificado",
+    "route": "/certificates",
     "text": "O texto padrão diz quantas aulas o curso teve e a frequência real do aluno. \"Concluído\" vale pelo calendário do curso."
   },
   {
@@ -1239,7 +1239,7 @@
     "article": "Configurações do espaço",
     "title": "Certificado e plano",
     "route": "/settings",
-    "text": "O modelo do certificado está em [Certificado](/settings?tab=certificado), e o plano do GestaraHub em [Plano GestaraHub](/settings?tab=plano). Veja os artigos \"Certificados de conclusão\" e \"Plano do GestaraHub\". Segurança da conta fica no menu do usuário, no topo.",
+    "text": "O modelo do certificado está em [Certificados](/certificates), no menu lateral, e o plano do GestaraHub em [Plano GestaraHub](/settings?tab=plano). Veja os artigos \"Certificados de conclusão\" e \"Plano do GestaraHub\". Segurança da conta fica no menu do usuário, no topo.",
     "summary": "Onde ficam o modelo de certificado e o plano do GestaraHub."
   },
   {

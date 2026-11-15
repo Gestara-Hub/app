@@ -54,30 +54,30 @@ import { useCompletedEnrollments, usePreviewCourseCertificate } from "@/features
 import { useGraduations, usePreviewGraduationCertificate } from "@/features/clients";
 import { PageTabs } from "@/components/shared/page-tabs";
 import { openHelp } from "@/features/support";
+import { SettingsSaveBar, useOrganization, useUnit } from "@/features/settings";
+import { useReportDirty } from "@/lib/unsaved-changes";
 import {
   ACCENT_COLORS,
   CERTIFICATE_KIND_OPTIONS,
-  CertificatePresetGallery,
-  CertificateSheet,
   INK_OPTIONS,
   LAYOUT_OPTIONS,
   PART_LABELS,
   TEXT_POSITION_OPTIONS,
-  matchingCertificatePreset,
   sampleCertificate,
   sampleGraduationCertificate,
   variableLabel,
-  type CertificatePresetOption,
+} from "../certificate-meta";
+import { matchingCertificatePreset, type CertificatePresetOption } from "../certificate-presets";
+import {
   useCertificateTemplate,
   useLocalFileUrl,
   useModalitiesWithOwnTemplate,
   useRemoveModalityTemplate,
   useSaveCertificateTemplate,
   useStoredFileUrl,
-} from "@/features/certificates";
-import { useOrganization, useUnit } from "../hooks/use-settings";
-import { SettingsSaveBar } from "./settings-save-bar";
-import { useReportDirty } from "./unsaved-changes";
+} from "../hooks/use-certificate-template";
+import { CertificatePresetGallery } from "./certificate-preset-gallery";
+import { CertificateSheet } from "./certificate-sheet";
 
 /** Texto do upsell (uma linha, como os outros recursos do Pro). */
 export const CERTIFICATE_TEMPLATE_LOCKED_HINT = "Modelo de certificado no Plano Profissional.";
@@ -216,9 +216,9 @@ const SPACE = "space";
 const SAMPLE = "sample";
 
 /**
- * Configuracoes -> "Certificado" (Plano Profissional): o modelo do certificado de
- * conclusao do espaco, ou o de uma modalidade ("Vale para", 31/10/2026), com
- * previa ao vivo. Sem o recurso mostra o upsell.
+ * Certificados (Plano Profissional): o modelo do certificado de conclusao do
+ * espaco, ou o de uma modalidade ("Vale para", 31/10/2026), com previa ao vivo.
+ * Sem o recurso mostra o upsell.
  */
 export function CertificateTemplateCard({
   onDirtyChange,
@@ -346,17 +346,13 @@ export function CertificateTemplateCard({
   );
 
   if (!hasFeature("certificates")) {
-    // Bloqueado: na largura das outras abas (a aba aberta usa a largura da previa).
     return (
-      <div className="max-w-3xl">
-        <FeatureLocked
-          title="Modelo de certificado"
-          description={CERTIFICATE_TEMPLATE_LOCKED_HINT}
-          icon={<Award className="size-7" aria-hidden />}
-          canManagePlan={can("subscription:manage")}
-          align="start"
-        />
-      </div>
+      <FeatureLocked
+        title="Modelo de certificado"
+        description={CERTIFICATE_TEMPLATE_LOCKED_HINT}
+        icon={<Award className="size-7" aria-hidden />}
+        canManagePlan={can("subscription:manage")}
+      />
     );
   }
 

@@ -27,6 +27,7 @@ function isPublic(pathname: string): boolean {
 const APP_PATHS = [
   "/appointments",
   "/audit",
+  "/certificates",
   "/classes",
   "/clients",
   "/communication",

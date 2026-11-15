@@ -43,11 +43,12 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/appointments` | — | `scheduling` | `schedule:view` | Redireciona para `/schedule` (links antigos). |
 | `/classes` | Turmas | `classes` | `classes:view` | Lista de turmas. |
 | `/classes/[id]` | Detalhe da turma | `classes` | `classes:view` | Matriculas, lista de espera. |
-| `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Usa o modelo do espaco (Configurações → Certificado). Impressão pelo navegador (A4 deitado). |
+| `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Usa o modelo do espaco (`/certificates`). Impressão pelo navegador (A4 deitado). |
 | `/classes/sessions/[sessionId]` | Aula | `classes` | `classes:view` | Chamada, reservas, instrutor substituto. |
 | `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas e dos dias de evento (cor própria; `?show=classes|events`). |
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
 | `/classes/plans` | Planos | `classes` | `billing:view` | Abas "Planos de mensalidade" e "Pacotes de aulas" (`?tab=packages`). |
+| `/certificates` | Certificados | `classes` | `classes:manage` + Plano Pro (`certificates`) | Modelos dos certificados de conclusão de curso e de graduação (movido de Configurações em 14/11/2026); sem o recurso, item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/classes/billing` | Cobranças | `classes` | `billing:view` | Cobrancas por competencia: mensalidades, aulas avulsas, cobrancas avulsas e parcelas de curso (antes "Mensalidades", renomeada em 14/10/2026). |
 | `/events` | Eventos | `classes` | `events:view` | Seminários, workshops e aulões (doc product/29): lista com busca e situação; "+ Novo evento" pede `events:manage`. |
 | `/events/[id]` | Detalhe do evento | `classes` | `events:view` | Abas Inscritos, Espera e Dias; Inscrever (`enrollment:manage`), Editar e Cancelar (`events:manage`). |
@@ -57,7 +58,7 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
-| `/settings` | Configurações | todos | `settings:view` | Abas `?tab=geral\|horarios\|pagamento\|certificado\|plano\|dados`: organizacao, unidade, horarios, regras da mensalidade, pagamento online, modelo de certificado, Plano GestaraHub e "Apagar dados da demonstração". "Pagamento online" e "Certificado" so no modelo `classes`; "Certificado" (14/10/2026) e do Plano Pro (`certificates`), sem o recurso mostra o upsell. |
+| `/settings` | Configurações | todos | `settings:view` | Abas `?tab=geral\|horarios\|cobranca\|plano`: organizacao, unidade, horarios, regras da mensalidade e Plano GestaraHub. "Cobrança" so no modelo `classes`; `?tab=certificado` redireciona para `/certificates` (14/11/2026). |
 
 Notas:
 

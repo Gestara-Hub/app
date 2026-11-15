@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Award, Building2, CalendarDays, Clock, Sparkles } from "lucide-react";
+import { Building2, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { PageTabs } from "@/components/shared/page-tabs";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useModel } from "@/features/auth";
@@ -11,9 +11,8 @@ import { BusinessHoursForm } from "./business-hours-card";
 import { BILLING_RULES_ANCHOR, BillingRulesCard, hashTargets } from "./billing-rules-card";
 import { useBeforeUnloadGuard, useLeaveLinkGuard } from "./unsaved-changes";
 import { SubscriptionPlanCard } from "./subscription-plan-card";
-import { CertificateTemplateCard } from "./certificate-template-card";
 
-type Tab = "geral" | "horarios" | "cobranca" | "certificado" | "plano";
+type Tab = "geral" | "horarios" | "cobranca" | "plano";
 
 /** Abas que editam e salvam pela barra (o Plano tem acoes proprias). */
 type EditableTab = Exclude<Tab, "plano">;
@@ -22,13 +21,12 @@ const TABS: {
   value: Tab;
   label: string;
   icon: typeof Building2;
-  /** So nos espacos de turmas (cobranca por mensalidade e certificado de curso). */
+  /** So nos espacos de turmas (cobranca por mensalidade). */
   classesOnly?: boolean;
 }[] = [
   { value: "geral", label: "Geral", icon: Building2 },
   { value: "horarios", label: "Horários", icon: Clock },
   { value: "cobranca", label: "Cobrança", icon: CalendarDays, classesOnly: true },
-  { value: "certificado", label: "Certificado", icon: Award, classesOnly: true },
   { value: "plano", label: "Plano GestaraHub", icon: Sparkles },
 ];
 
@@ -45,8 +43,6 @@ function tabDescription(tab: Tab, isClasses: boolean): string | null {
         : "Dias e horários em que o espaço funciona. A agenda segue esse horário.";
     case "cobranca":
       return "Como a mensalidade dos alunos vence.";
-    case "certificado":
-      return "Modelo do certificado de conclusão dos cursos.";
     case "plano":
       return "Sua assinatura do GestaraHub.";
     default:
@@ -55,10 +51,11 @@ function tabDescription(tab: Tab, isClasses: boolean): string | null {
 }
 
 /**
- * Configurações em abas (revisão de 31/10/2026): Geral, Horários, Cobrança,
- * Certificado e Plano. As preferências de cada pessoa (tema e sons) ficam só no
- * menu da conta. Os painéis ficam montados e alternamos só a visibilidade, para
- * não descartar edições em andamento ao trocar de aba.
+ * Configurações em abas: Geral, Horários, Cobrança e Plano. As preferências de
+ * cada pessoa (tema e sons) ficam só no menu da conta; os modelos de
+ * certificado ficam na tela Certificados (menu lateral). Os painéis ficam
+ * montados e alternamos só a visibilidade, para não descartar edições em
+ * andamento ao trocar de aba.
  */
 export function SettingsTabs() {
   const router = useRouter();
@@ -94,7 +91,6 @@ export function SettingsTabs() {
     geral: reportDirty("geral"),
     horarios: reportDirty("horarios"),
     cobranca: reportDirty("cobranca"),
-    certificado: reportDirty("certificado"),
   }));
   const anyDirty = Object.values(dirtyTabs).some(Boolean);
   useBeforeUnloadGuard(anyDirty);
@@ -136,8 +132,7 @@ export function SettingsTabs() {
   };
 
   return (
-    // Uma largura so para as abas; o Certificado usa a tela toda, para a previa ficar grande (pedido de 31/10/2026).
-    <div className={tab === "certificado" ? undefined : "max-w-5xl"}>
+    <div className="max-w-5xl">
       <PageTabs
         tabs={visibleTabs.map((t) => ({
           ...t,
@@ -171,7 +166,6 @@ export function SettingsTabs() {
             {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={onDirty.geral} /> : null}
             {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={onDirty.horarios} /> : null}
             {t.value === "cobranca" ? <BillingRulesCard onDirtyChange={onDirty.cobranca} /> : null}
-            {t.value === "certificado" ? <CertificateTemplateCard onDirtyChange={onDirty.certificado} /> : null}
             {t.value === "plano" ? <SubscriptionPlanCard /> : null}
           </div>
         );
