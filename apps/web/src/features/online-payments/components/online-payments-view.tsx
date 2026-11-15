@@ -207,40 +207,38 @@ export function OnlinePaymentsView() {
         title="Recebimentos online"
         description={isSubaccountActive ? "Saldos das mensalidades, histórico de cobranças e saques via Pix." : undefined}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          {isSubaccountActive ? (
-            <>
-              <Badge
-                variant="outline"
-                className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-              >
-                <CheckCircle2 className="size-3.5" />
-                Conta ativa
-              </Badge>
-
-              {can("finance:view") ? <StatementMenu /> : null}
-
-              {isOwner ? (
-                <Button
-                  data-tour="op-withdraw"
-                  onClick={() => setQuickTransferOpen(true)}
-                  disabled={availableCents <= 0}
-                  className="gap-1.5 shadow-xs"
-                >
-                  <ArrowUpRight className="size-4" />
-                  Sacar via Pix
-                </Button>
-              ) : null}
-            </>
-          ) : showPendingBadge(onlineSettings?.gatewayStatus) ? (
+        {isSubaccountActive ? (
+          <>
             <Badge
               variant="outline"
-              className="gap-1.5 border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
             >
-              Ativação pendente
+              <CheckCircle2 className="size-3.5" />
+              Conta ativa
             </Badge>
-          ) : null}
-        </div>
+
+            {can("finance:view") ? <StatementMenu /> : null}
+
+            {isOwner ? (
+              <Button
+                data-tour="op-withdraw"
+                onClick={() => setQuickTransferOpen(true)}
+                disabled={availableCents <= 0}
+                className="gap-1.5 shadow-xs"
+              >
+                <ArrowUpRight className="size-4" />
+                Sacar via Pix
+              </Button>
+            ) : null}
+          </>
+        ) : showPendingBadge(onlineSettings?.gatewayStatus) ? (
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+          >
+            Ativação pendente
+          </Badge>
+        ) : null}
       </PageHeader>
       ) : null}
 

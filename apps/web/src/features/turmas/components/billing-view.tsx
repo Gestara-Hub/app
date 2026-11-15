@@ -575,7 +575,7 @@ export function BillingView() {
               <AllOverdueSummary charges={list} isLoading={isLoading} />
             ) : (
               /* Indicadores do mes: o mesmo cartao do Financeiro (StatCard). */
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                   label="Total ativo"
                   icon={<Wallet />}
@@ -613,7 +613,7 @@ export function BillingView() {
                 />
                 <StatCard
                   label={
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex flex-wrap items-center gap-1.5">
                       Cancelado
                       {!isLoading && canceledList.length > 0 ? (
                         <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">

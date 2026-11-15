@@ -75,7 +75,7 @@ export function StatCard({
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <span className="min-w-0 text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-md [&_svg]:size-4", ICON_TONE[iconTone])}>{icon}</div>
       </div>

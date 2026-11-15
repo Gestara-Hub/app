@@ -63,28 +63,30 @@ function Kpi({
   href?: string;
 }) {
   const content = (
-    <div className="flex items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="min-w-0 text-xs font-medium text-muted-foreground break-words">{label}</p>
+    <div className="flex flex-col gap-2 p-3.5 sm:px-4 sm:py-3.5">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
           {badge}
         </div>
-        <p className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl mt-0.5">
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-lg",
+            iconColor,
+          )}
+        >
+          {icon}
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl">
           {value}
         </p>
         {hint ? (
-          <div className="min-w-0 text-xs text-muted-foreground leading-snug mt-0.5 break-words">
+          <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
             {hint}
           </div>
         ) : null}
-      </div>
-      <div
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg",
-          iconColor,
-        )}
-      >
-        {icon}
       </div>
     </div>
   );
@@ -201,7 +203,7 @@ function DashboardKpis({ d }: { d: DashboardData }) {
   const canViewFinance = can("finance:view");
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Kpi
         icon={<GraduationCap className="size-5" />}
         iconColor="bg-primary/10 text-primary"
@@ -581,7 +583,7 @@ function AcademyDashboardBody() {
   if (d.isPending) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
@@ -614,26 +616,23 @@ export function AcademyDashboardView() {
   return (
     <div className="space-y-6">
       {hasOperatingData ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <PageHeader
-            title="Painel"
-            description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
-          />
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/classes/calendar">
-                <CalendarCheck className="size-4" />
-                Ver calendário
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/classes">
-                <Plus className="size-4" />
-                Nova turma
-              </Link>
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Painel"
+          description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
+        >
+          <Button variant="outline" asChild>
+            <Link href="/classes/calendar">
+              <CalendarCheck className="size-4" />
+              Ver calendário
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/classes">
+              <Plus className="size-4" />
+              Nova turma
+            </Link>
+          </Button>
+        </PageHeader>
       ) : null}
 
       <ProActivationBanner />

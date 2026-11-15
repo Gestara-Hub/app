@@ -865,7 +865,7 @@ export function ClientsList({
   return (
     <div className="space-y-4">
       {/* Barra de Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput
           value={search}
           onChange={(val) => {
@@ -876,7 +876,7 @@ export function ClientsList({
           placeholder="Buscar por nome ou telefone..."
           aria-label={isClasses ? "Buscar aluno" : "Buscar cliente"}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusFilterSelect
             value={status}
             onChange={(val) => {
@@ -892,7 +892,7 @@ export function ClientsList({
                 setPage(1);
               }}
             >
-              <SelectTrigger className="sm:w-44" aria-label="Aula experimental">
+              <SelectTrigger className="min-w-0 flex-1 sm:w-auto sm:min-w-44 sm:flex-none" aria-label="Aula experimental">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

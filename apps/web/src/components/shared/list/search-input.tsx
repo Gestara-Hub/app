@@ -63,7 +63,7 @@ export function SearchInput({
   };
 
   return (
-    <div className={cn("relative flex-1", className)}>
+    <div className={cn("relative w-full min-w-0 flex-1 sm:min-w-[min(100%,14rem)]", className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={draft}

@@ -384,7 +384,7 @@ export function UsersList({
   return (
     <div className="space-y-4">
       {/* Barra de Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -393,7 +393,7 @@ export function UsersList({
           aria-label="Buscar usuário"
         />
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusFilterSelect
             value={status}
             onChange={setStatus}

@@ -73,7 +73,7 @@ export function DiscoveryChecklist({
         />
       </div>
 
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+      <ul className="mt-4 grid gap-2 md:grid-cols-2">
         {items.map((item) => {
           const Icon = DISCOVERY_ICONS[item.id];
           const locked = !item.done && Boolean(item.requires);

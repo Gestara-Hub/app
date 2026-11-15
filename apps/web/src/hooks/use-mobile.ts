@@ -1,9 +1,9 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+const MOBILE_BREAKPOINT = 1024
 
 /**
- * `true` quando a viewport esta abaixo do breakpoint mobile.
+ * `true` quando a viewport esta abaixo de `lg` (celular e iPad em retrato).
  * Usa `useSyncExternalStore` (sem setState em effect) e e SSR-safe
  * (snapshot do servidor = false).
  */

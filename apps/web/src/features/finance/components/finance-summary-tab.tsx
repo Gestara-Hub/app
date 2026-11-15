@@ -116,7 +116,7 @@ function SummaryContent({
     <div className="space-y-5">
       {/* Indicadores do mes: o mesmo cartao de Cobrancas (StatCard), cada um com
           uma linha curta e o link para a lista que forma o numero. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Saldo do mês"
           hint={hasPending ? `Com o que falta receber e pagar no mês: ${formatCents(projected)}` : undefined}

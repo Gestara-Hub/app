@@ -47,15 +47,13 @@ export function FinanceView() {
         title="Financeiro"
         description={`Entradas, saídas, resultado do mês e pagamento dos ${team.lowerPlural}.`}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
-          {canManage ? (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" />
-              Novo lançamento
-            </Button>
-          ) : null}
-        </div>
+        <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
+        {canManage ? (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Novo lançamento
+          </Button>
+        ) : null}
       </PageHeader>
 
       <PageTabs
