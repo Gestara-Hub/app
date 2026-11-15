@@ -13,7 +13,7 @@
 const FLASH_MS = 1600;
 const WAIT_MS = 6000;
 const POLL_MS = 150;
-const CLASS = "record-flash";
+const activeFlashes = new WeakMap<HTMLElement, Animation>();
 
 export type HighlightMeta = boolean | ((data: unknown, variables: unknown) => string | null | undefined);
 
@@ -35,16 +35,45 @@ function visibleTarget(id: string): HTMLElement | null {
 
 const dialogOpen = () => Boolean(document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'));
 
+function resolveFlashColor(): string {
+  const probe = document.createElement("span");
+  probe.style.position = "fixed";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.color = "color-mix(in oklab, var(--success) 16%, transparent)";
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  return resolved || "rgba(34, 197, 94, 0.16)";
+}
+
 function flash(el: HTMLElement) {
-  el.classList.remove(CLASS);
-  void el.offsetWidth; // reinicia a animacao se ja estava piscando
-  el.classList.add(CLASS);
   const rect = el.getBoundingClientRect();
   if (rect.top < 64 || rect.bottom > window.innerHeight) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
   }
-  window.setTimeout(() => el.classList.remove(CLASS), FLASH_MS);
+
+  // Usa Web Animations API para nao sobrescrever nem reativar o `animate-in` CSS da linha.
+  if (typeof el.animate !== "function") return;
+  activeFlashes.get(el)?.cancel();
+  const color = resolveFlashColor();
+  const anim = el.animate(
+    [
+      { boxShadow: `inset 0 0 0 9999px ${color}`, offset: 0 },
+      { boxShadow: `inset 0 0 0 9999px ${color}`, offset: 0.35 },
+      { boxShadow: "inset 0 0 0 9999px transparent", offset: 1 },
+    ],
+    { duration: FLASH_MS, easing: "ease-out" },
+  );
+  activeFlashes.set(el, anim);
+  anim.addEventListener(
+    "finish",
+    () => {
+      if (activeFlashes.get(el) === anim) activeFlashes.delete(el);
+    },
+    { once: true },
+  );
 }
 
 export function highlightRecord(id: string | null | undefined): void {
