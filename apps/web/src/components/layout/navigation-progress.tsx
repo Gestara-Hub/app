@@ -3,10 +3,16 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import {
+  NAVIGATION_CANCELLED_EVENT,
+  NAVIGATION_STARTED_EVENT,
+} from "@/lib/unsaved-changes";
 
 const subscribe = () => () => {};
 /** Troca rapida nao mostra nada (mesma espera da barra da lista ao atualizar). */
 const SHOW_AFTER_MS = 250;
+/** Limite de seguranca para a barra nunca ficar presa se a navegacao for cancelada ou falhar. */
+const MAX_VISIBLE_MS = 15_000;
 
 /**
  * Barra fina no topo enquanto a proxima tela chega (doc 07 §1.9). Substitui o
@@ -14,7 +20,7 @@ const SHOW_AFTER_MS = 250;
  * pagina hidratar depois do layout, e os dados que o layout ja tinha buscado
  * mudavam a primeira renderizacao (React #418), alem de quebrar o `redirect()`
  * das guardas (React #310). Aqui a barra liga no clique de um link interno e
- * some quando o endereco muda; nada de Suspense em volta da pagina.
+ * zera assim que o endereco muda; nada de Suspense em volta da pagina.
  *
  * Vai para o body por portal: o template de (app) anima a entrada com
  * `transform`, e ancestral com transform prende o `fixed` nele.
@@ -24,15 +30,47 @@ export function NavigationProgress() {
   const search = useSearchParams().toString();
   const route = `${pathname}?${search}`;
   const isClient = useSyncExternalStore(subscribe, () => true, () => false);
-  // Endereco em que a barra ligou: trocou o endereco, ela some sozinha.
+  const [prevRoute, setPrevRoute] = useState(route);
   const [startedOn, setStartedOn] = useState<string | null>(null);
   const routeRef = useRef(route);
+  const showTimerRef = useRef<number | undefined>(undefined);
+  const safetyTimerRef = useRef<number | undefined>(undefined);
+
+  // Zera o estado assim que a rota muda: evita que a barra volte ligada ao retornar para a rota anterior.
+  if (prevRoute !== route) {
+    setPrevRoute(route);
+    if (startedOn !== null) setStartedOn(null);
+  }
+
   useEffect(() => {
     routeRef.current = route;
+    window.clearTimeout(showTimerRef.current);
+    window.clearTimeout(safetyTimerRef.current);
   }, [route]);
 
   useEffect(() => {
-    let timer: number | undefined;
+    const clearTimers = () => {
+      window.clearTimeout(showTimerRef.current);
+      window.clearTimeout(safetyTimerRef.current);
+    };
+
+    const scheduleShow = (from: string) => {
+      clearTimers();
+      showTimerRef.current = window.setTimeout(() => {
+        // So liga se ainda estamos na tela do clique (a troca nao veio antes).
+        if (routeRef.current !== from) return;
+        setStartedOn(from);
+        safetyTimerRef.current = window.setTimeout(() => {
+          setStartedOn(null);
+        }, MAX_VISIBLE_MS);
+      }, SHOW_AFTER_MS);
+    };
+
+    const cancel = () => {
+      clearTimers();
+      setStartedOn(null);
+    };
+
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
@@ -40,17 +78,19 @@ export function NavigationProgress() {
       const url = new URL(anchor.href, window.location.href);
       if (url.origin !== window.location.origin) return;
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
-      const from = routeRef.current;
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        // So liga se ainda estamos na tela do clique (a troca nao veio antes).
-        if (routeRef.current === from) setStartedOn(from);
-      }, SHOW_AFTER_MS);
+      scheduleShow(routeRef.current);
     };
+
+    const onNavStart = () => scheduleShow(routeRef.current);
+
     document.addEventListener("click", onClick, true);
+    window.addEventListener(NAVIGATION_STARTED_EVENT, onNavStart);
+    window.addEventListener(NAVIGATION_CANCELLED_EVENT, cancel);
     return () => {
-      window.clearTimeout(timer);
+      clearTimers();
       document.removeEventListener("click", onClick, true);
+      window.removeEventListener(NAVIGATION_STARTED_EVENT, onNavStart);
+      window.removeEventListener(NAVIGATION_CANCELLED_EVENT, cancel);
     };
   }, []);
 

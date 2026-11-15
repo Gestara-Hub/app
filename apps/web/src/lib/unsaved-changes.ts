@@ -3,6 +3,18 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+export const NAVIGATION_STARTED_EVENT = "gestarahub:nav-start";
+export const NAVIGATION_CANCELLED_EVENT = "gestarahub:nav-cancel";
+
+/** Avisa o pai quando o estado "sujo" do formulario muda. */
+export function useReportDirty(dirty: boolean, onDirtyChange?: (dirty: boolean) => void) {
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Ao desmontar, o formulario deixa de contar como sujo
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+}
+
 /** Pede confirmacao do navegador ao recarregar/fechar a aba com alteracoes nao salvas. */
 export function useBeforeUnloadGuard(active: boolean) {
   useEffect(() => {
@@ -36,8 +48,12 @@ export function useLeaveLinkGuard(active: boolean, ask: () => Promise<boolean>) 
       if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
       event.preventDefault();
       event.stopPropagation();
+      window.dispatchEvent(new CustomEvent(NAVIGATION_CANCELLED_EVENT));
       void ask().then((ok) => {
-        if (ok) router.push(`${url.pathname}${url.search}${url.hash}`);
+        if (ok) {
+          window.dispatchEvent(new CustomEvent(NAVIGATION_STARTED_EVENT));
+          router.push(`${url.pathname}${url.search}${url.hash}`);
+        }
       });
     };
     document.addEventListener("click", onClick, true);
