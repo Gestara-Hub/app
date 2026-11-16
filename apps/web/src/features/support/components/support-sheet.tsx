@@ -19,10 +19,11 @@ import {
   useEscalateSupportThread,
   useMarkBotHelped,
   useSendSupportMessage,
+  useSupportAvailability,
   useSupportThread,
   useSupportThreads,
 } from "../hooks/use-support";
-import { KIND_COPY, KIND_LABEL, REPLY_PROMISE, STATUS_LABEL, authorLabel, statusNote } from "../support-copy";
+import { KIND_COPY, KIND_LABEL, REPLY_PROMISE, STATUS_LABEL, authorLabel, statusNote, supportIntro } from "../support-copy";
 
 type View = { kind: "list" } | { kind: "new"; supportKind: SupportKind } | { kind: "chat"; threadId: string };
 
@@ -54,6 +55,8 @@ export function SupportSheet({
   errorReference?: string;
 }) {
   const threads = useSupportThreads(open);
+  const availability = useSupportAvailability(open);
+  const botAvailable = availability.data?.botAvailable ?? false;
   // A escolha da pessoa; sem escolha, abre numa conversa nova quando veio com texto
   // (ex.: duvida sobre planos) ou nao ha conversas, e na lista nos outros casos.
   const [chosen, setChosen] = useState<View | null>(null);
@@ -78,7 +81,9 @@ export function SupportSheet({
             <LifeBuoy className="size-5 text-primary" /> Fale com a gente
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
-            O assistente responde na hora. Se precisar, enviamos para o suporte.
+            {botAvailable
+              ? "O assistente responde na hora. Se precisar, enviamos para o suporte."
+              : "Envie sua dúvida, relato ou sugestão para a nossa equipe."}
           </SheetDescription>
         </SheetHeader>
         {view.kind === "list" ? (
@@ -96,6 +101,7 @@ export function SupportSheet({
             open={open}
             origin={origin}
             supportKind={view.kind === "new" ? view.supportKind : "question"}
+            botAvailable={botAvailable}
             draft={view.kind === "new" ? draft : undefined}
             errorReference={errorReference}
             onBack={() => setView({ kind: "list" })}
@@ -215,6 +221,7 @@ function Chat({
   open,
   origin,
   supportKind,
+  botAvailable,
   draft,
   errorReference,
   onBack,
@@ -224,6 +231,7 @@ function Chat({
   open: boolean;
   origin: string;
   supportKind: SupportKind;
+  botAvailable: boolean;
   draft?: string;
   errorReference?: string;
   onBack: () => void;
@@ -301,7 +309,7 @@ function Chat({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
         {!threadId ? (
           <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {KIND_COPY[supportKind].intro}
+            {supportIntro(supportKind, botAvailable)}
             {errorReference ? ` O código do erro (${errorReference}) vai junto, e a equipe vê o que aconteceu.` : ""}
           </p>
         ) : thread.isPending ? (
@@ -312,7 +320,8 @@ function Chat({
         ))}
         {pending && botOpen !== false ? (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" /> {escalate.isPending ? "Enviando ao suporte..." : "Respondendo..."}
+            <Loader2 className="size-3.5 animate-spin" />{" "}
+            {escalate.isPending ? "Enviando ao suporte..." : botAvailable && supportKind === "question" ? "Respondendo..." : "Enviando..."}
           </p>
         ) : null}
         {note ? <p className="rounded-md bg-muted px-3 py-2 text-center text-xs text-muted-foreground">{note}</p> : null}

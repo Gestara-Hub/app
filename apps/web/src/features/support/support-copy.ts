@@ -54,3 +54,11 @@ export const KIND_COPY: Record<SupportKind, { intro: string; placeholder: string
     placeholder: "Qual melhoria você sugere?",
   },
 };
+
+export const DIRECT_QUESTION_INTRO =
+  "Conte o que você precisa. Sua mensagem vai direto para a nossa equipe, que responde em até 2 dias úteis por aqui e por e-mail. Não escreva CPF, cartão nem senha: por segurança, esses dados são apagados da mensagem.";
+
+export function supportIntro(kind: SupportKind, botAvailable: boolean): string {
+  if (kind === "question" && !botAvailable) return DIRECT_QUESTION_INTRO;
+  return KIND_COPY[kind].intro;
+}

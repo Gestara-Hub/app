@@ -164,6 +164,13 @@ async function answerWithBot(c: Awaited<ReturnType<typeof caller>>, threadId: st
   return { needsHuman };
 }
 
+export async function getSupportAvailabilityAction(): Promise<ActionResult<{ botAvailable: boolean }>> {
+  return runAction(async () => {
+    await requireTenant();
+    return { botAvailable: botEnabled() };
+  }, "support.availability");
+}
+
 export async function listSupportThreadsAction(): Promise<ActionResult<SupportThreadSummary[]>> {
   return runAction(async () => {
     const c = await caller();
@@ -245,9 +252,10 @@ export async function sendSupportMessageAction(input: {
     }
 
     let needsHuman = false;
-    if (!input.threadId && input.kind && input.kind !== "question") {
-      // Problema e sugestao nao passam pelo assistente: vao direto para a equipe.
+    if ((!input.threadId && input.kind && input.kind !== "question") || (before === "bot" && !botEnabled())) {
+      // Sem assistente de IA ligado (ou problema/sugestao): abre direto como chamado para a equipe.
       await escalate(c, threadId);
+      needsHuman = true;
     } else if (before === "bot") {
       ({ needsHuman } = await answerWithBot(c, threadId, message));
     } else {

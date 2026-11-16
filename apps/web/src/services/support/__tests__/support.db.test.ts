@@ -121,12 +121,14 @@ describe("assistente", () => {
     expect(month_cost_cents).toBeGreaterThan(0);
   });
 
-  it("sem chave do modelo, vai direto para o suporte", async () => {
+  it("sem chave do modelo, abre direto como chamado para o suporte", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const view = await unwrap(actions.sendSupportMessageAction({ message: "Preciso de ajuda com uma turma" }));
+    expect(view.status).toBe("waiting_us");
     expect(view.needsHuman).toBe(true);
     expect(view.botAvailable).toBe(false);
-    expect(view.messages[1].body).toContain("indisponível");
+    expect(view.messages.map((m) => m.author)).toEqual(["customer", "system"]);
+    expect(mail.sendSupportNotice).toHaveBeenCalledWith(expect.objectContaining({ kind: "new", topic: "question" }), expect.anything());
   });
 
   it("falha do modelo vira convite ao suporte, sem gastar", async () => {

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unwrap } from "@/services/server/action";
 import {
   escalateSupportThreadAction,
+  getSupportAvailabilityAction,
   getSupportThreadAction,
   listSupportThreadsAction,
   markSupportBotHelpedAction,
@@ -15,10 +16,21 @@ import type { SupportKind, SupportThreadView } from "@/services/support/supportT
 
 const keys = {
   all: ["support"] as const,
+  availability: ["support", "availability"] as const,
   list: ["support", "list"] as const,
   unread: ["support", "unread"] as const,
   thread: (id: string) => ["support", "thread", id] as const,
 };
+
+export function useSupportAvailability(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.availability,
+    queryFn: () => unwrap(getSupportAvailabilityAction()),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
 
 /**
  * Nao lidos do suporte (bolinha no menu). Consulta a cada 2 minutos so com a

@@ -412,7 +412,7 @@ Tudo na branch `painel-admin`, sem commit nas fases 1 a 8. Migrações `…051` 
 
 ## 18. Proposta (24/10/2026): lançar o suporte sem LLM
 
-Status: Proposta, não implementada. Motivo do dono: lançar sem custo de IA, com resposta humana; o assistente com modelo pode voltar depois. Hoje, sem `ANTHROPIC_API_KEY`, o "Fale com a gente" já encaminha tudo ao suporte, mas a tela mostra "O assistente está indisponível" e parece quebrada. A proposta separa dois pedaços.
+Status: Parcial (16/11/2026: sem `ANTHROPIC_API_KEY`, o "Fale com a gente" já abre direto como chamado para a equipe — `escalate` em `supportActions.ts` — e ajusta os textos em `support-sheet.tsx` sem mostrar "assistente indisponível"). Motivo do dono: lançar sem custo de IA, com resposta humana; o assistente com modelo pode voltar depois. A proposta separa dois pedaços.
 
 **18.1 "Fale com a gente" vira chamado e dúvida geral (atendido por pessoa)**
 - Sem chat com assistente: formulário curto com assunto (dúvida de uso, erro, cobrança, conta e plano, sugestão) e mensagem. Some a mensagem de "assistente indisponível".
