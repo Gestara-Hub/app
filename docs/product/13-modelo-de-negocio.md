@@ -168,7 +168,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 
 ### Escopo
 - Vale para o Plano GestaraHub (assinatura do espaço), não para as mensalidades dos alunos (`docs/product/15-regras-de-cobranca.md`).
-- Onde vai morar: `services/subscription/*` (actions e serviço), `services/server/subscription.ts` (gravação no servidor), webhook `app/api/webhooks/asaas/route.ts`, aviso fixo no layout, e-mails em `lib/email/mailersend.ts`, tarefa diária para a tolerância (como as outras em `app/api/cron`).
+- Onde vai morar: `services/subscription/*` (actions e serviço), `services/server/subscription.ts` (gravação no servidor), webhook `app/api/webhooks/asaas/route.ts`, aviso fixo no layout, e-mails em `lib/email/ses.ts`, tarefa diária para a tolerância (como as outras em `app/api/cron`).
 
 ### Alternativas
 - **Upgrade só no próximo ciclo:** rejeitado. Quem precisa do recurso quer usar na hora.

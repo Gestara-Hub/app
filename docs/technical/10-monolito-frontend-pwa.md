@@ -14,7 +14,7 @@ Data: 2026-10-19.
    - Não haverá aplicativos nativos em React Native ou Expo no MVP.
    - Os portais do aluno e do professor são construídos com design mobile-first e distribuídos como **PWA instalável** na tela de início (iOS Safari / Android Chrome).
 3. **Backend-for-Frontend (BFF) com Server Actions:**
-   - O Next.js (`apps/web`) hospeda no servidor as Server Actions (`"use server"`), orquestrando sessões, validação de tokens e integrações seguras (ex.: MailerSend), rodando como Serverless Functions na Vercel.
+   - O Next.js (`apps/web`) hospeda no servidor as Server Actions (`"use server"`), orquestrando sessões, validação de tokens e integrações seguras (ex.: Amazon SES e Asaas), rodando como Serverless Functions na Vercel.
    - O banco de dados Postgres, Row Level Security (RLS), Supabase Auth e Storage vivem em **`apps/supabase`**.
 
 ## Contexto

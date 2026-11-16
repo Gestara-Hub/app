@@ -12,7 +12,7 @@ Quem entra com senha pode ligar a verificação em duas etapas. Depois da senha,
   - Usa o MFA do Supabase Auth (Google Authenticator, Microsoft Authenticator, 1Password e outros).
   - O cadastro é por QR code ou por chave digitada.
 - **Entrega 2: código por e-mail e "lembrar este dispositivo".**
-  - Código por e-mail como alternativa ao app, feito por nós: 6 dígitos, 10 minutos, só o hash no banco, envio pelo MailerSend. É o mesmo padrão do "Esqueci minha senha" (migração 36).
+  - Código por e-mail como alternativa ao app, feito por nós: 6 dígitos, 10 minutos, só o hash no banco, envio pelo Amazon SES. É o mesmo padrão do "Esqueci minha senha" (migração 36).
   - "Lembrar este dispositivo por 30 dias" na tela do código, para os dois métodos.
   - Quem tem o app pode ligar o e-mail também (útil se perder o celular). Quem tem só o e-mail pode ligar o app depois.
   - Aviso para ligar: janela em quatro momentos (pagamento online ativado, primeiro convite, senha nova, 7 dias de uso), para dono e gerente, decidido em 23/10/2026 (doc product/25, seção 5). "Ativar agora" abre a escolha entre os dois métodos.
@@ -89,7 +89,7 @@ Constantes em `lib/security/two-factor-rules.ts`:
 - Com os dois ligados, cada método tem "Remover" (`removeTwoFactorMethodAction`, `removeAppTwoFactor` e `removeEmailTwoFactor` em `services/server/twoFactor.ts`). Remover o app pede o código do e-mail e grava a prova desta sessão pelo e-mail antes de apagar o fator; remover o e-mail pede o código do app. Com um método só não há "Remover": é o "Desligar".
 - **Auditoria:** ligar (app ou e-mail), remover um método e desligar viram evento de segurança no histórico, com o próprio usuário como alvo (o gerente não vê eventos do dono).
 
-**E-mail** (`sendTwoFactorCodeEmail`, `lib/email/mailersend.ts`): assunto "Seu código de acesso ao GestaraHub", o código em destaque e "Vale por 10 minutos. Se não foi você, troque sua senha." Sem `MAILERSEND_API_KEY` em desenvolvimento, o código sai no terminal do `pnpm dev`; em produção sem chave, `logError` e mensagem de falha.
+**E-mail** (`sendTwoFactorCodeEmail`, `lib/email/ses.ts`): assunto "Seu código de acesso ao GestaraHub", o código em destaque e "Vale por 10 minutos. Se não foi você, troque sua senha." Sem credenciais AWS SES em desenvolvimento, o código sai no terminal do `pnpm dev`; em produção sem chave, `logError` e mensagem de falha.
 
 **Supabase:**
 - Local: `[auth.mfa.totp]` com `enroll_enabled` e `verify_enabled` em `apps/supabase/config.toml`. Precisa reiniciar o Supabase local.

@@ -6,12 +6,12 @@
 
 | Peça | Onde | Situação |
 | --- | --- | --- |
-| Termos de Uso (11 seções) e Política de Privacidade (11 seções) | `/terms`, `/privacy` (`features/landing/components/legal-documents.tsx`), versão `LEGAL_UPDATED_AT` em `config/site.ts` | Bons no conteúdo: papéis LGPD (espaço controlador, GestaraHub operador), menores (art. 14), Asaas, Meta, MailerSend, PostHog com banner de cookies, direitos do titular, retenção, Marco Civil. |
+| Termos de Uso (11 seções) e Política de Privacidade (11 seções) | `/terms`, `/privacy` (`features/landing/components/legal-documents.tsx`), versão `LEGAL_UPDATED_AT` em `config/site.ts` | Bons no conteúdo: papéis LGPD (espaço controlador, GestaraHub operador), menores (art. 14), Asaas, Meta, Amazon SES (`us-east-2`), PostHog com banner de cookies, direitos do titular, retenção, Marco Civil. |
 | Aceite dos termos | Caixa no cadastro da landing; diálogo obrigatório no app (`legal-consent-dialog.tsx`, versão `v1.0-2026-10`); `legal_consents` guarda quem, quando, versão | Feito. |
 | Contrato de ativação dos recebimentos (10 cláusulas) | Diálogo "Ativar" em Recebimentos online | Feito: mandato, tarifas (R$ 1,99 grátis, R$ 1,29 pagos), chargeback, PLD, LGPD, NFS-e (espaço emite para o aluno; GestaraHub só sobre a taxa), saques. |
 | Termo de consentimento do menor (art. 14) | `/consent/minor/<id>` com dados mascarados, nome de quem assina, IP e hora | Feito. |
 | Rodapé da landing | "© {ano} GestaraHub. Todos os direitos reservados." + Termos, Privacidade, Contato | Sem empresa, CNPJ nem endereço. |
-| E-mails | Moldura única (`lib/email/mailersend.ts`) com motivo do envio | Sem empresa nem endereço no rodapé. |
+| E-mails | Moldura única (`lib/email/ses.ts`) com motivo do envio | Rodapé com MHMJ, CNPJ e endereço. |
 | Páginas públicas (`/p/c/<código>`, `/p/certificado`, `/consent`) | Logo do GestaraHub; a fatura cita "parceiro de pagamentos regulado" | Sem identificação da empresa nem link para a privacidade. |
 
 ## 2. Identificação da empresa (MHMJ): obrigatória, não opcional
@@ -73,7 +73,7 @@
 ## 6. Outros cadastros que pedem os mesmos dados
 
 - **Google (OAuth, "Entrar com Google"):** tela de consentimento com nome do app, logo, site, Termos, Privacidade e e-mail de suporte; verificação da marca quando passar de 100 usuários. Dados em `docs/guides/16-ambiente-local.md`.
-- **MailerSend:** domínio verificado (SPF, DKIM, DMARC) e aprovação da conta (hoje entrega a um destinatário só).
+- **Amazon SES:** domínio verificado (Easy DKIM, Custom MAIL FROM `envio.gestarahub.com.br` e DMARC) em `us-east-2`; saída do Sandbox solicitada.
 - **Registro.br / DNS:** o domínio no CNPJ da MHMJ.
 
 ## 7. Ordem sugerida e andamento

@@ -37,7 +37,7 @@ pnpm dev:admin          # http://localhost:3201
 
 ## 2B. Roteiro de teste manual (fases 1 a 8)
 
-Prepare: `pnpm setup:local && pnpm admin:setup`, crie um administrador proprietário e um de suporte (`admin:create-admin`), e suba os dois apps (`pnpm dev` e `pnpm dev:admin`). Para o assistente responder, ponha `ANTHROPIC_API_KEY` em `apps/web/.env.local`; sem ela a conversa vai direto para a equipe. Sem `MAILERSEND_API_KEY` os e-mails só aparecem no log do servidor.
+Prepare: `pnpm setup:local && pnpm admin:setup`, crie um administrador proprietário e um de suporte (`admin:create-admin`), e suba os dois apps (`pnpm dev` e `pnpm dev:admin`). Para o assistente responder, ponha `ANTHROPIC_API_KEY` em `apps/web/.env.local`; sem ela a conversa vai direto para a equipe. Sem credenciais AWS SES (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) os e-mails só aparecem no log do servidor.
 
 1. **Fale com a gente (web, porta 3000).** Entre numa conta real (não a demonstração). Menu do usuário, "Fale com a gente". Pergunte algo do sistema: o assistente responde com base nos artigos. Peça "quero falar com uma pessoa" ou descreva um erro: a conversa vai para a equipe. Tente colar um CPF na mensagem: no painel ele aparece mascarado.
 2. **Suporte (painel).** Em Suporte aparece a conversa (número ao lado do menu). Responda: o cliente vê a resposta no app, com a bolinha de não lido. Teste nota interna, resposta pronta (Respostas prontas), marcar urgente, encerrar e reabrir.

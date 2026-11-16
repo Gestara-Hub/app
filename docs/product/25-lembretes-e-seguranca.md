@@ -83,7 +83,7 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (abre S
 
 ## 7. Depois (registrado)
 
-- **Resumo da manhã por e-mail** para o dono, opcional: "Hoje: 5 cobranças vencem e 2 aniversários", com o link para os lembretes. Usa o MailerSend e o mesmo motor. Decisão do usuário (23/10/2026): entra depois.
+- **Resumo da manhã por e-mail** para o dono, opcional: "Hoje: 5 cobranças vencem e 2 aniversários", com o link para os lembretes. Usa o Amazon SES e o mesmo motor. Decisão do usuário (23/10/2026): entra depois.
 - **Envio automático no Pro pelo mesmo motor**, quando a API oficial do WhatsApp estiver ligada de verdade (hoje só o parabéns roda na rotina).
 - **Exigir a verificação em duas etapas** para ações sensíveis (trocar a conta de recebimento): doc technical/17.
 - **Cancelar aula e feriados** (decisão do usuário, 23/10/2026: fazer mais à frente). Hoje o app não tem essas ações: o status "cancelada" existe no contrato da aula (`ClassSessionStatus`), mas nada marca uma aula assim, e a unidade só tem horário por dia da semana, sem datas fechadas. Os modelos "Aula cancelada" e "Feriado" já existem para envio manual. Quando as ações existirem, viram lembretes: depois de cancelar, "Avisar os 12 alunos?"; dias antes do feriado, "Feriado na segunda: avisar as turmas?". Decisões a tomar antes de construir:

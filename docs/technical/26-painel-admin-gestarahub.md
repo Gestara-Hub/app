@@ -198,7 +198,7 @@ A janela do chat diz ao cliente "Respondemos em até 2 dias úteis". **Sem horá
 - **Busca por código:** o suporte cola o código que o cliente mandou e cai na linha do erro e no espaço.
 - **Rotinas:** `job_runs` (a diária, a de aniversários, a de lembretes) com última execução, duração, resultado e falhas; botão "rodar de novo" só para quem tem papel de dono e só em rotinas seguras (idempotentes).
 - **Avisos do parceiro:** `webhook_events` (processados, repetidos, ignorados, com erro), com filtro por tipo (`PAYMENT_RECEIVED`, `SUBSCRIPTION_DELETED`...) e por espaço.
-- **Integrações:** painel de estado do Asaas (conta principal e subcontas aprovadas, pendentes e com problema), MailerSend (entregas e recusas) e Supabase (uso de banco e armazenamento, quando houver API para isso).
+- **Integrações:** painel de estado do Asaas (conta principal e subcontas aprovadas, pendentes e com problema), Amazon SES e Supabase (uso de banco e armazenamento, quando houver API para isso).
 - **Desempenho:** ações mais lentas do dia por espaço (a medição da fase de desempenho já registra tempos; expor só se houver custo baixo).
 
 ### 6.7 Receita e crescimento
@@ -271,7 +271,7 @@ Padrões de tela: lista com busca, filtros e resumo no topo; ações de linha no
 ## 9. Integrações do painel
 
 - **Asaas:** consulta de assinatura e cobrança da conta principal, estado das subcontas, reenvio de cobrança. Somente leitura do Asaas pelo MCP de documentação; as chamadas reais são do código, em sandbox até a produção. Webhook da conta principal (pendência de produção) é pré-requisito para a receita da fase 4.
-- **MailerSend:** envio das respostas do suporte e dos comunicados por e-mail (pendente a aprovação da conta; hoje entrega a 1 destinatário).
+- **Amazon SES:** envio das respostas do suporte e dos comunicados por e-mail (saída do Sandbox em andamento em `us-east-2`).
 - **Supabase Auth (admin API):** último acesso, redefinir 2FA do painel.
 - **Resumo diário de erros:** passa a incluir o link do painel (hoje vai só por e-mail).
 - **PostHog:** só do app dos clientes; o painel não usa análise de uso de terceiros.
@@ -313,7 +313,7 @@ O código fica pronto no repositório; estes passos são de configuração:
 | Domínio e DNS de `admin.gestarahub.com.br` | Endereço do painel |
 | Variáveis de ambiente do admin (chave de serviço, URL e chave pública do Supabase, e-mail, segredo de sessão) | Configuração sem segredo no código |
 | Proteção da branch principal e CI do novo app | Mesmo padrão do `apps/web` |
-| Aprovar a conta do MailerSend e o domínio de envio | E-mails de suporte e comunicados |
+| Configurar as credenciais AWS SES e sair do Sandbox | E-mails de suporte e comunicados |
 | No mesmo projeto Supabase: criar o schema `platform` e o papel `platform_app` (migração), sem expor o schema na API | Onde moram `platform.admins` e as tabelas do painel |
 | Chave da API da Anthropic (só no servidor do admin) e teto de gasto | Chatbot inteligente |
 | Linha de WhatsApp da plataforma na Meta (depois) | Resposta de suporte por WhatsApp |

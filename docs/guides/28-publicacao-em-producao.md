@@ -12,10 +12,10 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 
 | Item | Quem | Por quê |
 | --- | --- | --- |
-| Domínio `gestarahub.com.br` com DNS acessível (app, `admin.` e e-mail) | Você | Links de e-mail, webhooks, OAuth e o MailerSend precisam do endereço final |
+| Domínio `gestarahub.com.br` com DNS acessível (app, `admin.` e e-mail) | Você | Links de e-mail, webhooks, OAuth e o Amazon SES precisam do endereço final |
 | Termos e Privacidade: a identificação da MHMJ já está (`config/site.ts`, v1.2 de 10/11/2026). Antes de abrir para o público: leitura de advogado da parte de dados de saúde e confirmar a região do Supabase e do PostHog no texto de transferência internacional (pendência "Jurídico", doc `product/27`) | Você + agente | A Meta exige `/privacy` e `/terms` para virar o app para produção; o aceite grava a versão |
 | Conta-pai PJ no Asaas (CNPJ da MHMJ) | Você | Pagamento online, assinatura do plano e a taxa do GestaraHub |
-| Conta do MailerSend aprovada ("Get approved") e domínio de envio verificado | Você | Hoje só entrega para 1 destinatário |
+| Amazon SES com domínio `gestarahub.com.br` verificado e fora do Sandbox | Você | No Sandbox só envia para endereços verificados |
 | Plano do Supabase com conexões suficientes | Você | Pico de uso: o limite é o banco (doc `technical/19` §14) |
 | Árvore limpa, `develop` com tudo commitado e as conferências rápidas verdes | Agente | Typecheck, lint, `pnpm test` e o smoke |
 | GitHub Actions com as conferências rápidas e o e2e completo, e a `main` protegida (decidido em 23/10/2026: antes da primeira publicação) | Agente + você | O push na `main` publica: ela só recebe a `develop`, e nada entra sem as conferências (doc `guides/20` etapa 2) |
@@ -42,7 +42,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
    - **Site URL:** `https://gestarahub.com.br` (o local usa `localhost:3200`).
    - **Redirect URLs:** `https://gestarahub.com.br/**`.
    - **Senha mínima: 8 caracteres** (o local está em 6; o app já exige 8 em todas as telas).
-   - Confirmação de e-mail desligada, como no local (o app manda os e-mails dele pelo MailerSend).
+   - Confirmação de e-mail desligada, como no local (o app manda os e-mails dele pelo Amazon SES).
    - MFA com app autenticador (TOTP) ligado, como no local.
    - Entrar com Google: só quando o app OAuth estiver pronto (chaves do Google no Supabase e `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=1` na Vercel).
 4. **API → Exposed schemas:** só `public` e `graphql_public`. O `platform` **não** é exposto (o painel entra por conexão direta).
@@ -93,7 +93,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
    | `ASAAS_WEBHOOK_URL` | Sim | `https://gestarahub.com.br/api/webhooks/asaas` |
    | `ASAAS_WEBHOOK_SECRET` | Sim | Aleatório, 32+ caracteres, diferente da chave de API |
    | `ASAAS_WEBHOOK_EMAIL` | Sim | `contato@gestarahub.com.br` (o Asaas avisa ali se o webhook falhar) |
-   | `MAILERSEND_API_KEY`, `MAILERSEND_FROM_EMAIL`, `MAILERSEND_FROM_NAME`, `MAILERSEND_REPLY_TO_EMAIL` | Sim | Conta aprovada; remetente `naoresponda@gestarahub.com.br`, respostas em `contato@` |
+   | `AWS_SES_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO` | Sim | Amazon SES fora do Sandbox (`us-east-2`); remetente `naoresponda@gestarahub.com.br`, respostas em `contato@` |
    | `ERROR_DIGEST_EMAIL` | Sim | Quem recebe o alerta de erro novo e o resumo diário |
    | `META_APP_SECRET` | Com WhatsApp | Assinatura do webhook; sem ela, produção recusa o webhook |
    | `WHATSAPP_API_URL`, `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `NEXT_PUBLIC_META_APP_ID`, `NEXT_PUBLIC_META_CONFIG_ID` | Com WhatsApp | Do app da Meta em produção |
@@ -120,7 +120,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
    | `ADMIN_SERVICE_ROLE_KEY` | Chave de serviço, só para convidar administradores e redefinir 2FA |
    | `ADMIN_PUBLIC_URL` | `https://admin.gestarahub.com.br` |
    | `WEB_APP_URL` | `https://gestarahub.com.br` |
-   | `MAILERSEND_*`, `ADMIN_NOTIFY_EMAIL` | E-mails do suporte e o resumo diário |
+   | `AWS_SES_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFY_EMAIL` | E-mails do suporte e o resumo diário |
    | `CRON_SECRET` | Para o resumo diário do suporte |
    | `ANTHROPIC_API_KEY` | Opcional; teto de R$ 150/mês com alarme em 80% (doc `technical/26` §13) |
 
@@ -133,7 +133,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 | --- | --- | --- |
 | **Asaas** | Webhook na **conta principal** (eventos de cobrança e de assinatura, mesma URL e mesmo token; hoje só as subcontas têm). As subcontas se registram sozinhas com o `ASAAS_WEBHOOK_URL` no primeiro acesso. Pedir a homologação logo após o primeiro espaço real (período de avaliação: 10 subcontas, R$ 2.000 cada, 60 dias). | `technical/25`, `product/13` §6 |
 | **Meta (WhatsApp)** | Webhook em `https://gestarahub.com.br/api/webhooks/whatsapp` com o `WHATSAPP_WEBHOOK_VERIFY_TOKEN`; `META_APP_SECRET`; revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management`; virar para o modo de produção (pede domínio, `/privacy` e `/terms`); cadastrar os modelos (`minor_consent` e os operacionais). | `technical/07` §3.5.1 |
-| **MailerSend** | Domínio verificado (registros SPF e DKIM no DNS), conta aprovada. | `technical/21` |
+| **Amazon SES** | Domínio `gestarahub.com.br` verificado (DKIM e Custom MAIL FROM `envio.gestarahub.com.br`), saída do Sandbox aprovada e chaves IAM na Vercel (`us-east-2`). | `technical/21` |
 | **PostHog** | Projeto com a chave na Vercel; ligar "Web vitals autocapture". | `technical/09` |
 | **Monitor externo** | UptimeRobot ou Better Stack (conta gratuita) chamando `https://gestarahub.com.br/api/health` a cada 5 minutos, com aviso por e-mail. | `technical/27` |
 
@@ -178,7 +178,7 @@ Depois de tudo verde, apagar o espaço de teste pelo painel admin (ou deixar ina
 - **App com defeito:** na Vercel, "Promote" do deploy anterior (volta em segundos). O banco não volta junto: migração que quebra o app antigo precisa de outra migração para frente.
 - **Rotina falhando:** conferir os segredos `app_url` e `cron_secret` no Vault e o `CRON_SECRET` na Vercel (os três precisam bater).
 - **Webhook do Asaas recusado:** conferir `ASAAS_WEBHOOK_SECRET` e a URL; o Asaas pausa a fila depois de falhas e avisa no `ASAAS_WEBHOOK_EMAIL`.
-- **E-mail não chega:** conta do MailerSend aprovada e domínio verificado.
+- **E-mail não chega:** conferir chaves IAM (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_SES_REGION`), se o domínio está verificado e se a conta já saiu do Sandbox do Amazon SES.
 
 ## 9. Depois da primeira publicação
 

@@ -23,7 +23,7 @@ const code = await reportError("cron.daily.mensalidades", err, { source: "cron",
 - `"[evento] texto"`: o que vem entre colchetes vira o evento (onde aconteceu).
 - `reportError` devolve o **código do erro** (8 letras e números, como `K7Q2M9XD`) e aceita espaço, origem e contexto. Use quando quem chama sabe o espaço (rotinas) ou precisa mostrar o código.
 - Registrar nunca lança nem derruba a operação.
-- Continuam no console, de propósito: o conflito de gravação (a ação tenta de novo; é o funcionamento normal), o log de tempo das ações lentas (doc 19) e o link de cadastro/nova senha sem chave do MailerSend (desenvolvimento).
+- Continuam no console, de propósito: o conflito de gravação (a ação tenta de novo; é o funcionamento normal), o log de tempo das ações lentas (doc 19) e o link de cadastro/nova senha sem credenciais AWS SES (desenvolvimento).
 
 ## 3. O que acontece com um erro
 
@@ -45,7 +45,7 @@ const code = await reportError("cron.daily.mensalidades", err, { source: "cron",
 ## 4. A tabela `error_logs`
 
 - **Agrupada por impressão digital:** evento + mensagem sem ids e números + o local no código. O mesmo erro vira uma linha por espaço, com `count`, `first_seen`, `last_seen`, o último `last_reference` (código) e o último usuário. Um erro em laço não gera milhares de linhas.
-- **Mascarada antes de gravar** (`lib/log/mask.ts`): CPF, CNPJ, telefone, e-mail, token, JWT, chave do Asaas e do MailerSend, senha; em objetos, chaves como `password`, `token`, `cpf`, `authorization` viram `[oculto]`. Mascarar demais é aceitável; de menos, não.
+- **Mascarada antes de gravar** (`lib/log/mask.ts`): CPF, CNPJ, telefone, e-mail, token, JWT, chave do Asaas e da AWS (`AKIA...`), senha; em objetos, chaves como `password`, `token`, `cpf`, `authorization` viram `[oculto]`. Mascarar demais é aceitável; de menos, não.
 - **Acesso:** só o servidor (chave de serviço). RLS ligado e sem políticas para a sessão.
 - **Retenção:** 120 dias sem acontecer de novo (`error-logs-prune-daily`, pg_cron, 03:40 de Brasília).
 

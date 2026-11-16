@@ -100,7 +100,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 ### Guias (como fazer)
 - [guides/14-asaas-mcp.md](guides/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
 - [guides/16-ambiente-local.md](guides/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
-- [guides/28-publicacao-em-producao.md](guides/28-publicacao-em-producao.md) — **Publicação em produção:** ordem Supabase (migrações, Auth, Vault, papel do painel), Vercel do app e do painel (variáveis e o que nunca vai para produção), integrações (Asaas, Meta, MailerSend, PostHog, monitor), primeira versão, conferências depois do deploy e como voltar atrás.
+- [guides/28-publicacao-em-producao.md](guides/28-publicacao-em-producao.md) — **Publicação em produção:** ordem Supabase (migrações, Auth, Vault, papel do painel), Vercel do app e do painel (variáveis e o que nunca vai para produção), integrações (Asaas, Meta, Amazon SES, PostHog, monitor), primeira versão, conferências depois do deploy e como voltar atrás.
 - [guides/20-tempo-dos-testes.md](guides/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
 
 ### Testes do sistema e planos de execução
