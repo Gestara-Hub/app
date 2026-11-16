@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  FORCE_COLOR: "1"
+
+jobs:
+  checks:
+    name: Typecheck, lint e testes rápidos
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Testes do @gestarahub/core
+        run: pnpm --filter @gestarahub/core test
+
+      - name: Typecheck e lint (@gestarahub/web)
+        run: |
+          pnpm --filter @gestarahub/web typecheck
+          pnpm --filter @gestarahub/web lint
+          pnpm --filter @gestarahub/web docs:check
+
+      - name: Typecheck e lint (@gestarahub/admin)
+        run: |
+          pnpm --filter @gestarahub/admin typecheck
+          pnpm --filter @gestarahub/admin lint
+
+      - name: Testes unitários (web e admin)
+        run: |
+          pnpm --filter @gestarahub/web test
+          pnpm --filter @gestarahub/admin test
+
+  db-tests:
+    name: Testes de banco (Supabase local)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Subir Supabase local e migrações
+        run: |
+          pnpm setup:local -- --no-demo
+          pnpm admin:setup
+
+      - name: Rodar testes de banco e roundtrip
+        run: |
+          pnpm --filter @gestarahub/web test:db
+          pnpm --filter @gestarahub/web test:roundtrip
+          pnpm --filter @gestarahub/admin test:db
+
+  e2e-smoke:
+    name: E2E Smoke (develop)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar dependências e navegador
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @gestarahub/web exec playwright install chrome
+
+      - name: Subir Supabase local e espaço de demonstração
+        run: pnpm setup:local
+
+      - name: Rodar E2E Smoke sobre build de produção
+        env:
+          E2E_SERVER: prod
+        run: pnpm --filter @gestarahub/web e2e:smoke
+
+      - name: Anexar relatório em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
+  e2e-full:
+    name: E2E Completo (${{ matrix.shard }})
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/4", "2/4", "3/4", "4/4"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar dependências e navegador
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @gestarahub/web exec playwright install chrome
+
+      - name: Subir Supabase local e espaço de demonstração
+        run: pnpm setup:local
+
+      - name: Rodar E2E (${{ matrix.shard }}) sobre build de produção
+        env:
+          E2E_SERVER: prod
+        run: pnpm --filter @gestarahub/web exec playwright test --shard=${{ matrix.shard }}
+
+      - name: Anexar evidências em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-shard-${{ strategy.job-index }}
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
