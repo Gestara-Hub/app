@@ -21,7 +21,7 @@ function LegalChangelog() {
         <li>
           <strong>v1.2 ({LEGAL_UPDATED_AT}):</strong> dados de saúde e documentos
           dos alunos, testes e medidas, inscrições em eventos e verificação pública
-          de certificados, assistente de ajuda, ferramenta da Meta para conectar o
+          de certificados, ferramenta da Meta para conectar o
           WhatsApp, cobrança da assinatura do GestaraHub, prazos de guarda dos
           registros e como pedir para parar as mensagens de WhatsApp.
         </li>
@@ -426,6 +426,15 @@ export function PrivacyPolicy() {
             ficam em armazenamento privado e só a equipe com permissão os abre.
           </li>
           <li>
+            <strong>Inscrições Públicas em Eventos e Ingressos:</strong> Quando
+            um espaço divulga link de inscrição em evento ou seminário,
+            coletamos na página pública os dados informados pelo participante
+            ou pelo responsável legal (no caso de menor de idade), incluindo o
+            registro do aceite com data, hora e IP. Geramos um ingresso digital
+            em link próprio com nome mascarado, e enviamos o link do ingresso
+            por e-mail ao destinatário informado em nome do espaço.
+          </li>
+          <li>
             <strong>Certificados:</strong> O certificado emitido traz um código de
             verificação. Quem tem o código consulta na página pública de
             verificação apenas o nome abreviado do aluno e os dados impressos no
@@ -501,13 +510,6 @@ export function PrivacyPolicy() {
           <li>
             <strong>Conexão do WhatsApp:</strong> Meta Platforms, pela ferramenta
             de cadastro guiado que o gestor usa para conectar o número do espaço.
-          </li>
-          <li>
-            <strong>Assistente de ajuda:</strong> Anthropic, que gera as respostas
-            do assistente de dúvidas sobre o sistema. Recebe apenas a conversa
-            com o assistente, com CPF, CNPJ, e-mails, telefones e números longos
-            ocultados antes do envio, e não usa esse conteúdo para treinar os
-            modelos dela. Evite escrever dados de alunos nas perguntas.
           </li>
           <li>
             <strong>Análise de uso:</strong> PostHog, somente quando autorizado
@@ -645,9 +647,12 @@ export function PrivacyPolicy() {
               espaço, escreva para {SUPPORT_EMAIL} e encaminhamos o pedido.
             </li>
             <li>
-              <strong>Mensagens de WhatsApp:</strong> peça ao espaço que envia as
-              mensagens para parar o envio. Ele responde por interromper as
-              mensagens quando o destinatário pede.
+              <strong>Mensagens de WhatsApp:</strong> responda{" "}
+              <strong>SAIR</strong> (ou <strong>PARAR</strong> /{" "}
+              <strong>CANCELAR</strong>) na própria conversa do WhatsApp para
+              bloquear na hora os próximos envios automáticos pelo sistema, ou
+              peça diretamente ao espaço que envia as mensagens para interromper
+              o envio.
             </li>
           </ul>
         </div>
