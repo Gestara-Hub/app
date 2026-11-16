@@ -18,6 +18,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.16",
+    date: "2026-11-16",
+    items: [
+      { text: "Inscrição pública em eventos por link, com ingresso e QR code." },
+      { text: "Evento de graduação, graduação em grupo e mudança de turma." },
+      { text: "Chamada com botão Salvar e rascunho guardado no aparelho." },
+      { text: "Selo Em atraso e filtro Visitante na lista de alunos." },
+      { text: "Cores das modalidades no calendário e tela própria de Certificados." },
+      { text: "Resumo financeiro mais claro, com filtro direto pelos cards." },
+    ],
+  },
+  {
     version: "2026.11.10",
     date: "2026-11-10",
     items: [
