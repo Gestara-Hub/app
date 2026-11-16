@@ -27,10 +27,10 @@ export function HelpHost() {
   useEffect(
     () =>
       onStartGuide((chunkId) => {
+        setOpen(false);
         void import("@/lib/support/help-search").then(({ HELP_CHUNKS }) => {
           const chunk = HELP_CHUNKS.find((c) => c.id === chunkId && c.guide);
           if (!chunk) return;
-          setOpen(false);
           setGuide(chunk);
         });
       }),
