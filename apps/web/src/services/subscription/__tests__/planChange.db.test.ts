@@ -30,7 +30,7 @@ vi.mock("@/lib/asaas", async (importOriginal) => ({
   ...asaas,
   getAsaasConfig: () => ({ apiUrl: "https://sandbox.asaas.com/api/v3", masterApiKey: "chave-de-teste" }),
 }));
-vi.mock("@/lib/email/mailersend", () => email);
+vi.mock("@/lib/email/ses", () => email);
 
 const plan = await import("@/services/server/subscriptionPlan");
 // Quem pediu a troca nos testes: o dono do espaco (montado no beforeEach).

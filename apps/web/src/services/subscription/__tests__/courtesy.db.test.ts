@@ -9,7 +9,7 @@ import { adminClient, createTestTenant, ownerSql } from "@/test/db";
  * vista pelo app dos clientes: o plano pago vale sem cobranca, a volta ao Gratis
  * ja vem marcada e a rotina diaria encerra no dia certo; o dono nao desmarca.
  */
-vi.mock("@/lib/email/mailersend", () => ({ sendPlanNoticeEmail: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@/lib/email/ses", () => ({ sendPlanNoticeEmail: vi.fn(async () => ({ ok: true })) }));
 const plan = await import("@/services/server/subscriptionPlan");
 const { readOrganizationSubscription } = await import("@/services/server/subscription");
 const owner = await ownerSql();

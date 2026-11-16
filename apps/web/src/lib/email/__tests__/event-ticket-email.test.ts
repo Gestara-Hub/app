@@ -5,7 +5,7 @@ import {
   buildEventTicketEmailText,
   eventTicketStatusLine,
   type SendEventTicketEmailInput,
-} from "../mailersend";
+} from "../ses";
 
 /** E-mail do ingresso na inscricao pelo link (12/11/2026). */
 const base: SendEventTicketEmailInput = {

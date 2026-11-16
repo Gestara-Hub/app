@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { reportError, dbError } from "@/lib/log";
-import { sendErrorDigestEmail, type ErrorDigestItem } from "@/lib/email/mailersend";
+import { sendErrorDigestEmail, type ErrorDigestItem } from "@/lib/email/ses";
 
 /**
  * Resumo diario dos erros por e-mail (doc technical/21), na rotina diaria:

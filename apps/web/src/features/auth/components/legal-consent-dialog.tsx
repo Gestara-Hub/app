@@ -88,7 +88,7 @@ export function LegalConsentDialog() {
       }
 
       toast.success(
-        "Termos aceitos com sucesso! Seja bem-vindo ao GestaraHub.",
+        "Termos aceitos com sucesso! Boas-vindas ao GestaraHub.",
       );
     } catch (err) {
       logError("[LegalConsentDialog] Erro ao aceitar termos:", err);

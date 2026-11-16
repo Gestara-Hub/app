@@ -1,12 +1,14 @@
 import { SUPPORT_EMAIL } from "@/config/site";
 import { formatProtocol } from "@gestarahub/core/support-protocol";
+import { renderOpsAlertEmail, type EmailIconState, type OpsAlertMetaItem } from "@gestarahub/core/email-layouts";
+import { emailSenderFromEnv, sendSesEmail, sesCredentialsFromEnv } from "@gestarahub/core/ses";
 import { logError } from "@/lib/log";
 import type { SupportKind } from "@/services/support/supportTypes";
+import { getEmailIconBase64, hostedEmailIconUrl, inlineIconAttachment } from "./ses";
 
 /**
- * Aviso interno de chamado (texto simples) para quem atende o suporte. Sem
- * MAILERSEND_API_KEY (desenvolvimento), so registra no log. Nunca lanca: o
- * chamado ja foi gravado, o e-mail e um aviso.
+ * Aviso interno de chamado para quem atende o suporte. Sem credenciais AWS SES
+ * (desenvolvimento), so registra no log. Nunca lanca: o chamado ja foi gravado.
  */
 export interface SupportNotice {
   kind: "new" | "reply";
@@ -48,37 +50,74 @@ export function supportNoticeText(notice: SupportNotice): { subject: string; tex
   return { subject, text };
 }
 
+export function supportNoticeHtml(notice: SupportNotice, icon?: EmailIconState): string {
+  const newHead = notice.topic === "bug" ? "Novo problema relatado" : notice.topic === "suggestion" ? "Nova sugestão" : "Novo chamado";
+  const head = notice.kind === "new" ? newHead : "Nova resposta do cliente";
+  const protocol = formatProtocol(notice.number);
+  const tone = notice.urgent ? "danger" : notice.topic === "bug" ? "warning" : "info";
+  const badge = notice.urgent
+    ? "URGENTE"
+    : notice.kind === "reply"
+      ? "Resposta"
+      : notice.topic === "bug"
+        ? "Problema"
+        : notice.topic === "suggestion"
+          ? "Sugestão"
+          : "Chamado";
+
+  const meta: OpsAlertMetaItem[] = [
+    { label: "Protocolo", value: protocol, mono: true },
+    { label: "Espaço", value: notice.spaceName },
+    { label: "Pessoa", value: `${notice.userName} (${notice.userEmail})` },
+    ...(notice.originScreen ? [{ label: "Tela", value: notice.originScreen, mono: true }] : []),
+    ...(notice.errorReference ? [{ label: "Código do erro", value: notice.errorReference, mono: true }] : []),
+  ];
+
+  return renderOpsAlertEmail({
+    tone,
+    sectionLabel: "Suporte",
+    badge,
+    title: head,
+    subtitle: notice.subject,
+    meta,
+    quote: {
+      label: notice.kind === "reply" ? "Nova mensagem" : "Mensagem",
+      text: notice.preview,
+    },
+    note: notice.errorReference
+      ? "Responda pelo painel do GestaraHub, na tela Suporte. Para o erro citado, busque o código em Saúde."
+      : "Responda pelo painel do GestaraHub, na tela Suporte.",
+    footer: `GestaraHub · Suporte interno · Protocolo ${protocol}`,
+    icon: icon ?? { hasInlineIcon: false, hostedIconUrl: hostedEmailIconUrl() },
+  });
+}
+
 export async function sendSupportNotice(notice: SupportNotice, to?: string): Promise<boolean> {
-  const apiKey = process.env.MAILERSEND_API_KEY;
+  const credentials = sesCredentialsFromEnv();
   const recipient = to?.trim() || SUPPORT_EMAIL;
   const { subject, text } = supportNoticeText(notice);
-  if (!apiKey) {
-    if (process.env.NODE_ENV === "production") logError("[support] MAILERSEND_API_KEY ausente: aviso de chamado não enviado.");
+  if (!credentials) {
+    if (process.env.NODE_ENV === "production") logError("[support] Credenciais AWS SES ausentes: aviso de chamado não enviado.");
     else console.warn(`[support] (só desenvolvimento) ${subject} -> ${recipient}`);
     return false;
   }
-  try {
-    const response = await fetch("https://api.mailersend.com/v1/email", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: {
-          email: process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br",
-          name: process.env.MAILERSEND_FROM_NAME || "GestaraHub",
-        },
-        to: [{ email: recipient }],
-        subject,
-        text,
-      }),
-    });
-    if (!response.ok) {
-      // O corpo da resposta diz o motivo (ex.: destinatário não liberado na conta).
-      logError("[support] Erro ao enviar o aviso de chamado:", response.status, await response.text().catch(() => ""));
-      return false;
-    }
-    return true;
-  } catch (error) {
-    logError("[support] Falha de conexão ao enviar o aviso de chamado:", error);
+  const iconBase64 = await getEmailIconBase64();
+  const html = supportNoticeHtml(notice, {
+    hasInlineIcon: Boolean(iconBase64),
+    hostedIconUrl: hostedEmailIconUrl(),
+  });
+  const result = await sendSesEmail({
+    credentials,
+    from: emailSenderFromEnv(),
+    to: [{ email: recipient }],
+    subject,
+    html,
+    text,
+    ...(iconBase64 ? { attachments: [inlineIconAttachment(iconBase64)] } : {}),
+  });
+  if (!result.ok) {
+    logError("[support] Erro ao enviar o aviso de chamado:", result.status ?? "rede", result.error);
     return false;
   }
+  return true;
 }

@@ -20,9 +20,9 @@ describe("máscara (LGPD)", () => {
     const text = maskText(
       "cpf 123.456.789-09 e 12345678909, cnpj 12.345.678/0001-90, fone (11) 98765-4321 e 5511987654321, " +
         "email ana.souza@gmail.com, Bearer abc.def, jwt eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl, " +
-        "chave $aact_prod_000Mz, password=segredo123, token: xyz",
+        "chave $aact_prod_000Mz, aws AKIA1234567890ABCDEF, password=segredo123, token: xyz",
     );
-    for (const secret of ["123.456.789-09", "12345678909", "12.345.678/0001-90", "98765-4321", "5511987654321", "ana.souza@gmail", "abc.def", "eyJhbGciOi", "$aact_prod", "segredo123", "xyz"]) {
+    for (const secret of ["123.456.789-09", "12345678909", "12.345.678/0001-90", "98765-4321", "5511987654321", "ana.souza@gmail", "abc.def", "eyJhbGciOi", "$aact_prod", "AKIA1234", "segredo123", "xyz"]) {
       expect(text).not.toContain(secret);
     }
     expect(text).toContain("[cpf]");

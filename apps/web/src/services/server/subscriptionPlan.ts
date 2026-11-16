@@ -32,7 +32,7 @@ import {
   type AsaasPaymentResponse,
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
-import { sendPlanNoticeEmail } from "@/lib/email/mailersend";
+import { sendPlanNoticeEmail } from "@/lib/email/ses";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";

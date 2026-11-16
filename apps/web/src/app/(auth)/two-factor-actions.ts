@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { UserView } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
-import { sendTwoFactorCodeEmail } from "@/lib/email/mailersend";
+import { sendTwoFactorCodeEmail } from "@/lib/email/ses";
 import { isDemoOrganization } from "@/lib/demo";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { currentSessionId, markSessionVerified, secondFactorInfo, secondFactorState } from "@/lib/security/second-factor";

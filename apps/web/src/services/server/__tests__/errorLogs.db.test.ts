@@ -246,8 +246,9 @@ describe("registro de erros", () => {
   });
 
   it("resumo diário: manda os novos uma vez; o que volta a acontecer entra de novo", async () => {
-    // Sem chave do MailerSend: o resumo sai no console, nada e enviado de verdade.
-    vi.stubEnv("MAILERSEND_API_KEY", "");
+    // Sem credenciais AWS SES: o resumo sai no console, nada e enviado de verdade.
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "");
     vi.stubEnv("ERROR_DIGEST_EMAIL", "erros@gestarahub.test");
     vi.spyOn(console, "info").mockImplementation(() => undefined);
     try {

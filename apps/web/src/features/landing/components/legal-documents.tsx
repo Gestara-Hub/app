@@ -503,9 +503,11 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Mensagens:</strong> Meta Platforms (WhatsApp Cloud API) para
-            as notificações e lembretes autorizados pelo destinatário, e
-            MailerSend para o e-mail transacional (links de cadastro, convites,
-            troca de senha e boas-vindas), com nome e e-mail do destinatário.
+            as notificações e lembretes autorizados pelo destinatário, e Amazon
+            Web Services (Amazon SES, região Leste dos EUA — Ohio) para o e-mail
+            transacional (links de cadastro, convites, troca de senha, códigos
+            de acesso, ingresso de evento e boas-vindas), com nome e e-mail do
+            destinatário.
           </li>
           <li>
             <strong>Conexão do WhatsApp:</strong> Meta Platforms, pela ferramenta

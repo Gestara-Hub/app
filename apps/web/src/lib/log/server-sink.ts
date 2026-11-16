@@ -97,7 +97,7 @@ async function alertNewError(entry: ErrorEntry, scopeOrganizationId: string | un
   if (alertTimes.length >= ALERT_LIMIT_PER_HOUR) return;
   alertTimes.push(now);
   try {
-    const { sendErrorDigestEmail } = await import("@/lib/email/mailersend");
+    const { sendErrorDigestEmail } = await import("@/lib/email/ses");
     const result = await sendErrorDigestEmail({
       toEmail: to,
       mode: "instant",

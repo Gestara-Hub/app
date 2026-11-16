@@ -15,7 +15,7 @@ import type {
 import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sendSignupLinkEmail } from "@/lib/email/mailersend";
+import { sendSignupLinkEmail } from "@/lib/email/ses";
 import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/security/rate-limit";
 import { SESSION_COOKIE, safeRedirectPath } from "@/lib/session";
 import { encodeSession, sessionCookieOptions } from "@/lib/session-cookie";
@@ -111,7 +111,7 @@ export type RequestSignupLinkResult =
  * - Se ja existe usuario ativo com senha criada -> `account_exists`
  * - Se ja existe link `pending` nao expirado e `!forceResend` -> `pending_link_exists` (abre a modal)
  * - Se `forceResend === true` ou nao ha link ativo -> revoga links anteriores na hora,
- *   cria novo token de 24h e envia por e-mail via MailerSend.
+ *   cria novo token de 24h e envia por e-mail via Amazon SES.
  */
 export async function requestSignupLink(input: {
   name: string;
@@ -247,7 +247,7 @@ export async function requestSignupLink(input: {
       };
     }
 
-    // 6. Envia o e-mail via MailerSend com o Template 1 + icone inline
+    // 6. Envia o e-mail via Amazon SES com o Template 1 + icone inline
     const baseUrl = await resolveAppBaseUrl();
     const signupUrl = `${baseUrl}/login?signup_token=${rawToken}`;
 

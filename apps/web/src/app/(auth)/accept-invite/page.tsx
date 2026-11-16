@@ -90,7 +90,7 @@ export default async function AcceptInvitePage({ searchParams }: AcceptInvitePag
   }
 
   return (
-    <PublicAuthShell title="Defina sua senha" subtitle={`Você foi convidado para a equipe de ${result.organizationName}.`}>
+    <PublicAuthShell title="Defina sua senha" subtitle={`Você recebeu um convite para a equipe de ${result.organizationName}.`}>
       <AcceptInviteForm
         token={result.token}
         name={result.name}

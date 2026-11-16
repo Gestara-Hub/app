@@ -20,6 +20,7 @@ const RULES: [RegExp, string][] = [
   [/Bearer\s+\S+/gi, "Bearer [token]"],
   [/\$aact_\S+/g, "[token]"],
   [/\bmlsn\.\S+/g, "[token]"],
+  [/\bAKIA[0-9A-Z]{16}\b/g, "[token]"],
   [/\b(sk|pk|rk)_(live|test)_\w+/g, "[token]"],
   [/((?:api[_-]?key|token|secret|senha|password|access[_-]?token)["']?\s*[:=]\s*["']?)[^\s"',}]+/gi, "$1[oculto]"],
   [LONG_TOKEN, "[token]"],

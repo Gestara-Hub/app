@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { supportNoticeText } from "../support-mail";
+import { supportNoticeHtml, supportNoticeText } from "../support-mail";
 
 const base = { number: 1042, urgent: false, subject: "Não consigo entrar", spaceName: "Espaço", userName: "Ana", userEmail: "ana@exemplo.com", preview: "Texto" };
 
@@ -21,5 +21,13 @@ describe("supportNoticeText", () => {
     const { text } = supportNoticeText({ ...base, kind: "new" });
     expect(text).not.toContain("Tela:");
     expect(text).not.toContain("Código do erro:");
+  });
+
+  it("gera HTML no layout de alerta operacional com protocolo e prioridade", () => {
+    const html = supportNoticeHtml({ ...base, kind: "reply", urgent: true, originScreen: "/classes/abc" });
+    expect(html).toContain("GH-1042");
+    expect(html).toContain("URGENTE");
+    expect(html).toContain("/classes/abc");
+    expect(html).toContain("Nova resposta do cliente");
   });
 });

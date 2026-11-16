@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { adminClient } from "@/test/db";
 
 /**
- * E-mail que nao sai nao pode virar "enviado": o MailerSend recusa (ex.: limite
- * da conta sandbox, MS42225) e nada fica valendo nem pendente.
+ * E-mail que nao sai nao pode virar "enviado": o Amazon SES recusa (ex.:
+ * destinatario nao verificado em Sandbox) e nada fica valendo nem pendente.
  */
 
 vi.mock("next/headers", () => ({
@@ -19,31 +19,34 @@ vi.mock("@/lib/security/rate-limit", () => ({
 const { requestSignupLink } = await import("../signup-actions");
 
 const realFetch = globalThis.fetch;
-let mailerSendRefuses = true;
+let sesRefuses = true;
 const email = `falha-envio-${Date.now()}@gestarahub.test`;
 
 beforeAll(() => {
-  vi.stubEnv("MAILERSEND_API_KEY", "teste");
+  vi.stubEnv("AWS_ACCESS_KEY_ID", "teste");
+  vi.stubEnv("AWS_SECRET_ACCESS_KEY", "segredo");
+  vi.stubEnv("AWS_SES_REGION", "us-east-2");
   // Comportamento de producao: em desenvolvimento a recusa cai no terminal e
   // conta como enviada (devDeliveryFallback, commit 600f2b07), o que este teste
   // nao cobre. Sem E2E_NOW, que tambem liga o modo de desenvolvimento.
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("E2E_NOW", undefined);
-  // So o MailerSend e simulado; o Supabase local segue de verdade.
+  // So o Amazon SES e simulado; o Supabase local segue de verdade.
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (String(input).includes("mailersend.com")) {
-      return mailerSendRefuses
-        ? new Response(JSON.stringify({ message: "You have reached sandbox account unique recipients limit. #MS42225" }), {
-            status: 422,
+    if (String(input).includes("amazonaws.com/v2/email/outbound-emails")) {
+      return sesRefuses
+        ? new Response(JSON.stringify({ message: "Email address is not verified." }), {
+            status: 400,
+            headers: { "x-amzn-errortype": "MessageRejectedException" },
           })
-        : new Response(null, { status: 202 });
+        : new Response(JSON.stringify({ MessageId: "ses-test-id" }), { status: 200 });
     }
     return realFetch(input, init);
   }) as typeof fetch;
 });
 
 afterEach(() => {
-  mailerSendRefuses = true;
+  sesRefuses = true;
 });
 
 afterAll(async () => {
@@ -57,7 +60,7 @@ async function pendingLinks(): Promise<number> {
   return data?.length ?? 0;
 }
 
-describe("cadastro com o MailerSend recusando", () => {
+describe("cadastro com o Amazon SES recusando", () => {
   it("responde erro, não deixa link pendente e a nova tentativa não diz 'já enviado'", async () => {
     const first = await requestSignupLink({ name: "Teste Falha", email, forceResend: false });
     expect(first.status).toBe("error");
@@ -68,15 +71,15 @@ describe("cadastro com o MailerSend recusando", () => {
   });
 
   it("reenvio que falha mantém o link anterior valendo", async () => {
-    mailerSendRefuses = false;
+    sesRefuses = false;
     expect((await requestSignupLink({ name: "Teste Falha", email, forceResend: false })).status).toBe("sent");
     expect(await pendingLinks()).toBe(1);
 
-    mailerSendRefuses = true;
+    sesRefuses = true;
     expect((await requestSignupLink({ name: "Teste Falha", email, forceResend: true })).status).toBe("error");
     expect(await pendingLinks()).toBe(1);
 
-    mailerSendRefuses = false;
+    sesRefuses = false;
     expect((await requestSignupLink({ name: "Teste Falha", email, forceResend: true })).status).toBe("sent");
     expect(await pendingLinks()).toBe(1);
   });

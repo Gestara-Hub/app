@@ -70,7 +70,7 @@ interface PendingLinkModalState {
 
 /**
  * Formulario de cadastro rapido na Landing Page (nome e e-mail):
- * - Envia um link de 24h via MailerSend para o usuario definir a senha no `/login`
+ * - Envia um link de 24h via Amazon SES para o usuario definir a senha no `/login`
  * - Se ja existir um link enviado e ainda nao expirado (sem senha criada), abre
  *   uma modal informando que o link ja foi enviado e que expira em 24h, dando a
  *   opcao de gerar e enviar um novo link (expirando o anterior na hora).

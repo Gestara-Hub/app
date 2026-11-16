@@ -4,7 +4,7 @@ import { likeExact } from "@/lib/supabase/like";
 import { activeUserLinkedTo, isProfessionalUniqueViolation, professionalTakenMessage } from "./professionalLink";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
+import { sendOrganizationInvitationEmail } from "@/lib/email/ses";
 import { userProfileLabel } from "@/lib/labels";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { SEVEN_DAYS_MS, guard, hashToken, resolveAppBaseUrl } from "./userActionsShared";

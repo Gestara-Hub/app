@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { isDemoOrganization } from "@/lib/demo";
-import { sendEmailChangeConfirmEmail, sendEmailChangedNoticeEmail, sendTwoFactorCodeEmail } from "@/lib/email/mailersend";
+import { sendEmailChangeConfirmEmail, sendEmailChangedNoticeEmail, sendTwoFactorCodeEmail } from "@/lib/email/ses";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 import { logError } from "@/lib/log";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";

@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { sendPasswordResetEmail } from "@/lib/email/mailersend";
+import { sendPasswordResetEmail } from "@/lib/email/ses";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendWelcomeEmail } from "@/lib/email/mailersend";
+import { sendWelcomeEmail } from "@/lib/email/ses";
 import { logError, logWarn } from "@/lib/log";
 
 /**

@@ -24,7 +24,7 @@ import { clientsServiceImpl } from "@/services/clients";
 import { samePhone } from "@/services/communication/whatsappOptOut";
 import { registerInWorld } from "@/services/events/eventRegistrationsService";
 import { activeReservation, findEvent, registrationCoversDay, seatHolders } from "@/services/events/eventShared";
-import { sendEventTicketEmail, type SendEventTicketEmailInput } from "@/lib/email/mailersend";
+import { sendEventTicketEmail, type SendEventTicketEmailInput } from "@/lib/email/ses";
 import { logError } from "@/lib/log";
 import { ticketPageUrl } from "@/lib/payment-page";
 import { format, parseISO } from "date-fns";
