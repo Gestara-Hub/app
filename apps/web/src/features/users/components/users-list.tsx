@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Clock,
   Contact,
+  Loader2,
   Mail,
   Pencil,
   Power,
@@ -52,12 +53,14 @@ interface UsersListProps {
   onInactivate: (user: UserView) => void;
   onReactivate: (user: UserView) => void;
   onResendInvite?: (user: UserView) => void;
+  resendingUserIds?: ReadonlySet<string>;
 }
 
 interface UserItemProps {
   user: UserView;
   canManage: boolean;
   isSelf: boolean;
+  isResending: boolean;
   onEdit: (u: UserView) => void;
   onInactivate: (u: UserView) => void;
   onReactivate: (u: UserView) => void;
@@ -65,7 +68,7 @@ interface UserItemProps {
 }
 
 /** Acoes do usuario (menu ⋮ e botao direito), iguais na linha e no cartao. */
-function userActions({ user, canManage, isSelf, onEdit, onInactivate, onReactivate, onResendInvite }: UserItemProps): ListItemAction[] {
+function userActions({ user, canManage, isSelf, isResending, onEdit, onInactivate, onReactivate, onResendInvite }: UserItemProps): ListItemAction[] {
   const isActive = user.status === "active";
   return canManage
     ? [
@@ -73,9 +76,10 @@ function userActions({ user, canManage, isSelf, onEdit, onInactivate, onReactiva
           ? [
               {
                 key: "resend-invite",
-                label: "Reenviar convite",
-                icon: <Send className="size-4" />,
+                label: isResending ? "Reenviando convite..." : "Reenviar convite",
+                icon: isResending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />,
                 onSelect: () => onResendInvite(user),
+                disabled: isResending,
               },
             ]
           : []),
@@ -105,7 +109,7 @@ function userActions({ user, canManage, isSelf, onEdit, onInactivate, onReactiva
 }
 
 /** Etiquetas do usuario: perfil, equipe, convite pendente e situacao. */
-function UserTags({ user }: { user: UserView }) {
+function UserTags({ user, isResending }: { user: UserView; isResending: boolean }) {
   const team = useTeamWords();
   return (
     <>
@@ -123,8 +127,8 @@ function UserTags({ user }: { user: UserView }) {
       ) : null}
       {user.pendingInvite ? (
         <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-          <Clock className="size-3" />
-          Convite pendente
+          {isResending ? <Loader2 className="size-3 animate-spin" /> : <Clock className="size-3" />}
+          {isResending ? "Reenviando convite..." : "Convite pendente"}
         </span>
       ) : null}
       <RecordStatusBadge status={user.status} />
@@ -133,7 +137,7 @@ function UserTags({ user }: { user: UserView }) {
 }
 
 function UserRow(props: UserItemProps) {
-  const { user, canManage, onEdit } = props;
+  const { user, canManage, isResending, onEdit } = props;
   const actions = userActions(props);
 
   const content = (
@@ -145,9 +149,10 @@ function UserRow(props: UserItemProps) {
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações do usuário"
+            title={isResending ? "Reenviando convite..." : "Ações do usuário"}
             ariaLabel={`Ações de ${user.name}`}
             variant="ghost"
+            isPending={isResending}
           />
         ) : null
       }
@@ -160,7 +165,7 @@ function UserRow(props: UserItemProps) {
             <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
               {user.name}
             </p>
-            <UserTags user={user} />
+            <UserTags user={user} isResending={isResending} />
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
@@ -188,7 +193,7 @@ function UserRow(props: UserItemProps) {
 
 /** Cartao do modo "Cartões" (01/11/2026), com os mesmos dados e acoes da linha. */
 function UserCard(props: UserItemProps) {
-  const { user, canManage, onEdit } = props;
+  const { user, canManage, isResending, onEdit } = props;
   const actions = userActions(props);
   const card = (
     <div
@@ -210,13 +215,19 @@ function UserCard(props: UserItemProps) {
           <div className="min-w-0">
             <p className="min-w-0 break-words text-sm font-semibold text-foreground transition-colors group-hover:text-primary">{user.name}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <UserTags user={user} />
+              <UserTags user={user} isResending={isResending} />
             </div>
           </div>
         </div>
         {canManage ? (
           <div className="-mr-2 -mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <ListItemActionsMenu actions={actions} title="Ações do usuário" ariaLabel={`Ações de ${user.name}`} variant="ghost" />
+            <ListItemActionsMenu
+              actions={actions}
+              title={isResending ? "Reenviando convite..." : "Ações do usuário"}
+              ariaLabel={`Ações de ${user.name}`}
+              variant="ghost"
+              isPending={isResending}
+            />
           </div>
         ) : null}
       </div>
@@ -289,6 +300,7 @@ export function UsersList({
   onInactivate,
   onReactivate,
   onResendInvite,
+  resendingUserIds,
 }: UsersListProps) {
   const team = useTeamWords();
   const currentUser = useCurrentUser();
@@ -373,6 +385,7 @@ export function UsersList({
         user={user}
         canManage={canManage}
         isSelf={user.id === currentUser.id}
+        isResending={Boolean(resendingUserIds?.has(user.id))}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -443,6 +456,7 @@ export function UsersList({
               user={user}
               canManage={canManage}
               isSelf={user.id === currentUser.id}
+              isResending={Boolean(resendingUserIds?.has(user.id))}
               onEdit={onEdit}
               onInactivate={onInactivate}
               onReactivate={onReactivate}

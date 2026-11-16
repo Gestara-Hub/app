@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import { MoreVertical } from "lucide-react";
+import { Loader2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -120,12 +120,15 @@ export function ListItemActionsMenu({
   title,
   ariaLabel,
   variant = "outline",
+  isPending = false,
 }: {
   actions: ListItemAction[];
   title: string;
   /** Rotulo acessivel com o nome da linha (ex.: "Ações de Ana Clara"); cai no `title`. */
   ariaLabel?: string;
   variant?: "outline" | "ghost";
+  /** Mostra indicador de carregamento no gatilho enquanto uma acao direta roda. */
+  isPending?: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -136,8 +139,10 @@ export function ListItemActionsMenu({
           size="icon-sm"
           title={title}
           aria-label={ariaLabel ?? title}
+          aria-busy={isPending || undefined}
+          disabled={isPending}
         >
-          <MoreVertical className="size-4" />
+          {isPending ? <Loader2 className="size-4 animate-spin" /> : <MoreVertical className="size-4" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48" onCloseAutoFocus={keepFocusInOpenDialog}>

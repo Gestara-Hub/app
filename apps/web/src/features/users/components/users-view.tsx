@@ -20,6 +20,7 @@ export function UsersView() {
     user?: UserView;
   }>({ open: false });
   const [inactivating, setInactivating] = useState<UserView | null>(null);
+  const [resendingUserIds, setResendingUserIds] = useState<Set<string>>(() => new Set());
 
   const updateMut = useUpdateUser();
   const resendInviteMut = useResendInviteUser();
@@ -35,15 +36,24 @@ export function UsersView() {
   };
 
   const handleResendInvite = async (user: UserView) => {
+    if (resendingUserIds.has(user.id)) return;
+    setResendingUserIds((prev) => new Set(prev).add(user.id));
+    const toastId = toast.loading(`Reenviando convite para ${user.email}...`);
     try {
       const res = await resendInviteMut.mutateAsync(user.id);
       if (res.success) {
-        toast.success(`Convite reenviado com sucesso para ${user.email}.`);
+        toast.success(`Convite reenviado com sucesso para ${user.email}.`, { id: toastId });
       } else {
-        toast.error(res.error || "Não foi possível reenviar o convite.");
+        toast.error(res.error || "Não foi possível reenviar o convite.", { id: toastId });
       }
-    } catch {
-      toast.error("Erro ao reenviar convite.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Erro ao reenviar convite."), { id: toastId });
+    } finally {
+      setResendingUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(user.id);
+        return next;
+      });
     }
   };
 
@@ -88,6 +98,7 @@ export function UsersView() {
         onInactivate={setInactivating}
         onReactivate={reactivate}
         onResendInvite={handleResendInvite}
+        resendingUserIds={resendingUserIds}
       />
 
       <UserFormDrawer
