@@ -827,11 +827,11 @@ describe("limite de caracteres com emoji (ALU-38)", () => {
 
   it("valida formato de horario e faixa de prazo ao atualizar modelo no Pro", async () => {
     setTier("pro");
-    await expect(communicationService.updateTemplate({ id: tmpl("before"), sendHour: "25:99" })).rejects.toMatchObject({
+    await expect(communicationService.updateTemplate({ id: tmpl("before-due"), sendHour: "25:99" })).rejects.toMatchObject({
       code: "VALIDATION",
       fields: [{ field: "sendHour" }],
     });
-    await expect(communicationService.updateTemplate({ id: tmpl("before"), daysOffset: 3 })).rejects.toMatchObject({
+    await expect(communicationService.updateTemplate({ id: tmpl("before-due"), daysOffset: 3 })).rejects.toMatchObject({
       code: "VALIDATION",
       fields: [{ field: "daysOffset" }],
     });
@@ -882,7 +882,8 @@ describe("lembretes automaticos de cobranca (oficial)", () => {
       updatedAt: new Date().toISOString(),
     });
 
-    const sent = await checkSlice("cron.billingReminders", billingRemindersSlice, [], async () => runBillingReminders());
+    await checkSlice("cron.billingReminders", billingRemindersSlice, [], async () => runBillingReminders());
+    const sent = runBillingReminders();
     expect(sent).toBe(2);
 
     const triggers = store.messageLogs.map((l) => l.trigger).sort();
