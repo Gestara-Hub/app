@@ -204,6 +204,7 @@ test.describe("menu e rotas por perfil (academia)", () => {
     "Relatórios",
     "Modalidades",
     "Planos e pacotes",
+    "Certificados",
     "Equipe",
   ];
 

@@ -53,7 +53,8 @@ test("clicar no próprio destaque também segue", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/clients");
   const guide = await startGuide(page, "Cadastrar um aluno");
-  await page.getByRole("button", { name: "Novo aluno" }).click();
+  await expect(guide.getByRole("button", { name: "Fazer por mim" })).toBeEnabled();
+  await page.getByRole("button", { name: "Novo aluno", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Novo aluno" })).toBeVisible();
   await expect(guide).toContainText("2 de 5");
 });

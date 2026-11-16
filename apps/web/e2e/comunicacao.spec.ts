@@ -181,11 +181,12 @@ test.describe("envio assistido (grátis)", () => {
     await page.getByRole("button", { name: "Nova mensagem" }).click();
     const dialog = page.getByRole("dialog", { name: "Nova mensagem" });
     await dialog.getByRole("combobox", { name: "Alunos" }).click();
-    await page.getByRole("option", { name: /Aluno Sem Fone/ }).click();
-    // Escolha de varios: a lista segue aberta ate fechar.
-    await page.keyboard.press("Escape");
-    await expect(dialog.getByText("Este aluno não tem WhatsApp com DDD no cadastro.")).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Abrir no WhatsApp" })).toBeDisabled();
+    await expect(page.getByRole("option", { name: /Aluno Sem Fone/ })).toHaveCount(0);
+    await expect(page.getByText("Nenhum aluno encontrado.")).toBeVisible();
+
+    await page.goto("/clients");
+    await page.getByRole("button", { name: "Ações de Aluno Sem Fone", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Enviar WhatsApp" })).toHaveCount(0);
   });
 });
 
