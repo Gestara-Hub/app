@@ -26,7 +26,9 @@
     "./trials": "./src/trials.ts",
     "./events": "./src/events.ts",
     "./progression": "./src/progression.ts",
-    "./modality-colors": "./src/modality-colors.ts"
+    "./modality-colors": "./src/modality-colors.ts",
+    "./ses": "./src/ses.ts",
+    "./email-layouts": "./src/email-layouts.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
