@@ -124,7 +124,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
    | `CRON_SECRET` | Para o resumo diário do suporte |
    | `ANTHROPIC_API_KEY` | Opcional; teto de R$ 150/mês com alarme em 80% (doc `technical/26` §13) |
 
-3. **Resumo diário do suporte** (`GET /api/cron/digest`, com `Authorization: Bearer <CRON_SECRET>`): **ainda não tem agendamento.** Agendar com um Cron da Vercel no projeto do painel, ou com uma rotina no Supabase como as do app.
+3. **Resumo diário do suporte** (`GET /api/cron/digest`, com `Authorization: Bearer <CRON_SECRET>`): agendado em `apps/admin/vercel.json` (`0 12 * * 1-5` UTC = 09h de Brasília em dias úteis). A Vercel injeta `Authorization: Bearer <CRON_SECRET>` quando a variável está configurada no projeto do painel.
 4. **Primeiro administrador**, apontando os comandos para a produção, como no local (doc `guides/21-painel-admin-local.md`): `pnpm admin:create-admin`. O 2FA é obrigatório no primeiro acesso.
 
 ## 4. Integrações
