@@ -7,8 +7,8 @@
  * Pede a senha sem mostrar na tela (12+ caracteres). Cria a conta de login com
  * o marcador `platform` (que o app dos clientes recusa) e a linha em
  * `platform.admins`. No local usa o Supabase local; em outro ambiente informe
- * ADMIN_SUPABASE_URL e ADMIN_SERVICE_ROLE_KEY (a chave so existe neste comando).
- * Nunca imprime senha nem chave.
+ * ADMIN_SUPABASE_URL, ADMIN_SERVICE_ROLE_KEY e PLATFORM_DATABASE_URL (a chave
+ * so existe neste comando). Nunca imprime senha nem chave.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -82,7 +82,7 @@ if (!supabaseUrl || !serviceKey) {
   supabaseUrl = env.API_URL;
   serviceKey = env.SERVICE_ROLE_KEY;
 }
-const databaseUrl = readEnvFile().PLATFORM_DATABASE_URL;
+const databaseUrl = process.env.PLATFORM_DATABASE_URL || readEnvFile().PLATFORM_DATABASE_URL;
 if (!supabaseUrl || !serviceKey || !databaseUrl) fail("configuração incompleta (URL, chave ou conexão do painel).");
 
 const password = await ask("Senha (12+ caracteres): ", { hidden: true });
@@ -117,7 +117,8 @@ try {
     await auth.auth.admin.deleteUser(data.user.id);
     fail(`não foi possível cadastrar o administrador (${err.message}).`);
   }
-  console.log(`\nAdministrador cadastrado: ${email} (${role}). Entre em http://localhost:3201 e configure o aplicativo autenticador.`);
+  const panelUrl = process.env.ADMIN_PUBLIC_URL || "http://localhost:3201";
+  console.log(`\nAdministrador cadastrado: ${email} (${role}). Entre em ${panelUrl} e configure o aplicativo autenticador.`);
 } finally {
   await sql.end();
 }

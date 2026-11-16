@@ -8,8 +8,8 @@
  * Remove os aplicativos autenticadores da pessoa; no proximo login (senha) o
  * painel pede o cadastro de um novo QR. So roda com acesso a infraestrutura
  * (chave de servico do Auth e conexao do painel), e deixa registro na auditoria.
- * No local usa o Supabase local; em outro ambiente informe ADMIN_SUPABASE_URL e
- * ADMIN_SERVICE_ROLE_KEY. Nunca imprime senha, segredo nem chave.
+ * No local usa o Supabase local; em outro ambiente informe ADMIN_SUPABASE_URL,
+ * ADMIN_SERVICE_ROLE_KEY e PLATFORM_DATABASE_URL. Nunca imprime senha, segredo nem chave.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -72,7 +72,7 @@ if (!supabaseUrl || !serviceKey) {
   supabaseUrl = env.API_URL;
   serviceKey = env.SERVICE_ROLE_KEY;
 }
-const databaseUrl = readEnvFile().PLATFORM_DATABASE_URL;
+const databaseUrl = process.env.PLATFORM_DATABASE_URL || readEnvFile().PLATFORM_DATABASE_URL;
 if (!supabaseUrl || !serviceKey || !databaseUrl) fail("configuração incompleta (URL, chave ou conexão do painel).");
 
 const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
