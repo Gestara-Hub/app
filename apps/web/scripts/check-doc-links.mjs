@@ -77,6 +77,8 @@ for (const file of files) {
     for (const match of text.matchAll(/(?<![\w/.-])docs\/((?:technical|product|frontend|guides|archive|qa|handoff|skills)\/[\w.-]+(?:\/[\w.-]+)*)/g)) {
       if (isHandoff) break;
       const raw = match[1].replace(/[.,;:)]+$/, "");
+      // Evidencias locais de QA ficam no .gitignore e nao existem em checkouts limpos (CI).
+      if (raw === "qa/capturas" || raw.startsWith("qa/capturas/")) continue;
       const shortcut = raw.match(/^(technical|product|frontend|guides)\/(\d{2})$/);
       if (shortcut) {
         // "docs/technical/05" e atalho de numero, nao de arquivo.
