@@ -8,8 +8,8 @@ import { defineConfig } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT ?? 3101);
 const BASE_URL = `http://localhost:${PORT}`;
 const PROD_SERVER = process.env.E2E_SERVER === "prod";
-// Sem e-mail de verdade (MailerSend vazio): o painel mostra o link do convite na tela.
-const E2E_ENV = "MAILERSEND_API_KEY= ADMIN_NOTIFY_EMAIL=";
+// Sem e-mail de verdade (chaves AWS vazias): o painel mostra o link do convite na tela.
+const E2E_ENV = "AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= ADMIN_NOTIFY_EMAIL=";
 
 export default defineConfig({
   testDir: "./e2e",

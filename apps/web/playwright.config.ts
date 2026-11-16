@@ -21,7 +21,7 @@ const PROD_SERVER = process.env.E2E_SERVER === "prod";
 // Meta vazia: o e2e conecta o WhatsApp oficial pelo telefone do espaco, sem a janela da
 // Meta, e o envio "oficial" e o simulado (nunca a API de verdade, com numeros de teste).
 const E2E_ENV =
-  "E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY= NEXT_PUBLIC_META_APP_ID= NEXT_PUBLIC_META_CONFIG_ID= WHATSAPP_API_TOKEN= WHATSAPP_PHONE_NUMBER_ID=";
+  "E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= NEXT_PUBLIC_POSTHOG_KEY= NEXT_PUBLIC_META_APP_ID= NEXT_PUBLIC_META_CONFIG_ID= WHATSAPP_API_TOKEN= WHATSAPP_PHONE_NUMBER_ID=";
 
 // Testes de ponta a ponta no navegador. Usa o Chrome instalado na maquina
 // (sem download de navegador) e reaproveita o servidor da 3100 se ja estiver no ar.
@@ -50,7 +50,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" }, testMatch: /mobile\.spec/ },
   ],
   webServer: {
-    // Chaves vazias: gateway simulado, sem e-mail e sem PostHog (Asaas, MailerSend e analise de verdade, nunca).
+    // Chaves vazias: gateway simulado, sem e-mail e sem PostHog (Asaas, AWS SES e analise de verdade, nunca).
     // E2E_SERVER=prod: build de producao e `next start` (rodadas grandes: sem compilar
     // rota na primeira visita, menos falha instavel; doc 20). Padrao: `next dev`.
     command: PROD_SERVER
