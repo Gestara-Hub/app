@@ -14,6 +14,7 @@ export {
   retryAllPendingGatewayCancels,
   retryPendingGatewayCancels,
   subaccountKeyOf,
+  verifyGatewayPaymentForWebhook,
 } from "./gatewayCleanup";
 export type {
   GatewayCancelResult,

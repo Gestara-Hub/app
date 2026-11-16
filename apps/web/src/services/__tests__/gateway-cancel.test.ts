@@ -9,7 +9,8 @@ const asaas = vi.hoisted(() => ({
   getPayment: vi.fn(),
 }));
 
-vi.mock("@/lib/asaas", () => ({
+vi.mock("@/lib/asaas", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/asaas")>()),
   deletePayment: asaas.deletePayment,
   getPayment: asaas.getPayment,
   createWebhook: vi.fn(),
@@ -33,7 +34,12 @@ vi.mock("@/lib/supabase/admin", () => ({
         const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { gateway_api_key: "$aact_sub" } }) };
         return q;
       }
-      const select = { eq: () => select, lte: () => select, limit: async () => ({ data: db.rows }) };
+      const select = {
+        eq: () => select,
+        lte: () => select,
+        limit: async () => ({ data: db.rows }),
+        maybeSingle: async () => ({ data: { organization_id: "org_1" } }),
+      };
       return {
         select: () => select,
         update: (values: Record<string, unknown>) => {
@@ -54,7 +60,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { cancelGatewayPayment, expireDueOnlinePayments } = await import("@/services/onlinePayments/gateway");
+const { AsaasApiError } = await import("@/lib/asaas");
+const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+const { cancelGatewayPayment, expireDueOnlinePayments, verifyGatewayPaymentForWebhook } = await import(
+  "@/services/onlinePayments/gateway"
+);
 
 describe("cancelar a cobrança online no Asaas", () => {
   beforeEach(() => {
@@ -129,5 +139,31 @@ describe("expiração: vencida aqui sai do Asaas", () => {
     db.rows = [];
     await expect(expireDueOnlinePayments("org_1")).resolves.toBe(0);
     expect(asaas.deletePayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("reconferir pagamento do webhook no Asaas", () => {
+  beforeEach(() => {
+    asaas.getPayment.mockReset();
+    vi.stubEnv("ASAAS_API_KEY", "$aact_master");
+  });
+
+  it("aceita o objeto oficial do Asaas quando confirmado/recebido e recusa PENDING ou 404", async () => {
+    const admin = createSupabaseAdminClient();
+
+    asaas.getPayment.mockResolvedValueOnce({ id: "pay_1", status: "RECEIVED", netValue: 147.01, billingType: "PIX" });
+    await expect(
+      verifyGatewayPaymentForWebhook(admin, { id: "pay_1", status: "RECEIVED", netValue: 1, value: 150, billingType: "PIX" } as never),
+    ).resolves.toMatchObject({ ok: true, payment: { id: "pay_1", netValue: 147.01 } });
+
+    asaas.getPayment.mockResolvedValueOnce({ id: "pay_1", status: "PENDING" });
+    await expect(
+      verifyGatewayPaymentForWebhook(admin, { id: "pay_1", status: "RECEIVED", value: 150, billingType: "PIX" } as never),
+    ).resolves.toEqual({ ok: false, status: "PENDING" });
+
+    asaas.getPayment.mockRejectedValueOnce(new AsaasApiError("não existe", 404));
+    await expect(
+      verifyGatewayPaymentForWebhook(admin, { id: "pay_1", status: "RECEIVED", value: 150, billingType: "PIX" } as never),
+    ).resolves.toEqual({ ok: false, status: "not_found" });
   });
 });

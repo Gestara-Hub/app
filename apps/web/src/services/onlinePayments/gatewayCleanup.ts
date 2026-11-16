@@ -1,4 +1,5 @@
-import { deletePayment, getPayment } from "@/lib/asaas";
+import { AsaasApiError, type AsaasPaymentResponse, deletePayment, getPayment } from "@/lib/asaas";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { settleAsaasPayment } from "./asaasSettlement";
 import { auditOnlinePaymentConflict, auditOnlinePaymentPaid } from "./onlinePaymentAudit";
@@ -38,6 +39,42 @@ export async function subaccountKeyOf(organizationId: string): Promise<string | 
     .eq("id", organizationId)
     .maybeSingle();
   return realSubaccountKey(data?.gateway_api_key);
+}
+
+/**
+ * Reconferir no Asaas antes da baixa de um webhook de aluno (auditoria 31/10):
+ * um POST falso (mesmo com segredo) nao marca cobranca como paga sem o Asaas
+ * confirmar o status e devolver os valores reais. Quando `ASAAS_API_KEY` nao
+ * esta configurada ou a subconta nao usa chave real, segue com o payload.
+ */
+export async function verifyGatewayPaymentForWebhook(
+  admin: SupabaseClient,
+  payment: AsaasPaymentResponse,
+): Promise<{ ok: true; payment: AsaasPaymentResponse } | { ok: false; status: string }> {
+  if (!payment.id || !process.env.ASAAS_API_KEY?.trim() || typeof admin.from !== "function") {
+    return { ok: true, payment };
+  }
+  const { data: op } = await admin
+    .from("online_payments")
+    .select("organization_id")
+    .eq("gateway_payment_id", payment.id)
+    .eq("gateway_provider", "asaas")
+    .maybeSingle();
+  if (!op?.organization_id) return { ok: true, payment };
+  const apiKey = await subaccountKeyOf(String(op.organization_id));
+  if (!apiKey) return { ok: true, payment };
+  try {
+    const remote = await getPayment(payment.id, apiKey);
+    if (!PAID_STATUSES.has(remote.status)) {
+      return { ok: false, status: remote.status };
+    }
+    return { ok: true, payment: remote };
+  } catch (err) {
+    if (err instanceof AsaasApiError && (err.status === 404 || err.status === 400)) {
+      return { ok: false, status: "not_found" };
+    }
+    throw err;
+  }
 }
 
 /**

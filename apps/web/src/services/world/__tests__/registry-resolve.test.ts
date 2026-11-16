@@ -3,8 +3,9 @@
 import { it, expect } from "vitest";
 import { SERVICE_NAMESPACES, resolveServiceMethod } from "@/services/world/registry";
 
-it("todo metodo dos servicos registrados resolve com hasOwn", async () => {
+it("todo metodo dos servicos registrados declara permissao explicita e resolve com hasOwn", async () => {
   const missing: string[] = [];
+  const undeclaredPermission: string[] = [];
   for (const [ns, entry] of Object.entries(SERVICE_NAMESPACES)) {
     const service = await entry.load();
     const names = new Set<string>();
@@ -15,11 +16,14 @@ it("todo metodo dos servicos registrados resolve com hasOwn", async () => {
     }
     for (const m of names) {
       if (entry.browserOnly?.includes(m)) continue;
+      if (!Object.hasOwn(entry.permissions, m)) undeclaredPermission.push(`${ns}.${m}`);
       if (!(await resolveServiceMethod(`${ns}.${m}`))) missing.push(`${ns}.${m}`);
     }
   }
+  expect(undeclaredPermission).toEqual([]);
   expect(missing).toEqual([]);
   expect(await resolveServiceMethod("clients.__proto__")).toBeUndefined();
   expect(await resolveServiceMethod("__proto__.toString")).toBeUndefined();
   expect(await resolveServiceMethod("clients.constructor")).toBeUndefined();
+  expect(await resolveServiceMethod("clients.naoExiste")).toBeUndefined();
 });

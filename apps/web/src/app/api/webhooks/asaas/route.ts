@@ -14,7 +14,7 @@ import {
   markOnlinePaymentDisputeInDb,
   cancelOnlinePaymentByGatewayIdInDb,
 } from "@/services/onlinePayments/onlinePaymentsWebhook";
-import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
+import { recheckFeesAfterPayment, verifyGatewayPaymentForWebhook } from "@/services/onlinePayments/gateway";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OnlinePaymentDisputeStatus } from "@gestarahub/contracts";
 import { logError, logWarn, reportError } from "@/lib/log";
@@ -99,8 +99,20 @@ async function handleEvent(
 
   // Liquidacao / confirmacao de pagamento de aluno (subconta).
   if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
+    const verification = await verifyGatewayPaymentForWebhook(admin, payment);
+    if (!verification.ok) {
+      logWarn(
+        `[Asaas Webhook] Pagamento ${payment.id} não confirmado na consulta ao Asaas (${verification.status}); baixa ignorada.`,
+      );
+      return { status: "ignored", outcome: `pagamento não confirmado no Asaas (${verification.status})` };
+    }
+    const verified = verification.payment;
     // CONFIRMED: pago, saldo ainda nao liberado (cartao ~32 dias). RECEIVED: disponivel.
-    const result = await settleAsaasPayment(payment, event === "PAYMENT_RECEIVED");
+    const released =
+      verified.status === "RECEIVED" ||
+      verified.status === "RECEIVED_IN_CASH" ||
+      (!verified.status && event === "PAYMENT_RECEIVED");
+    const result = await settleAsaasPayment(verified, released);
     if (!result) {
       logWarn(`[Asaas Webhook] Pagamento ${payment.id} não encontrado na base local do GestaraHub.`);
       return { status: "ignored", outcome: "pagamento não encontrado" };

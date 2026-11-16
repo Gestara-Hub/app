@@ -19,7 +19,11 @@ vi.mock("@/services/onlinePayments/onlinePaymentsWebhook", () => ({
   expireOnlinePaymentInDb: vi.fn(),
   cancelOnlinePaymentByGatewayIdInDb: vi.fn(),
 }));
-vi.mock("@/services/onlinePayments/gateway", () => ({ recheckFeesAfterPayment: vi.fn(async () => undefined) }));
+const gateway = vi.hoisted(() => ({
+  recheckFeesAfterPayment: vi.fn(async () => undefined),
+  verifyGatewayPaymentForWebhook: vi.fn(async (_admin: unknown, p: unknown) => ({ ok: true as const, payment: p })),
+}));
+vi.mock("@/services/onlinePayments/gateway", () => gateway);
 vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: () => ({}) }));
 vi.mock("@/services/server/backgroundRuns", () => runs);
 // `after` so existe numa requisicao do Next: aqui roda na hora.
@@ -43,6 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ASAAS_WEBHOOK_SECRET;
   settlement.settleAsaasPayment.mockResolvedValue(null);
+  gateway.verifyGatewayPaymentForWebhook.mockImplementation(async (_admin: unknown, p: unknown) => ({ ok: true as const, payment: p }));
   runs.beginWebhookEvent.mockResolvedValue({ id: "linha-1", duplicate: false });
 });
 
@@ -123,6 +128,18 @@ describe("webhook do Asaas e o Plano GestaraHub", () => {
       expect.anything(),
       "linha-1",
       { status: "failed", errorReference: "CODIGO01" },
+    );
+  });
+
+  it("pagamento de aluno não confirmado na reconferência do Asaas é ignorado sem dar baixa", async () => {
+    gateway.verifyGatewayPaymentForWebhook.mockResolvedValueOnce({ ok: false, status: "PENDING" } as never);
+    const res = await post({ id: "evt_fake", event: "PAYMENT_RECEIVED", payment: { id: "pay_fake" } });
+    expect(await res.json()).toMatchObject({ processed: false });
+    expect(settlement.settleAsaasPayment).not.toHaveBeenCalled();
+    expect(runs.finishWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      "linha-1",
+      expect.objectContaining({ status: "ignored" }),
     );
   });
 });

@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * ficava em aberto e voltava primeiro em toda rodada, travando a fila).
  */
 const asaas = vi.hoisted(() => ({ deletePayment: vi.fn(), getPayment: vi.fn() }));
-vi.mock("@/lib/asaas", () => ({
+vi.mock("@/lib/asaas", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/asaas")>()),
   deletePayment: asaas.deletePayment,
   getPayment: asaas.getPayment,
   createWebhook: vi.fn(),

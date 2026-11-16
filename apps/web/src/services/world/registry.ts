@@ -11,7 +11,7 @@ type ServiceObject = Record<string, (...args: never[]) => Promise<unknown>>;
 
 interface ServiceNamespace {
   load: () => Promise<ServiceObject>;
-  /** Permissao por metodo; ausente = qualquer usuario do espaco. */
+  /** Permissao por metodo (negacao por padrao: metodo ausente e bloqueado). Use AUTHENTICATED para leituras compartilhadas por todo usuario autenticado do espaco. */
   permissions: Record<string, Permission[]>;
   /** Metodos que nao vao para o servidor (arquivo, navegador). */
   browserOnly?: string[];
@@ -21,8 +21,12 @@ interface ServiceNamespace {
   slices?: () => Promise<Record<string, MethodSlice>>;
 }
 
+/** Qualquer membro autenticado do espaco (exclusivo para dados estruturais da sessao). */
+const AUTHENTICATED: Permission[] = [];
 const MANAGE_CLIENTS: Permission[] = ["clients:manage"];
+const VIEW_CLIENTS: Permission[] = ["clients:view", "clients:view_own", "classes:view", "events:view", "billing:view", "communication:view"];
 const MANAGE_CLASSES: Permission[] = ["classes:manage"];
+const VIEW_CLASSES: Permission[] = ["classes:view", "classes:manage", "events:view", "clients:view", "clients:view_own", "communication:view", "dashboard:view"];
 const MANAGE_ENROLLMENT: Permission[] = ["enrollment:manage"];
 const MARK_ATTENDANCE: Permission[] = ["attendance:mark"];
 const VIEW_BILLING: Permission[] = ["billing:view"];
@@ -42,12 +46,40 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   clients: {
     load: async () => (await import("../clients")).clientsServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../clients/clientSlices")).clientSlices,
-    permissions: all(["create", "update", "remove"], MANAGE_CLIENTS),
+    permissions: {
+      ...all(["list", "listOptions", "listByIds", "listPaginated", "listVisitorIds", "listTrials", "getById"], VIEW_CLIENTS),
+      getProgressionOverview: ["clients:view", "clients:view_own", "progression:manage"],
+      listGraduations: ["progression:manage", "classes:manage", "clients:view", "clients:view_own"],
+      previewGraduationCertificate: ["progression:manage", "classes:manage"],
+      ...all(["getGraduationCertificate", "issueEventGraduationCertificates", "cancelGraduationCertificate"], MANAGE_PROGRESSION),
+      ...all(
+        [
+          "addClassRecord",
+          "addClassRecords",
+          "updateStrengths",
+          "addGoal",
+          "setGoalCompleted",
+          "removeGoal",
+          "promoteStudent",
+          "saveModalityProgression",
+          "listPromotionCandidates",
+          "promoteStudents",
+          "getProgressionTermSuggestions",
+        ],
+        MANAGE_PROGRESSION,
+      ),
+      ...all(["create", "update", "remove"], MANAGE_CLIENTS),
+    },
   },
   turmas: {
     load: async () => (await import("../classes")).turmasServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../classes/classSlices")).classSlices,
     permissions: {
+      ...all(
+        ["list", "getById", "listSessions", "getSession", "listEnrollments", "listEnrolledModalities", "listWaitlist", "getAttendanceSummary", "listAbsenceStreaks"],
+        VIEW_CLASSES,
+      ),
+      ...all(["listCompletedEnrollments", "previewCourseCertificate", "getCourseCertificate", "issueCourseCertificates"], ["classes:view", "classes:manage"]),
       ...all(["create", "update", "deactivate", "reactivate", "substituteInstructor", "restorePrimaryInstructor"], MANAGE_CLASSES),
       // Cancelar um certificado emitido (doc 21 §1.3): quem gere as turmas.
       ...all(["cancelCertificate"], MANAGE_CLASSES),
@@ -130,12 +162,18 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   grades: {
     load: async () => (await import("../grades")).gradesServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../grades/gradeSlices")).gradeSlices,
-    permissions: all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
+    permissions: {
+      ...all(["listClassAssessments", "getSheet", "getReportCard"], ["grades:manage", "classes:view", "clients:view", "clients:view_own"]),
+      ...all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
+    },
   },
   measurements: {
     load: async () => (await import("../measurements")).measurementsServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../measurements/measurementSlices")).measurementSlices,
-    permissions: all(["create", "update", "remove"], MANAGE_PROGRESSION),
+    permissions: {
+      getStudentMeasurements: ["progression:manage", "clients:view", "clients:view_own"],
+      ...all(["create", "update", "remove"], MANAGE_PROGRESSION),
+    },
   },
   // Documentos da ficha (doc product/28): a permissao depende do dono (aluno ou
   // instrutor) e o servico confere; aqui so barra quem nao ve nenhum dos dois.
@@ -208,6 +246,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     load: async () => (await import("../settings/settingsService")).settingsServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../settings/settingsSlices")).settingsSlices,
     permissions: {
+      ...all(["getOrganization", "getUnit"], AUTHENTICATED),
       ...all(["updateOrganization", "updateUnit"], ["settings:view"]),
       markModalitiesReviewed: ["classes:manage", "services:manage"],
     },
@@ -215,11 +254,14 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   onboarding: {
     load: async () => (await import("../settings/onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../settings/settingsSlices")).onboardingSlices,
-    permissions: {},
+    permissions: all(["getOnboardingSnapshot", "getDiscoveryMilestones"], AUTHENTICATED),
   },
   certificates: {
     load: async () => (await import("../settings/certificatesService")).certificatesServiceImpl as unknown as ServiceObject,
-    permissions: all(["saveTemplate", "resetTemplate", "removeModalityTemplate"], MANAGE_CLASSES),
+    permissions: {
+      ...all(["getTemplate", "listModalitiesWithOwnTemplate"], ["classes:manage", "classes:view", "events:view", "settings:view"]),
+      ...all(["saveTemplate", "resetTemplate", "removeModalityTemplate"], MANAGE_CLASSES),
+    },
     browserOnly: ["uploadLogo", "uploadArtwork"],
   },
 };
@@ -249,6 +291,8 @@ export async function resolveServiceMethod(name: string): Promise<ResolvedMethod
   if (!Object.hasOwn(SERVICE_NAMESPACES, namespace)) return undefined;
   const entry = SERVICE_NAMESPACES[namespace];
   if (!method || entry.browserOnly?.includes(method)) return undefined;
+  // Negacao por padrao (revisao geral de 31/10/2026): metodo sem entrada explicita em `permissions` e recusado.
+  if (!Object.hasOwn(entry.permissions, method)) return undefined;
   // Duas chamadas no primeiro uso: o import dinamico pode devolver o modulo ainda
   // inicializando (import circular) e o servico vir `undefined`. Espera e tenta
   // de novo antes de desistir (revisao geral de 31/10/2026, teste de banco).
@@ -262,7 +306,7 @@ export async function resolveServiceMethod(name: string): Promise<ResolvedMethod
   if (typeof fn !== "function") return undefined;
   return {
     run: (...args) => (fn as (...a: unknown[]) => Promise<unknown>).apply(service, args),
-    permissions: entry.permissions[method] ?? [],
+    permissions: entry.permissions[method],
     noRetry: entry.noRetry?.includes(method) ?? false,
     slice: await sliceFor(name),
   };
