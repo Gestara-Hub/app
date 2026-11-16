@@ -56,6 +56,9 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-unused
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-unused
     steps:
       - uses: actions/checkout@v4
 
@@ -90,6 +93,9 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-unused
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-unused
     steps:
       - uses: actions/checkout@v4
 
@@ -107,7 +113,7 @@ jobs:
       - name: Instalar dependências e navegador
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @gestarahub/web exec playwright install chrome
+          pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
 
       - name: Subir Supabase local e espaço de demonstração
         run: pnpm setup:local
@@ -133,6 +139,9 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-unused
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-unused
     strategy:
       fail-fast: false
       matrix:
@@ -154,7 +163,7 @@ jobs:
       - name: Instalar dependências e navegador
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @gestarahub/web exec playwright install chrome
+          pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
 
       - name: Subir Supabase local e espaço de demonstração
         run: pnpm setup:local
