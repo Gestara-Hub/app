@@ -146,12 +146,14 @@ describe("envio de e-mails via Amazon SES (apps/web)", () => {
 
     for (const content of [html, text]) {
       expect(content).toContain("Você recebeu um convite, Jessica!");
-      expect(content).toContain("com o perfil de acesso Proprietário");
+      expect(content).toContain("com o perfil de acesso");
       expect(content).toContain("peça a quem administra o espaço para reenviar");
       expect(content).not.toContain("Você foi convidado");
       expect(content).not.toContain("como Proprietário");
       expect(content).not.toContain("um administrador");
     }
+    expect(html).toContain('com o perfil de acesso <strong style="color:#ffffff;">Proprietário</strong>');
+    expect(text).toContain("com o perfil de acesso Proprietário");
     expect(html).toContain("porque quem administra Dojo Norte cadastrou seu e-mail");
     expect(html).not.toContain("Gestão simples para escolas, estúdios e academias.");
   });
