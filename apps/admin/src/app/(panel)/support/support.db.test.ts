@@ -24,15 +24,39 @@ const created: Record<string, string> = {};
 const realFetch = globalThis.fetch;
 const mails: { to: string; subject: string; text: string }[] = [];
 
-function stubMailerSend() {
+function stubSes() {
   mails.length = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (!String(input).startsWith("https://api.mailersend.com/")) return realFetch(input, init);
-      const body = JSON.parse(String(init?.body));
-      mails.push({ to: body.to[0].email, subject: body.subject, text: body.text });
-      return new Response("{}", { status: 202 });
+      if (!String(input).includes("amazonaws.com/v2/email/outbound-emails")) return realFetch(input, init);
+      const body = JSON.parse(String(init?.body)) as {
+        Destination: { ToAddresses: string[] };
+        Content: {
+          Simple?: { Subject: { Data: string }; Body: { Text: { Data: string } } };
+          Raw?: { Data: string };
+        };
+      };
+      if (body.Content.Simple) {
+        mails.push({
+          to: body.Destination.ToAddresses[0],
+          subject: body.Content.Simple.Subject.Data,
+          text: body.Content.Simple.Body.Text.Data,
+        });
+      } else if (body.Content.Raw) {
+        const mime = Buffer.from(body.Content.Raw.Data, "base64").toString("utf8");
+        const rawSubject = /^Subject:\s*(.+)$/m.exec(mime)?.[1]?.trim() ?? "";
+        const subject = rawSubject.replace(/=\?UTF-8\?B\?([^?]+)\?=/gi, (_, b64: string) =>
+          Buffer.from(b64, "base64").toString("utf8"),
+        );
+        const textPart =
+          /Content-Type: text\/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)/.exec(
+            mime,
+          );
+        const text = textPart ? Buffer.from(textPart[1].replace(/\s+/g, ""), "base64").toString("utf8") : mime;
+        mails.push({ to: body.Destination.ToAddresses[0], subject, text });
+      }
+      return new Response(JSON.stringify({ MessageId: "ses-test-id" }), { status: 200 });
     }),
   );
 }
@@ -148,8 +172,9 @@ describe("responder e administrar uma conversa", () => {
   it("responder grava, passa para 'aguardando o cliente', avisa por e-mail e audita", async () => {
     const admin = await createAdminUser("platform_owner", "Marcello Teste");
     admins.push(admin);
-    vi.stubEnv("MAILERSEND_API_KEY", "chave-de-teste");
-    stubMailerSend();
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "chave-de-teste");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "segredo-de-teste");
+    stubSes();
     await signInAdmin(admin);
     const { replyAction } = await import("./actions");
 
@@ -352,10 +377,11 @@ describe("resumo diário", () => {
   });
 
   it("com o segredo certo, envia o resumo a quem recebe os avisos", async () => {
-    vi.stubEnv("MAILERSEND_API_KEY", "chave-de-teste");
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "chave-de-teste");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "segredo-de-teste");
     vi.stubEnv("ADMIN_NOTIFY_EMAIL", "suporte@gestarahub.teste");
     await owner`update platform.support_threads set status = 'waiting_us' where id = ${created.antiga}`;
-    stubMailerSend();
+    stubSes();
     const { GET } = await import("@/app/api/cron/digest/route");
     const { NextRequest } = await import("next/server");
     const response = await GET(new NextRequest(cronUrl, { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }));

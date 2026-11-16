@@ -1,4 +1,11 @@
 import "server-only";
+import {
+  escapeEmailHtml,
+  renderBrandEmailLayout,
+  renderEmailButtonHtml,
+  renderEmailFallbackLinkHtml,
+  renderEmailNoticeHtml,
+} from "@gestarahub/core/email-layouts";
 import { isAdminRole, type AdminRole } from "../permissions";
 import { createLogin, deleteLogin, inviteLink, resetFactors } from "./auth-admin";
 import { sendEmail } from "./email";
@@ -57,11 +64,30 @@ async function activeOwnersExcept(id: string): Promise<number> {
 
 async function sendInvite(input: { email: string; name: string; inviterName: string }): Promise<{ emailed: boolean; link: string }> {
   const link = await inviteLink(input.email);
+  const firstName = input.name.split(" ")[0] || input.name;
+  const safeFirstName = escapeEmailHtml(firstName);
+  const safeInviter = escapeEmailHtml(input.inviterName);
   const emailed = await sendEmail({
     to: { email: input.email, name: input.name },
     subject: "Convite para o painel do GestaraHub",
+    html: (icon) =>
+      renderBrandEmailLayout({
+        title: "Convite para o painel do GestaraHub",
+        preheader: `${safeInviter} convidou você para o painel de administração do GestaraHub.`,
+        badge: "Painel de administração",
+        heading: `Você recebeu um convite, ${safeFirstName}!`,
+        intro: `<strong style="color:#ffffff;">${safeInviter}</strong> convidou você para o painel de administração do GestaraHub.`,
+        body: `<p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">
+                Abra o link abaixo para criar sua senha e configurar o aplicativo autenticador de acesso.
+              </p>
+              ${renderEmailButtonHtml(link, "Aceitar convite e criar senha")}
+              ${renderEmailNoticeHtml("<strong>&#9201; Atenção:</strong> este link vale por pouco tempo e só funciona uma vez.")}
+              ${renderEmailFallbackLinkHtml(link)}`,
+        footer: "Se você não esperava este convite, ignore esta mensagem com segurança.",
+        icon,
+      }),
     text: [
-      `Olá, ${input.name.split(" ")[0]}!`,
+      `Olá, ${firstName}!`,
       "",
       `${input.inviterName} convidou você para o painel de administração do GestaraHub.`,
       "Abra o link abaixo, crie sua senha e configure o aplicativo autenticador. O link vale por pouco tempo e só funciona uma vez.",

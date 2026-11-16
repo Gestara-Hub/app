@@ -1,5 +1,13 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import {
+  escapeEmailHtml,
+  GESTARAHUB_COMPANY,
+  renderBrandEmailLayout,
+  renderEmailButtonHtml,
+  renderEmailFallbackLinkHtml,
+  renderEmailNoticeHtml,
+} from "@gestarahub/core/email-layouts";
 import { sendEmail } from "./email";
 import { sql } from "./db";
 import { getEnv } from "./env";
@@ -47,11 +55,31 @@ export async function changeUserAccessEmail(input: {
   }
   if (!row) throw new UserAccessEmailError("Não foi possível concluir.");
 
-  const firstName = row.name.split(" ")[0];
+  const firstName = row.name.split(" ")[0] || row.name;
+  const safeFirstName = escapeEmailHtml(firstName);
+  const maskedNewEmail = maskEmail(row.new_email);
   const link = `${getEnv().WEB_APP_URL.replace(/\/+$/, "")}/reset-password?token=${token}`;
   const emailed = await sendEmail({
     to: { email: row.new_email, name: row.name },
     subject: "Crie sua senha para entrar no GestaraHub",
+    html: (icon) =>
+      renderBrandEmailLayout({
+        title: "Crie sua senha para entrar no GestaraHub",
+        preheader: "Seu e-mail de acesso foi atualizado pela equipe. Crie uma senha para entrar.",
+        badge: "Segurança da conta",
+        heading: `Crie sua senha, ${safeFirstName}`,
+        intro: "A equipe do GestaraHub trocou o e-mail de acesso da sua conta para este endereço, a pedido seu.",
+        body: `<p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">
+                Clique no botão abaixo para definir sua senha. Depois, entre usando este novo e-mail.
+              </p>
+              ${renderEmailButtonHtml(link, "Criar minha senha")}
+              ${renderEmailNoticeHtml("<strong>&#9201; Este link vale por 24 horas</strong> e só pode ser usado uma vez.")}
+              ${renderEmailFallbackLinkHtml(link)}`,
+        footer: `Este e-mail foi enviado após alteração solicitada ao suporte do GestaraHub.<br />
+                <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+        supportEmail: GESTARAHUB_COMPANY.supportEmail,
+        icon,
+      }),
     text: [
       `Olá, ${firstName}!`,
       "",
@@ -66,10 +94,25 @@ export async function changeUserAccessEmail(input: {
   await sendEmail({
     to: { email: row.old_email, name: row.name },
     subject: "O e-mail de acesso da sua conta no GestaraHub mudou",
+    html: (icon) =>
+      renderBrandEmailLayout({
+        title: "O e-mail de acesso da sua conta no GestaraHub mudou",
+        preheader: "O e-mail de acesso da sua conta no GestaraHub mudou.",
+        badge: "Segurança da conta",
+        heading: `Seu e-mail de acesso mudou, ${safeFirstName}`,
+        intro: `A equipe do GestaraHub trocou o e-mail de acesso da sua conta para <strong>${escapeEmailHtml(maskedNewEmail)}</strong>, a pedido seu.`,
+        body: renderEmailNoticeHtml(
+          `<strong>Não foi você?</strong> Responda este e-mail ou use o <strong>Fale com a gente</strong> agora mesmo.`,
+        ),
+        footer: `Este aviso vai para o e-mail antigo por segurança.<br />
+                <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+        supportEmail: GESTARAHUB_COMPANY.supportEmail,
+        icon,
+      }),
     text: [
       `Olá, ${firstName}!`,
       "",
-      `A equipe do GestaraHub trocou o e-mail de acesso da sua conta para ${maskEmail(row.new_email)}, a pedido seu.`,
+      `A equipe do GestaraHub trocou o e-mail de acesso da sua conta para ${maskedNewEmail}, a pedido seu.`,
       "",
       "Se você não pediu isso, responda este e-mail ou use o Fale com a gente agora mesmo.",
     ].join("\n"),

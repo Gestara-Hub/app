@@ -1,4 +1,10 @@
 import "server-only";
+import {
+  escapeEmailHtml,
+  GESTARAHUB_COMPANY,
+  renderBrandEmailLayout,
+  renderEmailNoticeHtml,
+} from "@gestarahub/core/email-layouts";
 import { clearEmailTwoFactor, resetFactors } from "./auth-admin";
 import { sendEmail } from "./email";
 import { sql } from "./db";
@@ -60,11 +66,29 @@ export async function resetUserTwoFactor(input: { organizationId: string; userId
     if (pg.code === "22023" || pg.code === "P0002") throw new UserTwoFactorError(pg.message ?? "Não foi possível concluir.");
     throw error;
   }
+  const firstName = user.name.split(" ")[0] || user.name;
+  const safeFirstName = escapeEmailHtml(firstName);
   const emailed = await sendEmail({
     to: { email: user.email, name: user.name },
     subject: "A verificação em duas etapas da sua conta foi reiniciada",
+    html: (icon) =>
+      renderBrandEmailLayout({
+        title: "A verificação em duas etapas da sua conta foi reiniciada",
+        preheader: "Sua verificação em duas etapas foi reiniciada a pedido seu.",
+        badge: "Segurança da conta",
+        heading: `Verificação em duas etapas reiniciada, ${safeFirstName}`,
+        intro: "A equipe do GestaraHub reiniciou a verificação em duas etapas da sua conta, a pedido seu.",
+        body: `<p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#475569;">
+                No próximo acesso você entra apenas com a senha. Depois, ligue a verificação de novo em <strong>Segurança</strong>, no menu do seu usuário, e guarde os novos códigos de recuperação.
+              </p>
+              ${renderEmailNoticeHtml("<strong>Não foi você?</strong> Responda este e-mail ou use o <strong>Fale com a gente</strong> e troque sua senha agora.")}`,
+        footer: `Este aviso confirma uma alteração de segurança solicitada ao suporte.<br />
+                <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+        supportEmail: GESTARAHUB_COMPANY.supportEmail,
+        icon,
+      }),
     text: [
-      `Olá, ${user.name.split(" ")[0]}!`,
+      `Olá, ${firstName}!`,
       "",
       "A equipe do GestaraHub reiniciou a verificação em duas etapas da sua conta, a pedido seu.",
       "No próximo acesso você entra só com a senha. Depois, ligue a verificação de novo em Segurança, no menu do seu usuário, e guarde os novos códigos de recuperação.",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/server/audit";
 import { requireAdmin } from "@/lib/server/context";
+import { renderSupportConversationEmail } from "@gestarahub/core/email-layouts";
 import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { sendEmail } from "@/lib/server/email";
 import { getEnv } from "@/lib/server/env";
@@ -36,17 +37,29 @@ export async function replyAction(_prev: SupportFormState, formData: FormData): 
   if (!thread) return { error: "Conversa não encontrada." };
 
   await addStaffReply({ threadId: thread.id, adminId: admin.id, adminName: admin.name, body: parsed.data.body });
+  const protocol = formatProtocol(thread.number);
+  const firstName = thread.userName.split(" ")[0] || thread.userName;
+  const appUrl = getEnv().WEB_APP_URL;
   const emailed = await sendEmail({
     to: { email: thread.userEmail, name: thread.userName },
-    subject: `Resposta do suporte do GestaraHub [${formatProtocol(thread.number)}]: ${thread.subject}`,
+    subject: `Resposta do suporte do GestaraHub [${protocol}]: ${thread.subject}`,
+    html: (icon) =>
+      renderSupportConversationEmail({
+        firstName,
+        protocol,
+        threadSubject: thread.subject,
+        replyBody: parsed.data.body,
+        appUrl,
+        icon,
+      }),
     text: [
-      `Olá, ${thread.userName.split(" ")[0]}!`,
+      `Olá, ${firstName}!`,
       "",
-      `O suporte do GestaraHub respondeu à sua conversa (protocolo ${formatProtocol(thread.number)}):`,
+      `O suporte do GestaraHub respondeu à sua conversa (protocolo ${protocol}):`,
       "",
       parsed.data.body,
       "",
-      `Para continuar, abra o GestaraHub (${getEnv().WEB_APP_URL}) e use "Fale com a gente" no menu do seu usuário.`,
+      `Para continuar, abra o GestaraHub (${appUrl}) e use "Fale com a gente" no menu do seu usuário.`,
     ].join("\n"),
   });
   await recordAudit({ admin, action: "support.reply", organizationId: thread.organizationId, target: { threadId: thread.id, emailed } });

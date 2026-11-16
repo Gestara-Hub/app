@@ -29,14 +29,20 @@ export async function GET(request: NextRequest) {
       from platform.support_threads t join public.organizations o on o.id = t.organization_id
      where t.status = 'waiting_us'`;
   const [{ waiting }] = await sql()<{ waiting: number }[]>`select count(*)::int as waiting from platform.support_threads where status = 'waiting_customer'`;
-  const digest = buildDigest({
+  const digestInput = {
     threads: threads.map((t) => ({ subject: t.subject, organizationName: t.organization_name, userName: t.user_name, urgent: t.urgent, since: t.since })),
     waitingCustomer: waiting,
     now: new Date(),
     panelUrl: request.nextUrl.origin,
-  });
+  };
+  const digest = buildDigest(digestInput);
   if (!digest) return NextResponse.json({ ok: true, sent: false, reason: "nothing_waiting" });
   if (!to) return NextResponse.json({ ok: true, sent: false, reason: "no_recipient", waiting: threads.length });
-  const sent = await sendEmail({ to: { email: to }, subject: digest.subject, text: digest.text });
+  const sent = await sendEmail({
+    to: { email: to },
+    subject: digest.subject,
+    text: digest.text,
+    html: (icon) => buildDigest({ ...digestInput, icon })?.html ?? digest.html,
+  });
   return NextResponse.json({ ok: true, sent, waiting: threads.length });
 }

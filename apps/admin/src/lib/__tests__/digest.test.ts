@@ -33,6 +33,9 @@ describe("resumo diário do suporte", () => {
     expect(digest.text).toContain("[URGENTE] Pix não caiu");
     expect(digest.text).toContain("Atrasado, prazo 23/10/2026");
     expect(digest.text).toContain("https://admin.exemplo/support");
+    expect(digest.html).toContain("RESUMO DIÁRIO");
+    expect(digest.html).toContain("Pix não caiu");
+    expect(digest.html).toContain('href="https://admin.exemplo/support"');
   });
 
   it("limita a lista e diz quantas ficaram de fora", () => {
