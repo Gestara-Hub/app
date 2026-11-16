@@ -186,7 +186,7 @@ describe("responder e administrar uma conversa", () => {
     expect(thread.status).toBe("waiting_customer");
     expect(thread.messages.at(-1)).toMatchObject({ author: "staff", staffName: "Marcello Teste", internal: false });
     expect(mails).toHaveLength(1);
-    expect(mails[0]).toMatchObject({ to: "ana@alfa.teste" });
+    expect(mails[0]).toMatchObject({ to: "Ana Alfa <ana@alfa.teste>" });
     expect(mails[0].subject).toContain("Como pauso um aluno");
     const [{ number: antigaNumber }] = await owner<{ number: number }[]>`select number from platform.support_threads where id = ${created.antiga}`;
     expect(mails[0].subject).toBe(`Resposta do suporte do GestaraHub [GH-${antigaNumber}]: Como pauso um aluno`);
