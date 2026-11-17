@@ -50,7 +50,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
 import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
-import { whatsappNumber } from "@/lib/whatsapp";
+import { whatsappNumber, openWhatsApp } from "@/lib/whatsapp";
 import { formatPhone } from "@gestarahub/core/format";
 import type {
   Category,
@@ -238,7 +238,7 @@ function minorConsentAction(client: Client): ListItemAction | null {
       if (targetPhone) {
         const cleanPhone = targetPhone.replace(/\D/g, "");
         const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-        window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+        openWhatsApp(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`);
       } else {
         if (navigator.clipboard) {
           navigator.clipboard.writeText(url);

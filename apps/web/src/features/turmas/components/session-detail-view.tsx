@@ -1,5 +1,6 @@
 "use client";
 
+import { openWhatsApp } from "@/lib/whatsapp";
 import { useTeamWords } from "@/features/settings";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -739,10 +740,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                               if (targetPhone) {
                                 const cleanPhone = targetPhone.replace(/\D/g, "");
                                 const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-                                window.open(
-                                  `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`,
-                                  "_blank"
-                                );
+                                openWhatsApp(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`);
                               } else {
                                 if (navigator.clipboard) {
                                   navigator.clipboard.writeText(url);

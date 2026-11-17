@@ -1,5 +1,6 @@
 "use client";
 
+import { openWhatsApp } from "@/lib/whatsapp";
 import { Fragment, useMemo, useState } from "react";
 import { capacityLabel, promoteWaitlistDescription } from "../turma-copy";
 import Link from "next/link";
@@ -855,7 +856,7 @@ export function TurmaDetailView({
                                 if (targetPhone) {
                                   const cleanPhone = targetPhone.replace(/\D/g, "");
                                   const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-                                  window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+                                  openWhatsApp(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`);
                                 } else {
                                   if (navigator.clipboard) {
                                     navigator.clipboard.writeText(url);

@@ -13,7 +13,7 @@ import type {
 } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { queryKeys } from "@/lib/queryKeys";
-import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
+import { fillMessage, openWhatsApp, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
 import { billingService } from "@/services/billing";
 import { clientsService } from "@/services/clients";
 import { communicationService, messageLogsPage } from "@/services/communication";
@@ -257,8 +257,9 @@ export function useWhatsAppSend() {
       });
       return;
     }
-    window.open(whatsappLink(phone, content), "_blank", "noopener,noreferrer");
+    // Registro antes de sair: no app instalado o WhatsApp abre na mesma janela.
     register.mutate(payload);
+    openWhatsApp(whatsappLink(phone, content));
   }
 
   return {
