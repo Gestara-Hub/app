@@ -184,8 +184,8 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
           <QuoteLines quote={quote} target={target} currentTier={preview.data.current.tier} />
         )}
       </DialogBody>
-      <DialogFooter className="shrink-0">
-        <Button type="button" variant="outline" onClick={onClose}>
+      <DialogFooter saving={change.isPending} className="shrink-0">
+        <Button type="button" variant="outline" onClick={onClose} disabled={change.isPending}>
           Cancelar
         </Button>
         <Button

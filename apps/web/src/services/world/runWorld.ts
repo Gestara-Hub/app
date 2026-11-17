@@ -484,7 +484,7 @@ async function applyChanges(
     p_write_buckets: writeBuckets,
   });
   if (!error) return data as AppliedChanges;
-  if (error.code === "40001" || error.code === "23505") {
+  if (error.code === "PT409" || error.code === "40001" || error.code === "23505") {
     // A tela so mostra "outra pessoa mudou"; o motivo fica no log do servidor.
     console.warn(`[world] conflito na gravação: ${error.code} ${error.message}`);
     throw apiError("CONFLICT", CONFLICT_MESSAGE, { httpStatus: 409 });

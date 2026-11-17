@@ -112,10 +112,10 @@ test.describe("rotina diária do plano", () => {
 });
 
 test.describe("aviso do Asaas sobre a assinatura", () => {
+  test.skip(!WEBHOOK_SECRET, "ASAAS_WEBHOOK_SECRET ausente no .env.local");
   const headers: Record<string, string> = WEBHOOK_SECRET ? { "asaas-access-token": WEBHOOK_SECRET } : {};
 
   test("sem o token do parceiro, recusa", async ({ request }) => {
-    test.skip(!WEBHOOK_SECRET, "ASAAS_WEBHOOK_SECRET ausente no .env.local");
     const response = await request.post("/api/webhooks/asaas", {
       data: { id: "evt_sem_token", event: "SUBSCRIPTION_DELETED", subscription: { id: "sub_x" } },
     });

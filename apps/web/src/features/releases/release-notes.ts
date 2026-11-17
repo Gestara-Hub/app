@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.16-2",
+    date: "2026-11-16",
+    items: [
+      { text: "Barra no topo mostra quando uma tela ou painel está carregando." },
+      { text: "Formulários indicam o salvamento e evitam fechar por engano no meio." },
+      { text: "Horários cabem melhor no celular e salvamentos simultâneos estão mais estáveis." },
+    ],
+  },
+  {
     version: "2026.11.16",
     date: "2026-11-16",
     items: [

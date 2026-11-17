@@ -8,6 +8,7 @@ import type { AssessmentView, ClassGroupView, ModalityProgressionTrack } from "@
 import { formatAverage, scaleMax, usesPointsSum } from "@gestarahub/core/grades";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ListContainer,
   ListEmptyState,
@@ -50,7 +51,7 @@ export function ClassAssessmentsTab({
   /** Trilha da modalidade (etapa opcional e palavras). */
   track: ModalityProgressionTrack | null;
 }) {
-  const { data, isPending } = useClassAssessments(turma.id);
+  const { data, isPending, isFetching } = useClassAssessments(turma.id);
   const removeMut = useRemoveAssessment();
   const canManage = useCanManageGrades(turma.instructorId);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
@@ -131,6 +132,7 @@ export function ClassAssessmentsTab({
       )}
 
       <ListContainer
+        refreshing={isFetching && !isPending}
         emptyState={
           !isPending && rows.length === 0 ? (
             <ListEmptyState
@@ -151,7 +153,17 @@ export function ClassAssessmentsTab({
           ) : null
         }
       >
-        {rows.map((a) => {
+        {isPending
+          ? Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-44" />
+                  <Skeleton className="h-3.5 w-32" />
+                </div>
+                <Skeleton className="size-8 shrink-0 rounded-md" />
+              </div>
+            ))
+          : rows.map((a) => {
           const actions: ListItemAction[] = canManage
             ? [
                 {

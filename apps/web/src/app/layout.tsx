@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { AnalyticsConsentBanner } from "@/components/shared/analytics-consent-banner";
 import appIcon from "@/assets/icon.svg";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/config/site";
@@ -95,6 +97,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }}
         />
         <Providers>
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           {children}
           <AnalyticsConsentBanner />
         </Providers>

@@ -79,7 +79,7 @@ export function PromoteToCourseDialog({
         <DialogBody className="space-y-4">
           <CoursePaymentFields form={form} turma={turma} disabled={promoteMut.isPending} />
         </DialogBody>
-        <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
+        <DialogFooter saving={promoteMut.isPending} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
           <Button type="button" variant="outline" disabled={promoteMut.isPending} onClick={close}>
             Cancelar
           </Button>

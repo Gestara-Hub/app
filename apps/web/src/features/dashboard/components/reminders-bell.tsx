@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
+import { DialogSavingBar } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
@@ -123,6 +124,7 @@ function RemindersBellButton() {
   }, [fresh, open, bellSound]);
 
   const queryClient = useQueryClient();
+  const isFetchingReminders = useIsFetching({ queryKey: queryKeys.communication.reminders }) > 0;
   function openBell() {
     setOpen(true);
     // Gravacoes fora do Painel so marcam os lembretes como velhos: abrir o sino rele.
@@ -157,6 +159,7 @@ function RemindersBellButton() {
           side="right"
           className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
         >
+          <DialogSavingBar visible={open && isFetchingReminders} label="Carregando" />
           <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
             <SheetTitle className="text-lg font-semibold text-foreground">Lembretes</SheetTitle>
             <SheetDescription className="text-sm text-muted-foreground">

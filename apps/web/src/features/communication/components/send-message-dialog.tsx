@@ -486,7 +486,7 @@ function SendMessageForm({
             </div>
           ) : null}
         </DialogBody>
-        <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
+        <DialogFooter saving={whatsapp.isSending || batchSending} className="shrink-0 border-t border-border/40 px-6 py-4">
           {confirmingBatch && !batchSending ? (
             <Button type="button" variant="outline" onClick={() => setConfirmingBatch(false)}>
               Voltar

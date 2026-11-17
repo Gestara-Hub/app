@@ -23,6 +23,7 @@ import { signOut } from "@/app/(auth)/actions";
 import { clearCheckInLists } from "@/features/events";
 import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { AccessEmailDialog, TwoFactorDialog, useCurrentUser, useGoogleOnlyAccount } from "@/features/auth";
@@ -59,6 +60,7 @@ export function AppTopbar() {
         user: result.user,
         categories: result.categories,
       });
+      startNavigationProgress({ immediate: true });
       router.push(result.redirectTo);
       router.refresh();
     });

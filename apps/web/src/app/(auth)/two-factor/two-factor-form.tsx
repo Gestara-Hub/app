@@ -16,6 +16,7 @@ import {
   verifyTwoFactorSignInAction,
 } from "../two-factor-actions";
 import { focusField } from "@/lib/form-errors";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 
 /**
  * Codigo de 6 numeros do aplicativo ou do e-mail; ao acertar, entra no app.
@@ -99,6 +100,7 @@ export function TwoFactorForm({
         user: result.user,
         categories: result.categories,
       });
+      startNavigationProgress({ immediate: true });
       router.push(result.redirectTo);
       router.refresh();
     });
@@ -107,6 +109,7 @@ export function TwoFactorForm({
   const useAnotherAccount = () => {
     startLeaving(async () => {
       await cancelTwoFactorSignInAction();
+      startNavigationProgress({ immediate: true });
       router.push("/login");
     });
   };

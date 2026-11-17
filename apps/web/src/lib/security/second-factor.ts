@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { SESSION_MAX_AGE } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readSessionClaims } from "@/lib/supabase/session-claims";
 
 /**
  * A barreira da verificacao em duas etapas (doc technical/17, secao "Barreira").
@@ -24,17 +25,8 @@ export interface SecondFactorInfo {
 
 /** `session_id` da sessao atual do Supabase (claim do access token, ja conferido pelo `getUser`). */
 export async function currentSessionId(supabase: SupabaseClient): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as {
-      session_id?: unknown;
-    };
-    return typeof payload.session_id === "string" ? payload.session_id : null;
-  } catch {
-    return null;
-  }
+  const claims = await readSessionClaims(supabase);
+  return typeof claims?.session_id === "string" ? claims.session_id : null;
 }
 
 export function emailTwoFactorEnabled(user: User): boolean {

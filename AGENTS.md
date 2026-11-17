@@ -68,6 +68,7 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 - **Never run `git push` on your own.** Push only when the user explicitly asks for it; a request to commit is NOT a request to push.
 - **Commit:** every agent commits only when the user asks (user rule of 09/11/2026, `CLAUDE.md` §6): leave changes in the working tree and tell the user what changed. When asked, small commits, one subject each.
 - **Branches (13/11/2026):** commit on `develop`, never directly on `main`. `main` is production: it receives `develop` only when the user decides to publish (`guides/28`); an urgent fix starts from `main` in its own branch and goes back to `develop` too.
+- **Releases (`technical/27` §3 & `guides/28` §5):** when the user asks to publish/merge to `main`, always update `apps/web/src/features/releases/release-notes.ts`, run `pnpm release:prepare` on `develop` (bumps versions + updates `CHANGELOG.md`), commit `chore(release): <version>` + push `develop`, warn about `supabase db push --workdir apps` if new migrations exist, merge PR `develop` → `main` **without squash**, push tag `v<version>` on `main`, and fast-forward `develop` to `origin/main` so `v<version>` stays an ancestor of `develop`.
 
 ---
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { ListPlus, UserPlus } from "lucide-react";
 import {
+  DialogBody,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -253,7 +254,7 @@ export function EnrollStudentsDialog({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <DialogBody className="space-y-4">
         {isFull ? (
           <p className="rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-500">
             A turma atingiu a capacidade ({plural(turma.capacity, "vaga", "vagas")}). Você pode pôr
@@ -350,10 +351,10 @@ export function EnrollStudentsDialog({
           </p>
         )}
 
-        </div>
+        </DialogBody>
 
         {/* Lotada: dois botoes de texto longo, empilhados no celular. */}
-        <DialogFooter className={cn("p-6 pt-4 border-t border-border/40 shrink-0 bg-background", isFull && "max-sm:grid-cols-1")}>
+        <DialogFooter saving={pending} className={cn("p-6 pt-4 border-t border-border/40 shrink-0 bg-background", isFull && "max-sm:grid-cols-1")}>
           <Button variant="outline" onClick={close} disabled={pending}>
             Cancelar
           </Button>

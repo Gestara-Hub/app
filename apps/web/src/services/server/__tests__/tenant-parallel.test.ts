@@ -22,10 +22,17 @@ let sessionUserId: string | undefined;
 let verifiedUserId: string | null;
 let rows: Record<string, Row>;
 
+function fakeJwt(sub: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
+  return `h.${payload}.s`;
+}
+
 function fakeClient() {
   return {
     auth: {
-      getSession: async () => ({ data: { session: sessionUserId ? { user: { id: sessionUserId } } : null } }),
+      getSession: async () => ({
+        data: { session: sessionUserId ? { access_token: fakeJwt(sessionUserId) } : null },
+      }),
       getUser: async () => {
         events.push("getUser:start");
         await new Promise((resolve) => setTimeout(resolve, 20));

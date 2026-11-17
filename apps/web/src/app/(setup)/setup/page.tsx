@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { BusinessSetupWizard, SetupRouteGuard } from "@/features/onboarding";
+import { BusinessSetupWizard, SetupRouteGuard, SetupRouteSkeleton } from "@/features/onboarding";
 
 export default function SetupPage() {
   return (
     <SetupRouteGuard>
       {/* O passo vem da URL (?passo=2). */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<SetupRouteSkeleton />}>
         <BusinessSetupWizard />
       </Suspense>
     </SetupRouteGuard>

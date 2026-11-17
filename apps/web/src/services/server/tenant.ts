@@ -8,6 +8,7 @@ import { setErrorScope } from "@/lib/log/server-sink";
 import { isPlatformAdminUser } from "@/lib/security/platform-admin";
 import { secondFactorState } from "@/lib/security/second-factor";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readSessionClaims } from "@/lib/supabase/session-claims";
 import { missingSecondFactor } from "@/lib/supabase/tenant-client";
 
 /**
@@ -73,13 +74,12 @@ export async function requireTenant(): Promise<TenantContext> {
   const client = await createSupabaseServerClient();
   // Login e perfil ao mesmo tempo (12/11/2026): antes, a linha do usuario so
   // era buscada depois da resposta do Auth (duas idas seguidas por chamada).
-  // A sessao local (do cookie, renovada aqui se vencida, uma vez so) da o id
-  // para a busca; o RLS confere o token no banco, e a linha so vale se for da
-  // pessoa que o `getUser` confirmou. Se nao for, busca de novo pelo id certo.
-  const {
-    data: { session },
-  } = await client.auth.getSession();
-  const claimedId = session?.user?.id;
+  // O claim `sub` do token local (renovado aqui se vencido, sem tocar em
+  // `session.user`) da o id para a busca; o RLS confere o token no banco, e a
+  // linha so vale se for da pessoa que o `getUser` confirmou. Se nao for, busca
+  // de novo pelo id certo.
+  const claims = await readSessionClaims(client);
+  const claimedId = typeof claims?.sub === "string" && claims.sub ? claims.sub : undefined;
   const [
     {
       data: { user },

@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 export const NAVIGATION_STARTED_EVENT = "gestarahub:nav-start";
 export const NAVIGATION_CANCELLED_EVENT = "gestarahub:nav-cancel";
 
+/** Liga a barra fina global ao iniciar uma troca de tela via codigo (`router.push`/`replace`). */
+export function startNavigationProgress(options?: { immediate?: boolean }) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(NAVIGATION_STARTED_EVENT, { detail: options }));
+}
+
 /** Avisa o pai quando o estado "sujo" do formulario muda. */
 export function useReportDirty(dirty: boolean, onDirtyChange?: (dirty: boolean) => void) {
   useEffect(() => {

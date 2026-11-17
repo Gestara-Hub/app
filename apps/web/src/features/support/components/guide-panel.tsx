@@ -70,7 +70,7 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
   const targetRef = useRef<Element | null>(null);
   const scrolledRef = useRef(false);
   const layersAtStepStart = useRef(0);
-  const layerGoneSince = useRef<number | null>(null);
+  const layerGoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const step = guide.steps[index];
   const isLast = index === guide.steps.length - 1;
 
@@ -131,13 +131,21 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
     if (!step) return;
     targetRef.current = null;
     scrolledRef.current = false;
-    layerGoneSince.current = null;
+    if (layerGoneTimer.current) {
+      clearTimeout(layerGoneTimer.current);
+      layerGoneTimer.current = null;
+    }
     layersAtStepStart.current = openLayers().length;
     const stepIndex = index;
     const setStatus = (value: StepStatus) =>
       setSearch((current) => (current.index === stepIndex && current.status === value ? current : { index: stepIndex, status: value }));
     if (isMobile && step.kind === "menu") setOpenMobile(true);
-    const started = Date.now();
+    let notFoundTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearNotFoundTimer = () => {
+      if (!notFoundTimer) return;
+      clearTimeout(notFoundTimer);
+      notFoundTimer = null;
+    };
     const tick = () => {
       // A janela aberta (Radix) esconde do leitor de tela tudo que está fora dela, inclusive o painel.
       rootRef.current?.removeAttribute("aria-hidden");
@@ -152,16 +160,20 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
 
       // A janela que um passo anterior abriu fechou antes do fim: volta ao passo que a abriu.
       if (layerOwner !== null && layers === 0) {
-        layerGoneSince.current ??= Date.now();
-        if (Date.now() - layerGoneSince.current > LAYER_GONE_AFTER_MS) {
+        clearNotFoundTimer();
+        layerGoneTimer.current ??= setTimeout(() => {
+          layerGoneTimer.current = null;
           setNotice("A janela fechou. Abra de novo para continuar.");
           setLayerOwner(null);
           setIndex(layerOwner);
-        }
+        }, LAYER_GONE_AFTER_MS);
         setRect((current) => (current === null ? current : null));
         return;
       }
-      layerGoneSince.current = null;
+      if (layerGoneTimer.current) {
+        clearTimeout(layerGoneTimer.current);
+        layerGoneTimer.current = null;
+      }
 
       // Passo de lista: abrir um item numa janela cumpre o passo.
       if (step.kind === "lista" && layers > layersAtStepStart.current) {
@@ -173,9 +185,13 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
       targetRef.current = el;
       if (!el) {
         setRect((current) => (current === null ? current : null));
-        setStatus(Date.now() - started > NOT_FOUND_AFTER_MS ? "notFound" : "searching");
+        if (!notFoundTimer) {
+          setStatus("searching");
+          notFoundTimer = setTimeout(() => setStatus("notFound"), NOT_FOUND_AFTER_MS);
+        }
         return;
       }
+      clearNotFoundTimer();
       setStatus("found");
       const r = el.getBoundingClientRect();
       if (!scrolledRef.current) {
@@ -187,7 +203,14 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
     };
     tick();
     const timer = setInterval(tick, 200);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearNotFoundTimer();
+      if (layerGoneTimer.current) {
+        clearTimeout(layerGoneTimer.current);
+        layerGoneTimer.current = null;
+      }
+    };
   }, [step, index, layerOwner, isMobile, setOpenMobile]);
 
   // Clicou no destaque: o passo seguinte vem depois que a tela reage. Escuta também o toque
@@ -212,15 +235,18 @@ export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () =
 
   // Mudou de tela num passo que não é de clique (ex.: abriu a ficha ao clicar no nome): o passo foi cumprido.
   // Ignora a mudança que o próprio guia faz ao levar a pessoa até a tela de início.
-  const mountedAt = useRef(0);
+  const ignoringInitialNav = useRef(true);
   useEffect(() => {
-    mountedAt.current = Date.now();
+    const timer = setTimeout(() => {
+      ignoringInitialNav.current = false;
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
   const lastPath = useRef(pathname);
   useEffect(() => {
     if (lastPath.current === pathname) return;
     lastPath.current = pathname;
-    if (Date.now() - mountedAt.current < 2000) return;
+    if (ignoringInitialNav.current) return;
     if (step && !ADVANCES_ON_CLICK.includes(step.kind)) completeRef.current();
   }, [pathname, step]);
 

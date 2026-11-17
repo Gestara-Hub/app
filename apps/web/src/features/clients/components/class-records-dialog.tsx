@@ -13,6 +13,7 @@ import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
+  useReportDialogSaving,
 } from "@/components/ui/dialog";
 import {
   Sheet,
@@ -47,6 +48,7 @@ function ClassRecordsForm({
   onDone: () => void;
 }) {
   const addMut = useAddClassRecords();
+  useReportDialogSaving(addMut.isPending);
   // Aula ja registrada: abre com o que foi salvo (salvar de novo troca, nao duplica).
   const existing = (s: Client) =>
     s.progressions?.[session.modalityId]?.evaluations.find((e) => e.sessionId === session.sessionId);

@@ -54,23 +54,71 @@ const DialogDirtyContext = React.createContext<DialogDirtyRegistry | null>(null)
 
 export const useDialogDirty = () => React.useContext(DialogDirtyContext)
 
+interface DialogSavingContextValue {
+  saving: boolean
+  setSaving: (source: object, saving: boolean) => void
+}
+
+const DialogSavingContext = React.createContext<DialogSavingContextValue | null>(null)
+
+export const DialogSavingProvider = DialogSavingContext.Provider
+
+export function useDialogSavingState() {
+  return React.useContext(DialogSavingContext)?.saving ?? false
+}
+
 /**
- * Guarda "Descartar alteracoes?" do Dialog e do Sheet: fechar com formulario
- * sujo pede confirmacao. Devolve o registro (para os campos), o
- * `onOpenChange` com a guarda e o alerta para renderizar ao lado do Root.
+ * Avisa o Dialog/Sheet pai que o formulario filho esta gravando no servidor:
+ * liga a barra fina no topo, cobre o corpo para impedir edicoes e segura Esc/X.
+ */
+export function useReportDialogSaving(saving: boolean) {
+  const ctx = React.useContext(DialogSavingContext)
+  const [source] = React.useState(() => ({}))
+
+  React.useEffect(() => {
+    if (!ctx) return
+    ctx.setSaving(source, saving)
+  }, [ctx, source, saving])
+
+  React.useEffect(() => {
+    if (!ctx) return
+    return () => ctx.setSaving(source, false)
+  }, [ctx, source])
+}
+
+/**
+ * Guarda "Descartar alteracoes?" e estado de salvamento do Dialog e do Sheet:
+ * fechar com formulario sujo pede confirmacao; durante o salvamento bloqueia o
+ * fechamento e propaga `savingValue` para barra superior e overlay.
  */
 export function useDiscardGuard(
   open: boolean | undefined,
   onOpenChange: ((open: boolean) => void) | undefined
 ) {
   const [dirty, setDirty] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
   const [confirmDiscard, setConfirmDiscard] = React.useState(false)
   // Por formulario: quantos campos montados e se esta sujo.
   const sourcesRef = React.useRef(new Map<object, { fields: number; dirty: boolean }>())
+  const savingSourcesRef = React.useRef(new Set<object>())
   // Fechamento pedido pelo rodape (Cancelar), feito ao confirmar o descarte.
   const pendingCloseRef = React.useRef<(() => void) | null>(null)
   // Quem quer saber do descarte confirmado (campo de anexar).
   const discardListenersRef = React.useRef(new Set<() => void>())
+
+  const setSourceSaving = React.useCallback((source: object, isSaving: boolean) => {
+    const set = savingSourcesRef.current
+    const had = set.has(source)
+    if (isSaving === had) return
+    if (isSaving) set.add(source)
+    else set.delete(source)
+    setSaving(set.size > 0)
+  }, [])
+
+  const savingValue = React.useMemo<DialogSavingContextValue>(
+    () => ({ saving, setSaving: setSourceSaving }),
+    [saving, setSourceSaving]
+  )
 
   const registry = React.useMemo<DialogDirtyRegistry>(() => {
     const recompute = () =>
@@ -83,6 +131,7 @@ export function useDiscardGuard(
         }
       },
       guardClose(close) {
+        if (savingSourcesRef.current.size > 0) return
         if ([...sourcesRef.current.values()].some((s) => s.dirty)) {
           pendingCloseRef.current = close
           setConfirmDiscard(true)
@@ -114,13 +163,18 @@ export function useDiscardGuard(
   React.useEffect(() => {
     if (!open) {
       for (const entry of sourcesRef.current.values()) entry.dirty = false
+      savingSourcesRef.current.clear()
       setDirty(false)
+      setSaving(false)
       setConfirmDiscard(false)
     }
   }, [open])
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
+      if (!nextOpen && savingSourcesRef.current.size > 0) {
+        return
+      }
       if (!nextOpen && dirty) {
         setConfirmDiscard(true)
         return
@@ -172,7 +226,7 @@ export function useDiscardGuard(
     </AlertDialog>
   )
 
-  return { registry, handleOpenChange, confirm }
+  return { registry, savingValue, handleOpenChange, confirm }
 }
 
 export const DialogDirtyProvider = DialogDirtyContext.Provider
@@ -222,20 +276,22 @@ function Dialog({
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  const { registry, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
+  const { registry, savingValue, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
 
   return (
-    <DialogDirtyContext.Provider value={registry}>
-      <DialogPrimitive.Root
-        data-slot="dialog"
-        open={open}
-        onOpenChange={handleOpenChange}
-        {...props}
-      >
-        {children}
-      </DialogPrimitive.Root>
-      {confirm}
-    </DialogDirtyContext.Provider>
+    <DialogSavingContext.Provider value={savingValue}>
+      <DialogDirtyContext.Provider value={registry}>
+        <DialogPrimitive.Root
+          data-slot="dialog"
+          open={open}
+          onOpenChange={handleOpenChange}
+          {...props}
+        >
+          {children}
+        </DialogPrimitive.Root>
+        {confirm}
+      </DialogDirtyContext.Provider>
+    </DialogSavingContext.Provider>
   )
 }
 
@@ -293,6 +349,20 @@ function saveExpandedState(storageKey: string, isExpanded: boolean): void {
   }
 }
 
+function DialogSavingBar({ visible, label = "Salvando" }: { visible: boolean; label?: string }) {
+  if (!visible) return null
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      data-slot="dialog-saving-bar"
+      className="pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5 overflow-hidden bg-primary/15"
+    >
+      <div className="dialog-saving-bar h-full w-1/3 rounded-full bg-primary" />
+    </div>
+  )
+}
+
 function DialogContent({
   className,
   style,
@@ -304,7 +374,9 @@ function DialogContent({
   onExpandedChange,
   expandedClassName = "max-sm:w-screen max-sm:max-w-none max-sm:h-dvh max-sm:max-h-dvh max-sm:top-0 max-sm:rounded-none max-sm:border-0 sm:max-w-4xl lg:max-w-5xl sm:h-[92vh] sm:max-h-[92vh]",
   closeOnInteractOutside = false,
+  saving,
   onOpenAutoFocus,
+  onEscapeKeyDown,
   onInteractOutside,
   onPointerDownOutside,
   ...props
@@ -316,7 +388,10 @@ function DialogContent({
   onExpandedChange?: (expanded: boolean) => void
   expandedClassName?: string
   closeOnInteractOutside?: boolean
+  saving?: boolean
 }) {
+  const contextSaving = useDialogSavingState()
+  const isSaving = Boolean(saving || contextSaving)
   const [uncontrolledExpanded, setUncontrolledExpanded] = React.useState<boolean>(
     () => (expandable && storageKey ? getSavedExpandedState(storageKey) : false)
   )
@@ -390,6 +465,7 @@ function DialogContent({
         <DialogPrimitive.Content
           data-outside-guard={outsideGuardId}
           data-slot="dialog-content"
+          aria-busy={isSaving || undefined}
           style={{
             ...(mobileMaxHeightPx && !isExpanded
               ? { maxHeight: `${mobileMaxHeightPx}px` }
@@ -421,14 +497,20 @@ function DialogContent({
             }
             onOpenAutoFocus?.(e)
           }}
+          onEscapeKeyDown={(e) => {
+            if (isSaving) {
+              e.preventDefault()
+            }
+            onEscapeKeyDown?.(e)
+          }}
           onInteractOutside={(e) => {
-            if (!closeOnInteractOutside || isInsideAnotherDialog(e)) {
+            if (isSaving || !closeOnInteractOutside || isInsideAnotherDialog(e)) {
               e.preventDefault()
             }
             onInteractOutside?.(e)
           }}
           onPointerDownOutside={(e) => {
-            if (!closeOnInteractOutside || startedCovered(e)) {
+            if (isSaving || !closeOnInteractOutside || startedCovered(e)) {
               e.preventDefault()
             }
             const target = e.target as HTMLElement | null
@@ -442,6 +524,7 @@ function DialogContent({
           }}
           {...props}
         >
+          <DialogSavingBar visible={isSaving} />
           {children}
           {(showCloseButton || expandable) && (
             <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
@@ -449,6 +532,7 @@ function DialogContent({
                 <button
                   type="button"
                   data-slot="dialog-expand"
+                  disabled={isSaving}
                   onClick={() => handleToggle()}
                   className="hidden sm:inline-flex rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
                   title={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
@@ -460,6 +544,7 @@ function DialogContent({
               {showCloseButton && (
                 <DialogPrimitive.Close
                   data-slot="dialog-close"
+                  disabled={isSaving}
                   className="rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
                 >
                   <XIcon />
@@ -487,11 +572,14 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({
   className,
   showCloseButton = false,
+  saving = false,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
+  saving?: boolean
 }) {
+  useReportDialogSaving(saving)
   return (
     <div
       data-slot="dialog-footer"
@@ -543,12 +631,16 @@ function DialogBody({
   children,
   showScrollCue = true,
   scrollCueLabel = "Mais campos abaixo",
+  saving,
   ...props
 }: React.ComponentProps<"div"> & {
   contentClassName?: string
   showScrollCue?: boolean
   scrollCueLabel?: string
+  saving?: boolean
 }) {
+  const contextSaving = useDialogSavingState()
+  const isSaving = Boolean(saving || contextSaving)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
   const [canScrollUp, setCanScrollUp] = React.useState(false)
@@ -648,6 +740,7 @@ function DialogBody({
       <div
         ref={containerRef}
         onScroll={checkScroll}
+        inert={isSaving || undefined}
         tabIndex={canScrollUp || canScrollDown ? 0 : undefined}
         data-slot="dialog-body"
         className={cn("flex-1 overflow-y-auto min-h-0 p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", className)}
@@ -658,9 +751,18 @@ function DialogBody({
         </div>
       </div>
 
+      {/* Overlay ao salvar: bloqueia cliques, rolagem e alteracoes no corpo do formulario. */}
+      {isSaving ? (
+        <div
+          aria-hidden="true"
+          data-slot="dialog-body-saving-overlay"
+          className="absolute inset-0 z-20 cursor-wait bg-background/55 backdrop-blur-[1px] animate-in fade-in-0 duration-150"
+        />
+      ) : null}
+
       {/* Pill flutuante so com o icone: some no fim da rolagem e com o teclado
           aberto no celular, entao nao fica por cima do campo em que se digita. */}
-      {showCue ? (
+      {showCue && !isSaving ? (
         <>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-background to-transparent" />
           <button
@@ -688,6 +790,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogSavingBar,
   DialogTitle,
   DialogTrigger,
   useDialogExpanded,

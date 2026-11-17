@@ -359,7 +359,7 @@ export function AppointmentForm({
           />
 
         </DialogBody>
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+        <DialogFooter saving={pending} className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           {onCancel ? (
             <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar

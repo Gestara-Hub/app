@@ -5,6 +5,7 @@ import { SESSION_COOKIE, isSupabaseOrganization } from "@/lib/session";
 import { decodeSession } from "@/lib/session-cookie";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readSessionClaims } from "@/lib/supabase/session-claims";
 import { isGoogleOnlyAccount } from "@/lib/security/two-factor-rules";
 import { store } from "@/mocks/store";
 import type { SubscriptionTier, UserProfile, UserView } from "@gestarahub/contracts";
@@ -65,15 +66,10 @@ export async function getSessionGoogleOnly(user: Pick<UserView, "organizationId"
   if (!isSupabaseOrganization(user.organizationId)) return false;
   try {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.auth.getSession();
     // Os provedores vem no proprio token (claim app_metadata); ler `session.user`
     // no server faria o Supabase avisar no log a cada tela.
-    const token = data.session?.access_token;
-    if (!token) return false;
-    const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as {
-      app_metadata?: { providers?: unknown };
-    };
-    const providers = payload.app_metadata?.providers;
+    const claims = await readSessionClaims(supabase);
+    const providers = claims?.app_metadata?.providers;
     return Array.isArray(providers) && isGoogleOnlyAccount(providers.map(String));
   } catch {
     return false;

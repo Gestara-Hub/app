@@ -25,7 +25,7 @@ export function DialogFormFooter({
   // Cancelar com alteracao pede confirmacao, como o X e o Esc.
   const guard = useDialogDirty();
   return (
-    <DialogFooter className={className}>
+    <DialogFooter className={className} saving={isPending}>
       {onCancel ? (
         <Button
           type="button"

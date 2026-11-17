@@ -30,6 +30,7 @@ import {
 } from "../signup-actions";
 import { focusField } from "@/lib/form-errors";
 import { isValidEmail } from "@/lib/email-format";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 
 interface LoginFormProps {
   from: string;
@@ -156,6 +157,7 @@ export function LoginForm({
         });
 
         toast.success("Conta criada com sucesso! Vamos configurar seu espaço.");
+        startNavigationProgress({ immediate: true });
         router.push("/setup");
         router.refresh();
       });
@@ -447,6 +449,7 @@ export function LoginForm({
 
       if (!result.ok && result.twoFactorRequired) {
         // Senha certa e verificacao em duas etapas ligada (doc 17): falta o codigo.
+        startNavigationProgress({ immediate: true });
         router.push(`/two-factor?from=${encodeURIComponent(from)}`);
         return;
       }
@@ -466,6 +469,7 @@ export function LoginForm({
         categories: result.categories,
       });
 
+      startNavigationProgress({ immediate: true });
       router.push(result.redirectTo);
       router.refresh();
     });
@@ -485,6 +489,7 @@ export function LoginForm({
         user: result.user,
         categories: result.categories,
       });
+      startNavigationProgress({ immediate: true });
       router.push(result.redirectTo);
       router.refresh();
     });

@@ -1,6 +1,6 @@
 {
   "name": "@gestarahub/admin",
-  "version": "2026.11.16",
+  "version": "2026.11.16-2",
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3201",

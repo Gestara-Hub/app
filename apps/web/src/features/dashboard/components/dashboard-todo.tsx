@@ -30,6 +30,7 @@ import { ListItemActionsMenu, type ListItemAction } from "@/components/shared/li
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SectionBar } from "@/components/form";
 import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { cn } from "@/lib/utils";
@@ -464,7 +465,16 @@ export function DashboardTodo({
   return (
     <>
       {bare ? (
-        count > 0 ? (
+        reminders.isPending || (reminders.isFetching && count === 0) ? (
+          alerts.length > 0 ? (
+            <>
+              {list}
+              <TodoLoadingRows rows={3} borderTop />
+            </>
+          ) : (
+            <TodoLoadingRows rows={4} />
+          )
+        ) : count > 0 ? (
           list
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nada para lembrar agora.</p>
@@ -502,6 +512,28 @@ export function DashboardTodo({
         student={selling}
       />
     </>
+  );
+}
+
+/** Linhas temporarias enquanto os lembretes chegam do servidor ao abrir o sino. */
+function TodoLoadingRows({ rows = 4, borderTop = false }: { rows?: number; borderTop?: boolean }) {
+  return (
+    <ul
+      role="status"
+      aria-label="Carregando lembretes"
+      className={cn("divide-y divide-border/60", borderTop && "border-t border-border/60")}
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <li key={i} className="flex items-center gap-3 px-4 py-3">
+          <Skeleton className="size-7 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-44 max-w-full" />
+            <Skeleton className="h-3 w-64 max-w-full" />
+          </div>
+          <Skeleton className="size-5 shrink-0 rounded" />
+        </li>
+      ))}
+    </ul>
   );
 }
 

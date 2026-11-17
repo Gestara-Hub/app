@@ -7,7 +7,6 @@ import { AppTopbar } from "@/components/layout/app-topbar";
 import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
 import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploader-provider";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
-import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { BrowserErrorReporter } from "@/features/auth/components/browser-error-reporter";
@@ -86,9 +85,6 @@ export default async function AppLayout({
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
             <AppSidebar />
             <NavigationTracker />
-            <Suspense fallback={null}>
-              <NavigationProgress />
-            </Suspense>
             <WhatsAppConfirmHost />
             <SupportHost />
             <CrumbTracker />

@@ -212,35 +212,15 @@ function DayShiftsDialog({
             const startInvalid = validation.invalid.has(`${idx}-start`);
             const endInvalid = validation.invalid.has(`${idx}-end`);
             return (
-              <div key={idx} className="flex items-center gap-2">
-                <span className="w-14 shrink-0 text-xs text-muted-foreground max-sm:hidden">
+              <div key={idx} className="flex flex-wrap items-center gap-x-2 gap-y-1.5 sm:flex-nowrap">
+                <span
+                  className={cn(
+                    "w-14 shrink-0 text-xs text-muted-foreground",
+                    shifts.length === 1 && "max-sm:hidden",
+                  )}
+                >
                   Turno {idx + 1}
                 </span>
-                <Input
-                  id={`shift-${idx}-start`}
-                  type="time"
-                  step={300}
-                  value={shift.start}
-                  aria-label={`${label} turno ${idx + 1} início`}
-                  aria-invalid={startInvalid}
-                  className={cn("w-28 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1", startInvalid && "border-destructive")}
-                  onChange={(e) =>
-                    edit(shifts.map((s, i) => (i === idx ? { ...s, start: e.target.value } : s)))
-                  }
-                />
-                <span className="text-sm text-muted-foreground">até</span>
-                <Input
-                  id={`shift-${idx}-end`}
-                  type="time"
-                  step={300}
-                  value={shift.end}
-                  aria-label={`${label} turno ${idx + 1} fim`}
-                  aria-invalid={endInvalid}
-                  className={cn("w-28 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1", endInvalid && "border-destructive")}
-                  onChange={(e) =>
-                    edit(shifts.map((s, i) => (i === idx ? { ...s, end: e.target.value } : s)))
-                  }
-                />
                 {shifts.length > 1 ? (
                   <Button
                     type="button"
@@ -248,11 +228,44 @@ function DayShiftsDialog({
                     size="icon-sm"
                     aria-label={`Remover turno ${idx + 1} de ${label}`}
                     onClick={() => edit(shifts.filter((_, i) => i !== idx))}
-                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    className="max-sm:ml-auto sm:order-last text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
                     <X className="size-4" />
                   </Button>
                 ) : null}
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <Input
+                    id={`shift-${idx}-start`}
+                    type="time"
+                    step={300}
+                    value={shift.start}
+                    aria-label={`${label} turno ${idx + 1} início`}
+                    aria-invalid={startInvalid}
+                    className={cn(
+                      "w-28 max-sm:min-w-0 max-sm:flex-1 max-sm:px-2",
+                      startInvalid && "border-destructive",
+                    )}
+                    onChange={(e) =>
+                      edit(shifts.map((s, i) => (i === idx ? { ...s, start: e.target.value } : s)))
+                    }
+                  />
+                  <span className="shrink-0 text-sm text-muted-foreground">até</span>
+                  <Input
+                    id={`shift-${idx}-end`}
+                    type="time"
+                    step={300}
+                    value={shift.end}
+                    aria-label={`${label} turno ${idx + 1} fim`}
+                    aria-invalid={endInvalid}
+                    className={cn(
+                      "w-28 max-sm:min-w-0 max-sm:flex-1 max-sm:px-2",
+                      endInvalid && "border-destructive",
+                    )}
+                    onChange={(e) =>
+                      edit(shifts.map((s, i) => (i === idx ? { ...s, end: e.target.value } : s)))
+                    }
+                  />
+                </div>
               </div>
             );
           })}

@@ -196,7 +196,7 @@ function TemplateConfigForm({
         </div>
       </DialogBody>
 
-      <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
+      <DialogFooter saving={updateMut.isPending} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
         {automatic ? (
           <>
             <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
