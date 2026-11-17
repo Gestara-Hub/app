@@ -51,6 +51,8 @@ export interface CreateSubscriptionInput {
     email: string;
     cpfCnpj: string;
     phone?: string;
+    /** Endereco do pagador: nota fiscal do plano e titular do cartao (doc technical/24 §7.1 B). */
+    address: CheckoutAddress;
   };
   creditCard?: {
     holderName: string;
@@ -59,6 +61,59 @@ export interface CreateSubscriptionInput {
     expiryYear: string;
     ccv: string;
   };
+}
+
+export interface CheckoutAddress {
+  postalCode: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city?: string;
+  state?: string;
+}
+
+/** Endereco completo para a nota fiscal: CEP com 8 digitos, rua, numero e bairro. */
+function checkoutAddressError(address: CheckoutAddress | undefined): string | null {
+  if (!address) return "Informe o endereço de cobrança.";
+  if ((address.postalCode ?? "").replace(/\D/g, "").length !== 8) return "Informe o CEP do endereço de cobrança.";
+  if (!address.street?.trim() || !address.number?.trim() || !address.neighborhood?.trim()) {
+    return "Informe rua, número e bairro do endereço de cobrança.";
+  }
+  return null;
+}
+
+/**
+ * Espaco sem endereco em Configuracoes: o do checkout fica salvo la (quem
+ * preenche aqui nao preenche de novo). Com endereco, nao sobrescreve: o de
+ * cobranca pode ser outro (titular pessoa fisica, endereco fiscal).
+ */
+async function saveAddressOnSpaceWithout(organizationId: string, address: CheckoutAddress): Promise<void> {
+  const admin = createSupabaseAdminClient();
+  const { data: units, error } = await admin.from("units").select("id, address").eq("organization_id", organizationId);
+  if (error) {
+    logError("[subscriptionCheckout] Unidade não lida para salvar o endereço:", error);
+    return;
+  }
+  const unit = units?.length === 1 ? units[0] : undefined;
+  const current = unit?.address as { postalCode?: string } | null | undefined;
+  if (!unit || current?.postalCode?.replace(/\D/g, "")) return;
+  const { error: updateError } = await admin
+    .from("units")
+    .update({
+      address: {
+        postalCode: address.postalCode.replace(/\D/g, ""),
+        street: address.street.trim(),
+        number: address.number.trim(),
+        ...(address.complement?.trim() ? { complement: address.complement.trim() } : {}),
+        neighborhood: address.neighborhood.trim(),
+        city: address.city?.trim() ?? "",
+        state: address.state?.trim() ?? "",
+      },
+    })
+    .eq("id", unit.id)
+    .eq("organization_id", organizationId);
+  if (updateError) logError("[subscriptionCheckout] Endereço do espaço não salvo:", updateError);
 }
 
 export interface SubscriptionCheckoutResult {
@@ -90,6 +145,20 @@ export async function createAsaasSubscriptionCheckoutAction(
   const author = async () => ({ actor: await userActor(createSupabaseAdminClient(), ctx) });
   const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
   const config = getAsaasConfig();
+
+  const addressError = checkoutAddressError(input.customer.address);
+  if (addressError) {
+    return {
+      success: false,
+      subscriptionId: "",
+      customerId: "",
+      billingType: input.billingType,
+      status: "pending",
+      value: priceConfig.value,
+      error: addressError,
+    };
+  }
+  await saveAddressOnSpaceWithout(input.organizationId, input.customer.address);
 
   // Modo Simulado se não houver chave Master real
   if (!config.masterApiKey) {
@@ -181,6 +250,12 @@ export async function createAsaasSubscriptionCheckoutAction(
       email: input.customer.email,
       cpfCnpj: input.customer.cpfCnpj,
       mobilePhone: brazilNationalDigits(input.customer.phone),
+      // Endereco no cadastro do cliente: a prefeitura recusa a nota sem ele.
+      postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
+      address: input.customer.address.street.trim(),
+      addressNumber: input.customer.address.number.trim(),
+      complement: input.customer.address.complement?.trim() || undefined,
+      province: input.customer.address.neighborhood.trim(),
       externalReference: input.organizationId,
     });
 
@@ -202,6 +277,10 @@ export async function createAsaasSubscriptionCheckoutAction(
             name: input.creditCard.holderName,
             email: input.customer.email,
             cpfCnpj: input.customer.cpfCnpj,
+            // CEP, numero e telefone do titular: obrigatorios no cartao pelo Asaas.
+            postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
+            addressNumber: input.customer.address.number.trim(),
+            phone: brazilNationalDigits(input.customer.phone),
             mobilePhone: brazilNationalDigits(input.customer.phone),
           }
         : undefined,

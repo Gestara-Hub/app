@@ -20,6 +20,20 @@ export const subscriptionCheckoutSchema = z
         "CPF ou CNPJ inválido. Confira os números.",
       ),
     customerPhone: z.string().optional(),
+    // Endereco do pagador (doc technical/24 §7.1 B): a nota fiscal do plano e o
+    // pagamento por cartao (CEP e numero do titular) exigem. Cidade e UF vem do CEP.
+    address: z.object({
+      postalCode: z
+        .string()
+        .trim()
+        .refine((v) => v.replace(/\D/g, "").length === 8, "Informe o CEP."),
+      street: z.string().trim().min(1, "Informe a rua."),
+      number: z.string().trim().min(1, "Informe o número."),
+      complement: z.string().trim().optional(),
+      neighborhood: z.string().trim().min(1, "Informe o bairro."),
+      city: z.string().trim().optional(),
+      state: z.string().trim().optional(),
+    }),
     billingType: z.enum(["PIX", "CREDIT_CARD"]),
     // Campos opcionais no schema base, validados no superRefine se for Cartão
     cardNumber: z.string().optional(),
@@ -29,6 +43,14 @@ export const subscriptionCheckoutSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.billingType === "CREDIT_CARD") {
+      // O Asaas exige o telefone do titular do cartao.
+      if ((data.customerPhone ?? "").replace(/\D/g, "").length < 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customerPhone"],
+          message: "Informe o telefone com DDD para pagar com cartão.",
+        });
+      }
       const cleanCard = (data.cardNumber || "").replace(/\D/g, "");
       if (cleanCard.length < 13 || cleanCard.length > 19) {
         ctx.addIssue({

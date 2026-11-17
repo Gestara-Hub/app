@@ -9,7 +9,6 @@ describe("achados 82 a 84 da passada final", () => {
   it("campos do checkout do plano com letra de 16 px no celular", () => {
     for (const file of [
       "../../features/subscription/components/subscription-checkout-view.tsx",
-      "../../features/subscription/components/subscription-checkout-dialog.tsx",
     ]) {
       expect(read(file)).not.toMatch(/<Input[^>]*className="h-9 text-xs/);
     }

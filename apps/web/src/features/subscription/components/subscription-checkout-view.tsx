@@ -27,6 +27,7 @@ import {
 import { toast } from "@/lib/toast";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
 import { formatDate } from "@gestarahub/core/format";
+import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +40,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { AddressFields } from "@/components/form";
 import { FieldShell, fieldAria } from "@/components/form/field-shell";
 import { useCurrentUser } from "@/features/auth";
-import { useOrganization } from "@/features/settings";
+import { useOrganization, useUnit } from "@/features/settings";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
@@ -107,6 +109,7 @@ export function SubscriptionCheckoutView() {
 
   const currentUser = useCurrentUser();
   const { data: organization } = useOrganization();
+  const { data: unit } = useUnit();
   const { createSession, simulatePayment, checkStatus } =
     useSubscriptionCheckout();
 
@@ -126,6 +129,7 @@ export function SubscriptionCheckoutView() {
       customerEmail: currentUser.email || "",
       customerCpfCnpj: "",
       customerPhone: "",
+      address: { postalCode: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" },
       billingType: "PIX",
       cardNumber: "",
       cardHolder: "",
@@ -152,6 +156,30 @@ export function SubscriptionCheckoutView() {
       form.setValue("customerEmail", currentUser.email);
     }
   }, [organization?.name, currentUser?.email, form]);
+
+  // Endereco e telefone do espaco (Configuracoes > Geral) ja preenchidos: a
+  // pessoa so confere. resetField (nao setValue): o valor sugerido nao conta
+  // como edicao, e a chegada tardia da unidade ainda preenche (doc 07 §2.8).
+  const unitAddress = typeof unit?.address === "object" ? unit.address : undefined;
+  useEffect(() => {
+    if (!unitAddress || form.getFieldState("address").isDirty) return;
+    form.resetField("address", {
+      defaultValue: {
+        postalCode: unitAddress.postalCode ?? "",
+        street: unitAddress.street ?? "",
+        number: unitAddress.number ?? "",
+        complement: unitAddress.complement ?? "",
+        neighborhood: unitAddress.neighborhood ?? "",
+        city: unitAddress.city ?? "",
+        state: unitAddress.state ?? "",
+      },
+    });
+  }, [unitAddress, form]);
+  const unitPhone = unit?.phone;
+  useEffect(() => {
+    if (!unitPhone || form.getFieldState("customerPhone").isDirty || form.getValues("customerPhone")) return;
+    form.resetField("customerPhone", { defaultValue: maskPhone(brazilNationalDigits(unitPhone) ?? "") });
+  }, [unitPhone, form]);
 
   // Estado do Pix gerado no Asaas
   const [pixData, setPixData] = useState<{
@@ -241,6 +269,15 @@ export function SubscriptionCheckoutView() {
           email: values.customerEmail.trim(),
           cpfCnpj: cleanDoc,
           phone: values.customerPhone?.trim(),
+          address: {
+            postalCode: values.address.postalCode.replace(/\D/g, ""),
+            street: values.address.street.trim(),
+            number: values.address.number.trim(),
+            complement: values.address.complement?.trim() || undefined,
+            neighborhood: values.address.neighborhood.trim(),
+            city: values.address.city?.trim() || undefined,
+            state: values.address.state?.trim() || undefined,
+          },
         },
         creditCard: creditCardPayload,
       });
@@ -802,6 +839,7 @@ export function SubscriptionCheckoutView() {
                               id="custPhone"
                               label="WhatsApp para Avisos"
                               error={fieldState.error?.message}
+                              required={billingType === "CREDIT_CARD"}
                             >
                               <Input
                                 id="custPhone"
@@ -818,6 +856,17 @@ export function SubscriptionCheckoutView() {
                               />
                             </FieldShell>
                           )}
+                        />
+                      </div>
+
+                      {/* Endereco do pagador: vai na nota fiscal e no pagamento por cartao. */}
+                      <div className="space-y-3 border-t border-border/60 pt-3.5">
+                        <p className="text-sm font-medium text-foreground">Endereço de cobrança</p>
+                        <AddressFields<SubscriptionCheckoutFormValues>
+                          prefix="address"
+                          required
+                          cityStateRequired={false}
+                          disabled={createSession.isPending}
                         />
                       </div>
                     </div>

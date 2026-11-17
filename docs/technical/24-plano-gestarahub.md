@@ -111,6 +111,14 @@ Prefeituras e o Asaas recusam NFS-e se o `customer` não tiver **CPF/CNPJ e ende
   3. Em `createAsaasSubscriptionCheckoutAction` (`subscriptionCheckoutActions.ts`), enviar esses campos no `createOrFindCustomer(...)` (que já atualiza o cadastro no Asaas via `PUT /customers/{id}` quando encontra por `externalReference: organizationId`).
   4. Na troca de plano com cobrança de diferença (`startPlanChange` / `PlanChangeDialog`), validar via `getCustomer(subscription.asaasCustomerId)` (ou flag local) se o assinante antigo já tem endereço completo no Asaas antes de emitir a nota do upgrade; se faltar, usar `units.address` do espaço ou pedir na confirmação.
 
+**Feito em 17/11/2026 (itens 1 a 3, antes da emissão):**
+- O checkout do plano (`subscription-checkout-view.tsx`) pede o **endereço de cobrança obrigatório** (CEP, rua, número e bairro; complemento opcional; cidade e UF pelo CEP), com `AddressFields`, já preenchido com o endereço de Configurações → Geral (`resetField`, doc frontend/07 §2.8). O telefone também vem preenchido da unidade.
+- `createAsaasSubscriptionCheckoutAction` confere o endereço no servidor (sem ele, não chega ao Asaas), manda `postalCode`, `address`, `addressNumber`, `complement` e `province` para o cliente no Asaas e **CEP, número e telefone no titular do cartão** (`creditCardHolderInfo`). O Asaas exige esses três no cartão; antes eles não iam, e a assinatura por cartão podia ser recusada em produção. No cartão, o telefone passou a ser obrigatório no formulário.
+- Espaço **sem endereço** em Configurações guarda o do checkout na unidade; **com endereço**, não sobrescreve (o de cobrança pode ser outro: titular pessoa física ou endereço fiscal).
+- O `SubscriptionCheckoutDialog`, sem uso desde a tela `/plans/checkout`, saiu.
+- Teste: `services/subscription/__tests__/checkoutAddress.db.test.ts`.
+- **Falta (com a emissão):** o item 4 (endereço na troca de plano) e completar o cadastro no Asaas dos assinantes atuais com o endereço do espaço quando a emissão for ligada, avisando quem não tiver endereço.
+
 #### C. Migração de banco (`apps/supabase/migrations/`)
 Criar tabela `public.platform_invoices` (acesso direto bloqueado por RLS; leitura pelo app via server action autenticada e escrita exclusiva por `service_role`):
 - `id` `uuid primary key default gen_random_uuid()`
