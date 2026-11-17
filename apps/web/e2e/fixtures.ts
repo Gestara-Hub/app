@@ -483,8 +483,16 @@ export async function openRowMenu(page: Page, name: string, opts: { followUp?: b
   if (!opts.followUp) return;
   const trigger = page.getByRole("menuitem", { name: "Acompanhamento", exact: true });
   if ((await trigger.count()) === 0) return;
-  await trigger.click();
-  await expect(page.getByRole("menu")).toHaveCount(2);
+  await expect(async () => {
+    if ((await page.getByRole("menu").count()) === 0) {
+      await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
+      await expect(page.getByRole("menu").first()).toBeVisible({ timeout: 2_000 });
+    }
+    if ((await page.getByRole("menu").count()) < 2) {
+      await trigger.click({ timeout: 2_000 });
+    }
+    await expect(page.getByRole("menu")).toHaveCount(2, { timeout: 2_000 });
+  }).toPass({ timeout: 10_000 });
 }
 
 /**
@@ -492,10 +500,14 @@ export async function openRowMenu(page: Page, name: string, opts: { followUp?: b
  * procura dentro de "Acompanhamento ›".
  */
 export async function rowMenuAction(page: Page, name: string, item: string | RegExp): Promise<void> {
-  await openRowMenu(page, name);
   const target = page.getByRole("menuitem", typeof item === "string" ? { name: item, exact: true } : { name: item });
-  if ((await target.count()) === 0) {
-    await page.getByRole("menuitem", { name: "Acompanhamento", exact: true }).click();
-  }
-  await target.click();
+  await expect(async () => {
+    if ((await page.getByRole("menu").count()) === 0) {
+      await openRowMenu(page, name);
+    }
+    if ((await target.count()) === 0) {
+      await page.getByRole("menuitem", { name: "Acompanhamento", exact: true }).click({ timeout: 2_000 });
+    }
+    await target.click({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 }

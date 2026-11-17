@@ -68,13 +68,15 @@ function isOnboardingAlreadyComplete(organizationId: string): boolean {
           (tenant.plans?.length ?? 0) > 0 &&
           (tenant.categories?.length ?? 0) > 0;
         const hasSchedulingDone = (tenant.appointments?.length ?? 0) > 0;
-        if (hasClassesDone || hasSchedulingDone) return true;
+        return hasClassesDone || hasSchedulingDone;
       }
     }
   } catch {
     // ignore storage errors
   }
-  return false;
+  // Sem historico no navegador: assume concluido ate confirmar, evitando empurrar
+  // a tela com o skeleton em contas prontas e depois colapsar.
+  return true;
 }
 
 const ASIDE_CLASS = "mx-auto w-full max-w-7xl px-4 pt-3 pb-1 md:px-6 md:pt-4 print:hidden";

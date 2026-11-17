@@ -16,7 +16,7 @@ import { serviceAction } from "../world/serviceActions";
 import { encodeArgs } from "../world/transport";
 import { defaultMessageTemplates } from "@/services/defaults";
 import { readOp, writeOp, validationError } from "@/services/world/ops";
-import { realAccountInBrowser } from "../world/delegate";
+import { fetchService, realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../audit/auditLogService";
 import { getOrganizationGatewayAction } from "../onlinePayments/actions";
 import { logError } from "@/lib/log";
@@ -170,6 +170,10 @@ export { settingsServiceImpl };
 
 type SettingsMethod = Exclude<keyof typeof settingsServiceImpl, never>;
 
+function readOnServer<T>(method: SettingsMethod, ...args: unknown[]): Promise<T> {
+  return unwrap(fetchService(`settings.${method}`, encodeArgs(args) as unknown[])) as Promise<T>;
+}
+
 function onServer<T>(method: SettingsMethod, ...args: unknown[]): Promise<T> {
   return unwrap(serviceAction(`settings.${method}`, encodeArgs(args) as unknown[])) as Promise<T>;
 }
@@ -260,14 +264,14 @@ export const settingsService = {
 
   async getOrganization(): Promise<Organization> {
     if (!realAccountInBrowser()) return settingsServiceImpl.getOrganization();
-    cacheOrganization(await onServer<Organization>("getOrganization"));
+    cacheOrganization(await readOnServer<Organization>("getOrganization"));
     await mergeGatewayIntoCache();
     return clone(store.organization);
   },
 
   async getUnit(): Promise<Unit> {
     if (!realAccountInBrowser()) return settingsServiceImpl.getUnit();
-    cacheUnit(await onServer<Unit>("getUnit"));
+    cacheUnit(await readOnServer<Unit>("getUnit"));
     return clone(store.unit);
   },
 
