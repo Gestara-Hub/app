@@ -2737,7 +2737,7 @@
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Taxas",
     "route": "/online-payments",
-    "text": "Taxa do GestaraHub: R$ 1,99 por Pix pago no Grátis (R$ 1,29 nos pagos), mais a tarifa do parceiro. Você pode repassar a taxa ao aluno nas configurações de recebimento.",
+    "text": "Cada Pix recebido online: R$ 1,99 do GestaraHub no plano Grátis (R$ 1,29 no Profissional), mais a tarifa do parceiro de pagamentos. Você pode repassar a taxa ao aluno nas configurações de recebimento.",
     "guide": {
       "route": "/online-payments",
       "steps": [
