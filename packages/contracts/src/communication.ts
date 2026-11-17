@@ -44,11 +44,28 @@ export interface WhatsAppConnectionView extends WhatsAppConnection {
   /** Franquia mensal do plano esgotada no ciclo atual. */
   isQuotaExhausted: boolean;
   /**
-   * O envio automatico pode sair neste ambiente. Falso em producao ate cada
-   * espaco ter as credenciais do proprio numero (doc technical/07 §1.1):
-   * decisao do usuario de 30/10/2026, nada sai pelo numero da plataforma.
+   * O envio automatico pode ser ligado neste ambiente. Em producao, so com o
+   * cadastro guiado da Meta configurado: cada espaco conecta o proprio numero
+   * (doc technical/07 §1.1); nada sai pelo numero da plataforma.
    */
   officialAvailable: boolean;
+}
+
+/**
+ * Como o numero entrou na API oficial pelo cadastro guiado da Meta:
+ * `cloud` (numero novo, so na API, registrado com PIN) ou `coexistence`
+ * (o espaco segue usando o app WhatsApp Business no mesmo numero).
+ */
+export type WhatsAppOnboarding = "cloud" | "coexistence";
+
+/** O que o cadastro guiado da Meta devolve ao conectar o numero do espaco. */
+export interface ConnectOfficialWhatsAppPayload {
+  /** Codigo de uso unico que o servidor troca pelo token do espaco. */
+  code?: string;
+  phoneNumberId?: string;
+  wabaId?: string;
+  businessId?: string;
+  onboarding?: WhatsAppOnboarding;
 }
 
 export type MessageTrigger =
@@ -81,13 +98,14 @@ export type MessageTrigger =
 
 export type MessageCategory = "billing" | "retention" | "administrative";
 
-export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED";
+export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED";
 
 export interface MetaTemplateInfo {
   name: string;
   status: MetaTemplateStatus;
   category: string;
   id: string;
+  language?: string;
   rejectionReason?: string;
 }
 
@@ -103,8 +121,14 @@ export interface MessageTemplate {
   daysOffset: number;
   content: string;
   availableVariables: string[];
+  /** Situacao do modelo na conta do WhatsApp do espaco (doc technical/07 §1.4). */
   metaStatus?: MetaTemplateStatus;
   metaTemplateName?: string;
+  /** Id do modelo na Meta (para editar o texto). */
+  metaTemplateId?: string;
+  /** Texto enviado a Meta, com as variaveis do GestaraHub; o envio usa o mesmo. */
+  metaBody?: string;
+  metaRejectionReason?: string;
   updatedAt: DateTimeISO;
 }
 
@@ -126,6 +150,19 @@ export interface MessageLog {
   sentAt: DateTimeISO;
   readAt?: DateTimeISO;
   errorReason?: string;
+  /**
+   * Modelo aprovado da Meta usado no envio oficial (nome, idioma e variaveis
+   * em ordem). Sem ele, o envio oficial e texto livre: so na janela de 24
+   * horas da ultima mensagem do aluno (doc technical/07 §3.3).
+   */
+  metaTemplate?: MetaTemplateSend;
+}
+
+/** Envio por modelo aprovado: as variaveis seguem a ordem em que aparecem no texto. */
+export interface MetaTemplateSend {
+  name: string;
+  language: string;
+  params: string[];
 }
 
 export interface CommunicationMetrics {
@@ -158,6 +195,12 @@ export interface SendMessagePayload {
   trigger?: MessageTrigger;
   clientId?: Id;
   chargeId?: Id;
+  /**
+   * Valores das variaveis do modelo (sem chaves: `aluno`, `valor`...). No
+   * oficial, com o texto igual ao do modelo, a mensagem sai pelo modelo
+   * aprovado da Meta; texto editado sai como texto livre.
+   */
+  variables?: Record<string, string | undefined>;
 }
 
 export interface UpdateTemplatePayload {
