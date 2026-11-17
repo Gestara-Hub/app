@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 import { Slot } from "radix-ui"
 
+import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -108,6 +109,10 @@ function SidebarProvider({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
+
+  // No celular, arrastar da borda esquerda abre o menu (no iPhone, em vez de
+  // voltar para a tela anterior); com ele aberto, arrastar para a esquerda fecha.
+  useEdgeSwipe({ enabled: isMobile, menuOpen: openMobile, setMenuOpen: setOpenMobile })
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
