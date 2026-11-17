@@ -482,7 +482,13 @@ export async function openRowMenu(page: Page, name: string, opts: { followUp?: b
   await expect(page.getByRole("menu").first()).toBeVisible();
   if (!opts.followUp) return;
   const trigger = page.getByRole("menuitem", { name: "Acompanhamento", exact: true });
-  if ((await trigger.count()) === 0) return;
+  // Os itens do menu chegam depois do proprio menu (dados da linha): esperar
+  // um pouco antes de concluir que a linha nao tem "Acompanhamento".
+  const hasFollowUp = await trigger.waitFor({ state: "visible", timeout: 3_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (!hasFollowUp) return;
   await expect(async () => {
     if ((await page.getByRole("menu").count()) === 0) {
       await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
