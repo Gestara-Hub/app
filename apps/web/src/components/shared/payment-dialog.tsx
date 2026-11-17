@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { DateISO, FileAttachment, PaymentMethod } from "@gestarahub/contracts";
 import { DateField, FileDropField, PaymentMethodField } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, useReportDialogSaving } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetClose,
@@ -58,6 +58,7 @@ export function PaymentDialog({
   onOpenChange,
   onConfirm,
 }: PaymentDialogProps) {
+  useReportDialogSaving(isPending);
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     mode: "onSubmit",

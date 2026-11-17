@@ -190,7 +190,7 @@ function RescheduleForm({
           disabled={pending}
         />
 
-        <DialogFooter>
+        <DialogFooter saving={pending}>
           <Button type="button" variant="outline" onClick={onDone} disabled={pending}>
             Voltar
           </Button>

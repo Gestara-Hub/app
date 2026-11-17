@@ -9,7 +9,7 @@ import { RequiredMark } from "@/components/form";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { Combobox } from "@/components/shared/combobox";
 import { Button } from "@/components/ui/button";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, useReportDialogSaving } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -78,6 +78,7 @@ function MoveStudentsForm({ from, students, onClose, onMoved }: Omit<MoveStudent
 
   const single = students.length === 1;
   const isPending = moveMut.isPending;
+  useReportDialogSaving(isPending);
 
   const send = async (allowOverCapacity: boolean) => {
     if (!to) return;

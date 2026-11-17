@@ -28,6 +28,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  useReportDialogSaving,
 } from "@/components/ui/dialog";
 import {
   Sheet,
@@ -228,6 +229,7 @@ function Composer({
   goals: StudentGoal[];
 }) {
   const addMut = useAddClassRecord();
+  useReportDialogSaving(addMut.isPending);
   const [tone, setTone] = useState<EvaluationEntryTone>("positive");
   const [note, setNote] = useState("");
   const [nextClass, setNextClass] = useState("");

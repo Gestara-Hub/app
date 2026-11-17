@@ -195,7 +195,7 @@ function SeriesForm({
           </div>
         </DialogBody>
 
-        <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
+        <DialogFooter saving={pending} className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

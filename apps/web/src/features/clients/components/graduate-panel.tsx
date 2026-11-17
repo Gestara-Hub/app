@@ -514,7 +514,7 @@ export function GraduatePanel({
       </div>
 
       </DialogBody>
-      <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
+      <DialogFooter saving={isPending} className="shrink-0 border-t border-border/40 px-6 py-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
           Cancelar
         </Button>

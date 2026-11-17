@@ -11,7 +11,7 @@ import { BeltBadge } from "@/components/shared/belt-badge";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, useReportDialogSaving } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -148,6 +148,7 @@ function GraduateManyForm({
 
   const futureDate = Boolean(date) && date > todayISO();
   const isPending = promoteMut.isPending;
+  useReportDialogSaving(isPending);
 
   const submit = async () => {
     if (picked.length === 0) {

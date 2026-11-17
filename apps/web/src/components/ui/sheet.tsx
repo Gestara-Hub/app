@@ -7,7 +7,10 @@ import { Dialog as SheetPrimitive } from "radix-ui"
 import { cn } from "@/lib/utils"
 import {
   DialogDirtyProvider,
+  DialogSavingBar,
+  DialogSavingProvider,
   isInsideAnotherDialog,
+  useDialogSavingState,
   useDiscardGuard,
   useOutsideClickGuard,
 } from "@/components/ui/dialog"
@@ -19,14 +22,16 @@ function Sheet({
   children,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  const { registry, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
+  const { registry, savingValue, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
   return (
-    <DialogDirtyProvider value={registry}>
-      <SheetPrimitive.Root data-slot="sheet" open={open} onOpenChange={handleOpenChange} {...props}>
-        {children}
-      </SheetPrimitive.Root>
-      {confirm}
-    </DialogDirtyProvider>
+    <DialogSavingProvider value={savingValue}>
+      <DialogDirtyProvider value={registry}>
+        <SheetPrimitive.Root data-slot="sheet" open={open} onOpenChange={handleOpenChange} {...props}>
+          {children}
+        </SheetPrimitive.Root>
+        {confirm}
+      </DialogDirtyProvider>
+    </DialogSavingProvider>
   )
 }
 
@@ -69,21 +74,27 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  saving,
   onOpenAutoFocus,
+  onEscapeKeyDown,
   onInteractOutside,
   onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  saving?: boolean
 }) {
   const [outsideGuardId, startedCovered] = useOutsideClickGuard()
+  const contextSaving = useDialogSavingState()
+  const isSaving = Boolean(saving || contextSaving)
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-outside-guard={outsideGuardId}
         data-slot="sheet-content"
+        aria-busy={isSaving || undefined}
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
           side === "right" &&
@@ -104,9 +115,15 @@ function SheetContent({
           }
           onOpenAutoFocus?.(e)
         }}
+        onEscapeKeyDown={(e) => {
+          if (isSaving) {
+            e.preventDefault()
+          }
+          onEscapeKeyDown?.(e)
+        }}
         onInteractOutside={(e) => {
           const target = e.target as HTMLElement | null
-          if (target?.closest?.("[data-product-tour]") || isInsideAnotherDialog(e)) {
+          if (isSaving || target?.closest?.("[data-product-tour]") || isInsideAnotherDialog(e)) {
             e.preventDefault()
           }
           onInteractOutside?.(e)
@@ -114,6 +131,7 @@ function SheetContent({
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement | null
           if (
+            isSaving ||
             target?.closest?.("[data-sonner-toaster]") ||
             target?.closest?.("[data-sonner-toast]") ||
             target?.closest?.("[data-product-tour]") ||
@@ -125,9 +143,13 @@ function SheetContent({
         }}
         {...props}
       >
+        <DialogSavingBar visible={isSaving} />
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-secondary cursor-pointer">
+          <SheetPrimitive.Close
+            disabled={isSaving}
+            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-secondary cursor-pointer"
+          >
             <XIcon className="size-4" />
             <span className="sr-only">Fechar</span>
           </SheetPrimitive.Close>

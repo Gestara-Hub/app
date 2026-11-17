@@ -8,7 +8,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/lib/toast";
 import { RotateCcw } from "lucide-react";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, useReportDialogSaving } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +101,7 @@ function SubstituteInstructorForm({
   };
 
   const isPending = substituteMut.isPending || restoreMut.isPending;
+  useReportDialogSaving(isPending);
 
   // Drawer a direita, como os outros formularios (doc 07 §2.7; pedido de 31/10/2026).
   return (
