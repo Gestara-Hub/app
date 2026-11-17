@@ -448,7 +448,7 @@ export function FinanceSummaryTab({
   const seriesIsEmpty =
     series.data !== undefined && series.data.every((p) => p.incomeCents === 0 && p.expenseCents === 0);
 
-  if (monthIsEmpty && seriesIsEmpty && (upcoming.data?.length ?? 0) === 0) {
+  if (monthIsEmpty && seriesIsEmpty && !upcoming.isPending && (upcoming.data?.length ?? 0) === 0) {
     return (
       <div className="rounded-xl border border-border/70 bg-card">
         <ModuleEmptyGuide

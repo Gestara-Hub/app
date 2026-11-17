@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { useRouteLoadingBar } from "@/components/layout/navigation-progress";
 import { ScrollCueArea } from "@/components/shared/scroll-cue-area";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
@@ -554,17 +555,19 @@ function AcademyDashboardBody() {
   const user = useCurrentUser();
   const alerts = useBellAlerts(d.todayDate);
 
-  if (!d.hasOperatingData) {
-    return user.profile !== "owner" && !d.isPending ? (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
-        <GraduationCap className="size-10 text-muted-foreground/60 mb-2" />
-        <h3 className="text-base font-semibold text-foreground">Nenhuma turma cadastrada ainda</h3>
-        <p className="text-sm text-muted-foreground max-w-sm mt-1">
-          A unidade está em fase de configuração inicial. Assim que as primeiras turmas forem
-          criadas, a rotina de aulas e chamadas aparecerá aqui.
-        </p>
+  useRouteLoadingBar(d.isPending);
+
+  if (d.isPending) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-lg" />
       </div>
-    ) : null;
+    );
   }
   if (d.isError) {
     return (
@@ -580,17 +583,17 @@ function AcademyDashboardBody() {
       </div>
     );
   }
-  if (d.isPending) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
-          ))}
-        </div>
-        <Skeleton className="h-72 w-full rounded-lg" />
+  if (!d.hasOperatingData) {
+    return user.profile !== "owner" ? (
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
+        <GraduationCap className="size-10 text-muted-foreground/60 mb-2" />
+        <h3 className="text-base font-semibold text-foreground">Nenhuma turma cadastrada ainda</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mt-1">
+          A unidade está em fase de configuração inicial. Assim que as primeiras turmas forem
+          criadas, a rotina de aulas e chamadas aparecerá aqui.
+        </p>
       </div>
-    );
+    ) : null;
   }
   return (
     <div className="space-y-4">
@@ -606,7 +609,7 @@ function AcademyDashboardBody() {
 
 export function AcademyDashboardView() {
   const isClient = useIsClient();
-  const { data: groups } = useClassGroups();
+  const { data: groups, isPending: groupsPending } = useClassGroups();
   const hasOperatingData = (groups ?? []).length > 0;
   const todayLabel = (() => {
     const l = format(parseISO(todayISO()), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
@@ -633,6 +636,11 @@ export function AcademyDashboardView() {
             </Link>
           </Button>
         </PageHeader>
+      ) : groupsPending ? (
+        <div className="space-y-2" aria-busy>
+          <Skeleton className="h-8 w-36" />
+          <Skeleton className="h-4 w-56 max-w-full" />
+        </div>
       ) : null}
 
       <ProActivationBanner />

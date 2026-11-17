@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 
@@ -24,6 +25,7 @@ export function SetupGuard({ children }: { children: React.ReactNode }) {
       !organization?.settings?.onboardingCompleted &&
       pathname !== "/setup"
     ) {
+      startNavigationProgress({ immediate: true });
       router.replace("/setup");
     }
   }, [isSuccess, user.profile, organization, pathname, router]);

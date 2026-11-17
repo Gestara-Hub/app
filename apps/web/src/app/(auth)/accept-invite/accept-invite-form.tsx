@@ -17,6 +17,7 @@ import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from "@/lib/password-
 import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import type { UserProfile } from "@gestarahub/contracts";
 import { acceptInvitationAction } from "@/services/users/actions";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 
 const acceptInviteSchema = z
   .object({
@@ -71,6 +72,7 @@ export function AcceptInviteForm({
       }
 
       toast.success("Conta pronta. Você já está na equipe.");
+      startNavigationProgress({ immediate: true });
       router.push("/dashboard");
       router.refresh();
     } catch {

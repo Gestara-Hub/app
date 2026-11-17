@@ -33,6 +33,7 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -135,7 +136,7 @@ export function MessageLogsTab({
     () => preferences.pageSizes?.communication ?? preferences.defaultPageSize ?? 25,
   );
   // Filtros e paginacao no banco (doc 19, secao 12): a tela traz so a pagina.
-  const { data, isPending } = useMessageLogsPage({
+  const { data, isPending, isFetching } = useMessageLogsPage({
     search: search.trim() || undefined,
     status,
     kind,
@@ -256,6 +257,7 @@ export function MessageLogsTab({
       />
 
       <ListContainer
+        refreshing={isFetching && !isPending}
         emptyState={
           !isPending && rows.length === 0 ? (
             <ListEmptyState
@@ -277,7 +279,20 @@ export function MessageLogsTab({
           ) : undefined
         }
       >
-        {rows.map((log) => {
+        {isPending
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3.5 w-52 max-w-full" />
+                </div>
+                <Skeleton className="size-8 shrink-0 rounded-md" />
+              </div>
+            ))
+          : rows.map((log) => {
           const actions = actionsFor(log);
           return (
             <ListItemContextMenu key={log.id} actions={actions}>

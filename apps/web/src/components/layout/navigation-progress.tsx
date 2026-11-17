@@ -14,6 +14,37 @@ const SHOW_AFTER_MS = 250;
 /** Limite de seguranca para a barra nunca ficar presa se a navegacao for cancelada ou falhar. */
 const MAX_VISIBLE_MS = 15_000;
 
+let activeDataLoads = 0;
+const dataLoadListeners = new Set<() => void>();
+function emitDataLoads() {
+  dataLoadListeners.forEach((notify) => notify());
+}
+function subscribeDataLoads(onChange: () => void) {
+  dataLoadListeners.add(onChange);
+  return () => {
+    dataLoadListeners.delete(onChange);
+  };
+}
+function getDataLoadSnapshot() {
+  return activeDataLoads > 0;
+}
+
+/**
+ * Mantem a barra fina global ligada enquanto uma tela ou guarda espera os
+ * dados iniciais no navegador (sem duplicar portais entre componentes).
+ */
+export function useRouteLoadingBar(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    activeDataLoads += 1;
+    emitDataLoads();
+    return () => {
+      activeDataLoads = Math.max(0, activeDataLoads - 1);
+      emitDataLoads();
+    };
+  }, [active]);
+}
+
 /**
  * Barra fina no topo enquanto a proxima tela chega (doc 07 §1.9). Substitui o
  * `app/(app)/loading.tsx` (11/11/2026): a fronteira de streaming dele fazia a
@@ -30,6 +61,7 @@ export function NavigationProgress() {
   const search = useSearchParams().toString();
   const route = `${pathname}?${search}`;
   const isClient = useSyncExternalStore(subscribe, () => true, () => false);
+  const routeLoading = useSyncExternalStore(subscribeDataLoads, getDataLoadSnapshot, () => false);
   const [prevRoute, setPrevRoute] = useState(route);
   const [startedOn, setStartedOn] = useState<string | null>(null);
   const routeRef = useRef(route);
@@ -54,15 +86,20 @@ export function NavigationProgress() {
       window.clearTimeout(safetyTimerRef.current);
     };
 
+    const showNow = (from: string) => {
+      clearTimers();
+      setStartedOn(from);
+      safetyTimerRef.current = window.setTimeout(() => {
+        setStartedOn(null);
+      }, MAX_VISIBLE_MS);
+    };
+
     const scheduleShow = (from: string) => {
       clearTimers();
       showTimerRef.current = window.setTimeout(() => {
         // So liga se ainda estamos na tela do clique (a troca nao veio antes).
         if (routeRef.current !== from) return;
-        setStartedOn(from);
-        safetyTimerRef.current = window.setTimeout(() => {
-          setStartedOn(null);
-        }, MAX_VISIBLE_MS);
+        showNow(from);
       }, SHOW_AFTER_MS);
     };
 
@@ -81,7 +118,11 @@ export function NavigationProgress() {
       scheduleShow(routeRef.current);
     };
 
-    const onNavStart = () => scheduleShow(routeRef.current);
+    const onNavStart = (event: Event) => {
+      const immediate = (event as CustomEvent<{ immediate?: boolean } | undefined>).detail?.immediate;
+      if (immediate) showNow(routeRef.current);
+      else scheduleShow(routeRef.current);
+    };
 
     document.addEventListener("click", onClick, true);
     window.addEventListener(NAVIGATION_STARTED_EVENT, onNavStart);
@@ -94,10 +135,11 @@ export function NavigationProgress() {
     };
   }, []);
 
-  if (!isClient || startedOn === null || startedOn !== route) return null;
+  const navVisible = startedOn !== null && startedOn === route;
+  if (!isClient || (!navVisible && !routeLoading)) return null;
   return createPortal(
     <div role="status" aria-label="Carregando" className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden">
-      <div className="list-refresh-bar h-full w-1/4 rounded-full bg-primary" />
+      <div className="dialog-saving-bar h-full w-1/4 rounded-full bg-primary" />
     </div>,
     document.body,
   );

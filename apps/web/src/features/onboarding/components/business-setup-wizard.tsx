@@ -20,10 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InitialsAvatar } from "@/components/shared/list";
+import { useRouteLoadingBar } from "@/components/layout/navigation-progress";
 import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
+import { startNavigationProgress } from "@/lib/unsaved-changes";
 import { queryKeys } from "@/lib/queryKeys";
 import { settingsService } from "@/services/settings/settingsService";
+import { onboardingService } from "@/services/settings/onboardingService";
 import { categoriesService } from "@/services/catalog/categoriesService";
 import { persistSetupToBackendAction } from "@/app/(auth)/signup-actions";
 import { useOrganization } from "@/features/settings";
@@ -202,6 +205,7 @@ export function BusinessSetupWizard() {
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useRouteLoadingBar(isSubmitting);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const unitInputRef = useRef<HTMLInputElement>(null);
@@ -369,14 +373,26 @@ export function BusinessSetupWizard() {
         categories: allCategories,
       });
 
-      // 4. Garante que as boas-vindas apareçam no Dashboard e invalida queries
+      // 4. Garante que as boas-vindas apareçam no Dashboard e aquece os dados em paralelo
       updateOnboardingState({ seen: false });
+      clearDraft();
+      startNavigationProgress({ immediate: true });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.categories.all }),
+        qc.fetchQuery({
+          queryKey: queryKeys.unit.detail,
+          queryFn: () => settingsService.getUnit(),
+          staleTime: 0,
+        }),
+        qc.fetchQuery({
+          queryKey: queryKeys.onboarding.snapshot,
+          queryFn: () => onboardingService.getOnboardingSnapshot(),
+          staleTime: 0,
+        }),
+      ]);
       await qc.invalidateQueries({ queryKey: queryKeys.organization.detail });
-      await qc.invalidateQueries({ queryKey: queryKeys.unit.detail });
-      await qc.invalidateQueries({ queryKey: queryKeys.categories.all });
 
       // 5. Redireciona para o dashboard
-      clearDraft();
       router.push("/dashboard");
     } catch {
       setError("Não foi possível concluir. Tente de novo.");

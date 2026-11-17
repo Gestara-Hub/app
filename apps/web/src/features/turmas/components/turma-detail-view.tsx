@@ -227,7 +227,7 @@ export function TurmaDetailView({
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments, isPending: enrollmentsPending } = useEnrollments(id);
   const { data: categories } = useCategories();
-  const { data: waitlist } = useWaitlist(id);
+  const { data: waitlist, isPending: waitlistPending } = useWaitlist(id);
   // So o cadastro dos matriculados (faixa, aniversario, evolucao), nao de todos os alunos.
   const { data: clients } = useClientsByIds((enrollments ?? []).map((e) => e.studentId));
   const cancelMut = useCancelEnrollment();
@@ -1087,7 +1087,12 @@ export function TurmaDetailView({
 
       {activeTab === "waitlist" ? (
         <section role="tabpanel" className="space-y-2">
-          {(waitlist ?? []).length === 0 ? (
+          {waitlistPending ? (
+            <div className="space-y-2" aria-busy>
+              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
+            </div>
+          ) : (waitlist ?? []).length === 0 ? (
             <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
               Ninguém na lista de espera.
             </p>

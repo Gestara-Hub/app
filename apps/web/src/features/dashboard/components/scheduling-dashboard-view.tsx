@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { useRouteLoadingBar } from "@/components/layout/navigation-progress";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
@@ -102,6 +103,8 @@ export function SchedulingDashboardView() {
 
   const hasOperatingData = active.length > 0 || professionals.length > 0;
 
+  useRouteLoadingBar(isPending);
+
   return (
     <>
       {hasOperatingData ? (
@@ -109,11 +112,25 @@ export function SchedulingDashboardView() {
           title="Dashboard"
           description={isClient ? `Visão geral · ${todayLabel}` : "Visão geral"}
         />
+      ) : isPending ? (
+        <div className="mb-6 space-y-2" aria-busy>
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-52 max-w-full" />
+        </div>
       ) : null}
 
       <Onboarding />
 
-      {!hasOperatingData ? null : isError ? (
+      {isPending ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
+          </div>
+          <Skeleton className="h-72 w-full rounded-lg" />
+        </div>
+      ) : isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border py-16 text-center">
           <AlertTriangle className="size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -124,16 +141,7 @@ export function SchedulingDashboardView() {
             Tentar novamente
           </Button>
         </div>
-      ) : isPending ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-lg" />
-            ))}
-          </div>
-          <Skeleton className="h-72 w-full rounded-lg" />
-        </div>
-      ) : (
+      ) : !hasOperatingData ? null : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi
