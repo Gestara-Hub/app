@@ -137,11 +137,17 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 | **PostHog** | Projeto com a chave na Vercel; ligar "Web vitals autocapture". | `technical/09` |
 | **Monitor externo** | UptimeRobot ou Better Stack (conta gratuita) chamando `https://gestarahub.com.br/api/health` a cada 5 minutos, com aviso por e-mail. | `technical/27` |
 
-## 5. Primeira versão
+## 5. Nova versão (primeira e seguintes)
 
-1. Pedir ao agente as Novidades da versão (`apps/web/src/features/releases/release-notes.ts`) e revisar.
-2. `pnpm release:prepare` (atualiza a versão do app e do painel e o `CHANGELOG.md`; não faz commit, tag nem push).
-3. Commit e push na `develop`; depois a `main` recebe a `develop` (`git merge --ff-only develop`), com a tag e o push (você pede ao agente, ou roda os comandos que o script imprime). O push na `main` dispara o deploy na Vercel.
+1. Pedir ao agente as Novidades da versão (`apps/web/src/features/releases/release-notes.ts`, lendo desde a última tag) e revisar.
+2. `pnpm release:prepare` na `develop` (atualiza a versão em `apps/web` e `apps/admin` e acrescenta a seção no `CHANGELOG.md`; não faz commit, tag nem push).
+3. Commit (`chore(release): <versão>`) e `git push origin develop`.
+4. Se houver migração nova em `apps/supabase/migrations/`, rodar `supabase db push --workdir apps` no banco de produção antes do deploy do app.
+5. Publicar na `main` via PR `develop` → `main` **sem squash** (`gh pr merge <n> --merge`) ou fast-forward (`git checkout main && git merge --ff-only develop`): o push/merge na `main` dispara o deploy na Vercel.
+6. Marcar a tag na `main` e sincronizar a `develop` de volta com a `main` para o próximo `CHANGELOG.md` manter a continuidade:
+   - `git fetch origin && git checkout main && git pull --ff-only origin main`
+   - `git tag v<versão> && git push origin v<versão>`
+   - `git checkout develop && git merge --ff-only origin/main && git push origin develop` (e seguir em `develop`).
 
 ## 6. Ordem do dia da publicação
 

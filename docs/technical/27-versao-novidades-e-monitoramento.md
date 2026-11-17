@@ -26,10 +26,19 @@
 
 ## 3. Rotina de cada deploy
 
-1. Pedir ao agente as Novidades da versão (ele lê o diff desde a última tag e redige em `release-notes.ts`); revisar.
-2. `pnpm release:prepare`.
-3. Commit e push na `develop`; a `main` recebe a `develop` (fast-forward), com a tag e o push, que publica (comandos impressos pelo script, que avisa se você não está na `develop`).
-4. Depois do deploy: conferir `https://<domínio>/api/health` com a versão nova.
+Fluxo padrão de versão (toda publicação passa por `CHANGELOG.md` + tag `v<versão>` na `main`):
+
+1. **Na `develop`:** garantir commits semânticos pequenos (`feat(...)`, `fix(...)`, etc.) e conferências passando (`typecheck`, `lint`, `docs:check`, `pnpm test`).
+2. **Novidades para quem usa (`apps/web/src/features/releases/release-notes.ts`):** ler `git log <última-tag>..HEAD --oneline`, redigir 3 a 6 itens curtos sem termo técnico para a versão nova (`YYYY.M.D` ou `YYYY.M.D-2` se for a segunda do dia) e revisar.
+3. **`pnpm release:prepare` (na `develop`):** atualiza a versão em `apps/web/package.json` e `apps/admin/package.json`, gera a entrada no `CHANGELOG.md` desde a última tag `v*` e confere `release-notes.ts`.
+4. **Commit e push na `develop`:** `git add -A && git commit -m "chore(release): <versão>" && git push origin develop`.
+5. **Migrações novas (`apps/supabase/migrations/`):** se entraram migrações desde a última tag, rodar `supabase db push --workdir apps` no Supabase de produção **antes** (ou junto) do deploy do app (`guides/28`).
+6. **PR e merge na `main`:** abrir ou atualizar o PR `develop` → `main` e mergear **sem squash** (usar `--merge` ou `--ff-only`, preservando os hashes dos commits para a tag e o próximo changelog). O push/merge na `main` dispara o deploy na Vercel.
+7. **Tag na `main` e volta para a `develop`:**
+   - `git fetch origin && git checkout main && git pull --ff-only origin main`
+   - `git tag v<versão> && git push origin v<versão>`
+   - `git checkout develop && git merge --ff-only origin/main && git push origin develop` *(mantém a tag `v<versão>` na ancestralidade da `develop` para o próximo `pnpm release:prepare`)*.
+8. **Depois do deploy:** conferir `https://<domínio>/api/health` com a versão nova.
 
 ## 4. Falta configurar fora do código
 
