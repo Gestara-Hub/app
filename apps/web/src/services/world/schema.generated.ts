@@ -1669,6 +1669,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "meta_template": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1739,6 +1744,31 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "meta_template_name": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "meta_template_id": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "meta_body": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "meta_status": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "meta_rejection_reason": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
