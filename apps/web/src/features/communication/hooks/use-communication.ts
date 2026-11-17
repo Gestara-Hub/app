@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import type {
+  ConnectOfficialWhatsAppPayload,
   Id,
   MessageLogFilter,
   MessageTrigger,
@@ -45,7 +46,7 @@ export function useWhatsAppConnection(enabled = true) {
 export function useConnectOfficialWhatsApp() {
   const invalidate = useInvalidateCommunication();
   return useMutation({
-    mutationFn: (payload?: { code?: string; phoneNumberId?: string; wabaId?: string }) =>
+    mutationFn: (payload?: ConnectOfficialWhatsAppPayload) =>
       communicationService.connectOfficial(payload),
     onSuccess: invalidate,
   });
@@ -233,6 +234,8 @@ export function useWhatsAppSend() {
       trigger: input.trigger,
       clientId: input.recipient.clientId,
       chargeId: input.chargeId,
+      // No oficial, texto igual ao do modelo sai pelo modelo aprovado da Meta (o servidor confere).
+      variables: { aluno: input.recipient.name, empresa: organization?.name, ...input.values },
     };
     if (mode === "official") {
       // A API envia sozinha: um toque num aviso nunca manda direto, confirma

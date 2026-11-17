@@ -7,6 +7,8 @@ import { after } from "next/server";
 import type { WorldEffect } from "./effects";
 // Registra quem entrega as mensagens "Na fila" (efeito depois da gravacao).
 import "@/services/communication/messageDelivery";
+// Credenciais do WhatsApp de cada espaco (Vault e Meta), so no servidor.
+import "@/services/communication/whatsappCredentials";
 // Arquivo do documento tirado da ficha sai do armazenamento depois da gravacao.
 import "@/services/personDocuments/personDocumentFiles";
 import { runScoped } from "./scope";

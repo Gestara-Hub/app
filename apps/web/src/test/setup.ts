@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from "vitest";
 import { mockConfig } from "@/mocks/config";
 import { setCurrentActor } from "@/mocks/currentActor";
+import { setWhatsAppCredentialsGateway } from "@/services/communication/whatsappCredentialsGateway";
 import { setSliceChecker } from "@/services/world/delegate";
 import { sliceFor } from "@/services/world/registry";
 import { checkSlice } from "@/services/world/sliceCheck";
@@ -16,6 +17,8 @@ mockConfig.persistence = false;
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: new Date(`${TODAY}T12:00:00`) });
   setCurrentActor({ userId: "usr-ac-ana", name: "Ana Ribeiro", profile: "owner" });
+  // Como no navegador: sem a ponte do servidor para o Vault e a Meta (o teste que precisa liga a sua).
+  setWhatsAppCredentialsGateway(null);
 });
 
 afterEach(() => {

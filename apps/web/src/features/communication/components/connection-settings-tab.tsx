@@ -264,7 +264,13 @@ export function ConnectionSettingsTab() {
               try {
                 const result = await launchSignup({ businessName: unit?.name, phone: phone ?? undefined });
                 connectMut.mutate(
-                  { code: result.code, phoneNumberId: result.phoneNumberId, wabaId: result.wabaId },
+                  {
+                    code: result.code,
+                    phoneNumberId: result.phoneNumberId,
+                    wabaId: result.wabaId,
+                    businessId: result.businessId,
+                    onboarding: result.onboarding,
+                  },
                   { onSuccess: () => toast.success("WhatsApp oficial conectado."), onError },
                 );
               } catch (err: unknown) {

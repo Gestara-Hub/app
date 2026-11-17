@@ -331,6 +331,8 @@ function SendMessageForm({
         organization?.name,
       ),
       chargeId: chosen?.chargeId,
+      // Valores do modelo escolhido: com o texto intacto, o oficial usa o modelo aprovado.
+      values: chosen?.values,
       reviewed: true,
     });
     onDone();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { WhatsAppOnboarding } from "@gestarahub/contracts";
 import { logError, logWarn } from "@/lib/log";
 
 declare global {
@@ -43,6 +44,8 @@ export interface MetaEmbeddedSignupResult {
   phoneNumberId?: string;
   wabaId?: string;
   businessId?: string;
+  /** `FINISH`: numero novo na API; `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`: coexistencia com o app. */
+  onboarding?: WhatsAppOnboarding;
 }
 
 export interface MetaEmbeddedSignupOptions {
@@ -76,6 +79,7 @@ export function useMetaEmbeddedSignup() {
     phoneNumberId?: string;
     wabaId?: string;
     businessId?: string;
+    onboarding?: WhatsAppOnboarding;
     code?: string;
   }>({});
 
@@ -136,6 +140,7 @@ export function useMetaEmbeddedSignup() {
             signupSessionRef.current.phoneNumberId = signupData.phone_number_id;
             signupSessionRef.current.wabaId = signupData.waba_id;
             signupSessionRef.current.businessId = signupData.business_id;
+            signupSessionRef.current.onboarding = data.event === "FINISH" ? "cloud" : "coexistence";
 
             // Se o code também já foi capturado pelo callback do FB.login, resolve agora
             if (signupSessionRef.current.resolve) {
@@ -144,6 +149,7 @@ export function useMetaEmbeddedSignup() {
                 phoneNumberId: signupSessionRef.current.phoneNumberId,
                 wabaId: signupSessionRef.current.wabaId,
                 businessId: signupSessionRef.current.businessId,
+                onboarding: signupSessionRef.current.onboarding,
               });
               signupSessionRef.current.resolve = undefined;
             }
@@ -236,6 +242,7 @@ export function useMetaEmbeddedSignup() {
                       phoneNumberId: signupSessionRef.current.phoneNumberId,
                       wabaId: signupSessionRef.current.wabaId,
                       businessId: signupSessionRef.current.businessId,
+                      onboarding: signupSessionRef.current.onboarding,
                     });
                     signupSessionRef.current.resolve = undefined;
                   }

@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/log";
 import { nowIso } from "@/services/world/ops";
 import { setQueuedMessageDeliverer, type QueuedMessageJob } from "./communicationRules";
-import { whatsappClient } from "./whatsappClient";
+import { metaErrorReason, sendOfficial, whatsappClient } from "./whatsappClient";
 
 /**
  * Entrega de uma mensagem "Na fila" (01/11/2026): a chamada a Meta leva
@@ -15,7 +15,10 @@ import { whatsappClient } from "./whatsappClient";
 export async function deliverQueuedMessage(job: QueuedMessageJob): Promise<void> {
   const admin = createSupabaseAdminClient();
   try {
-    const res = await whatsappClient.sendTextMessage(job.phone, job.content);
+    // Sempre pelo numero do proprio espaco (doc technical/07 §1.1).
+    const config = await whatsappClient.configFor(job.organizationId);
+    if (!config) throw new Error("O WhatsApp oficial do espaço não está conectado.");
+    const res = await sendOfficial(job.phone, job.content, job.template, config);
     const metaId = res.messages?.[0]?.id;
     const { error } = await admin
       .from("message_logs")
@@ -24,7 +27,7 @@ export async function deliverQueuedMessage(job: QueuedMessageJob): Promise<void>
       .eq("organization_id", job.organizationId);
     if (error) logError("[messageDelivery] Mensagem enviada, mas o registro não foi atualizado:", error);
   } catch (err) {
-    const reason = err instanceof Error ? err.message : "Falha ao enviar mensagem de WhatsApp.";
+    const reason = metaErrorReason(err);
     logError("[messageDelivery] Envio pela Meta falhou:", err);
     const { error } = await admin
       .from("message_logs")

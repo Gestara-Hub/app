@@ -46,7 +46,14 @@ interface ClientRow {
 }
 
 /** Espacos que falam com essa pessoa por este numero do WhatsApp. */
-async function spacesFor(admin: SupabaseClient, from: string, businessNumber: string | undefined): Promise<string[]> {
+async function spacesFor(
+  admin: SupabaseClient,
+  from: string,
+  businessNumber: string | undefined,
+  organizationId?: string | null,
+): Promise<string[]> {
+  // Numero do proprio espaco (doc technical/07 §1.1): o aviso ja diz de quem e.
+  if (organizationId) return [organizationId];
   if (businessNumber) {
     const { data } = await admin.from("whatsapp_connections").select("organization_id, phone_number");
     const owners = (data ?? [])
@@ -75,9 +82,9 @@ async function spacesFor(admin: SupabaseClient, from: string, businessNumber: st
  */
 export async function applyWhatsAppOptOut(
   admin: SupabaseClient,
-  input: { from: string; businessNumber?: string; now?: Date },
+  input: { from: string; organizationId?: string | null; businessNumber?: string; now?: Date },
 ): Promise<number> {
-  const organizations = await spacesFor(admin, input.from, input.businessNumber);
+  const organizations = await spacesFor(admin, input.from, input.businessNumber, input.organizationId);
   if (organizations.length === 0) return 0;
   const { data, error } = await admin
     .from("clients")

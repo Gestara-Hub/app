@@ -1,8 +1,10 @@
+import type { MetaTemplateSend } from "@gestarahub/contracts";
 import {
   sendWhatsAppTextMessage as libSendText,
   sendWhatsAppTemplateMessage as libSendTemplate,
   listWhatsAppTemplates as libListTemplates,
   createOrUpdateWhatsAppTemplate as libCreateOrUpdateTemplate,
+  editWhatsAppTemplate as libEditTemplate,
   getWhatsAppPhoneNumberDetails as libGetPhoneNumberDetails,
   normalizeWhatsAppNumber,
   getWhatsAppConfig,
@@ -10,33 +12,47 @@ import {
   type MetaPhoneNumberDetails,
   type MetaTemplateInfo,
   type MetaTemplateStatus,
+  type WhatsAppConfig,
   type WhatsAppMessageResponse,
   type WhatsAppTemplateComponent,
 } from "@/lib/whatsapp";
 import { logError } from "@/lib/log";
+import { getWhatsAppCredentialsGateway, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
 
 export { WhatsAppApiError };
 export type { MetaTemplateInfo, MetaTemplateStatus };
 
 /**
- * Cliente de alto nível para envio de mensagens via Meta WhatsApp Cloud API.
- * Fornece métodos tipados para envio de texto e modelos oficiais, validação
- * de credenciais e normalização de telefones brasileiros.
+ * Configuracao da Meta de um espaco: as credenciais do proprio numero (doc
+ * technical/07 §1.1); sem elas, o numero do ambiente so fora de producao.
+ */
+export type SpaceWhatsAppConfig = Partial<WhatsAppConfig>;
+
+/**
+ * Cliente de alto nivel da Meta WhatsApp Cloud API. Cada chamada leva a
+ * configuracao do espaco (`configFor`), nunca so o ambiente.
  */
 export const whatsappClient = {
   /**
-   * Verifica se as credenciais mínimas da Meta estão configuradas no ambiente.
+   * Configuracao do espaco para chamar a Meta, ou null quando o espaco nao
+   * pode enviar pela API (sem credencial e sem o numero de testes do ambiente).
    */
-  isConfigured(): boolean {
-    const config = getWhatsAppConfig();
-    return Boolean(config.apiToken && config.phoneNumberId);
+  async configFor(organizationId: string): Promise<SpaceWhatsAppConfig | null> {
+    const gateway = getWhatsAppCredentialsGateway();
+    if (gateway) {
+      const own = await gateway.configFor(organizationId);
+      if (own) return own;
+    }
+    if (!platformNumberFallbackAllowed()) return null;
+    const env = getWhatsAppConfig();
+    return env.apiToken && env.phoneNumberId ? {} : null;
   },
 
   /**
-   * Envia uma mensagem de texto livre via Meta Cloud API.
-   * Válido dentro da janela de atendimento de 24 horas aberta pelo cliente.
+   * Mensagem de texto livre. A Meta so aceita dentro da janela de 24 horas
+   * aberta pela ultima mensagem do aluno.
    */
-  async sendTextMessage(to: string, text: string): Promise<WhatsAppMessageResponse> {
+  async sendTextMessage(to: string, text: string, config: SpaceWhatsAppConfig): Promise<WhatsAppMessageResponse> {
     if (!text || !text.trim()) {
       throw new Error("O texto da mensagem não pode ser vazio.");
     }
@@ -44,20 +60,15 @@ export const whatsappClient = {
     if (!cleanTo) {
       throw new Error("Número de telefone do destinatário inválido.");
     }
-
     try {
-      const response = await libSendText({ to: cleanTo, text });
-      return response;
+      return await libSendText({ to: cleanTo, text }, config);
     } catch (error) {
       logError("[WhatsApp] Falha ao enviar mensagem de texto:", error);
       throw error;
     }
   },
 
-  /**
-   * Envia uma mensagem baseada em Modelo (Template) aprovado pela Meta.
-   * Funciona a qualquer momento, sem depender da janela de 24h.
-   */
+  /** Mensagem por modelo aprovado pela Meta: sai a qualquer momento. */
   async sendTemplateMessage(
     to: string,
     templateName: string,
@@ -65,7 +76,8 @@ export const whatsappClient = {
       languageCode?: string;
       bodyParameters?: string[];
       components?: WhatsAppTemplateComponent[];
-    } = {},
+    },
+    config: SpaceWhatsAppConfig,
   ): Promise<WhatsAppMessageResponse> {
     if (!templateName) {
       throw new Error("O nome do template é obrigatório.");
@@ -74,63 +86,111 @@ export const whatsappClient = {
     if (!cleanTo) {
       throw new Error("Número de telefone do destinatário inválido.");
     }
-
     try {
-      const response = await libSendTemplate({
-        to: cleanTo,
-        templateName,
-        languageCode: options.languageCode || "pt_BR",
-        bodyParameters: options.bodyParameters,
-        components: options.components,
-      });
-      return response;
+      return await libSendTemplate(
+        {
+          to: cleanTo,
+          templateName,
+          languageCode: options.languageCode || "pt_BR",
+          bodyParameters: options.bodyParameters,
+          components: options.components,
+        },
+        config,
+      );
     } catch (error) {
       logError(`[WhatsApp] Falha ao enviar template '${templateName}':`, error);
       throw error;
     }
   },
 
-  /**
-   * Normaliza o telefone para o formato padrão Meta Cloud API (apenas dígitos com DDI 55).
-   */
+  /** Telefone no formato da Meta (so digitos, com DDI 55). */
   normalizePhone(phone: string): string {
     return normalizeWhatsAppNumber(phone);
   },
 
-  /**
-   * Lista os templates oficiais cadastrados na Meta WhatsApp Business Account
-   * com seus status reais em tempo real (APPROVED, PENDING, REJECTED, PAUSED).
-   */
-  async listTemplates(): Promise<MetaTemplateInfo[]> {
-    if (!this.isConfigured()) return [];
+  /** Modelos da conta do espaco na Meta, com a situacao (aprovado, em analise, recusado, pausado). */
+  async listTemplates(config: SpaceWhatsAppConfig): Promise<MetaTemplateInfo[]> {
     try {
-      return await libListTemplates();
+      return await libListTemplates(config);
     } catch (err) {
       logError("[WhatsApp] Erro ao listar templates da Meta:", err);
       return [];
     }
   },
 
-  /**
-   * Submete ou atualiza um template oficial na Meta WhatsApp Business Account.
-   */
-  async createOrUpdateTemplate(payload: {
-    name: string;
-    category: "UTILITY" | "MARKETING";
-    content: string;
-    languageCode?: string;
-  }): Promise<{ id: string; status: MetaTemplateStatus }> {
-    if (!this.isConfigured()) {
-      throw new Error("Meta WhatsApp Cloud API não está configurada.");
-    }
-    return libCreateOrUpdateTemplate(payload);
+  /** Cria ou atualiza um modelo na conta do espaco na Meta. */
+  async createOrUpdateTemplate(
+    payload: {
+      name: string;
+      category: "UTILITY" | "MARKETING";
+      content: string;
+      languageCode?: string;
+    },
+    config: SpaceWhatsAppConfig,
+  ): Promise<{ id: string; status: MetaTemplateStatus }> {
+    return libCreateOrUpdateTemplate(payload, config);
   },
 
-  /**
-   * Obtém os detalhes de um número de WhatsApp registrado na Meta.
-   */
-  async getPhoneNumberDetails(phoneNumberId: string): Promise<MetaPhoneNumberDetails | null> {
-    if (!this.isConfigured()) return null;
-    return libGetPhoneNumberDetails(phoneNumberId);
+  /** Edita o texto de um modelo que ja existe na conta do espaco (a Meta analisa de novo). */
+  async editTemplate(
+    templateId: string,
+    content: string,
+    config: SpaceWhatsAppConfig,
+  ): Promise<{ id: string; status: MetaTemplateStatus }> {
+    return libEditTemplate(templateId, content, config);
+  },
+
+  /** Numero e nome verificados na Meta. */
+  async getPhoneNumberDetails(phoneNumberId: string, config: SpaceWhatsAppConfig): Promise<MetaPhoneNumberDetails | null> {
+    return libGetPhoneNumberDetails(phoneNumberId, config);
   },
 };
+
+/**
+ * Envio oficial de uma mensagem: pelo modelo aprovado da Meta quando ha um
+ * (mensagem que o espaco inicia), senao texto livre (so na janela de 24 horas).
+ */
+export function sendOfficial(
+  to: string,
+  content: string,
+  template: MetaTemplateSend | undefined,
+  config: SpaceWhatsAppConfig,
+): Promise<WhatsAppMessageResponse> {
+  return template
+    ? whatsappClient.sendTemplateMessage(
+        to,
+        template.name,
+        { languageCode: template.language, bodyParameters: template.params },
+        config,
+      )
+    : whatsappClient.sendTextMessage(to, content, config);
+}
+
+/** Motivo da falha da Meta para o Historico, em portugues (codigos da Cloud API). */
+export function metaErrorReason(err: unknown): string {
+  if (err instanceof WhatsAppApiError) {
+    switch (err.code) {
+      case 131047:
+        return "Fora da janela de 24 horas: esta mensagem precisa de um modelo aprovado no WhatsApp.";
+      case 132000:
+        return "As informações da mensagem não batem com o modelo aprovado no WhatsApp.";
+      case 132001:
+        return "O modelo desta mensagem ainda não existe ou não foi aprovado no WhatsApp do espaço.";
+      case 132015:
+        return "O modelo desta mensagem está pausado pelo WhatsApp.";
+      case 132016:
+        return "O modelo desta mensagem foi desativado pelo WhatsApp.";
+      case 131026:
+        return "O número não recebe mensagens pelo WhatsApp.";
+      case 131049:
+        return "O WhatsApp não entregou para manter a qualidade das mensagens. Tente mais tarde.";
+      case 131050:
+        return "O aluno parou de receber mensagens deste espaço pelo WhatsApp.";
+      case 190:
+        return "A conexão com o WhatsApp expirou. Conecte de novo em Comunicação.";
+      default:
+        return `O WhatsApp recusou o envio (código ${err.code}): ${err.message}`;
+    }
+  }
+  return err instanceof Error ? err.message : "Falha ao enviar mensagem de WhatsApp.";
+}

@@ -15,7 +15,6 @@ import { paginateArray } from "@gestarahub/contracts";
 import { isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { inServerWorld, store } from "@/services/world/store";
-import { afterWorldCommit } from "@/services/world/effects";
 import { auditLogService } from "../audit/auditLogService";
 import { whatsappConsentGranted } from "../clients/clientConsentRules";
 import { teacherSeesClass, teacherStudentIds } from "../classes/teacherScope";
@@ -29,10 +28,11 @@ import {
   validateMessage,
   newLog,
   getQueuedMessageDeliverer,
-  type QueuedMessageJob,
+  dispatchOfficial,
+  officialTemplateFor,
 } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
-import { whatsappClient } from "./whatsappClient";
+import { metaErrorReason, sendOfficial, whatsappClient } from "./whatsappClient";
 
 /**
  * Tipo da mensagem no filtro do historico. A mesma regra vale na consulta do
@@ -145,25 +145,25 @@ export const messagesService = {
       let messageId: string | undefined;
       let status: MessageLog["status"] = "sent";
       let errorReason: string | undefined;
-      let queuedJob: Omit<QueuedMessageJob, "logId"> | null = null;
+      // Mensagem do modelo do espaco: sai pelo modelo aprovado da Meta (doc technical/07 §3.3).
+      const metaTemplate = officialTemplateFor(payload.trigger, payload.content, payload.variables);
+      let queued = false;
 
-      if (whatsappClient.isConfigured()) {
+      const metaConfig = await whatsappClient.configFor(store.organization.id);
+      if (metaConfig) {
         // No servidor, a Meta e chamada depois da gravacao e da resposta
         // (01/11/2026): a tela nao espera os segundos da API, e o registro
         // nasce "Na fila" ate a Meta responder (`messageDelivery.ts`).
-        const deliver = getQueuedMessageDeliverer();
-        if (deliver && inServerWorld()) {
-          status = "queued";
-          queuedJob = { organizationId: store.organization.id, phone: payload.recipientPhone, content: payload.content };
+        if (getQueuedMessageDeliverer() && inServerWorld()) {
+          queued = true;
         } else {
           try {
-            const res = await whatsappClient.sendTextMessage(payload.recipientPhone, payload.content);
+            const res = await sendOfficial(payload.recipientPhone, payload.content, metaTemplate, metaConfig);
             messageId = res.messages?.[0]?.id;
             status = "sent";
           } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : "Erro desconhecido ao enviar mensagem.";
             status = "failed";
-            errorReason = errorMsg;
+            errorReason = metaErrorReason(err);
           }
         }
       } else {
@@ -171,18 +171,11 @@ export const messagesService = {
       }
 
       const log = newLog(payload, status, messageId);
+      if (metaTemplate) log.metaTemplate = metaTemplate;
       if (errorReason) {
         log.errorReason = errorReason;
       }
-      if (queuedJob) {
-        const job: QueuedMessageJob = { ...queuedJob, logId: log.id };
-        const deliver = getQueuedMessageDeliverer()!;
-        if (!afterWorldCommit(() => deliver(job))) {
-          // Sem efeito depois da gravacao (nao deveria acontecer no servidor): envia agora.
-          log.status = "sent";
-          await deliver(job);
-        }
-      }
+      if (queued) dispatchOfficial(log);
       ensureLogs().unshift(log);
       connection.monthlyQuota.used += 1;
 
@@ -212,9 +205,15 @@ export const messagesService = {
       const log = ensureLogs().find((l) => l.id === id);
       if (!log) throw apiError("NOT_FOUND", "Mensagem não encontrada.", { httpStatus: 404 });
 
-      if (whatsappClient.isConfigured()) {
+      const metaConfig = await whatsappClient.configFor(store.organization.id);
+      if (metaConfig && getQueuedMessageDeliverer() && inServerWorld()) {
+        // Pela fila, como o envio: repete o mesmo modelo (ou o texto) do registro.
+        delete log.errorReason;
+        log.sentAt = nowIso();
+        dispatchOfficial(log);
+      } else if (metaConfig) {
         try {
-          const res = await whatsappClient.sendTextMessage(log.recipientPhone, log.content);
+          const res = await sendOfficial(log.recipientPhone, log.content, log.metaTemplate, metaConfig);
           if (res.messages?.[0]?.id) {
             log.id = res.messages[0].id;
           }
@@ -223,7 +222,7 @@ export const messagesService = {
           log.sentAt = nowIso();
         } catch (err: unknown) {
           log.status = "failed";
-          log.errorReason = err instanceof Error ? err.message : "Falha ao reenviar mensagem.";
+          log.errorReason = metaErrorReason(err);
           throw apiError("SERVICE_UNAVAILABLE", log.errorReason, { httpStatus: 502 });
         }
       } else {

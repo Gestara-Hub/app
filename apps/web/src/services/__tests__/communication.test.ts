@@ -4,10 +4,14 @@ import { store } from "@/mocks/store";
 import {
   runBillingReminders,
   runBirthdayGreetings,
+  metaBodyFor,
+  officialTemplateFor,
   setQueuedMessageDeliverer,
   type QueuedMessageJob,
 } from "@/services/communication/communicationRules";
 import { whatsappClient } from "@/services/communication/whatsappClient";
+import { syncMetaTemplates } from "@/services/communication/metaTemplatesSync";
+import { setWhatsAppCredentialsGateway } from "@/services/communication/whatsappCredentialsGateway";
 import { setEffectsResolver, type WorldEffect } from "@/services/world/effects";
 import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
 import { billingRemindersSlice } from "@/services/communication/billingRemindersCron";
@@ -147,6 +151,73 @@ describe("conexao do WhatsApp", () => {
       await expect(communicationService.connectOfficial()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
     } finally {
       vi.unstubAllEnvs();
+    }
+  });
+
+  it("em producao com o cadastro da Meta, conecta so com as credenciais do proprio numero (doc technical/07 §1.1)", async () => {
+    setTier("pro");
+    store.unit.phone = undefined;
+    const gateway = {
+      connect: vi.fn(async () => ({ displayPhoneNumber: "+55 92 98888-7777", verifiedName: "Academia Ribeiro" })),
+      disconnect: vi.fn(async () => undefined),
+      configFor: vi.fn(async () => null),
+    };
+    setWhatsAppCredentialsGateway(gateway);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_META_APP_ID", "123");
+    vi.stubEnv("NEXT_PUBLIC_META_CONFIG_ID", "456");
+    try {
+      expect((await communicationService.getConnection()).officialAvailable).toBe(true);
+      // Sem o cadastro guiado nao conecta: nada pelo numero da plataforma.
+      await expect(communicationService.connectOfficial()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+      expect(gateway.connect).not.toHaveBeenCalled();
+
+      const view = await communicationService.connectOfficial({
+        code: "one-time",
+        phoneNumberId: "1111111111",
+        wabaId: "2222222222",
+        onboarding: "coexistence",
+      });
+      expect(gateway.connect).toHaveBeenCalledWith({
+        organizationId: ACADEMY_ORG,
+        code: "one-time",
+        phoneNumberId: "1111111111",
+        wabaId: "2222222222",
+        businessId: undefined,
+        onboarding: "coexistence",
+      });
+      expect(view).toMatchObject({
+        officialStatus: "connected",
+        mode: "official",
+        phoneNumber: "5592988887777",
+        displayName: "Academia Ribeiro",
+      });
+      expect(store.unit.phone).toBe("+5592988887777");
+
+      await communicationService.disconnectOfficial();
+      expect(gateway.disconnect).toHaveBeenCalledWith(ACADEMY_ORG);
+    } finally {
+      vi.unstubAllEnvs();
+      setWhatsAppCredentialsGateway(null);
+    }
+  });
+
+  it("falha na Meta ao conectar nao marca como conectado", async () => {
+    setTier("pro");
+    setWhatsAppCredentialsGateway({
+      connect: vi.fn(async () => {
+        throw new Error("Meta fora do ar");
+      }),
+      disconnect: vi.fn(),
+      configFor: vi.fn(async () => null),
+    });
+    try {
+      await expect(
+        communicationService.connectOfficial({ code: "c", phoneNumberId: "1111111111", wabaId: "2222222222" }),
+      ).rejects.toThrow();
+      expect(store.whatsAppConnection?.officialStatus).toBe("not_connected");
+    } finally {
+      setWhatsAppCredentialsGateway(null);
     }
   });
 
@@ -446,7 +517,7 @@ describe("envio automatico (oficial)", () => {
 
   it("no servidor com a Meta configurada, o registro nasce 'Na fila' e a entrega fica para depois da gravação (01/11/2026)", async () => {
     await connectOfficial();
-    const configured = vi.spyOn(whatsappClient, "isConfigured").mockReturnValue(true);
+    const configured = vi.spyOn(whatsappClient, "configFor").mockResolvedValue({});
     const jobs: QueuedMessageJob[] = [];
     setQueuedMessageDeliverer(async (job) => {
       jobs.push(job);
@@ -462,7 +533,7 @@ describe("envio automatico (oficial)", () => {
       expect(effects).toHaveLength(1);
       expect(jobs).toHaveLength(0);
       await effects[0]();
-      expect(jobs).toEqual([{ logId: log.id, organizationId: ACADEMY_ORG, phone: "(11) 97777-0000", content: "Oi, Maria!" }]);
+      expect(jobs).toEqual([{ logId: log.id, organizationId: ACADEMY_ORG, phone: log.recipientPhone, content: "Oi, Maria!" }]);
     } finally {
       serverWorld.on = false;
       setEffectsResolver(() => undefined);
@@ -891,6 +962,211 @@ describe("lembretes automaticos de cobranca (oficial)", () => {
     const reminder = store.messageLogs.find((l) => l.trigger === "charge_reminder");
     expect(reminder?.content).toContain("cobrança Kimono");
     expect(reminder?.content).not.toContain("{referencia}");
+  });
+});
+
+describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
+  beforeEach(() => resetAcademy());
+
+  /** Liga a fila como no servidor e devolve as entregas pedidas depois da gravacao. */
+  function serverQueue() {
+    const jobs: QueuedMessageJob[] = [];
+    const effects: WorldEffect[] = [];
+    setQueuedMessageDeliverer(async (job) => {
+      jobs.push(job);
+    });
+    setEffectsResolver(() => effects);
+    const configured = vi.spyOn(whatsappClient, "configFor").mockResolvedValue({});
+    serverWorld.on = true;
+    return {
+      jobs,
+      flush: async () => {
+        for (const effect of effects.splice(0)) await effect();
+      },
+      stop: () => {
+        serverWorld.on = false;
+        setEffectsResolver(() => undefined);
+        setQueuedMessageDeliverer(null);
+        configured.mockRestore();
+      },
+    };
+  }
+
+  it("texto do modelo usa o modelo, com as variaveis na ordem; texto editado ou variavel vazia, nao", async () => {
+    const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    template.content = "Olá {aluno}! Bem-vindo ao {empresa}, {aluno}.";
+    const variables = { aluno: "Maria", empresa: "Academia Ribeiro" };
+    const content = fillMessage(template.content, variables);
+    expect(officialTemplateFor("welcome_student", content, variables)).toEqual({
+      name: "welcome_student",
+      language: "pt_BR",
+      params: ["Maria", "Academia Ribeiro", "Maria"],
+    });
+    expect(officialTemplateFor("welcome_student", `${content} Até logo!`, variables)).toBeUndefined();
+    expect(officialTemplateFor("welcome_student", content, undefined)).toBeUndefined();
+    expect(officialTemplateFor("manual_broadcast", content, variables)).toBeUndefined();
+    const withoutName = fillMessage(template.content, { aluno: "", empresa: "Academia Ribeiro" });
+    expect(officialTemplateFor("welcome_student", withoutName, { aluno: "", empresa: "Academia Ribeiro" })).toBeUndefined();
+  });
+
+  it("envio manual do modelo vai para a fila com o modelo; o reenvio repete o mesmo modelo", async () => {
+    await connectOfficial();
+    const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    template.content = "Olá, {aluno}! Bem-vindo ao {empresa}.";
+    const variables = { aluno: "Maria", empresa: store.organization.name };
+    const content = fillMessage(template.content, variables);
+    const queue = serverQueue();
+    try {
+      const log = await communicationService.sendMessage(
+        message({ trigger: "welcome_student", clientId: "cli-1", content, variables }),
+      );
+      expect(log.status).toBe("queued");
+      expect(log.metaTemplate?.name).toBe("welcome_student");
+      await queue.flush();
+      expect(queue.jobs[0]?.template).toEqual(log.metaTemplate);
+
+      const stored = store.messageLogs.find((l) => l.id === log.id)!;
+      stored.status = "failed";
+      stored.errorReason = "Falhou";
+      const retried = await communicationService.retryFailedMessage(log.id);
+      expect(retried.status).toBe("queued");
+      await queue.flush();
+      expect(queue.jobs[1]).toMatchObject({ logId: log.id, template: log.metaTemplate });
+    } finally {
+      queue.stop();
+    }
+  });
+
+  it("mensagem avulsa sai como texto livre (sem modelo)", async () => {
+    await connectOfficial();
+    const queue = serverQueue();
+    try {
+      const log = await communicationService.sendMessage(message({ clientId: "cli-1" }));
+      expect(log.metaTemplate).toBeUndefined();
+      await queue.flush();
+      expect(queue.jobs[0]?.template).toBeUndefined();
+    } finally {
+      queue.stop();
+    }
+  });
+
+  it("lembrete automatico no servidor vai para a fila com o modelo (antes so gravava Entregue)", async () => {
+    at("12:00");
+    await connectOfficial();
+    const plan = await createPlan("monthly", 18000);
+    const student = await clientsService.create({
+      name: "Lucas Silva",
+      phone: "11999990001",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    store.charges.push({
+      id: "chg-membership-1",
+      organizationId: ACADEMY_ORG,
+      studentId: student.id,
+      kind: "membership",
+      planId: plan.id,
+      dueDate: "2026-09-25",
+      amountCents: 18000,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    store.organization.settings = {
+      ...store.organization.settings,
+      onlinePayments: { ...store.organization.settings?.onlinePayments, enabled: true },
+    } as typeof store.organization.settings;
+    const queue = serverQueue();
+    try {
+      expect(runBillingReminders()).toBe(1);
+      const log = store.messageLogs[0]!;
+      expect(log).toMatchObject({ trigger: "billing_before_due", status: "queued" });
+      expect(log.metaTemplate).toMatchObject({ name: "billing_before_due", language: "pt_BR" });
+      expect(log.metaTemplate?.params).toContain("Lucas Silva");
+      await queue.flush();
+      expect(queue.jobs).toEqual([
+        expect.objectContaining({ logId: log.id, phone: log.recipientPhone, template: log.metaTemplate }),
+      ]);
+    } finally {
+      queue.stop();
+    }
+  });
+});
+
+describe("modelos na conta do WhatsApp do espaco (doc technical/07 §1.4)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("o modelo na Meta deixa de fora a frase da variavel que o espaco nunca preenche", () => {
+    const welcome = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    expect(welcome.content).toContain("{link_app}");
+    expect(metaBodyFor(welcome)).not.toContain("{link_app}");
+    // As boas-vindas do jeito que a tela monta agora cabem no modelo.
+    const variables = { aluno: "Maria", empresa: store.organization.name };
+    const content = fillMessage(welcome.content, variables);
+    expect(officialTemplateFor("welcome_student", content, variables)?.params).toEqual([store.organization.name, "Maria"]);
+
+    const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+    store.organization.settings = { ...store.organization.settings, onlinePayments: { enabled: false } } as typeof store.organization.settings;
+    expect(metaBodyFor(reminder)).not.toContain("{link_pagamento}");
+    store.organization.settings = { ...store.organization.settings, onlinePayments: { enabled: true } } as typeof store.organization.settings;
+    expect(metaBodyFor(reminder)).toContain("{link_pagamento}");
+  });
+
+  it("cria o que falta, edita o texto que mudou e so atualiza a situacao do que ja esta igual", async () => {
+    const list = vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([
+      { name: "welcome_student", id: "meta-welcome", status: "APPROVED", category: "MARKETING", language: "pt_BR" },
+    ]);
+    const create = vi
+      .spyOn(whatsappClient, "createOrUpdateTemplate")
+      .mockImplementation(async (payload) => ({ id: `meta-${payload.name}`, status: "PENDING" }));
+    const edit = vi.spyOn(whatsappClient, "editTemplate").mockResolvedValue({ id: "meta-welcome", status: "PENDING" });
+    try {
+      const first = await syncMetaTemplates({});
+      const automatic = store.messageTemplates.filter((t) => t.trigger !== "manual_broadcast");
+      expect(first).toEqual({ created: automatic.length - 1, edited: 1, failed: 0 });
+      expect(edit).toHaveBeenCalledWith("meta-welcome", expect.not.stringContaining("{link_app}"), {});
+      const welcome = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+      expect(welcome).toMatchObject({ metaTemplateId: "meta-welcome", metaStatus: "PENDING", metaBody: metaBodyFor(welcome) });
+      const before = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+      expect(before).toMatchObject({ metaTemplateName: "billing_before_due", metaStatus: "PENDING" });
+
+      // Tudo na Meta com o mesmo texto: so a situacao muda.
+      list.mockResolvedValue(
+        store.messageTemplates
+          .filter((t) => t.metaTemplateName)
+          .map((t) => ({ name: t.metaTemplateName!, id: t.metaTemplateId!, status: "APPROVED" as const, category: "UTILITY", language: "pt_BR" })),
+      );
+      create.mockClear();
+      edit.mockClear();
+      expect(await syncMetaTemplates({})).toEqual({ created: 0, edited: 0, failed: 0 });
+      expect(create).not.toHaveBeenCalled();
+      expect(edit).not.toHaveBeenCalled();
+      expect(store.messageTemplates.find((t) => t.trigger === "billing_before_due")?.metaStatus).toBe("APPROVED");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("falha num modelo guarda o motivo e nao para os outros; recusado nao e usado no envio", async () => {
+    vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([]);
+    vi.spyOn(whatsappClient, "createOrUpdateTemplate").mockImplementation(async (payload) => {
+      if (payload.name === "birthday_greeting") throw new Error("Texto recusado");
+      return { id: `meta-${payload.name}`, status: "PENDING" };
+    });
+    try {
+      const result = await syncMetaTemplates({});
+      expect(result.failed).toBe(1);
+      const birthday = store.messageTemplates.find((t) => t.trigger === "birthday_greeting")!;
+      expect(birthday.metaRejectionReason).toBe("Texto recusado");
+      expect(birthday.metaBody).toBeUndefined();
+
+      const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+      reminder.metaStatus = "REJECTED";
+      const variables = { aluno: "Ana", valor: "R$ 10,00", vencimento: "25/09/2026", empresa: "X", referencia: "mensalidade", link_pagamento: "https://x" };
+      expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, variables), variables)).toBeUndefined();
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 

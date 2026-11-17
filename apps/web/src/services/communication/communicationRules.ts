@@ -4,6 +4,7 @@ import {
   type MessageLog,
   type MessageTemplate,
   type MessageTrigger,
+  type MetaTemplateSend,
   type SendMessagePayload,
   type WhatsAppConnection,
   type WhatsAppConnectionView,
@@ -11,16 +12,26 @@ import {
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
-import { MESSAGE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
+import {
+  MESSAGE_MAX_LENGTH,
+  TRIGGER_TO_META_TEMPLATE,
+  dropSentencesWith,
+  fillMessage,
+  isManualTrigger,
+  metaTemplateParams,
+  whatsappNumber,
+} from "@/lib/whatsapp";
 import { chargeReference } from "@/lib/messages/message-values";
 import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
 import { chargeInvoiceUrl, paymentPageUrl } from "@/lib/payment-page";
-import { store } from "@/services/world/store";
+import { inServerWorld, store } from "@/services/world/store";
+import { afterWorldCommit } from "@/services/world/effects";
 import { tenantHasFeature } from "../subscription/subscriptionService";
 import { dateInSpace } from "@gestarahub/core/date";
 import { whatsappConsentGranted } from "../clients/clientConsentRules";
+import { metaSignupConfigured, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -48,14 +59,14 @@ export function ensureConnection(): WhatsAppConnection {
 }
 
 /**
- * O envio automatico pode sair? Ainda nao ha credenciais por espaco (doc
- * technical/07 §1.1): tudo sairia do numero da plataforma. Decisao do usuario
- * (30/10/2026): em producao fica bloqueado ate o numero de cada espaco. Fora
- * de producao segue, com o numero de testes da Meta (que so alcanca os numeros
- * cadastrados como teste); o servidor do e2e tambem.
+ * O envio automatico pode ser ligado? Cada espaco conecta o proprio numero
+ * pelo cadastro guiado da Meta (doc technical/07 §1.1): em producao, so com
+ * ele configurado. Fora de producao (e no servidor do e2e) tambem vale o
+ * numero de testes do ambiente, que so alcanca os numeros cadastrados como
+ * teste. Nada sai pelo numero da plataforma em producao (decisao de 30/10/2026).
  */
 export function officialSendingAvailable(): boolean {
-  return process.env.NODE_ENV !== "production" || Boolean(process.env.E2E_NOW);
+  return platformNumberFallbackAllowed() || metaSignupConfigured();
 }
 
 export function connectionView(): WhatsAppConnectionView {
@@ -157,6 +168,71 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
 }
 
 /**
+ * Variaveis que o espaco nunca preenche: a frase delas fica fora do modelo da
+ * Meta, onde toda variavel e obrigatoria. `{link_app}` ainda nao existe; o
+ * link do pagamento so com o pagamento online ligado.
+ */
+export function unavailableVariables(): string[] {
+  const keys = ["link_app"];
+  if (!store.organization.settings?.onlinePayments?.enabled) keys.push("link_pagamento");
+  return keys;
+}
+
+/** Texto do modelo na Meta: o do espaco, sem as frases das variaveis que nunca tem valor. */
+export function metaBodyFor(template: MessageTemplate): string {
+  return dropSentencesWith(template.content, unavailableVariables());
+}
+
+/**
+ * Modelo aprovado da Meta para a mensagem (doc technical/07 §3.3): so quando o
+ * texto e o do modelo do espaco na Meta com esses valores (texto editado sai
+ * como texto livre) e toda variavel tem valor (a Meta recusa variavel vazia).
+ * Vale o texto enviado a Meta (`metaBody`); antes dele, o que seria enviado.
+ */
+export function officialTemplateFor(
+  trigger: MessageTrigger | undefined,
+  content: string,
+  variables: Record<string, string | undefined> | undefined,
+): MetaTemplateSend | undefined {
+  if (!trigger || !variables) return undefined;
+  const mapping = TRIGGER_TO_META_TEMPLATE[trigger];
+  const template = ensureTemplates().find((t) => t.trigger === trigger);
+  if (!mapping || !template) return undefined;
+  if (template.metaStatus === "REJECTED" || template.metaStatus === "DISABLED") return undefined;
+  const body = template.metaBody ?? metaBodyFor(template);
+  if (fillMessage(body, variables) !== content.trim()) return undefined;
+  const params = metaTemplateParams(body, variables);
+  if (!params) return undefined;
+  return { name: template.metaTemplateName ?? mapping.templateName, language: "pt_BR", params };
+}
+
+/**
+ * Envio oficial de um registro: no servidor, nasce "Na fila" e a Meta e
+ * chamada depois da gravacao e da resposta (`messageDelivery.ts`); fora dele
+ * (demonstracao e testes), fica "Entregue" como antes.
+ */
+export function dispatchOfficial(log: MessageLog): void {
+  const deliver = queuedMessageDeliverer;
+  const job: QueuedMessageJob = {
+    logId: log.id,
+    organizationId: log.organizationId,
+    phone: log.recipientPhone,
+    content: log.content,
+    ...(log.metaTemplate ? { template: log.metaTemplate } : {}),
+  };
+  // A fila de efeitos so existe no servidor, durante a gravacao do espaco.
+  if (deliver && afterWorldCommit(() => deliver(job))) {
+    log.status = "queued";
+  } else if (deliver && inServerWorld()) {
+    // Sem efeito depois da gravacao (nao deveria acontecer no servidor): envia agora.
+    log.status = "sent";
+    void deliver(job);
+  } else {
+    log.status = "delivered";
+  }
+}
+
+/**
  * Parabens automatico (so no envio oficial): no dia do aniversario, a partir
  * do horario da regra, uma mensagem por aluno por dia. Roda na rotina de hora
  * em hora (`birthdayGreetingsCron.ts`), nao mais na leitura do historico: antes
@@ -186,16 +262,21 @@ export function runBirthdayGreetings(): number {
         dateInSpace(log.sentAt) === today,
     );
     if (alreadySent) continue;
+    const variables = { aluno: client.name, empresa: store.organization.name };
+    const content = fillMessage(template.content, variables);
     const log = newLog(
       {
         recipientName: client.name,
         recipientPhone: client.phone ?? "",
         trigger: "birthday_greeting",
         clientId: client.id,
-        content: fillMessage(template.content, { aluno: client.name, empresa: store.organization.name }),
+        content,
       },
       "delivered",
     );
+    const metaTemplate = officialTemplateFor("birthday_greeting", content, variables);
+    if (metaTemplate) log.metaTemplate = metaTemplate;
+    dispatchOfficial(log);
     logs.unshift(log);
     connection.monthlyQuota.used += 1;
     sent += 1;
@@ -299,7 +380,7 @@ export function runBillingReminders(): number {
       const className = charge.classGroupId
         ? (store.classGroups ?? []).find((cg) => cg.id === charge.classGroupId)?.name
         : undefined;
-      const content = fillMessage(template.content, {
+      const variables = {
         aluno: client.name,
         valor: amountFormatted,
         vencimento: formattedDueDate,
@@ -312,7 +393,8 @@ export function runBillingReminders(): number {
           cycleIndex: charge.cycleIndex,
           cycleTotal: charge.cycleTotal,
         }),
-      });
+      };
+      const content = fillMessage(template.content, variables);
 
       const log = newLog(
         {
@@ -325,6 +407,9 @@ export function runBillingReminders(): number {
         },
         "delivered",
       );
+      const metaTemplate = officialTemplateFor(template.trigger, content, variables);
+      if (metaTemplate) log.metaTemplate = metaTemplate;
+      dispatchOfficial(log);
       logs.unshift(log);
       connection.monthlyQuota.used += 1;
       sent += 1;
@@ -345,6 +430,8 @@ export interface QueuedMessageJob {
   organizationId: string;
   phone: string;
   content: string;
+  /** Modelo aprovado da Meta; sem ele, texto livre (janela de 24 horas). */
+  template?: MetaTemplateSend;
 }
 
 let queuedMessageDeliverer: ((job: QueuedMessageJob) => Promise<void>) | null = null;

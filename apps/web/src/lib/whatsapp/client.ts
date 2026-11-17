@@ -211,7 +211,7 @@ export async function listWhatsAppTemplates(
     return [];
   }
 
-  const url = `${config.apiUrl}/${config.businessAccountId}/message_templates`;
+  const url = `${config.apiUrl}/${config.businessAccountId}/message_templates?fields=name,status,category,id,language,rejected_reason&limit=250`;
 
   try {
     const res = await fetch(url, {
@@ -232,6 +232,7 @@ export async function listWhatsAppTemplates(
       status: MetaTemplateStatus;
       category: string;
       id: string;
+      language?: string;
       rejected_reason?: string;
     }>;
 
@@ -240,12 +241,75 @@ export async function listWhatsAppTemplates(
       status: item.status,
       category: item.category,
       id: item.id,
-      rejectionReason: item.rejected_reason,
+      language: item.language,
+      rejectionReason: item.rejected_reason && item.rejected_reason !== "NONE" ? item.rejected_reason : undefined,
     }));
   } catch (err) {
     logError("[WhatsApp] Erro de rede ao buscar templates da Meta:", err);
     return [];
   }
+}
+
+/** Exemplo de cada variavel para a analise da Meta (ela pede um valor por variavel). */
+const TEMPLATE_EXAMPLES: Record<string, string> = {
+  "{aluno}": "João",
+  "{empresa}": "Academia Gestara",
+  "{valor}": "R$ 150,00",
+  "{vencimento}": "10/11/2026",
+  "{link_pagamento}": "https://gestarahub.com.br/p/exemplo",
+  "{link_app}": "https://gestarahub.com.br",
+  "{referencia}": "mensalidade de novembro",
+  "{restante}": "resta 1 aula",
+  "{pacote}": "Pacote 10 aulas",
+  "{nivel}": "Faixa azul",
+  "{evento}": "Graduação de dezembro",
+  "{dia}": "sábado, 12/12",
+  "{horario}": "19:00",
+};
+
+/** Corpo do modelo no formato da Meta: variaveis posicionais e um exemplo de cada. */
+function templateBodyComponents(content: string) {
+  const { metaText, variables } = convertGestaraVariablesToMetaPositional(content);
+  const exampleValues = variables.map((v) => TEMPLATE_EXAMPLES[v] ?? "exemplo");
+  return [
+    {
+      type: "BODY",
+      text: metaText,
+      ...(exampleValues.length > 0 ? { example: { body_text: [exampleValues] } } : {}),
+    },
+  ];
+}
+
+/**
+ * Edita o texto de um modelo que ja existe na conta (POST /{id-do-modelo}). A
+ * Meta analisa de novo; um modelo aprovado aceita 1 edicao por dia e 10 por mes.
+ */
+export async function editWhatsAppTemplate(
+  templateId: string,
+  content: string,
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<{ id: string; status: MetaTemplateStatus }> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken) {
+    throw new Error("[WhatsApp] Credenciais da Meta são obrigatórias para editar o modelo.");
+  }
+  const res = await fetch(`${config.apiUrl}/${templateId}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.apiToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ components: templateBodyComponents(content) }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = data as WhatsAppErrorResponse;
+    logError("[WhatsApp Template Edit Error]:", err);
+    throw new WhatsAppApiError(
+      err.error?.message || "Erro ao editar o modelo na Meta.",
+      err.error?.code || res.status,
+      err.error?.type || "ApiError",
+      err.error?.fbtrace_id,
+    );
+  }
+  return { id: templateId, status: "PENDING" };
 }
 
 /**
@@ -265,28 +329,11 @@ export async function createOrUpdateWhatsAppTemplate(
     throw new Error("[WhatsApp] Credenciais WHATSAPP_API_TOKEN e WHATSAPP_BUSINESS_ACCOUNT_ID são obrigatórias.");
   }
 
-  const { metaText, variables } = convertGestaraVariablesToMetaPositional(payload.content);
-
-  const exampleValues = variables.map((v) => {
-    if (v === "{aluno}") return "João";
-    if (v === "{valor}") return "R$ 150,00";
-    if (v === "{vencimento}") return "10/11/2026";
-    if (v === "{empresa}") return "Academia Gestara";
-    if (v === "{link_pagamento}") return "https://gestarahub.com/p/exemplo";
-    return "exemplo";
-  });
-
   const body = {
     name: payload.name,
     category: payload.category,
     language: payload.languageCode || "pt_BR",
-    components: [
-      {
-        type: "BODY",
-        text: metaText,
-        ...(exampleValues.length > 0 ? { example: { body_text: [exampleValues] } } : {}),
-      },
-    ],
+    components: templateBodyComponents(payload.content),
   };
 
   const url = `${config.apiUrl}/${config.businessAccountId}/message_templates`;
