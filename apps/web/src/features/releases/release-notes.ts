@@ -18,6 +18,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.17",
+    date: "2026-11-17",
+    items: [
+      { text: "Novidades mostram o número de cada versão." },
+      { text: "Base pronta para o envio automático pelo WhatsApp do seu espaço." },
+    ],
+  },
+  {
     version: "2026.11.16-2",
     date: "2026-11-16",
     items: [
