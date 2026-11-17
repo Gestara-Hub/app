@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { APP_VERSION, APP_VERSION_LABEL } from "@/lib/release";
 import { Brand } from "./brand";
 import { Activity, Building2, CreditCard, LayoutDashboard, LifeBuoy, Megaphone, Scale, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import type { NavGroup, NavIconName } from "./nav";
@@ -52,6 +54,11 @@ export function AppSidebar({ groups }: { groups: NavGroup[] }) {
           </SidebarGroup>
         ))}
       </SidebarContent>
+      <SidebarFooter className="group-data-[collapsible=icon]:hidden">
+        <p className="px-2 text-[11px] text-sidebar-foreground/50" title={`Versão ${APP_VERSION_LABEL}`}>
+          Versão {APP_VERSION}
+        </p>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
