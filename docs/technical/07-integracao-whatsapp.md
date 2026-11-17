@@ -69,7 +69,15 @@ Contrato pronto para a integração (`packages/contracts/src/communication.ts`):
 | Custo por mensagem | Preço da Meta + margem do parceiro | Só o preço da Meta |
 | Dependência | Do parceiro (API e contrato dele) | Só da Meta |
 
-**Recomendação:** começar por um parceiro e migrar para direto quando o volume justificar. Antes de escolher, confirmar com o parceiro: suporte a **coexistência no Brasil** (o espaço continua usando o app do WhatsApp Business no mesmo número), conexão guiada (Embedded Signup) para vários clientes, cobrança em reais e preço por mensagem.
+**Recomendação (14/10/2026):** começar por um parceiro e migrar para direto quando o volume justificar. Antes de escolher, confirmar com o parceiro: suporte a **coexistência no Brasil** (o espaço continua usando o app do WhatsApp Business no mesmo número), conexão guiada (Embedded Signup) para vários clientes, cobrança em reais e preço por mensagem.
+
+**Decisão (17/11/2026): direto, como provedor de tecnologia, com o cadastro incorporado como caminho único.** O espaço clica em "Conectar WhatsApp oficial", entra na janela da Meta com uma conta do Facebook (exigência da Meta: toda conta do WhatsApp Business pertence a uma empresa na Meta, administrada por alguém com Facebook) e o número fica ligado à conta do próprio espaço. Alternativas avaliadas e descartadas:
+- **Conexão manual** (o espaço cria a conta no Gerenciador de Negócios e cola token e ids): mais passos, com o mesmo Facebook, e token passando pela mão de quem usa. Fica como plano B só se aparecerem espaços travados na janela da Meta.
+- **Parceiro (BSP):** quase todos usam o mesmo cadastro incorporado por baixo; não tira o login e acrescenta custo por mensagem e dependência.
+- **Números na conta do GestaraHub:** vai contra a doc 13 §5 (qualidade e bloqueio compartilhados entre espaços; o espaço perde o controle do número).
+- **Sessão por QR code:** fora dos termos do WhatsApp (descartada em 13/10/2026).
+
+Quem não quiser entrar com o Facebook continua no **envio assistido**, que não precisa conectar nada. A tela de conexão e a ajuda precisam avisar antes do clique que o login é pelo Facebook (`docs/pendencias.md`).
 
 ## 3. Checklist
 
@@ -107,40 +115,87 @@ Mensagem que o espaço inicia (lembrete, parabéns, boas-vindas, falta) só sai 
 - **Assinatura (30/10/2026, auditoria):** o POST só vale com `X-Hub-Signature-256` certa (HMAC-SHA256 do corpo com `META_APP_SECRET`, comparação em tempo constante, `lib/security/webhook-signature.ts`). Sem o segredo, produção recusa (503) e o desenvolvimento aceita. Antes, qualquer um mudava a situação das mensagens de qualquer espaço.
 - [x] **Rota no backend para receber:** `/api/webhooks/whatsapp` trata o desafio `GET` (`hub.challenge`) e o recebimento `POST` de status (**enviada, entregue, lida, falhou**) e mensagens recebidas.
 - [x] **Conferir a assinatura do aviso:** validação criptográfica via `META_APP_SECRET` e comparação `timingSafeEqual`.
-- [x] **Atualizar o status do `MessageLog`:** `processWhatsAppStatusUpdate` atualiza status, data de leitura (`read_at`) e motivo da falha (`error_reason`) no banco Supabase e no store local.
+- [x] **Atualizar o status do `MessageLog`:** `processWhatsAppStatusUpdate` atualiza status, data de leitura (`read_at`) e motivo da falha (`error_reason`) no banco, só no espaço dono do número (seção 1.4).
 - [ ] **Resposta do aluno:** registrar e avisar o espaço quando o aluno responder (hoje o webhook contabiliza `messagesReceived`; a conversa continua no app do WhatsApp).
 
-### 3.5.1 Passo a passo de implantação e configuração na Meta (Produção e Staging)
+### 3.5.1 Passo a passo no console da Meta para produção (atualizado em 17/11/2026)
 
-Para que os recibos de entrega (`delivered`) e leitura (`read`) cheguem ao GestaraHub em produção:
+Cada espaço conecta o **próprio número** pelo cadastro guiado (Embedded Signup); o GestaraHub é o **provedor de tecnologia** (Tech Provider) e não tem número próprio em produção (seção 1.1). Os nomes dos menus mudam com frequência no console: quando um caminho não bater, procure pelo nome do item. Faça na ordem: os passos 1 e 4 levam dias na Meta e não dependem de mais nada.
 
-#### 1. Variáveis de ambiente no provedor de hospedagem (Vercel / servidor)
-Configurar as seguintes variáveis no ambiente de produção:
-- `WHATSAPP_API_URL`: `https://graph.facebook.com/v21.0`
-- `WHATSAPP_API_TOKEN`: Token permanente de Usuário do Sistema gerado no Meta Business Manager com permissões de mensageria.
-- `WHATSAPP_PHONE_NUMBER_ID`: Identificador do número de WhatsApp na plataforma.
-- `WHATSAPP_BUSINESS_ACCOUNT_ID`: Identificador da conta WABA da empresa.
-- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: Segredo alfanumérico longo aleatório criado pela equipe para autenticar o handshake inicial do webhook.
-- `META_APP_SECRET`: Segredo do aplicativo Meta (App Secret obtido no painel de desenvolvedores), **obrigatório em produção** para validar a assinatura `X-Hub-Signature-256`.
+#### Passo 1. Verificar a empresa (Meta Business Suite, alguns dias)
+1. Em [business.facebook.com](https://business.facebook.com), abra as **Configurações do negócio** da empresa dona do app (MHMJ).
+2. Em **Central de segurança** (Security Center), clique em **Iniciar verificação** e envie os documentos da empresa (CNPJ, comprovante de endereço, domínio ou telefone da empresa).
+3. Confira que o domínio de produção está em **Segurança da marca → Domínios** e verificado (registro DNS ou arquivo). Sem empresa verificada, a revisão do app não passa.
 
-#### 2. Configuração no painel Meta for Developers
-1. Acesse [developers.facebook.com](https://developers.facebook.com) e selecione o aplicativo do GestaraHub.
-2. No menu lateral, acesse **WhatsApp** → **Configuration** (Configuração).
-3. No painel **Webhook**, clique no botão **Edit** (Editar):
-   - **Callback URL (URL de retorno):** `https://<seu-dominio-producao>/api/webhooks/whatsapp`
-   - **Verify Token (Token de verificação):** o mesmo valor definido em `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
-   - Clique em **Verify and Save** (Verificar e salvar). O Next responderá ao desafio `hub.challenge` com HTTP 200.
-4. No card **Webhook fields** (Campos do webhook), clique em **Manage** (Gerenciar):
-   - Assine o campo **`messages`** (obrigatório: entrega, leitura, falha e mensagens de retorno).
-   - Assine o campo **`message_template_status_update`** (atualizações automáticas de status dos modelos: aprovado, pausado, rejeitado).
+#### Passo 2. Conta de pagamento da Meta (resolve o erro 141006)
+1. No **WhatsApp Manager** da conta de testes do GestaraHub, abra **Configurações de pagamento** e cadastre um cartão válido.
+2. Confira a saúde da conta (Account health): sem bloqueio de pagamento.
+3. **Importante para os espaços:** com o cadastro guiado de provedor de tecnologia, a conta do WhatsApp (WABA) é **do espaço**, e quem paga as mensagens à Meta é o espaço, com a forma de pagamento dele no WhatsApp Manager dele. Sem ela, a Meta aceita e não entrega (o mesmo 141006). Isso precisa ir para a ajuda de "Conectar WhatsApp oficial" e para a decisão de preço do Pro (doc 13 §5, `docs/pendencias.md`).
 
-#### 3. Requisitos para virada para Modo Live (Produção)
-- Cadastrar a URL de Política de Privacidade (`https://<dominio>/privacy`) e Termos de Uso (`https://<dominio>/terms`) nas **Configurações Básicas** do App.
-- Definir o ícone institucional e categoria de negócios.
-- Solicitar aprovação avançada para as permissões:
-  - `whatsapp_business_messaging` (envio e recebimento de mensagens comerciais).
-  - `whatsapp_business_management` (gestão da conta WABA e modelos).
-- Virar o alternador do App no topo de **Em desenvolvimento** para **Publicado/Live**.
+#### Passo 3. Configurações básicas do app (Meta for Developers)
+Em [developers.facebook.com](https://developers.facebook.com) → **Meus apps** → app do GestaraHub → **Configurações do app → Básico**:
+1. **Domínios do app:** o domínio de produção.
+2. **URL da Política de Privacidade:** `https://<domínio>/privacy`.
+3. **URL dos Termos de Serviço:** `https://<domínio>/terms`.
+4. **Exclusão de dados do usuário:** URL de instruções de exclusão. Essa página ainda não existe (linha Jurídico de `docs/pendencias.md`); criar antes de pedir a revisão.
+5. **Ícone** (1024×1024), **categoria** (Negócios) e **e-mail de contato**.
+6. Anote o **ID do app** (vai em `NEXT_PUBLIC_META_APP_ID`) e, em **Chave secreta do app → Mostrar**, a chave (vai em `META_APP_SECRET`, nunca no código nem no navegador).
+
+#### Passo 4. Tornar-se provedor de tecnologia e pedir a revisão do app (alguns dias)
+1. No painel do app, em **WhatsApp → Início rápido** (ou **Configuração da API**), siga o fluxo **Tornar-se provedor de tecnologia** (Tech Provider). Ele pede a empresa verificada (passo 1) e a revisão do app.
+2. Em **Revisão do app → Permissões e recursos**, peça **acesso avançado** para:
+   - `whatsapp_business_messaging` (enviar e receber mensagens);
+   - `whatsapp_business_management` (conta, números e modelos).
+3. Em cada pedido, descreva o uso e grave um **vídeo** do fluxo: Comunicação → Conexão → "Conectar WhatsApp oficial" → janela da Meta → número conectado → modelos em análise → envio de um lembrete com o status no Histórico. Use `pnpm dev:https` ou o ambiente de staging com a conta de testes.
+4. Responda o **Uso de dados** (Data Use Checkup) quando a Meta pedir.
+
+#### Passo 5. Configurar o cadastro guiado (Embedded Signup)
+1. No painel do app, adicione o produto **Login do Facebook para Empresas** (Facebook Login for Business), se ainda não estiver.
+2. Em **Login do Facebook para Empresas → Configurações**:
+   - **Login com o SDK do JavaScript:** Sim.
+   - **Domínios permitidos para o SDK do JavaScript:** `https://<domínio>` (e o de staging, se houver).
+   - **URIs de redirecionamento do OAuth válidos:** `https://<domínio>/` (o código usa o popup do SDK; a Meta pede o domínio cadastrado).
+3. Em **Login do Facebook para Empresas → Configurações (Configurations) → Criar configuração**:
+   - Variação de login: **Cadastro incorporado do WhatsApp** (WhatsApp Embedded Signup).
+   - Tipo de token: **Token de acesso de usuário do sistema** (System-user access token), **sem expiração** (Never).
+   - Ativos: **Contas do WhatsApp** (WhatsApp accounts).
+   - Permissões: `whatsapp_business_management` e `whatsapp_business_messaging`.
+4. Salve e anote o **ID da configuração** (vai em `NEXT_PUBLIC_META_CONFIG_ID`).
+5. **Coexistência:** o código abre o cadastro com `featureType: "whatsapp_business_app_onboarding"` (o espaço continua no app WhatsApp Business no mesmo número). Confira no painel do WhatsApp do app que a coexistência está disponível para a conta; se não estiver, o cadastro cai no fluxo de número novo (`FINISH`), que o código também trata (registra o número com PIN).
+
+#### Passo 6. Webhook do app
+1. Antes, publique o app na Vercel com `WHATSAPP_WEBHOOK_VERIFY_TOKEN` e `META_APP_SECRET` (passo 8): a Meta chama a URL na hora de salvar.
+2. No painel do app, em **WhatsApp → Configuração → Webhook → Editar**:
+   - **URL de retorno:** `https://<domínio>/api/webhooks/whatsapp`.
+   - **Token de verificação:** o mesmo valor de `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (texto aleatório longo, criado por nós).
+   - **Verificar e salvar** (o app responde ao `hub.challenge`).
+3. Em **Campos do webhook → Gerenciar**, assine:
+   - **`messages`**: entrega, leitura, falha e respostas ("SAIR").
+   - **`message_template_status_update`**: modelo aprovado, recusado, pausado ou desativado.
+4. Não precisa inscrever conta por conta: ao conectar, o código inscreve o app na conta de cada espaço (`POST /{waba}/subscribed_apps`), e os avisos chegam a esta URL.
+
+#### Passo 7. Publicar o app (modo ativo)
+Com a revisão aprovada (passo 4) e os passos 3, 5 e 6 feitos, troque o app de **Em desenvolvimento** para **Ativo** (Live) no topo do painel. Em desenvolvimento, só quem tem função no app consegue conectar.
+
+#### Passo 8. Variáveis na Vercel (produção) e banco
+| Variável | De onde vem |
+|---|---|
+| `NEXT_PUBLIC_META_APP_ID` | Passo 3, ID do app |
+| `NEXT_PUBLIC_META_CONFIG_ID` | Passo 5, ID da configuração |
+| `META_APP_SECRET` | Passo 3, chave secreta do app |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | Texto aleatório nosso (passo 6) |
+| `WHATSAPP_API_URL` | `https://graph.facebook.com/v21.0` |
+
+- **Não** configurar `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` nem `WHATSAPP_BUSINESS_ACCOUNT_ID` em produção: são do número de testes e em produção não são usadas.
+- Com `NEXT_PUBLIC_META_APP_ID` e `NEXT_PUBLIC_META_CONFIG_ID`, o envio automático liga em produção (`officialSendingAvailable`). As duas `NEXT_PUBLIC_` entram no build: depois de cadastrar, publique de novo.
+- Banco: `supabase db push --workdir apps` aplica as migrações 103 a 105 (credenciais no Vault e modelos da Meta).
+
+#### Passo 9. Teste de ponta a ponta
+1. Num espaço Pro seu, Comunicação → Conexão → **Conectar WhatsApp oficial**, com um número real.
+2. Os modelos aparecem "Em análise no WhatsApp" e somem quando aprovados (minutos a horas).
+3. Cadastre um aluno com WhatsApp e autorização: as boas-vindas vão "Na fila", depois "Enviada", "Entregue" e "Lida" no Histórico.
+4. Responda **SAIR** do celular do aluno: a autorização dele vira "pediu para parar" e a Auditoria registra.
+5. Desconecte e confira que a conexão some e os envios voltam ao assistido.
 
 ### 3.6 Consentimento e LGPD
 - [ ] Campo de consentimento no cadastro do aluno ("Aceita receber mensagens pelo WhatsApp"), exigido pela Meta e pela LGPD. Sem consentimento, o envio automático não sai (o assistido continua, porque é a própria pessoa que envia).
