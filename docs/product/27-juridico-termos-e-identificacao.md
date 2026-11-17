@@ -41,7 +41,7 @@
 | T5 | **Anexo de tratamento de dados (operador):** a LGPD pede instruções do controlador ao operador; §5 dos Termos cobre em uma frase | Anexo curto: finalidades, suboperadores (lista), sigilo, exclusão ao fim do contrato, auditoria, prazo de devolução. |
 | T6 | **Suboperadores sem nome:** "servidores em nuvem ISO 27001 e SOC 2" | Nomear Supabase (banco e armazenamento, região **a confirmar**: se fora do Brasil, é transferência internacional, art. 33) e Vercel (aplicação); PostHog (região do projeto, a confirmar); MailerSend. |
 | T7 | **Entrar com Google** não aparece na Privacidade | Item em §3: nome, e-mail e foto recebidos do Google só para criar e autenticar a conta; a Google exige essa divulgação na verificação do app. |
-| T8 | **Exclusão da conta só por e-mail** | A doc 24 já prevê a zona de perigo; até lá, deixar o prazo de resposta (ex.: 15 dias) na Política. |
+| T8 | **Exclusão da conta só por e-mail** | A doc 24 já prevê a zona de perigo; até lá, deixar o prazo de resposta (ex.: 15 dias) na Política. Quando for para tela e painel, seguir o roteiro de atualização de Termos, Privacidade e contrato da subconta em [`24-diretrizes-exclusao-e-lgpd.md`](24-diretrizes-exclusao-e-lgpd.md) §7.3. |
 | T9 | **Versão e histórico:** há a data (`LEGAL_UPDATED_AT`) e o aceite guarda a versão; falta um "o que mudou" | Lista curta de mudanças por versão no fim de cada página. |
 | T10 | **Encarregado só com e-mail genérico** | §2 acima. |
 | T11 | **Páginas públicas sem rodapé legal** (`/p/c`, `/p/certificado`, `/consent`) | Rodapé com identificação e link da Privacidade; na fatura, citar o Asaas pelo nome como processador. |
