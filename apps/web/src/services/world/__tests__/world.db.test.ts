@@ -167,14 +167,14 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
       },
       p_expected_version: version!.version,
     });
-    expect(error?.code).toBe("40001");
+    expect(error?.code).toBe("PT409");
     // Versao velha tambem aborta.
     const stale = await admin.rpc("apply_world_changes", {
       p_organization_id: tenant.organizationId,
       p_changes: { upserts: [], deletes: [] },
       p_expected_version: Number(version!.version) - 1,
     });
-    expect(stale.error?.code).toBe("40001");
+    expect(stale.error?.code).toBe("PT409");
   });
 
   it("configurações: leitura do banco, troca de área atualiza os modelos e só o dono altera", async () => {
