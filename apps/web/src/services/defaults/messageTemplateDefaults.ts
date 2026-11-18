@@ -214,7 +214,7 @@ function manualMessageTemplates(
       category: "administrative",
       title: "Evento amanhã",
       description: "Para os inscritos, na véspera do evento",
-      content: "Oi, {aluno}! Amanhã tem {evento} na {empresa}, {dia} às {horario}. Te esperamos!",
+      content: "Oi, {aluno}! Passando para lembrar que amanhã tem {evento} na {empresa}, {dia} às {horario}. Chegue alguns minutos antes para começarmos no horário. Te esperamos!",
       availableVariables: ["{aluno}", "{evento}", "{dia}", "{horario}", "{empresa}"],
     }),
     manual("payment-received", {
