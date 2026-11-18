@@ -7,6 +7,9 @@ Alunos e turmas sem limite, chamada pelo celular, mensalidades, cursos e pacotes
 ## O que o Profissional acrescenta
 Lembretes e avisos no WhatsApp sem clique, relatório do resultado do mês, retenção de alunos, certificado de conclusão em PDF e taxa menor por Pix pago.
 
+## Quem paga as mensagens automáticas do WhatsApp
+As mensagens automáticas do Profissional são cobradas pela Meta, no cartão da sua conta do WhatsApp. O GestaraHub não cobra por elas nem limita a quantidade.
+
 ## Assinar o Profissional
 Guia: /plans
 + botão "Mensal|Anual": Escolha se quer pagar por mês ou por ano.

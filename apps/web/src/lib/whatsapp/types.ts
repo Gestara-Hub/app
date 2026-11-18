@@ -1,3 +1,5 @@
+import { MASTER_TEMPLATES } from "./master-templates";
+import type { MessageTrigger } from "@gestarahub/contracts";
 export interface WhatsAppConfig {
   apiUrl: string;
   apiToken: string;
@@ -13,7 +15,7 @@ export interface MetaPhoneNumberDetails {
 }
 
 export interface SendWhatsAppTextMessagePayload {
-  to: string; // E.164 sem o '+' (ex: 5592991844219)
+  to: string; // E.164 sem o '+' (ex: 5511987654321)
   text: string;
 }
 
@@ -33,7 +35,7 @@ export interface WhatsAppTemplateParameter {
 export interface WhatsAppTemplateComponent {
   type: "header" | "body" | "button";
   sub_type?: "quick_reply" | "url";
-  index?: number;
+  index?: number | string;
   parameters: WhatsAppTemplateParameter[];
 }
 
@@ -66,33 +68,36 @@ export interface WhatsAppErrorResponse {
       details: string;
     };
     error_subcode?: number;
+    /** Motivo legivel que a Meta manda em alguns erros (ex.: modelo recusado). */
+    error_user_msg?: string;
     fbtrace_id: string;
   };
 }
 
 export type WhatsAppStatusType = "sent" | "delivered" | "read" | "failed";
 
-export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED";
+export type { MetaTemplateStatus } from "@gestarahub/contracts";
+import type { MetaTemplateStatus } from "@gestarahub/contracts";
 
 export interface MetaTemplateInfo {
   name: string;
   status: MetaTemplateStatus;
   category: string;
   id: string;
+  language?: string;
   rejectionReason?: string;
 }
 
-export const TRIGGER_TO_META_TEMPLATE: Record<
-  string,
-  { templateName: string; category: "UTILITY" | "MARKETING" }
-> = {
-  billing_before_due: { templateName: "billing_reminder", category: "UTILITY" },
-  billing_due_date: { templateName: "billing_reminder", category: "UTILITY" },
-  billing_after_due: { templateName: "billing_reminder", category: "UTILITY" },
-  charge_reminder: { templateName: "billing_reminder", category: "UTILITY" },
-  birthday_greeting: { templateName: "birthday_greeting", category: "MARKETING" },
-  welcome_student: { templateName: "welcome_student", category: "MARKETING" },
-};
+/**
+ * Modelo da Meta de cada gatilho: vem dos modelos mestres (doc technical/07
+ * §1.7, `master-templates.ts`), com o nome versionado e a categoria. A
+ * mensagem avulsa nao tem modelo: e texto livre, so na janela de 24 horas.
+ */
+export const TRIGGER_TO_META_TEMPLATE: Partial<
+  Record<MessageTrigger, { templateName: string; category: "UTILITY" | "MARKETING" }>
+> = Object.fromEntries(
+  Object.values(MASTER_TEMPLATES).map((t) => [t!.trigger, { templateName: t!.metaName, category: t!.category }]),
+);
 
 export interface WhatsAppWebhookStatus {
   id: string; // wamid
@@ -147,10 +152,19 @@ export interface WhatsAppWebhookValue {
   messages?: WhatsAppWebhookMessage[];
 }
 
-export interface WhatsAppWebhookChange {
-  value: WhatsAppWebhookValue;
-  field: "messages";
+/** Aviso de mudanca na situacao de um modelo (`message_template_status_update`). */
+export interface WhatsAppTemplateStatusValue {
+  event: MetaTemplateStatus | string;
+  message_template_id?: number | string;
+  message_template_name?: string;
+  message_template_language?: string;
+  reason?: string | null;
 }
+
+export type WhatsAppWebhookChange =
+  | { field: "messages"; value: WhatsAppWebhookValue }
+  | { field: "message_template_status_update"; value: WhatsAppTemplateStatusValue }
+  | { field: string; value: unknown };
 
 export interface WhatsAppWebhookEntry {
   id: string; // WABA ID

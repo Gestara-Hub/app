@@ -14,6 +14,40 @@ export type WhatsAppSendMode = "assisted" | "official";
 /** Conexao do numero do espaco com a API oficial da Meta. */
 export type WhatsAppOfficialStatus = "not_connected" | "pending" | "connected";
 
+/** Envio de mensagens iniciadas pelo espaco, segundo a Meta (`health_status`). */
+export type WhatsAppMetaSendState = "available" | "limited" | "blocked";
+
+/** Situacao do nome exibido do numero na Meta (`name_status`). */
+export type WhatsAppMetaNameStatus = "approved" | "pending_review" | "declined" | "other";
+
+/** Qualidade do numero na Meta (`quality_rating`). */
+export type WhatsAppMetaQuality = "green" | "yellow" | "red" | "unknown";
+
+/** Um problema apontado pela Meta, ja em portugues. */
+export interface WhatsAppMetaIssue {
+  code: number;
+  text: string;
+  /** Falta ou falha da forma de pagamento da conta do WhatsApp na Meta. */
+  payment: boolean;
+}
+
+/**
+ * Situacao do numero e da conta do WhatsApp do espaco na Meta (17/11/2026, doc
+ * technical/07 §1.6): consultada ao conectar, de hora em hora pela rotina e no
+ * botao "Atualizar" da Conexao.
+ */
+export interface WhatsAppMetaHealth {
+  checkedAt: DateTimeISO;
+  sendState: WhatsAppMetaSendState;
+  /** A Meta bloqueia as mensagens iniciadas pelo espaco por falta de pagamento. */
+  paymentBlocked: boolean;
+  nameStatus?: WhatsAppMetaNameStatus;
+  quality?: WhatsAppMetaQuality;
+  /** Conversas iniciadas pelo espaco por dia (`messaging_limit_tier`); sem limite = null. */
+  dailyLimit?: number | null;
+  issues: WhatsAppMetaIssue[];
+}
+
 export interface WhatsAppConnection {
   organizationId: Id;
   officialStatus: WhatsAppOfficialStatus;
@@ -27,13 +61,18 @@ export interface WhatsAppConnection {
     start: string;
     end: string;
   };
-  /** Franquia mensal do envio automatico (custo por mensagem da Meta). */
+  /**
+   * @deprecated Franquia mensal do envio automatico, sem uso desde 17/11/2026:
+   * o espaco paga a Meta direto pela propria conta do WhatsApp (doc
+   * technical/07 §1.5). Fica so porque a coluna `monthly_quota` e obrigatoria.
+   */
   monthlyQuota: {
     used: number;
     included: number;
-    /** Inicio do ciclo atual da franquia (zera no pagamento do plano; no anual, todo mes). */
     cycleStart?: string;
   };
+  /** Situacao na Meta (so com o numero conectado e consultado). */
+  metaHealth?: WhatsAppMetaHealth;
 }
 
 /** Leitura da conexao com o modo em uso (Pro e conectado = oficial). */
@@ -41,14 +80,29 @@ export interface WhatsAppConnectionView extends WhatsAppConnection {
   mode: WhatsAppSendMode;
   /** O plano tem envio automatico (recurso `messaging`). */
   canUseOfficial: boolean;
-  /** Franquia mensal do plano esgotada no ciclo atual. */
-  isQuotaExhausted: boolean;
   /**
-   * O envio automatico pode sair neste ambiente. Falso em producao ate cada
-   * espaco ter as credenciais do proprio numero (doc technical/07 §1.1):
-   * decisao do usuario de 30/10/2026, nada sai pelo numero da plataforma.
+   * O envio automatico pode ser ligado neste ambiente. Em producao, so com o
+   * cadastro guiado da Meta configurado: cada espaco conecta o proprio numero
+   * (doc technical/07 §1.1); nada sai pelo numero da plataforma.
    */
   officialAvailable: boolean;
+}
+
+/**
+ * Como o numero entrou na API oficial pelo cadastro guiado da Meta:
+ * `cloud` (numero novo, so na API, registrado com PIN) ou `coexistence`
+ * (o espaco segue usando o app WhatsApp Business no mesmo numero).
+ */
+export type WhatsAppOnboarding = "cloud" | "coexistence";
+
+/** O que o cadastro guiado da Meta devolve ao conectar o numero do espaco. */
+export interface ConnectOfficialWhatsAppPayload {
+  /** Codigo de uso unico que o servidor troca pelo token do espaco. */
+  code?: string;
+  phoneNumberId?: string;
+  wabaId?: string;
+  businessId?: string;
+  onboarding?: WhatsAppOnboarding;
 }
 
 export type MessageTrigger =
@@ -81,13 +135,14 @@ export type MessageTrigger =
 
 export type MessageCategory = "billing" | "retention" | "administrative";
 
-export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED";
+export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED";
 
 export interface MetaTemplateInfo {
   name: string;
   status: MetaTemplateStatus;
   category: string;
   id: string;
+  language?: string;
   rejectionReason?: string;
 }
 
@@ -103,8 +158,14 @@ export interface MessageTemplate {
   daysOffset: number;
   content: string;
   availableVariables: string[];
+  /** Situacao do modelo na conta do WhatsApp do espaco (doc technical/07 §1.4). */
   metaStatus?: MetaTemplateStatus;
   metaTemplateName?: string;
+  /** Id do modelo na Meta (para editar o texto). */
+  metaTemplateId?: string;
+  /** Texto enviado a Meta, com as variaveis do GestaraHub; o envio usa o mesmo. */
+  metaBody?: string;
+  metaRejectionReason?: string;
   updatedAt: DateTimeISO;
 }
 
@@ -126,13 +187,27 @@ export interface MessageLog {
   sentAt: DateTimeISO;
   readAt?: DateTimeISO;
   errorReason?: string;
+  /**
+   * Modelo aprovado da Meta usado no envio oficial (nome, idioma e variaveis
+   * em ordem). Sem ele, o envio oficial e texto livre: so na janela de 24
+   * horas da ultima mensagem do aluno (doc technical/07 §3.3).
+   */
+  metaTemplate?: MetaTemplateSend;
+}
+
+/** Envio por modelo aprovado: as variaveis seguem a ordem em que aparecem no texto. */
+export interface MetaTemplateSend {
+  name: string;
+  language: string;
+  params: string[];
+  /** Final do endereco do botao "Pagar agora" (modelos de cobranca da biblioteca da Meta). */
+  buttonUrlSuffix?: string;
 }
 
 export interface CommunicationMetrics {
   mode: WhatsAppSendMode;
   /** Mensagens do mes: abertas no WhatsApp (assistido) ou enviadas (oficial). */
   messagesThisMonth: number;
-  monthlyQuota: number;
   /** So no oficial; `null` sem envios no mes. */
   deliveryRate: number | null;
   readRate: number | null;
@@ -158,6 +233,12 @@ export interface SendMessagePayload {
   trigger?: MessageTrigger;
   clientId?: Id;
   chargeId?: Id;
+  /**
+   * Valores das variaveis do modelo (sem chaves: `aluno`, `valor`...). No
+   * oficial, com o texto igual ao do modelo, a mensagem sai pelo modelo
+   * aprovado da Meta; texto editado sai como texto livre.
+   */
+  variables?: Record<string, string | undefined>;
 }
 
 export interface UpdateTemplatePayload {

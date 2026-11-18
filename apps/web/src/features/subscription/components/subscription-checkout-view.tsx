@@ -22,11 +22,14 @@ import {
   Smartphone,
   Sparkles,
   Ticket,
+  Info,
   Zap,
 } from "lucide-react";
+import { META_COST_SHORT } from "@/lib/whatsapp/meta-cost";
 import { toast } from "@/lib/toast";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
 import { formatDate } from "@gestarahub/core/format";
+import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +42,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { AddressFields } from "@/components/form";
+import { SCALE_PLAN_ON_SALE } from "@/config/subscription";
 import { FieldShell, fieldAria } from "@/components/form/field-shell";
 import { useCurrentUser } from "@/features/auth";
-import { useOrganization } from "@/features/settings";
+import { useOrganization, useUnit } from "@/features/settings";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
@@ -99,7 +104,8 @@ export function SubscriptionCheckoutView() {
 
   // Lê parâmetros da URL (?tier=pro|scale & ?interval=monthly|yearly)
   const paramTier = searchParams.get("tier");
-  const initialTier: "pro" | "scale" = paramTier === "scale" ? "scale" : "pro";
+  // Expansao fora da venda: o link ?tier=scale cai no Profissional.
+  const initialTier: "pro" | "scale" = paramTier === "scale" && SCALE_PLAN_ON_SALE ? "scale" : "pro";
 
   const paramInterval = searchParams.get("interval");
   const initialInterval: SubscriptionInterval =
@@ -107,6 +113,7 @@ export function SubscriptionCheckoutView() {
 
   const currentUser = useCurrentUser();
   const { data: organization } = useOrganization();
+  const { data: unit } = useUnit();
   const { createSession, simulatePayment, checkStatus } =
     useSubscriptionCheckout();
 
@@ -126,6 +133,7 @@ export function SubscriptionCheckoutView() {
       customerEmail: currentUser.email || "",
       customerCpfCnpj: "",
       customerPhone: "",
+      address: { postalCode: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" },
       billingType: "PIX",
       cardNumber: "",
       cardHolder: "",
@@ -152,6 +160,30 @@ export function SubscriptionCheckoutView() {
       form.setValue("customerEmail", currentUser.email);
     }
   }, [organization?.name, currentUser?.email, form]);
+
+  // Endereco e telefone do espaco (Configuracoes > Geral) ja preenchidos: a
+  // pessoa so confere. resetField (nao setValue): o valor sugerido nao conta
+  // como edicao, e a chegada tardia da unidade ainda preenche (doc 07 §2.8).
+  const unitAddress = typeof unit?.address === "object" ? unit.address : undefined;
+  useEffect(() => {
+    if (!unitAddress || form.getFieldState("address").isDirty) return;
+    form.resetField("address", {
+      defaultValue: {
+        postalCode: unitAddress.postalCode ?? "",
+        street: unitAddress.street ?? "",
+        number: unitAddress.number ?? "",
+        complement: unitAddress.complement ?? "",
+        neighborhood: unitAddress.neighborhood ?? "",
+        city: unitAddress.city ?? "",
+        state: unitAddress.state ?? "",
+      },
+    });
+  }, [unitAddress, form]);
+  const unitPhone = unit?.phone;
+  useEffect(() => {
+    if (!unitPhone || form.getFieldState("customerPhone").isDirty || form.getValues("customerPhone")) return;
+    form.resetField("customerPhone", { defaultValue: maskPhone(brazilNationalDigits(unitPhone) ?? "") });
+  }, [unitPhone, form]);
 
   // Estado do Pix gerado no Asaas
   const [pixData, setPixData] = useState<{
@@ -241,6 +273,15 @@ export function SubscriptionCheckoutView() {
           email: values.customerEmail.trim(),
           cpfCnpj: cleanDoc,
           phone: values.customerPhone?.trim(),
+          address: {
+            postalCode: values.address.postalCode.replace(/\D/g, ""),
+            street: values.address.street.trim(),
+            number: values.address.number.trim(),
+            complement: values.address.complement?.trim() || undefined,
+            neighborhood: values.address.neighborhood.trim(),
+            city: values.address.city?.trim() || undefined,
+            state: values.address.state?.trim() || undefined,
+          },
         },
         creditCard: creditCardPayload,
       });
@@ -334,12 +375,12 @@ export function SubscriptionCheckoutView() {
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-bold text-foreground">Próximo passo recomendado</p>
-                  <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[10px] font-semibold text-primary">
-                    300 mensagens/mês
-                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
                   Conecte o número do seu espaço para que cobranças, avisos de aula e boas-vindas saiam sozinhos pelo WhatsApp oficial.
+                </p>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed max-w-sm">
+                  As mensagens automáticas são cobradas pela Meta, no cartão da sua conta do WhatsApp. O GestaraHub não cobra por elas.
                 </p>
               </div>
             </div>
@@ -522,7 +563,8 @@ export function SubscriptionCheckoutView() {
                     noValidate
                     className="space-y-6"
                   >
-                    {/* Plano escolhido: Profissional ou Expansão */}
+                    {/* Plano escolhido: Profissional ou Expansão (so com o Expansão a venda) */}
+                    {SCALE_PLAN_ON_SALE ? (
                     <div className="space-y-2.5">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Plano escolhido
@@ -575,6 +617,7 @@ export function SubscriptionCheckoutView() {
                         </button>
                       </div>
                     </div>
+                    ) : null}
 
                     {/* Seletor Mensal / Anual */}
                     <div className="rounded-xl border border-border/80 bg-muted/30 p-4 space-y-3">
@@ -802,6 +845,7 @@ export function SubscriptionCheckoutView() {
                               id="custPhone"
                               label="WhatsApp para Avisos"
                               error={fieldState.error?.message}
+                              required={billingType === "CREDIT_CARD"}
                             >
                               <Input
                                 id="custPhone"
@@ -818,6 +862,17 @@ export function SubscriptionCheckoutView() {
                               />
                             </FieldShell>
                           )}
+                        />
+                      </div>
+
+                      {/* Endereco do pagador: vai na nota fiscal e no pagamento por cartao. */}
+                      <div className="space-y-3 border-t border-border/60 pt-3.5">
+                        <p className="text-sm font-medium text-foreground">Endereço de cobrança</p>
+                        <AddressFields<SubscriptionCheckoutFormValues>
+                          prefix="address"
+                          required
+                          cityStateRequired={false}
+                          disabled={createSession.isPending}
                         />
                       </div>
                     </div>
@@ -1211,6 +1266,10 @@ export function SubscriptionCheckoutView() {
                         <span>WhatsApp automático (lembretes e avisos)</span>
                       </li>
                       <li className="flex items-start gap-2">
+                        <Info className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                        <span>{META_COST_SHORT}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
                         <span>Relatório do resultado do mês e retenção</span>
                       </li>
@@ -1231,7 +1290,7 @@ export function SubscriptionCheckoutView() {
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                        <span>1.000 mensagens no WhatsApp por mês</span>
+                        <span>WhatsApp automático em todas as unidades</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />

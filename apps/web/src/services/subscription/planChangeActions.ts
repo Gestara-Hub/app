@@ -1,5 +1,6 @@
 "use server";
 
+import { SCALE_PLAN_ON_SALE } from "@/config/subscription";
 import type { Subscription, SubscriptionInterval, SubscriptionTier } from "@gestarahub/contracts";
 import { validationError } from "@gestarahub/core/api-error";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -37,6 +38,9 @@ export interface PlanTarget {
 function checkTarget(target: PlanTarget): PlanTarget {
   if (!isSubscriptionTier(target?.tier) || (target.interval !== "monthly" && target.interval !== "yearly")) {
     throw validationError([{ field: "tier", message: "Plano inválido." }]);
+  }
+  if (target.tier === "scale" && !SCALE_PLAN_ON_SALE) {
+    throw validationError([{ field: "tier", message: "O plano Expansão ainda não está disponível." }]);
   }
   return { tier: target.tier, interval: target.interval };
 }

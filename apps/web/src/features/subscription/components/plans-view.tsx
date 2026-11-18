@@ -10,6 +10,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { META_COST_SHORT } from "@/lib/whatsapp/meta-cost";
 import { toast } from "@/lib/toast";
 import type { SubscriptionTier } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -28,8 +29,8 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "@/features/settings";
 import { formatCents } from "@gestarahub/core/format";
-import { SUBSCRIPTION_PRICES } from "@/config/subscription";
-import { platformFeeSentence } from "@gestarahub/core/payment-fees";
+import { SUBSCRIPTION_PRICES, SCALE_PLAN_ON_SALE } from "@/config/subscription";
+import { platformFeeSentence, proPlatformFeeLabel } from "@gestarahub/core/payment-fees";
 import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import type { PlanTarget } from "@/services/subscription/actions";
@@ -47,6 +48,7 @@ export function PlansView() {
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
 
   const currentTier = sub?.tier ?? "free";
+  const showScale = SCALE_PLAN_ON_SALE || currentTier === "scale";
   const currentInterval = sub?.interval ?? "monthly";
   // Conta real com plano pago: a troca passa pela conta da diferenca (doc product/13 §6).
   const demo = isDemoSpace(useCurrentUser().organizationId);
@@ -110,7 +112,8 @@ export function PlansView() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-sm text-muted-foreground sm:text-base leading-relaxed">
-            O Grátis cobre o dia a dia. O Profissional automatiza o WhatsApp e libera relatórios e certificados. O Expansão escala sua operação e filiais.
+            O Grátis cobre o dia a dia. O Profissional automatiza o WhatsApp e libera relatórios e certificados.
+            {showScale ? " O Expansão escala sua operação e filiais." : null}
           </p>
 
           {/* Seletor Mensal / Anual */}
@@ -147,8 +150,13 @@ export function PlansView() {
           </div>
         </div>
 
-        {/* Grátis, Profissional e Expansão */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+        {/* Grátis, Profissional e (quando estiver a venda) Expansão */}
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-6 lg:gap-8 items-stretch",
+            showScale ? "md:grid-cols-3" : "md:grid-cols-2 w-full max-w-4xl mx-auto",
+          )}
+        >
           {/* Plano Grátis */}
           <Card
             className={cn(
@@ -279,6 +287,7 @@ export function PlansView() {
           </Card>
 
           {/* Plano Expansão */}
+          {showScale ? (
           <Card
             className={cn(
               "flex flex-col justify-between rounded-2xl border transition-all duration-200 relative bg-card shadow-xs",
@@ -349,6 +358,7 @@ export function PlansView() {
               />
             </CardFooter>
           </Card>
+          ) : null}
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
@@ -391,15 +401,16 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   "Lembretes e avisos no WhatsApp sem clique",
+  META_COST_SHORT,
   "Relatório do resultado do mês",
   "Retenção de alunos",
   "Certificado de conclusão em PDF",
   "Inscrição em evento por link, com ingresso",
-  "Taxa menor por Pix pago",
+  proPlatformFeeLabel(),
 ];
 
 const SCALE_FEATURES = [
-  "1.000 mensagens no WhatsApp por mês",
+  "WhatsApp automático em todas as unidades",
   "Multiunidades e filiais da rede",
   "Taxa reduzida de pagamento online",
   "Inteligência analítica preditiva",
@@ -486,8 +497,13 @@ export function PlansSkeleton() {
         </div>
       </div>
 
-      {/* 3 Pricing Cards Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      {/* Cards dos planos (o Expansão so quando estiver a venda) */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6 lg:gap-8 items-stretch",
+          SCALE_PLAN_ON_SALE ? "md:grid-cols-3" : "md:grid-cols-2 w-full max-w-4xl mx-auto",
+        )}
+      >
         {/* Card 1: Grátis */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
@@ -547,6 +563,7 @@ export function PlansSkeleton() {
         </div>
 
         {/* Card 3: Expansão */}
+        {SCALE_PLAN_ON_SALE ? (
         <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -574,6 +591,7 @@ export function PlansSkeleton() {
           </div>
           <Skeleton className="h-9 w-full rounded-md" />
         </div>
+        ) : null}
       </div>
 
       {/* Garantia e Segurança Banner Skeleton */}

@@ -176,6 +176,13 @@ export function metaStatusNotice(status: MetaTemplateStatus | undefined): MetaSt
         tone: "warning",
         needsEdit: true,
       };
+    case "DISABLED":
+      return {
+        text: "Desativado pelo WhatsApp: revise o texto",
+        hint: "O WhatsApp desativou este texto depois de muitas denúncias. Edite e salve para ele analisar de novo.",
+        tone: "danger",
+        needsEdit: true,
+      };
     default:
       return null;
   }

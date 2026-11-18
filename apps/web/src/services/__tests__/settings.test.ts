@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { defaultMessageTemplates } from "@/mocks/seed";
 import { store } from "@/mocks/store";
 import { categoriesService } from "@/services/catalog/categoriesService";
-import { communicationService } from "@/services/communication";
 import { settingsService } from "@/services/settings/settingsService";
 import { ACADEMY_ORG, resetAcademy } from "@/test/academy";
 
@@ -62,98 +60,13 @@ describe("dados da unidade", () => {
 describe("area do espaco e textos das mensagens", () => {
   beforeEach(() => resetAcademy());
 
-  it("lutas para Pilates troca os textos ainda no padrao e mantem os editados", async () => {
-    await communicationService.updateTemplate({ id: tmpl("absence"), content: "Texto meu sobre o tatame, {aluno}." });
-    expect(contentOf("welcome")).toContain("tatame");
-    expect(contentOf("before-due")).toContain("Bons treinos!");
-
-    await settingsService.updateOrganization({ classSegment: "pilates_yoga" });
-
-    const pilates = new Map(defaultMessageTemplates(ACADEMY_ORG, "pilates_yoga").map((t) => [t.id, t.content]));
-    expect(contentOf("welcome")).toBe(pilates.get(tmpl("welcome")));
-    expect(contentOf("before-due")).toBe(pilates.get(tmpl("before-due")));
-    expect(contentOf("welcome")).not.toMatch(/tatame|treinos/);
-    expect(contentOf("before-due")).toContain("Boas aulas!");
-    // Editado pelo espaco fica como estava.
-    expect(contentOf("absence")).toBe("Texto meu sobre o tatame, {aluno}.");
-  });
-
-  it("textos padrao de outras areas nao falam em tatame nem treinos", () => {
-    for (const segment of [
-      "pilates_yoga",
-      "music",
-      "languages",
-      "dance",
-      "functional_training",
-      "swimming_sports",
-      "gastronomy",
-      "arts_crafts",
-      "beauty_courses",
-      "custom",
-    ] as const) {
-      for (const t of defaultMessageTemplates(ACADEMY_ORG, segment)) {
-        expect(t.content).not.toMatch(/tatame|treinos/);
-      }
-    }
-  });
-
-  it("de Pilates para Danca segue trocando (o anterior e o padrao de Pilates)", async () => {
-    await settingsService.updateOrganization({ classSegment: "pilates_yoga" });
-    await communicationService.updateTemplate({ id: tmpl("birthday"), content: "Parabéns, {aluno}!" });
-    await settingsService.updateOrganization({ classSegment: "dance" });
-    const dance = new Map(defaultMessageTemplates(ACADEMY_ORG, "dance").map((t) => [t.id, t.content]));
-    expect(contentOf("welcome")).toBe(dance.get(tmpl("welcome")));
-    expect(contentOf("birthday")).toBe("Parabéns, {aluno}!");
-  });
-
-  it("voltar para lutas devolve o texto de treino e tatame", async () => {
-    await settingsService.updateOrganization({ classSegment: "music" });
-    await settingsService.updateOrganization({ classSegment: "martial_arts" });
-    expect(contentOf("welcome")).toContain("Nos vemos no tatame!");
-    expect(contentOf("absence")).toContain("Seu lugar no tatame está guardado!");
-  });
-
-  it("mesma area ou so o nome nao mexem nos textos editados nem nos padrao", async () => {
-    await settingsService.updateOrganization({ classSegment: "pilates_yoga" });
+  it("trocar a área não muda os textos: são os modelos mestres (doc technical/07 §1.7)", async () => {
     const before = store.messageTemplates.map((t) => t.content);
-    await settingsService.updateOrganization({ classSegment: "pilates_yoga", name: "Studio" });
-    await settingsService.updateOrganization({ name: "Studio 2" });
-    expect(store.messageTemplates.map((t) => t.content)).toEqual(before);
-  });
-
-  it("textos sem diferenca por area ficam iguais", async () => {
-    const dueDate = contentOf("due-date");
-    await settingsService.updateOrganization({ classSegment: "swimming_sports" });
-    expect(contentOf("due-date")).toBe(dueDate);
-  });
-
-  it("lutas para uma area nova (Gastronomia) troca os textos ainda no padrao", async () => {
-    await settingsService.updateOrganization({ classSegment: "gastronomy" });
-    const gastronomy = new Map(defaultMessageTemplates(ACADEMY_ORG, "gastronomy").map((t) => [t.id, t.content]));
-    expect(contentOf("welcome")).toBe(gastronomy.get(tmpl("welcome")));
-    expect(contentOf("before-due")).toContain("Boas aulas!");
-    expect(contentOf("absence")).not.toContain("tatame");
-  });
-
-  it("Outra área grava o nome, como os alunos avancam e como cobra", async () => {
-    const org = await settingsService.updateOrganization({
-      classSegment: "custom",
-      customSegmentName: "Teatro",
-      customSegmentProgression: "levels",
-      customSegmentBilling: "package",
-    });
-    expect(org.customSegmentName).toBe("Teatro");
-    expect(org.customSegmentProgression).toBe("levels");
-    expect(org.customSegmentBilling).toBe("package");
-    expect((await settingsService.getOrganization()).customSegmentBilling).toBe("package");
-    expect(contentOf("welcome")).not.toContain("tatame");
-  });
-
-  it("modelos recriados depois da troca nascem no texto da area", async () => {
     await settingsService.updateOrganization({ classSegment: "pilates_yoga" });
-    store.messageTemplates = [];
-    const list = await communicationService.listTemplates();
-    expect(list.find((t) => t.trigger === "welcome_student")?.content).not.toContain("tatame");
+    await settingsService.updateOrganization({ classSegment: "dance" });
+    expect(store.messageTemplates.map((t) => t.content)).toEqual(before);
+    expect(contentOf("before-due")).not.toContain("Bons treinos");
+    expect(contentOf("welcome")).not.toContain("tatame");
   });
 });
 

@@ -74,21 +74,6 @@ function periodStartOf(renewsOn: DateISO, interval: SubscriptionInterval): DateI
   return iso(interval === "yearly" ? addYears(d, -1) : addMonths(d, -1));
 }
 
-/**
- * Franquia do WhatsApp no plano anual: renova todo mes, no dia do ciclo
- * (decisao do usuario de 30/10/2026). Devolve o inicio do ciclo mensal em que
- * `today` cai, contado mes a mes a partir do inicio do ano pago (sem deriva de
- * fim de mes: dia 31 vira 28/02 e volta a 31/03). Com a renovacao anual ja
- * vencida (tolerancia), nao renova: `null`.
- */
-export function annualQuotaCycleStart(renewsOn: DateISO, today: DateISO): DateISO | null {
-  if (today >= renewsOn) return null;
-  const start = parseISO(periodStartOf(renewsOn, "yearly"));
-  let months = 0;
-  while (months < 12 && iso(addMonths(start, months + 1)) <= today) months += 1;
-  return iso(addMonths(start, months));
-}
-
 export function planPriceCents(prices: PlanPrices, plan: PlanChoice): number {
   return plan.tier === "free" ? 0 : prices[plan.tier][plan.interval];
 }

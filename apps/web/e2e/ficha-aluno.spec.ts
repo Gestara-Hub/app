@@ -902,20 +902,19 @@ test.describe("comunicação", () => {
     await page.goto("/communication");
     const card = (title: string) => page.getByRole("group", { name: title, exact: true });
     const reminder = card("Lembrete de cobrança");
-    await expect(reminder).toContainText(
-      "Olá, Ana Souza! Lembrete da mensalidade de novembro de R$ 150,00 na Academia X, com vencimento em 10/11.",
-    );
+    await expect(reminder).toContainText("Conta: mensalidade de novembro na Academia X");
+    await expect(reminder).toContainText("Valor a pagar: R$ 150,00");
     // Cobranca online desligada no espaco: a frase do link sai, como no envio.
     await expect(reminder).not.toContainText("{link_pagamento}");
     await expect(reminder).not.toContainText("Pague pelo link");
     const ending = card("Pacote acabando");
-    await expect(ending).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
+    await expect(ending).toContainText("Oi, Ana Souza! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula.");
 
     // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre so a
     // prévia com as variaveis preenchidas, sem campo de texto nem chips de variavel.
     await ending.getByRole("button", { name: "Configurar modelo" }).click();
     const dialog = page.getByRole("dialog", { name: "Pacote acabando" });
-    await expect(dialog).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
+    await expect(dialog).toContainText("Oi, Ana Souza! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula.");
     await expect(dialog).not.toContainText("{");
     await expect(dialog.getByLabel("Texto")).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: "+ Nome do pacote" })).toHaveCount(0);
@@ -933,7 +932,7 @@ test.describe("comunicação", () => {
       await page.getByRole("menuitem", { name: "Lembrar no WhatsApp" }).click();
     });
     expect(link.phone).toBe("5511977770000");
-    expect(link.text).toContain(`Olá, ${NAME}! Lembrete da cobrança Kimono de R$ 250,00 na Academia X, com vencimento em 25/09.`);
+    expect(link.text).toContain("Conta: cobrança Kimono na Academia X\nValor a pagar: R$ 250,00\nData de vencimento: 25/09");
     expect(link.text).not.toContain("{");
 
     await waitForStore(page, (raw) => raw.includes("charge_reminder"));

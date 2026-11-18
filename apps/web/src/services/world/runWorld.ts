@@ -7,6 +7,8 @@ import { after } from "next/server";
 import type { WorldEffect } from "./effects";
 // Registra quem entrega as mensagens "Na fila" (efeito depois da gravacao).
 import "@/services/communication/messageDelivery";
+// Credenciais do WhatsApp de cada espaco (Vault e Meta), so no servidor.
+import "@/services/communication/whatsappCredentials";
 // Arquivo do documento tirado da ficha sai do armazenamento depois da gravacao.
 import "@/services/personDocuments/personDocumentFiles";
 import { runScoped } from "./scope";
@@ -597,21 +599,18 @@ export async function runInWorld<T>(
   return runLoaded(ctx, fn, () => loadWorld(ctx), slice?.name);
 }
 
-/** Acima disto a acao sai no log mesmo sem `WORLD_TIMING=1` (meta da doc 19). */
-const SLOW_ACTION_MS = 300;
-
 /**
  * Log de tempo por acao (doc 19, fase 3): metodo, de onde leu, linhas e as
- * tres etapas. Sai sempre que passa de 300 ms; com `WORLD_TIMING=1`, em toda acao.
+ * tres etapas. So sai quando `WORLD_TIMING=1` esta ligado (em 16/11/2026 saiu
+ * o aviso automatico acima de 300 ms para nao poluir os logs da Vercel).
  */
 function logTiming(label: string | undefined, world: LoadedWorld, times: { load: number; run: number; write: number }, changed: number): void {
+  if (process.env.WORLD_TIMING !== "1") return;
   const total = times.load + times.run + times.write;
-  if (process.env.WORLD_TIMING !== "1" && total < SLOW_ACTION_MS) return;
   const line =
     `[world] ${label ?? "ação"} ${Math.round(total)} ms (${world.source}, ${world.rows} linhas; ` +
     `ler ${Math.round(times.load)}, regra ${Math.round(times.run)}, gravar ${Math.round(times.write)}; ${changed} mudanças)`;
-  if (total >= SLOW_ACTION_MS) console.warn(line);
-  else console.info(line);
+  console.info(line);
 }
 
 async function runLoaded<T>(

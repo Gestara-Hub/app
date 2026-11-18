@@ -112,8 +112,9 @@ export function StudentChargesPanel({ studentId }: { studentId: Id }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [kindFilter, setKindFilter] = useState<"all" | ChargeKind>("all");
-  const { data, isPending, isError, refetch } = useCharges({ studentId });
+  const { data, isPending: chargesPending, isError, refetch } = useCharges({ studentId });
   const actions = useChargeActions({ describeCharge: true });
+  const isPending = chargesPending || (!isError && actions.isOrgPending);
   const can = useCan();
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId) && can("billing:view");
   const years = serverDocuments ? paidYears(data ?? []) : [];

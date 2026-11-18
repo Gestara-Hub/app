@@ -10,6 +10,7 @@ import { relativeDateLabel, dateInSpace } from "@gestarahub/core/date";
 import { formatPhone } from "@gestarahub/core/format";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { FeatureLocked } from "@/components/shared/feature-locked";
+import { MetaCostNotice } from "@/components/shared/meta-cost-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ import {
   useWhatsAppConnection,
 } from "../hooks/use-communication";
 import { useMetaEmbeddedSignup } from "../hooks/use-meta-embedded-signup";
+import { MetaHealthPanel } from "./meta-health-panel";
 import { TestWhatsAppDialog } from "./test-whatsapp-dialog";
 
 const ASSISTED_STEPS = [
@@ -35,6 +37,7 @@ const ASSISTED_STEPS = [
 const OFFICIAL_STEPS = [
   "Entre com a conta da Meta do seu negócio (a mesma do Facebook ou Instagram da empresa).",
   "Escolha o número de WhatsApp do espaço.",
+  "Cadastre um cartão na sua conta do WhatsApp na Meta: é ele que paga as mensagens.",
   "Depois da aprovação da Meta, as mensagens ligadas passam a sair sozinhas.",
 ];
 
@@ -179,7 +182,7 @@ export function ConnectionSettingsTab() {
             "Mensagens saem com o nome e o número do seu espaço",
             "Lembretes antes, no dia e depois do vencimento",
             "Boas-vindas, aniversário e alunos que pararam de vir",
-            "Franquia mensal de mensagens inclusa no plano",
+            "Mensagens pagas por você, direto à Meta, na sua conta",
           ]}
         />
       </div>
@@ -215,6 +218,9 @@ export function ConnectionSettingsTab() {
           </div>
 
           <Steps items={OFFICIAL_STEPS} />
+
+          {/* Antes de conectar: fica claro que as mensagens sao pagas pelo espaco a Meta. */}
+          <MetaCostNotice showLink={false} />
 
           {isConfigured ? (
             <div className="flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
@@ -263,8 +269,20 @@ export function ConnectionSettingsTab() {
               }
               try {
                 const result = await launchSignup({ businessName: unit?.name, phone: phone ?? undefined });
+                // Sem o codigo ou sem os dados do numero, a Meta nao concluiu: nao cai
+                // na conexao pelo telefone do espaco, que nao e o caso aqui.
+                if (!result.code || !result.phoneNumberId || !result.wabaId) {
+                  toast.error("A Meta não confirmou a conexão. Tente de novo.");
+                  return;
+                }
                 connectMut.mutate(
-                  { code: result.code, phoneNumberId: result.phoneNumberId, wabaId: result.wabaId },
+                  {
+                    code: result.code,
+                    phoneNumberId: result.phoneNumberId,
+                    wabaId: result.wabaId,
+                    businessId: result.businessId,
+                    onboarding: result.onboarding,
+                  },
                   { onSuccess: () => toast.success("WhatsApp oficial conectado."), onError },
                 );
               } catch (err: unknown) {
@@ -319,39 +337,13 @@ export function ConnectionSettingsTab() {
           </div>
         </div>
         <div className="border-t border-border/60 pt-4">
+          <MetaHealthPanel connection={connection} canManage={canManage} />
+        </div>
+        <div className="border-t border-border/60 pt-4">
           <SendHoursForm connection={connection} disabled={!canManage} />
         </div>
-        <div className="space-y-2 border-t border-border/60 pt-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              Franquia do ciclo: <strong className="font-semibold text-foreground">{connection.monthlyQuota.used} de {connection.monthlyQuota.included}</strong> mensagens
-            </span>
-            {connection.isQuotaExhausted && (
-              <span className="font-medium text-amber-600 dark:text-amber-400">
-                Franquia atingida: mensagens com 1 toque
-              </span>
-            )}
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full rounded-full transition-all ${
-                connection.isQuotaExhausted ? "bg-amber-500" : "bg-emerald-500"
-              }`}
-              style={{
-                width: `${
-                  connection.monthlyQuota.included > 0
-                    ? Math.min(100, Math.round((connection.monthlyQuota.used / connection.monthlyQuota.included) * 100))
-                    : 0
-                }%`,
-              }}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {connection.isQuotaExhausted
-              ? "As mensagens seguem com 1 toque (envio assistido) até a franquia renovar, no próximo ciclo do plano."
-              : "A franquia renova todo mês: no pagamento do plano mensal ou no dia do ciclo do plano anual."}
-          </p>
-        </div>
+        {/* Sem franquia desde 17/11/2026: o espaco paga a Meta direto (doc technical/07 §1.5). */}
+        <MetaCostNotice paymentOk={connection.metaHealth ? !connection.metaHealth.paymentBlocked : false} />
       </section>
       {dialog}
     </div>

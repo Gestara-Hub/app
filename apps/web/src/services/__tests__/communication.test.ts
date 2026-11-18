@@ -1,13 +1,16 @@
-import { tierWhatsAppQuota, type SendMessagePayload } from "@gestarahub/contracts";
+import type { SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
 import {
   runBillingReminders,
   runBirthdayGreetings,
+  officialTemplateFor,
   setQueuedMessageDeliverer,
   type QueuedMessageJob,
 } from "@/services/communication/communicationRules";
 import { whatsappClient } from "@/services/communication/whatsappClient";
+import { syncMetaTemplates } from "@/services/communication/metaTemplatesSync";
+import { setWhatsAppCredentialsGateway } from "@/services/communication/whatsappCredentialsGateway";
 import { setEffectsResolver, type WorldEffect } from "@/services/world/effects";
 import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
 import { billingRemindersSlice } from "@/services/communication/billingRemindersCron";
@@ -46,10 +49,6 @@ function message(overrides: Partial<SendMessagePayload> = {}): SendMessagePayloa
 
 function setTier(tier: "free" | "pro" | "scale") {
   store.organization.subscription = { tier };
-  // Como o pagamento do plano faz no servidor (resetWhatsAppQuota): a franquia do plano.
-  if (store.whatsAppConnection) {
-    store.whatsAppConnection.monthlyQuota = { used: 0, included: tierWhatsAppQuota(tier) };
-  }
 }
 
 /** Pro com o numero oficial conectado (telefone da unidade). */
@@ -150,6 +149,79 @@ describe("conexao do WhatsApp", () => {
     }
   });
 
+  it("em producao com o cadastro da Meta, conecta so com as credenciais do proprio numero (doc technical/07 §1.1)", async () => {
+    setTier("pro");
+    store.unit.phone = undefined;
+    const gateway = {
+      connect: vi.fn(async () => ({ displayPhoneNumber: "+55 92 98888-7777", verifiedName: "Academia Ribeiro" })),
+      disconnect: vi.fn(async () => undefined),
+      configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => null),
+      refreshHealth: vi.fn(async () => null),
+    };
+    setWhatsAppCredentialsGateway(gateway);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_META_APP_ID", "123");
+    vi.stubEnv("NEXT_PUBLIC_META_CONFIG_ID", "456");
+    try {
+      expect((await communicationService.getConnection()).officialAvailable).toBe(true);
+      // Sem o cadastro guiado nao conecta: nada pelo numero da plataforma.
+      await expect(communicationService.connectOfficial()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+      expect(gateway.connect).not.toHaveBeenCalled();
+
+      const view = await communicationService.connectOfficial({
+        code: "one-time",
+        phoneNumberId: "1111111111",
+        wabaId: "2222222222",
+        onboarding: "coexistence",
+      });
+      expect(gateway.connect).toHaveBeenCalledWith({
+        organizationId: ACADEMY_ORG,
+        code: "one-time",
+        phoneNumberId: "1111111111",
+        wabaId: "2222222222",
+        businessId: undefined,
+        onboarding: "coexistence",
+      });
+      expect(view).toMatchObject({
+        officialStatus: "connected",
+        mode: "official",
+        phoneNumber: "5592988887777",
+        displayName: "Academia Ribeiro",
+      });
+      expect(store.unit.phone).toBe("+5592988887777");
+
+      await communicationService.disconnectOfficial();
+      expect(gateway.disconnect).toHaveBeenCalledWith(ACADEMY_ORG);
+    } finally {
+      vi.unstubAllEnvs();
+      setWhatsAppCredentialsGateway(null);
+    }
+  });
+
+  it("falha na Meta ao conectar nao marca como conectado", async () => {
+    setTier("pro");
+    setWhatsAppCredentialsGateway({
+      connect: vi.fn(async () => {
+        throw new Error("Meta fora do ar");
+      }),
+      disconnect: vi.fn(),
+      configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => null),
+      refreshHealth: vi.fn(async () => null),
+    });
+    try {
+      await expect(
+        communicationService.connectOfficial({ code: "c", phoneNumberId: "1111111111", wabaId: "2222222222" }),
+      ).rejects.toThrow();
+      expect(store.whatsAppConnection?.officialStatus).toBe("not_connected");
+    } finally {
+      setWhatsAppCredentialsGateway(null);
+    }
+  });
+
   it("desconectar volta ao assistido e limpa numero e nome", async () => {
     await connectOfficial();
     const view = await communicationService.disconnectOfficial();
@@ -220,32 +292,29 @@ describe("modelos de mensagem", () => {
     }
   });
 
-  it("textos dos modelos manuais seguem a area do espaco", () => {
+  it("texto mestre: igual em todas as áreas (doc technical/07 §1.7)", () => {
     const fill = (segment: "martial_arts" | "music", trigger: string, values: Record<string, string> = {}) => {
       const template = defaultMessageTemplates(ACADEMY_ORG, segment).find((t) => t.trigger === trigger)!;
       return fillMessage(template.content, { aluno: "Ana", empresa: "Espaço", ...values }).replace(/\u00a0/g, " ");
     };
+    for (const trigger of ["payment_received", "level_up", "class_canceled", "holiday_notice", "billing_before_due"]) {
+      expect(fill("martial_arts", trigger)).toBe(fill("music", trigger));
+    }
     expect(fill("music", "payment_received", { valor: "R$ 150,00", referencia: "mensalidade de outubro" })).toBe(
-      "Oi, Ana! Recebemos o pagamento de R$ 150,00 da mensalidade de outubro. Obrigado! Boas aulas!",
-    );
-    expect(fill("martial_arts", "level_up", { nivel: "Faixa Azul" })).toBe(
-      "Parabéns, Ana! 🎉 Nova conquista na Espaço: Faixa Azul. É resultado da sua dedicação. Bons treinos! 🥋",
+      "Oi, Ana. Confirmamos o recebimento do pagamento de R$ 150,00 referente a mensalidade de outubro. Este aviso é a sua confirmação.",
     );
     expect(fill("martial_arts", "class_canceled")).toBe(
-      "Oi, Ana! O treino de hoje na Espaço foi cancelado. Desculpe o transtorno, nos vemos no próximo treino!",
+      "Oi, Ana. Aviso da Espaço: a aula de hoje foi cancelada. Desculpe o transtorno, nos vemos na próxima aula.",
     );
-    expect(fill("music", "class_canceled")).toContain("A aula de hoje na Espaço foi cancelada.");
-    expect(fill("music", "schedule_change")).toBe(
-      "Oi, Ana! Aviso de Espaço: sua turma vai mudar de horário. Novo horário:",
+    expect(fill("music", "billing_before_due", { valor: "R$ 150,00", vencimento: "20/10/2026", link_pagamento: "https://x.test/p/c/1" })).toBe(
+      "Lembrete de pagamento:\n\nConta: Mensalidade na Espaço\nValor a pagar: R$ 150,00\nData de vencimento: 20/10/2026\n\nPague agora para evitar pendências.\n\nSe você já pagou, ignore esta mensagem.\n\nPague pelo link: https://x.test/p/c/1",
     );
-    expect(fill("music", "holiday_notice")).toContain("no feriado não teremos aula.");
-    expect(fill("martial_arts", "holiday_notice")).toContain("no feriado não teremos treino.");
   });
 
-  it("modelo manual tem texto livre, mas nao liga envio automatico nem no Pro", async () => {
-    expect(
-      (await communicationService.updateTemplate({ id: tmpl("holiday-notice"), content: "Sem aula, {aluno}." })).content,
-    ).toBe("Sem aula, {aluno}.");
+  it("o texto do aviso é fixo; modelo manual não liga envio automático nem no Pro", async () => {
+    await expect(
+      communicationService.updateTemplate({ id: tmpl("holiday-notice"), content: "Sem aula, {aluno}." }),
+    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "content" }] });
     setTier("pro");
     await expect(
       communicationService.updateTemplate({ id: tmpl("holiday-notice"), enabled: true }),
@@ -268,29 +337,25 @@ describe("modelos de mensagem", () => {
     });
   });
 
-  it("textos padrao dos modelos novos saem completos (sem o link quando nao ha cobranca online)", () => {
+  it("textos padrao dos modelos novos saem completos (sem o link, a linha do link sai)", () => {
     const templates = defaultMessageTemplates(ACADEMY_ORG, "gastronomy");
     const reminder = templates.find((t) => t.trigger === "charge_reminder")!;
     const values = chargeReminder(
       { kind: "package", status: "pending", amountCents: 15000, dueDate: "2026-10-20", description: "10 aulas" },
       TODAY,
     )!.values;
-    expect(fillMessage(reminder.content, { aluno: "Ana", empresa: "Ateliê", ...values }).replace(/\u00a0/g, " ")).toBe(
-      "Olá, Ana! Lembrete da compra do pacote 10 aulas de R$ 150,00 na Ateliê, com vencimento em 20/10. Boas aulas!",
-    );
+    const filled = fillMessage(reminder.content, { aluno: "Ana", empresa: "Ateliê", ...values }).replace(/\u00a0/g, " ");
+    expect(filled).toContain("Conta: compra do pacote 10 aulas na Ateliê");
+    expect(filled).not.toContain("Pague pelo link");
+    expect(filled).not.toMatch(/\{\w+\}/);
     const ending = templates.find((t) => t.trigger === "package_ending")!;
     const restante = packageRemainingText({ lessonsTotal: 10, lessonsUsed: 9, status: "active" }, TODAY);
     expect(fillMessage(ending.content, { aluno: "Ana", empresa: "Ateliê", pacote: "10 aulas", restante })).toBe(
-      "Oi, Ana! Sobre seu pacote 10 aulas na Ateliê: resta 1 aula. Quer renovar e seguir com as aulas?",
+      "Oi, Ana! Passando para avisar sobre o seu pacote 10 aulas na Ateliê: resta 1 aula. Se quiser renovar e seguir com as aulas, é só responder esta mensagem.",
     );
   });
 
-  it("os modelos novos tem texto livre no gratis e automacao so no Pro", async () => {
-    const updated = await communicationService.updateTemplate({
-      id: tmpl("charge-reminder"),
-      content: "Oi, {aluno}! Falta a {referencia}.",
-    });
-    expect(updated.content).toBe("Oi, {aluno}! Falta a {referencia}.");
+  it("os modelos novos tem automacao so no Pro", async () => {
     await expect(
       communicationService.updateTemplate({ id: tmpl("package-ending"), enabled: false }),
     ).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
@@ -300,9 +365,10 @@ describe("modelos de mensagem", () => {
     });
   });
 
-  it("texto e livre no gratis (o assistido usa o mesmo texto)", async () => {
-    const updated = await communicationService.updateTemplate({ id: tmpl("birthday"), content: "  Parabéns, {aluno}!  " });
-    expect(updated.content).toBe("Parabéns, {aluno}!");
+  it("salvar o mesmo texto do aviso passa e audita", async () => {
+    const current = store.messageTemplates.find((t) => t.id === tmpl("birthday"))!.content;
+    const updated = await communicationService.updateTemplate({ id: tmpl("birthday"), content: current });
+    expect(updated.content).toBe(current);
     expect(lastAudit()).toBe('Ana Ribeiro atualizou a mensagem "Aniversário"');
   });
 
@@ -317,14 +383,15 @@ describe("modelos de mensagem", () => {
   });
 
   it("gratis pode salvar o formulario com os mesmos valores de automacao", async () => {
+    const current = store.messageTemplates.find((t) => t.id === tmpl("birthday"))!.content;
     const updated = await communicationService.updateTemplate({
       id: tmpl("birthday"),
       enabled: true,
       sendHour: "08:30",
       daysOffset: 0,
-      content: "Feliz aniversário, {aluno}!",
+      content: current,
     });
-    expect(updated.content).toBe("Feliz aniversário, {aluno}!");
+    expect(updated.content).toBe(current);
   });
 
   it("Pro liga, desliga e muda horario e prazo", async () => {
@@ -353,7 +420,7 @@ describe("modelos de mensagem", () => {
 describe("envio assistido", () => {
   beforeEach(() => resetAcademy());
 
-  it("registra Aberto no WhatsApp com aluno e cobranca, sem gastar franquia", async () => {
+  it("registra Aberto no WhatsApp com aluno e cobranca", async () => {
     const log = await communicationService.registerAssistedMessage(
       message({ trigger: "billing_due_date", clientId: "cli-1", chargeId: "chg-1", content: "  Vence hoje.  " }),
     );
@@ -368,14 +435,12 @@ describe("envio assistido", () => {
       content: "Vence hoje.",
     });
     expect(store.messageLogs[0].id).toBe(log.id);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
     expect(lastAudit()).toContain("abriu no WhatsApp uma mensagem para Maria");
   });
 
-  it("funciona no gratis e tambem no Pro conectado, sem gastar franquia", async () => {
+  it("funciona no gratis e tambem no Pro conectado", async () => {
     await connectOfficial();
     await communicationService.registerAssistedMessage(message());
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("sem gatilho e mensagem administrativa; retencao para boas-vindas", async () => {
@@ -446,7 +511,7 @@ describe("envio automatico (oficial)", () => {
 
   it("no servidor com a Meta configurada, o registro nasce 'Na fila' e a entrega fica para depois da gravação (01/11/2026)", async () => {
     await connectOfficial();
-    const configured = vi.spyOn(whatsappClient, "isConfigured").mockReturnValue(true);
+    const configured = vi.spyOn(whatsappClient, "configFor").mockResolvedValue({});
     const jobs: QueuedMessageJob[] = [];
     setQueuedMessageDeliverer(async (job) => {
       jobs.push(job);
@@ -457,12 +522,11 @@ describe("envio automatico (oficial)", () => {
     try {
       const log = await communicationService.sendMessage(message({ clientId: "cli-1" }));
       expect(log.status).toBe("queued");
-      expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
       // A Meta ainda nao foi chamada: so no efeito, depois da gravacao e da resposta.
       expect(effects).toHaveLength(1);
       expect(jobs).toHaveLength(0);
       await effects[0]();
-      expect(jobs).toEqual([{ logId: log.id, organizationId: ACADEMY_ORG, phone: "(11) 97777-0000", content: "Oi, Maria!" }]);
+      expect(jobs).toEqual([{ logId: log.id, organizationId: ACADEMY_ORG, phone: log.recipientPhone, content: "Oi, Maria!" }]);
     } finally {
       serverWorld.on = false;
       setEffectsResolver(() => undefined);
@@ -471,20 +535,18 @@ describe("envio automatico (oficial)", () => {
     }
   });
 
-  it("Pro conectado envia, conta na franquia e audita", async () => {
+  it("Pro conectado envia e audita", async () => {
     await connectOfficial();
     const log = await communicationService.sendMessage(message({ trigger: "absence_alert", clientId: "cli-1" }));
     expect(log).toMatchObject({ status: "delivered", category: "retention", clientId: "cli-1" });
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
     expect(lastAudit()).toBe("Ana Ribeiro enviou mensagem de WhatsApp para Maria");
   });
 
-  it("mensagem invalida nao gasta franquia", async () => {
+  it("mensagem invalida nao sai", async () => {
     await connectOfficial();
     await expect(communicationService.sendMessage(message({ recipientPhone: "123" }))).rejects.toMatchObject({
       code: "VALIDATION",
     });
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("reenviar falha e do Pro e marca como entregue", async () => {
@@ -551,14 +613,12 @@ describe("parabens automatico", () => {
     expect(logs[0].content).toContain("Parabéns pelo seu dia, Bia!");
     expect(logs[0].content).toContain("equipe da Academia X");
     expect(logs[0].content).not.toMatch(/\{\w+\}/);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
 
     // A rotina de novo no mesmo dia nao duplica.
     greet();
     at("19:00");
     greet();
     expect(greetings()).toHaveLength(1);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
   });
 
   it("sem a autorização do aluno (ou depois do SAIR) o automático não sai", async () => {
@@ -585,12 +645,13 @@ describe("parabens automatico", () => {
     await expect(send(bia.id, "Bia")).resolves.toMatchObject({ clientId: bia.id });
   });
 
-  it("usa o texto editado do modelo", async () => {
+  it("usa o texto mestre do aniversário", async () => {
     await birthdayStudent();
     await connectOfficial();
-    await communicationService.updateTemplate({ id: tmpl("birthday"), content: "Feliz dia, {aluno}! Abraço da {empresa}." });
     greet();
-    expect(greetings()[0].content).toBe("Feliz dia, Bia! Abraço da Academia X.");
+    expect(greetings()[0].content).toBe(
+      "Parabéns pelo seu dia, Bia! 🎂 Toda a equipe da Academia X deseja muita saúde e conquistas. Aproveite o seu dia!",
+    );
   });
 
   it("no assistido (gratis ou Pro sem conectar) nao envia", async () => {
@@ -659,7 +720,6 @@ describe("parabens automatico", () => {
     await connectOfficial();
     greet();
     expect(greetings().map((l) => l.status)).toEqual(["opened"]);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("recorte da rotina (servidor) igual ao espaço inteiro", async () => {
@@ -680,7 +740,6 @@ describe("parabens automatico", () => {
     await connectOfficial();
     greet();
     expect(greetings().map((l) => l.recipientName).sort()).toEqual(["Bia", "Caio"]);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(2);
   });
 });
 
@@ -720,11 +779,10 @@ describe("numeros do mes", () => {
     const failed = await communicationService.registerAssistedMessage(message());
     store.messageLogs.find((l) => l.id === failed.id)!.status = "failed";
     const metrics = await communicationService.getMetrics();
-    // Gratis: sem envio automatico, franquia 0 (Pro 300, Expansao 1.000).
+    // Gratis: sem envio automatico.
     expect(metrics).toMatchObject({
       mode: "assisted",
       messagesThisMonth: 2,
-      monthlyQuota: 0,
       deliveryRate: null,
       readRate: null,
       recoveredAmountCents: 0,
@@ -812,17 +870,11 @@ describe("numeros do mes", () => {
 describe("limite de caracteres com emoji (ALU-38)", () => {
   beforeEach(() => resetAcademy());
 
-  it("emoji conta 1 na mensagem (1000) e no modelo (900)", async () => {
+  it("emoji conta 1 na mensagem (1000)", async () => {
     await communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1000) }));
     await expect(
       communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1001) })),
     ).rejects.toMatchObject({ fields: [{ field: "content", message: "Use no máximo 1000 caracteres." }] });
-
-    const id = tmpl("birthday");
-    await communicationService.updateTemplate({ id, content: "🎉".repeat(900) });
-    await expect(communicationService.updateTemplate({ id, content: "🎉".repeat(901) })).rejects.toMatchObject({
-      fields: [{ field: "content", message: "Use no máximo 900 caracteres." }],
-    });
   });
 
   it("valida formato de horario e faixa de prazo ao atualizar modelo no Pro", async () => {
@@ -894,6 +946,250 @@ describe("lembretes automaticos de cobranca (oficial)", () => {
   });
 });
 
+describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
+  beforeEach(() => resetAcademy());
+
+  /** Liga a fila como no servidor e devolve as entregas pedidas depois da gravacao. */
+  function serverQueue() {
+    const jobs: QueuedMessageJob[] = [];
+    const effects: WorldEffect[] = [];
+    setQueuedMessageDeliverer(async (job) => {
+      jobs.push(job);
+    });
+    setEffectsResolver(() => effects);
+    const configured = vi.spyOn(whatsappClient, "configFor").mockResolvedValue({});
+    serverWorld.on = true;
+    return {
+      jobs,
+      flush: async () => {
+        for (const effect of effects.splice(0)) await effect();
+      },
+      stop: () => {
+        serverWorld.on = false;
+        setEffectsResolver(() => undefined);
+        setQueuedMessageDeliverer(null);
+        configured.mockRestore();
+      },
+    };
+  }
+
+  it("texto do aviso usa o modelo mestre, com as variaveis na ordem; texto editado ou variavel vazia, nao", async () => {
+    const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    const variables = { aluno: "Maria", empresa: "Academia Ribeiro" };
+    const content = fillMessage(template.content, variables);
+    expect(officialTemplateFor("welcome_student", content, variables)).toEqual({
+      name: "welcome_student_v2",
+      language: "pt_BR",
+      params: ["Academia Ribeiro", "Maria"],
+    });
+    expect(officialTemplateFor("welcome_student", `${content} Até logo!`, variables)).toBeUndefined();
+    expect(officialTemplateFor("welcome_student", content, undefined)).toBeUndefined();
+    expect(officialTemplateFor("manual_broadcast", content, variables)).toBeUndefined();
+    const withoutName = fillMessage(template.content, { aluno: "", empresa: "Academia Ribeiro" });
+    expect(officialTemplateFor("welcome_student", withoutName, { aluno: "", empresa: "Academia Ribeiro" })).toBeUndefined();
+  });
+
+  it("cobrança usa o modelo da biblioteca com o botão da página de pagamento", () => {
+    const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+    const variables = {
+      aluno: "Ana",
+      valor: "R$\u00a0180,00",
+      vencimento: "25/09/2026",
+      empresa: "Academia X",
+      link_pagamento: "https://app.test/p/c/chg-1",
+    };
+    expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, variables), variables)).toEqual({
+      name: "billing_before_due_v2",
+      language: "pt_BR",
+      params: ["Mensalidade na Academia X", "R$ 180,00", "25/09/2026", "pendências"],
+      buttonUrlSuffix: "c/chg-1",
+    });
+    // Link de fora (sem a pagina do GestaraHub): sem botao, sem modelo.
+    const outside = { ...variables, link_pagamento: "https://parceiro.test/pagar" };
+    expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, outside), outside)).toBeUndefined();
+  });
+
+  it("envio manual do modelo vai para a fila com o modelo; o reenvio repete o mesmo modelo", async () => {
+    await connectOfficial();
+    const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    const variables = { aluno: "Maria", empresa: store.organization.name };
+    const content = fillMessage(template.content, variables);
+    const queue = serverQueue();
+    try {
+      const log = await communicationService.sendMessage(
+        message({ trigger: "welcome_student", clientId: "cli-1", content, variables }),
+      );
+      expect(log.status).toBe("queued");
+      expect(log.metaTemplate?.name).toBe("welcome_student_v2");
+      await queue.flush();
+      expect(queue.jobs[0]?.template).toEqual(log.metaTemplate);
+
+      const stored = store.messageLogs.find((l) => l.id === log.id)!;
+      stored.status = "failed";
+      stored.errorReason = "Falhou";
+      const retried = await communicationService.retryFailedMessage(log.id);
+      expect(retried.status).toBe("queued");
+      await queue.flush();
+      expect(queue.jobs[1]).toMatchObject({ logId: log.id, template: log.metaTemplate });
+    } finally {
+      queue.stop();
+    }
+  });
+
+  it("mensagem avulsa sai como texto livre (sem modelo)", async () => {
+    await connectOfficial();
+    const queue = serverQueue();
+    try {
+      const log = await communicationService.sendMessage(message({ clientId: "cli-1" }));
+      expect(log.metaTemplate).toBeUndefined();
+      await queue.flush();
+      expect(queue.jobs[0]?.template).toBeUndefined();
+    } finally {
+      queue.stop();
+    }
+  });
+
+  it("lembrete automatico no servidor vai para a fila com o modelo (antes so gravava Entregue)", async () => {
+    at("12:00");
+    await connectOfficial();
+    const plan = await createPlan("monthly", 18000);
+    const student = await clientsService.create({
+      name: "Lucas Silva",
+      phone: "11999990001",
+      status: "active",
+      whatsappConsentStatus: "granted",
+    });
+    store.charges.push({
+      id: "chg-membership-1",
+      organizationId: ACADEMY_ORG,
+      studentId: student.id,
+      kind: "membership",
+      planId: plan.id,
+      dueDate: "2026-09-25",
+      amountCents: 18000,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    store.organization.settings = {
+      ...store.organization.settings,
+      onlinePayments: { ...store.organization.settings?.onlinePayments, enabled: true },
+    } as typeof store.organization.settings;
+    const queue = serverQueue();
+    try {
+      expect(runBillingReminders()).toBe(1);
+      const log = store.messageLogs[0]!;
+      expect(log).toMatchObject({ trigger: "billing_before_due", status: "queued" });
+      expect(log.metaTemplate).toMatchObject({
+        name: "billing_before_due_v2",
+        language: "pt_BR",
+        buttonUrlSuffix: "c/chg-membership-1",
+      });
+      expect(log.metaTemplate?.params[0]).toBe(`Mensalidade na ${store.organization.name}`);
+      await queue.flush();
+      expect(queue.jobs).toEqual([
+        expect.objectContaining({ logId: log.id, phone: log.recipientPhone, template: log.metaTemplate }),
+      ]);
+    } finally {
+      queue.stop();
+    }
+  });
+});
+
+describe("modelos na conta do WhatsApp do espaco (doc technical/07 §1.4)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("o texto do espaço vem sempre do modelo mestre; o modelo antigo na Meta deixa de valer", async () => {
+    const welcome = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
+    welcome.content = "Texto antigo de lutas, {aluno}. Bons treinos! 🥋";
+    Object.assign(welcome, { metaTemplateName: "welcome_student", metaTemplateId: "old", metaStatus: "PENDING" });
+    const list = await communicationService.listTemplates();
+    const after = list.find((t) => t.trigger === "welcome_student")!;
+    expect(after.content).toBe(
+      "Seja bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada. Qualquer dúvida sobre horários e aulas, é só responder esta mensagem.",
+    );
+    expect(after.metaTemplateName).toBeUndefined();
+    expect(after.metaStatus).toBeUndefined();
+  });
+
+  it("cria o que falta (cobrança pela biblioteca), traz a situação e apaga os modelos antigos", async () => {
+    const list = vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([
+      { name: "welcome_student_v2", id: "meta-welcome", status: "APPROVED", category: "MARKETING", language: "pt_BR" },
+      { name: "billing_due_date", id: "meta-old", status: "PENDING", category: "MARKETING", language: "pt_BR" },
+    ]);
+    const create = vi
+      .spyOn(whatsappClient, "createOrUpdateTemplate")
+      .mockImplementation(async (payload) => ({ id: `meta-${payload.name}`, status: "PENDING" }));
+    const library = vi
+      .spyOn(whatsappClient, "createLibraryTemplate")
+      .mockImplementation(async (payload) => ({ id: `lib-${payload.name}`, status: "APPROVED" }));
+    const remove = vi.spyOn(whatsappClient, "deleteTemplate").mockResolvedValue(undefined);
+    try {
+      const first = await syncMetaTemplates({});
+      expect(first).toEqual({ created: store.messageTemplates.length - 1, edited: 0, failed: 0 });
+      // Os cinco de cobranca saem da biblioteca, com o botao da pagina de pagamento.
+      expect(library).toHaveBeenCalledTimes(5);
+      expect(library).toHaveBeenCalledWith(
+        { name: "billing_before_due_v2", libraryName: "payment_reminder_3", buttonBaseUrl: expect.stringMatching(/\/p\/$/) },
+        {},
+      );
+      expect(library).toHaveBeenCalledWith(expect.objectContaining({ name: "billing_after_due_v2", libraryName: "payment_overdue_2" }), {});
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "birthday_greeting_v2", category: "MARKETING", content: expect.stringContaining("{aluno}") }),
+        {},
+      );
+      expect(store.messageTemplates.find((t) => t.trigger === "billing_before_due")).toMatchObject({
+        metaTemplateName: "billing_before_due_v2",
+        metaStatus: "APPROVED",
+      });
+      expect(store.messageTemplates.find((t) => t.trigger === "welcome_student")).toMatchObject({
+        metaTemplateId: "meta-welcome",
+        metaStatus: "APPROVED",
+      });
+      expect(remove).toHaveBeenCalledWith("billing_due_date", {});
+      expect(remove).toHaveBeenCalledTimes(1);
+
+      // Tudo na Meta: so a situacao muda.
+      list.mockResolvedValue(
+        store.messageTemplates
+          .filter((t) => t.metaTemplateName)
+          .map((t) => ({ name: t.metaTemplateName!, id: t.metaTemplateId!, status: "APPROVED" as const, category: "UTILITY", language: "pt_BR" })),
+      );
+      create.mockClear();
+      library.mockClear();
+      expect(await syncMetaTemplates({})).toEqual({ created: 0, edited: 0, failed: 0 });
+      expect(create).not.toHaveBeenCalled();
+      expect(library).not.toHaveBeenCalled();
+      expect(store.messageTemplates.find((t) => t.trigger === "birthday_greeting")?.metaStatus).toBe("APPROVED");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("falha num modelo guarda o motivo e nao para os outros; recusado nao e usado no envio", async () => {
+    vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([]);
+    vi.spyOn(whatsappClient, "createLibraryTemplate").mockImplementation(async (payload) => ({ id: `lib-${payload.name}`, status: "APPROVED" }));
+    vi.spyOn(whatsappClient, "createOrUpdateTemplate").mockImplementation(async (payload) => {
+      if (payload.name === "birthday_greeting_v2") throw new Error("Texto recusado");
+      return { id: `meta-${payload.name}`, status: "PENDING" };
+    });
+    try {
+      const result = await syncMetaTemplates({});
+      expect(result.failed).toBe(1);
+      const birthday = store.messageTemplates.find((t) => t.trigger === "birthday_greeting")!;
+      expect(birthday.metaRejectionReason).toBe("Texto recusado");
+      expect(birthday.metaBody).toBeUndefined();
+
+      const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+      reminder.metaStatus = "REJECTED";
+      const variables = { aluno: "Ana", valor: "R$ 10,00", vencimento: "25/09/2026", empresa: "X", link_pagamento: "https://x.test/p/c/1" };
+      expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, variables), variables)).toBeUndefined();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});
+
 describe("compositor e filtro por periodo", () => {
   beforeEach(() => resetAcademy());
 
@@ -953,5 +1249,53 @@ describe("compositor e filtro por periodo", () => {
 
     const page = await communicationService.listLogsPaginated({ dateFrom: "2026-09-20", dateTo: "2026-09-22" });
     expect(page.items.map((l) => l.recipientName)).toEqual(["Recente"]);
+  });
+});
+
+describe("situação na Meta (doc technical/07 §1.6)", () => {
+  const health = {
+    checkedAt: "2026-09-22T12:00:00.000Z",
+    sendState: "blocked" as const,
+    paymentBlocked: true,
+    issues: [{ code: 141006, payment: true, text: "Sem pagamento." }],
+  };
+
+  function fakeGateway(result: typeof health | null) {
+    return {
+      connect: vi.fn(),
+      disconnect: vi.fn(async () => undefined),
+      configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => result),
+      refreshHealth: vi.fn(async () => result),
+    };
+  }
+
+  it("Atualizar grava a situação na conexão; desconectar apaga", async () => {
+    await connectOfficial();
+    setWhatsAppCredentialsGateway(fakeGateway(health));
+    const view = await communicationService.refreshMetaHealth();
+    expect(view.metaHealth).toEqual(health);
+    expect(store.whatsAppConnection?.metaHealth).toEqual(health);
+
+    const after = await communicationService.disconnectOfficial();
+    expect(after.metaHealth).toBeUndefined();
+  });
+
+  it("Meta fora do ar: avisa e mantém a última situação", async () => {
+    await connectOfficial();
+    store.whatsAppConnection!.metaHealth = health;
+    setWhatsAppCredentialsGateway(fakeGateway(null));
+    await expect(communicationService.refreshMetaHealth()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    expect(store.whatsAppConnection?.metaHealth).toEqual(health);
+  });
+
+  it("sem o número conectado, não consulta", async () => {
+    await connectOfficial();
+    await communicationService.disconnectOfficial();
+    const gateway = fakeGateway(health);
+    setWhatsAppCredentialsGateway(gateway);
+    await communicationService.refreshMetaHealth();
+    expect(gateway.fetchHealth).not.toHaveBeenCalled();
   });
 });

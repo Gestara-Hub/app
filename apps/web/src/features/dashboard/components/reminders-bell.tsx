@@ -21,8 +21,8 @@ import {
   documentBellAlerts,
   gatewayRejectedBellAlert,
   planBellAlert,
-  quotaBellAlert,
   whatsappPendingConnectionBellAlert,
+  metaHealthBellAlert,
   type BellAlert,
 } from "../bell-alerts";
 import { installAudioUnlock, playBellChime } from "@/lib/audio-feedback";
@@ -41,7 +41,7 @@ import { dateInSpace } from "@gestarahub/core/date";
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
  * tocar, a mesma lista do painel num painel lateral. Some sem pendencia. So no
  * modelo de turmas, para quem manda mensagem e para o professor (so os alunos dele).
- * Dono e gerente veem tambem os avisos do espaco (plano, franquia, pagamento online).
+ * Dono e gerente veem tambem os avisos do espaco (plano, WhatsApp, pagamento online).
  *
  * Niveis (doc product/25, "Níveis, urgência e novos lembretes"): o sino pulsa
  * tres vezes quando ha item de atencao ou urgencia novo desde a ultima abertura.
@@ -53,7 +53,7 @@ export function RemindersBell() {
   return <RemindersBellButton />;
 }
 
-/** Avisos do espaco (plano, franquia, pagamento online, documentos), conforme quem ve. */
+/** Avisos do espaco (plano, WhatsApp, pagamento online, documentos), conforme quem ve. */
 export function useBellAlerts(today: string): BellAlert[] {
   const eligible = seesPlanNotices(useCurrentUser().profile);
   const can = useCan();
@@ -73,7 +73,7 @@ export function useBellAlerts(today: string): BellAlert[] {
         planBellAlert(subscription, today),
         gatewayRejectedBellAlert(organization?.settings?.onlinePayments),
         whatsappPendingConnectionBellAlert(connection),
-        quotaBellAlert(connection),
+        metaHealthBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)
     : [];
   return [...(seesPayments ? disputeBellAlerts(disputed, studentNameOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
@@ -166,7 +166,13 @@ function RemindersBellButton() {
               {count > 0 ? plural(count, "pendência", "pendências") : "Tudo em dia."}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Um link do lembrete leva para outra tela: fecha o painel junto (17/11/2026). */}
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            onClickCapture={(event) => {
+              if (event.target instanceof Element && event.target.closest("a[href]")) setOpen(false);
+            }}
+          >
             <DashboardTodo today={today} bare alerts={alerts} />
           </div>
         </SheetContent>

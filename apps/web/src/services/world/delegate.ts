@@ -93,7 +93,7 @@ export function isReadMethod(name: string): boolean {
  * Leituras pela rota `/api/svc`, nao pela server action: as actions de uma aba
  * rodam uma por vez e uma tela fazia ~18 leituras em fila (4 a 5 s no 4G fraco).
  */
-async function fetchService(method: string, args: unknown[]): Promise<ActionResult<unknown>> {
+export async function fetchService(method: string, args: unknown[]): Promise<ActionResult<unknown>> {
   const response = await fetch("/api/svc", {
     method: "POST",
     headers: { "content-type": "application/json" },

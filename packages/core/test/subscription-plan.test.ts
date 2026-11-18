@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import type { Subscription } from "@gestarahub/contracts";
 import {
   addPlanCycle,
-  annualQuotaCycleStart,
   graceEndsOn,
   subscriptionClosesOn,
   planDailyStep,
@@ -189,24 +188,5 @@ describe("depois de voltar ao Grátis: 15 dias para pagar, depois encerra", () =
       closeSubscription: false,
       email: null,
     });
-  });
-});
-
-describe("franquia do WhatsApp no plano anual: renova todo mês", () => {
-  // Ano pago de 31/01/2026 a 31/01/2027.
-  const renewsOn = "2027-01-31";
-
-  it("o ciclo mensal conta do início do ano pago, sem deriva de fim de mês", () => {
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-01-31"), "2026-01-31");
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-02-27"), "2026-01-31");
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-02-28"), "2026-02-28");
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-03-31"), "2026-03-31");
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-12-30"), "2026-11-30");
-    assert.equal(annualQuotaCycleStart(renewsOn, "2026-12-31"), "2026-12-31");
-  });
-
-  it("renovação anual vencida (tolerância): não renova", () => {
-    assert.equal(annualQuotaCycleStart(renewsOn, "2027-01-31"), null);
-    assert.equal(annualQuotaCycleStart(renewsOn, "2027-02-02"), null);
   });
 });

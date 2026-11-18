@@ -141,9 +141,9 @@ test("3 faltas seguidas em turmas diferentes: 'Sentimos sua falta' pelo WhatsApp
     row.getByRole("button", { name: "Mandar mensagem para Aluno Sumido no WhatsApp" }).click(),
   );
   expect(link.phone).toBe("5511988881111");
-  expect(link.text).toContain("Oi, Aluno Sumido! Tudo bem? Sentimos muito a sua falta");
+  expect(link.text).toContain("Oi, Aluno Sumido! Sentimos sua falta nas últimas aulas da Academia X.");
   expect(link.text).toContain("Academia X");
-  expect(link.text).toContain("💪");
+  expect(link.text).toContain("Como podemos te ajudar a voltar à rotina?");
   await expect(row).toContainText("Avisado hoje");
 });
 
@@ -159,7 +159,7 @@ test("aniversariante de hoje: parabéns pelo WhatsApp e o card só com selos (se
   );
   expect(link.phone).toBe("5511988882222");
   expect(link.text).toBe(
-    "Parabéns pelo seu dia, Aluno Parabéns! 🎂 Toda a equipe da Academia X deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
+    "Parabéns pelo seu dia, Aluno Parabéns! 🎂 Toda a equipe da Academia X deseja muita saúde e conquistas. Aproveite o seu dia!",
   );
   await expect(row).toContainText("Parabéns enviado");
 

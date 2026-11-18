@@ -54,15 +54,16 @@ function ScheduleNoticeFlow({ request, onDone }: { request: ScheduleNoticeReques
       const items = enrollments
         .filter((e) => e.status === "active" && e.studentStatus === "active")
         .map((e) => {
-          const base = whatsapp.compose("schedule_change", {}, e.studentName).trim();
+          const values = { horario: request.slotsText };
+          const content = whatsapp.compose("schedule_change", values, e.studentName).trim();
           return {
             key: `schedule_change:${request.classGroupId}:${e.studentId}`,
             studentId: e.studentId,
             studentName: e.studentName,
             ...(phoneOf.get(e.studentId) ? { phone: phoneOf.get(e.studentId) } : {}),
             trigger: "schedule_change" as const,
-            values: {},
-            content: `${base} ${request.slotsText}`.trim(),
+            values,
+            content,
             detail: request.className,
           };
         });

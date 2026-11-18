@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { whatsappNumber } from "@/lib/whatsapp";
+import { whatsappNumber, openWhatsApp } from "@/lib/whatsapp";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { nowTime, todayISO } from "@gestarahub/core/date";
 import { formatCents, formatDateTime, formatPhone, plural } from "@gestarahub/core/format";
@@ -392,7 +392,7 @@ export function StudentProfileView({ id }: { id: Id }) {
     if (targetPhone) {
       const cleanPhone = targetPhone.replace(/\D/g, "");
       const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-      window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+      openWhatsApp(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`);
     } else {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(url);

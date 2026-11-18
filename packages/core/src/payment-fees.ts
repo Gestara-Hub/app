@@ -198,7 +198,14 @@ const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace(".", ",")}
  * checkout (achado 18, decisao de 24/10). Os valores vem de `PLATFORM_SPLIT_CENTS`.
  */
 export function platformFeeSentence(): string {
-  return `Taxa do GestaraHub: ${brl(PLATFORM_SPLIT_CENTS.free)} por Pix pago no Grátis (${brl(PLATFORM_SPLIT_CENTS.pro)} nos pagos), mais a tarifa do parceiro.`;
+  // Frase curta (17/11/2026): o valor do Grátis e o que vem junto; o valor do
+  // Profissional fica no card dele (`proPlatformFeeLabel`).
+  return `Cada Pix recebido online: ${brl(PLATFORM_SPLIT_CENTS.free)} do GestaraHub, mais a tarifa do parceiro de pagamentos.`;
+}
+
+/** O item do Profissional na tela de planos: a taxa menor, com o valor. */
+export function proPlatformFeeLabel(): string {
+  return `Taxa menor por Pix recebido: ${brl(PLATFORM_SPLIT_CENTS.pro)}`;
 }
 
 /**

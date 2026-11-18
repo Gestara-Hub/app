@@ -89,3 +89,49 @@ export function personalizeMessage(content: string, studentName: string, organiz
   const named = content.replaceAll("{aluno}", studentName);
   return (organizationName ? named.replaceAll("{empresa}", organizationName) : named).trim();
 }
+
+/**
+ * Variaveis do modelo aprovado da Meta, na ordem em que aparecem no texto
+ * (`{{1}}`, `{{2}}`...), como `convertGestaraVariablesToMetaPositional`. A Meta
+ * recusa variavel vazia, com quebra de linha, tabulacao ou mais de 4 espacos
+ * seguidos: sem valor, devolve null (a mensagem nao cabe no modelo).
+ */
+export function metaTemplateParams(
+  content: string,
+  values: Record<string, string | undefined>,
+): string[] | null {
+  const params: string[] = [];
+  for (const match of content.matchAll(/\{(\w+)\}/g)) {
+    const raw = values[match[1]!];
+    const value = (raw ?? "").replace(/[\n\t]+/g, " ").replace(/ {4,}/g, "   ").trim();
+    if (!value) return null;
+    params.push(value);
+  }
+  return params;
+}
+
+/**
+ * Texto sem as frases das variaveis que o espaco nunca preenche (ex.: link
+ * do pagamento sem pagamento online). E o texto do modelo na Meta: la toda
+ * variavel e obrigatoria, entao a frase opcional fica de fora. Mesma regra de
+ * corte de `fillMessage` (frase por frase, linha por linha).
+ */
+export function dropSentencesWith(content: string, keys: readonly string[]): string {
+  if (keys.length === 0) return content.trim();
+  const re = new RegExp(`\\{(?:${keys.join("|")})\\}`);
+  if (!re.test(content)) return content.trim();
+  return content
+    .split("\n")
+    .flatMap((line) => {
+      if (!re.test(line)) return [line];
+      const kept = line
+        .split(/(?<=[.!?…])\s+/)
+        .filter((sentence) => !re.test(sentence))
+        .join(" ")
+        .trim();
+      return kept ? [kept] : [];
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

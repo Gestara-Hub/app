@@ -85,7 +85,7 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
 
   // Cobrar online: billing:manage + recurso do plano + opcao ligada.
   const hasOnlineFeature = useHasFeature()("online_payments");
-  const { data: org } = useOrganization();
+  const { data: org, isPending: isOrgPending } = useOrganization();
   // Lembrete pelo WhatsApp do proprio espaco (assistido no gratis, oficial no Pro).
   const whatsapp = useWhatsAppSend();
   const onlineEnabled = Boolean(org?.settings?.onlinePayments?.enabled);
@@ -477,5 +477,5 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     </>
   );
 
-  return { canManage, overRecurringLimit, contextActions, withContextMenu, renderActions, dialogs, reminderValues };
+  return { canManage, isOrgPending, overRecurringLimit, contextActions, withContextMenu, renderActions, dialogs, reminderValues };
 }

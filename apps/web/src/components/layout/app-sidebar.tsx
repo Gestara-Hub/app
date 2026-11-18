@@ -108,6 +108,7 @@ function readSavedContext(): NavContext | null {
 export function AppSidebar() {
   const pathname = usePathname();
   const can = useCan();
+  const { isMobile, setOpenMobile } = useSidebar();
   const model = useModel();
 
   const [prevPathname, setPrevPathname] = useState(pathname);
@@ -331,7 +332,8 @@ export function AppSidebar() {
           </Fragment>
         ))}
 
-        <div className="mt-auto p-2">
+        {/* No celular, o clique no cartao do plano (ex.: "Evoluir") fecha o menu, como nos itens. */}
+        <div className="mt-auto p-2" onClick={() => (isMobile ? setOpenMobile(false) : undefined)}>
           {/* So quem pode contratar plano ve o cartao do plano (achado 71). */}
           {can("subscription:manage") ? <SidebarSubscriptionCard /> : null}
         </div>

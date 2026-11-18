@@ -34,7 +34,7 @@ Só aparece depois que a conta de recebimento estiver ativa.
 Guia: /online-payments
 + aba "Configurações": Abra as configurações das cobranças online.
 + botão "Ver termos e taxas contratadas": Veja as taxas da sua conta.
-Taxa do GestaraHub: R$ 1,99 por Pix pago no Grátis (R$ 1,29 nos pagos), mais a tarifa do parceiro. Você pode repassar a taxa ao aluno nas configurações de recebimento.
+Cada Pix recebido online: R$ 1,99 do GestaraHub no plano Grátis (R$ 1,29 no Profissional), mais a tarifa do parceiro de pagamentos. Você pode repassar a taxa ao aluno nas configurações de recebimento.
 
 ## Repassar a taxa ao aluno
 Resumo: Escolha em quais formas de pagamento a taxa vai somada ao valor do aluno.

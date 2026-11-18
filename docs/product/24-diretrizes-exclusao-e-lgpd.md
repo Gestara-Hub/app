@@ -1,7 +1,9 @@
 # 24. Diretrizes de Exclusão de Conta, Encerramento e Conformidade LGPD
 
+Data: 2026-10-24 (ampliado em 2026-10-30 e 2026-11-16) · Status: Decidido (rotas públicas §6 feitas; exclusão definitiva, encerramento da subconta e Zona de Perigo §5/§7 como proposta para depois) · Código: `apps/web/src/features/settings`, `apps/web/src/services/onlinePayments/`, `apps/admin/src/app/(panel)/privacy/`, `apps/web/src/features/landing/components/legal-documents.tsx` · Testes: `apps/web/src/services/server/__tests__/publicRoutesPrivacy.db.test.ts`, `apps/admin/src/app/(panel)/privacy/privacy.db.test.ts`
+
 > **Documento de referência para arquitetura, compliance legal e roadmap de produto.**  
-> Este guia detalha o enquadramento jurídico sob a LGPD (Lei 13.709/2018), as obrigações legais concorrentes (BACEN, Receita Federal, Código Civil e CLT) e a esteira técnica para exclusão da **Organização (Tenant)** e de **Usuários Associados** (Alunos, Professores e Equipe).
+> Este guia detalha o enquadramento jurídico sob a LGPD (Lei 13.709/2018), as obrigações legais concorrentes (BACEN, Receita Federal, Código Civil e CLT) e a esteira técnica para exclusão da **Organização (Tenant)**, **encerramento de subconta de pagamentos** e **Usuários Associados** (Alunos, Professores e Equipe).
 
 ---
 
@@ -147,3 +149,83 @@ Quem tem o link nem sempre é o aluno: o link é encaminhado, fica no histórico
 ### Alternativas
 - **Não mostrar nada do aluno:** descartado. Quem paga ou assina precisa reconhecer de quem é a cobrança ou o termo.
 - **Mascarar só na tela:** descartado. O dado inteiro chegaria ao navegador de quem só tem o link.
+
+---
+
+## 7. Especificação futura: Encerrar Subconta Asaas e Apagar Conta GestaraHub
+
+> **Status: Proposta detalhada (guardada para implementar depois, registrada em 16/11/2026).**  
+> Hoje o sistema permite apenas **desligar o recebimento online** no app (`onlinePayments.enabled = false`) e **inativar o espaço** no painel admin (`inactivateSpaceAction`). Os fluxos definitivos abaixo dependem de implementação posterior junto com atualização em lote dos textos legais.
+
+### 7.1. Cancelamento / Encerramento da Subconta no Asaas
+
+#### Diferença de cenários
+1. **Parar de usar cobrança online (reversível — já existe hoje):**
+   - O proprietário saca o saldo em **Recebimentos online → Sacar via Pix** e desliga **`Habilitar cobranças online`** na aba **Configurações**.
+   - **Comportamento:** oculta `"Cobrar online"` e links em lembretes/fatura pública, mantendo `gateway_account_id`, `gateway_wallet_id`, `gateway_api_key` e `gateway_status = "approved"` caso volte a usar depois.
+2. **Encerramento definitivo da subconta Asaas (futuro — manter ou encerrar conta no parceiro):**
+   - **Limite real do Asaas (modelo não-BaaS vs. White Label / BaaS):**
+     - Hoje nossas subcontas seguem o modelo **não-BaaS** ([`27-juridico-termos-e-identificacao.md`](27-juridico-termos-e-identificacao.md) item A2): o Asaas envia e-mail de ativação ao titular e ele tem acesso web/app lá.
+     - Em **não-BaaS**, a API `DELETE /v3/accounts/{id}` (com chave da conta-pai) **só funciona** se a subconta tiver **menos de 48h** de criação, **nunca tiver feito login**, e exigir Whitelist de IPs + permissão de exclusão nas configurações de segurança do Asaas. Passado esse critério, o encerramento na conta do parceiro só acontece **pelo painel web/atendimento do Asaas**.
+     - Caso a conta-pai do GestaraHub seja habilitada futuramente como **White Label / BaaS**, passa a existir `DELETE /v3/myAccount` autenticado com o `access_token` da própria subconta (`gateway_api_key`), enviando `removeReason` (irreversível, também exige Whitelist de IPs).
+   - **Pré-checagens obrigatórias (*Pre-flight Checks*) antes de encerrar ou desvincular:**
+     1. Consultar saldo em tempo real (`GET /finance/balance` da subconta): exigir saldo disponível e a liberar iguais a **R$ 0,00** (`available === 0` e sem recebíveis futuros/`D+1`/`D+14`). Se houver saldo, bloquear e direcionar para saque via Pix.
+     2. Conferir pagamentos online abertos (`online_payments` com `status = "awaiting"`): cancelar todos no Asaas (`DELETE /v3/payments/{id}`) e marcar como `canceled` antes de encerrar.
+     3. Bloquear se houver transferências Pix em processamento ou contestações (*chargebacks*) em aberto (`disputed`).
+     4. Cancelar/revogar autorizações de recorrência / Pix Automático ativas vinculadas àquela subconta.
+   - **Efeitos no banco do GestaraHub (`organizations`) — sem apagar histórico legal:**
+     - **Nunca deletar** cobranças antigas, transações financeiras pagas, taxas contabilizadas ou registros em `legal_consents` (guarda obrigatória BACEN/COAF de 5 a 10 anos e CTN de 5 anos).
+     - Ao encerrar a subconta mantendo o espaço ativo: marcar `onlinePayments.enabled = false`, limpar/arquivar `gateway_api_key` e gravar um estado explícito de encerramento (ou arquivar o vínculo histórico `gateway_account_id` em auditoria/evento e retornar `gateway_status = "not_configured"` caso possa ativar nova subconta no futuro — alertando que o Asaas pode recusar reutilizar o mesmo e-mail financeiro).
+     - Registrar evento obrigatório na Auditoria do espaço e, quando feito pela equipe, em `platform.audit_logs`.
+   - **Interface prevista (`apps/web` e `apps/admin`):**
+     - **No app (`features/online-payments`, aba Configurações):** card discreto/destrutivo *"Encerrar conta de recebimento"* exclusivo para `owner`, atrás de pré-checagem + senha/2FA. Se o modelo seguir **não-BaaS** fora da janela de 48h, o botão desliga imediatamente a cobrança online no GestaraHub e abre solicitação assistida para a equipe encerrar no painel do Asaas (ou instrui o titular a encerrar lá + sincronizar).
+     - **No Painel Admin (`apps/admin`, Espaço → Recebimentos online / Dados e LGPD):** ação com motivo obrigatório para encerrar/desvincular subconta (inclusive útil para limpar subcontas de teste em homologação/produção dentro da cota inicial de 10 subcontas, e para sincronizar após encerramento manual feito direto no painel do Asaas).
+
+### 7.2. Exclusão Definitiva da Conta GestaraHub (Espaço)
+
+Complementa as fases da §2 com o desenho técnico pendente em [`26-painel-admin-gestarahub.md`](../technical/26-painel-admin-gestarahub.md) §6.8 e §17:
+
+1. **Entrada do usuário ("Zona de Perigo" em `/settings`):**
+   - Aba ou card destrutivo exclusivo para `owner` (ver §5).
+   - **Ordem guiada na tela:**
+     1. Verificar travas financeiras: assinatura paga do GestaraHub (`asaas_subscription_id`) e subconta Asaas (§7.1). Cancelar a renovação no Asaas (`DELETE /v3/subscriptions/{id}`) no momento da confirmação; se houver saldo na subconta ou chargeback aberto, impedir prosseguimento até resolver.
+     2. Oferecer atalho para **Exportar dados do espaço** antes da exclusão (reaproveitando o gerador de exportação de `apps/admin/src/app/(panel)/privacy/actions.ts` / `platform.export_space`).
+     3. Confirmação estrita: digitar o nome exato do espaço + senha atual + código 2FA (se ativo).
+2. **Fase imediata (Quarentena de 30 dias):**
+   - Trocar estado da organização para `pending_deletion` (ou equivalente distinto de `inactive`), revogar sessões ativas, invalidar links de convite pendentes, parar disparos automáticos (WhatsApp/e-mail/cron de lembretes) e registrar pedido LGPD + auditoria.
+   - Enviar e-mail transacional confirmando o pedido e a data prevista de exclusão definitiva (permitindo reversão via suporte dentro dos 30 dias).
+3. **Execução definitiva após 30 dias (rotina agendada + confirmação pelo `apps/admin`):**
+   - **Asaas:** confirmar assinatura cancelada e encerrar/desvincular a subconta conforme §7.1.
+   - **Armazenamento (Storage):** apagar todos os arquivos do espaço no bucket `attachments` (atestados/documentos da ficha, comprovantes de pagamento, avatares, logos e artes de certificado).
+   - **Banco (cascata + anonimização seletiva):**
+     - **Eliminar fisicamente:** turmas, horários, agendamentos, serviços, modalidades, metas, avaliações/notas, medidas corporais (`student_measurements` — dado sensível), mensagens agendadas/modelos, convites e preferências.
+     - **Anonimizar e reter pelo prazo legal (5 anos — CTN/CLT/Marco Civil):** alunos/responsáveis ligados a cobranças pagas ou termos (apagar CPF, e-mail, telefone, endereço, data de nascimento completa e substituir nome por identificador pseudonimizado), mantendo valores contábeis, lançamentos/notas fiscais, `legal_consents` e trilhas de auditoria necessárias para defesa/fiscalização.
+   - **Identidade Global / Auth ([`11-identidade-global-e-multi-membership.md`](../technical/11-identidade-global-e-multi-membership.md)):**
+     - Verificar `user_memberships` de cada usuário do espaço excluído: se a pessoa possui vínculo ativo em **outro** espaço do GestaraHub, remover apenas o vínculo e os dados locais desse espaço; se não houver mais nenhum espaço vinculado, excluir a conta de login no Supabase Auth (`auth.admin.deleteUser`), observando os prazos de retenção de logs de acesso (Marco Civil).
+
+### 7.3. Onde mexer nos Termos, Política de Privacidade e Contrato de Ativação
+
+Conforme a regra de atualização jurídica em lote ([`27-juridico-termos-e-identificacao.md`](27-juridico-termos-e-identificacao.md) §8), ao implementar os fluxos da §7.1 e §7.2 será obrigatório atualizar **os três textos e seus versionamentos** antes do deploy:
+
+1. **Termos de Uso — `TermsOfUse` em [`legal-documents.tsx`](../../apps/web/src/features/landing/components/legal-documents.tsx):**
+   - **Seção 3 ("Planos, Cobrança e Funcionalidades"):** deixar explícito como o cancelamento do plano pago ocorre na própria Zona de Perigo (efeito imediato vs. fim do ciclo pago e regra dos 7 dias no CDC art. 49).
+   - **Seção 4 ("Módulo Financeiro, Pagamentos Online e Subcontas"):** incluir item específico separando **desativar cobranças online no sistema** vs. **encerrar definitivamente a subconta no Asaas** (exigência de saldo zerado, inexistência de liquidações/chargebacks em aberto, limitações do modelo não-BaaS caso o titular já tenha acessado o Asaas e guarda regulatória de 5 a 10 anos pelo parceiro).
+   - **Seção 5 ("Instruções do Controlador à Operadora"):** alinhar o prazo de quarentena (30 dias) e diferenciar o que é eliminado de imediato/após quarentena do que permanece anonimizado por força de lei.
+   - **Seção 9 ("Rescisão, Exportação e Encerramento de Conta"):** trocar *"O encerramento pode ser solicitado pelo e-mail de suporte oficial"* para informar os **dois caminhos** — autosserviço pela **Zona de Perigo em Configurações** (com exportação prévia e quarentena de 30 dias) e solicitação via e-mail de suporte — além de detalhar o bloqueio caso exista saldo ou pendência na subconta de recebimentos.
+   - **`LegalChangelog` (histórico no fim da página):** acrescentar entrada da nova versão listando as mudanças de encerramento por autosserviço, quarentena e regra da subconta.
+
+2. **Política de Privacidade — `PrivacyPolicy` em [`legal-documents.tsx`](../../apps/web/src/features/landing/components/legal-documents.tsx):**
+   - **Seção 3 ("Dados Coletados e Finalidades") e Seção 5 ("Não Comercialização e Compartilhamento Restrito"):** explicitar que os dados cadastrais enviados ao **Asaas** para abertura de subconta permanecem sujeitos às regras de guarda regulatória do próprio Banco Central/COAF mesmo após o encerramento do espaço no GestaraHub.
+   - **Seção 10 ("Como pedir a exclusão dos seus dados", âncora `#exclusao` — exigida pela Meta):** atualizar o item **"Titular da conta (gestor)"** para documentar o fluxo pela **Zona de Perigo em Configurações** (com opção de exportar dados, travas financeiras da subconta e quarentena de 30 dias) mantendo o e-mail oficial como alternativa/suporte (inclusive para login com Google e remoção de suboperadores).
+   - **Seção 11 ("Prazos de Retenção e Descarte"):** detalhar a quarentena de **30 dias**, a exclusão de arquivos/documentos sensíveis (saúde, medidas, anexos) e a retenção de transações/KYC da subconta pelo prazo do BACEN (5 a 10 anos), além dos 6 meses do Marco Civil e 5 anos fiscais/trabalhistas já citados.
+   - **`LegalChangelog`:** atualizar junto aos Termos.
+
+3. **Contrato de Ativação da Subconta — `ActivateSubaccountDialog` em [`activate-subaccount-dialog.tsx`](../../apps/web/src/features/online-payments/components/activate-subaccount-dialog.tsx):**
+   - **Cláusula 1 ("Mandato e Abertura de Conta de Recebimento"):** deixar claro se o mandato abrange apenas abertura/configuração (modelo não-BaaS, onde o encerramento definitivo junto à instituição parceira segue o rito do próprio Asaas se já houve login/movimentação) ou também solicitação de encerramento quando aplicável.
+   - **Cláusula 8 ("Privacidade e Proteção de Dados"):** reforçar retenção obrigatória pelo BACEN/COAF (5 a 10 anos) dos registros de KYC/transações mesmo após desativação ou encerramento.
+   - **Cláusula 10 ("Titularidade dos Recursos, Saques via Pix e Rescisão"):** hoje menciona apenas *"pode desativar a cobrança online a qualquer tempo"* — ampliar para distinguir: (a) desativação temporária no GestaraHub vs. (b) encerramento definitivo da subconta (condicionado a saldo disponível e a liberar zerados, zero cobranças abertas/transferências pendentes e ausência de chargebacks ou prazo regulatório em curso, alertando sobre eventual bloqueio de reutilização de e-mail/cadastro no Asaas).
+
+4. **Versionamento e re-aceite obrigatórios no código:**
+   - Atualizar `LEGAL_UPDATED_AT` em [`apps/web/src/config/site.ts`](../../apps/web/src/config/site.ts).
+   - Incrementar `CURRENT_PLATFORM_TERMS_VERSION` em [`packages/contracts/src/legal.ts`](../../packages/contracts/src/legal.ts) (força todos os usuários a aceitarem a nova versão no `LegalConsentDialog` ao entrar).
+   - Incrementar `CURRENT_SUBACCOUNT_TERMS_VERSION` em [`packages/contracts/src/legal.ts`](../../packages/contracts/src/legal.ts) caso o texto do contrato de ativação em `activate-subaccount-dialog.tsx` seja alterado (registrado em `legal_consents` e `settings.onlinePayments.termsVersion` nas novas ativações).

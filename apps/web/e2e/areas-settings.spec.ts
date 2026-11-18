@@ -5,16 +5,16 @@ import { editWorld, expect, seedAcademy, skipWelcome, test } from "./fixtures";
 import { AREAS, CUSTOM_BILLINGS, CUSTOM_PROGRESSIONS, ORG, readTenant, waitForStore, type Tenant } from "./areas-helpers";
 
 /**
- * Configuracoes por area: "Área do espaço" (e os textos das mensagens que
- * acompanham enquanto estao no padrao), "Outra área", Regras da mensalidade,
+ * Configuracoes por area: "Área do espaço" (os textos das mensagens sao os
+ * modelos mestres, iguais em toda area, doc technical/07 §1.7), "Outra área", Regras da mensalidade,
  * "Planos e pacotes", Plano GestaraHub e o modelo de certificado (Pro).
  * Relogio do navegador: terca 22/09/2026.
  */
 
 test.describe.configure({ timeout: 60_000 });
 
-const MARTIAL_WELCOME = "Nos vemos no tatame!";
-const OTHER_WELCOME = "Até a primeira aula!";
+/** Boas-vindas do modelo mestre (18/11/2026): o mesmo texto em todas as areas. */
+const WELCOME = "Qualquer dúvida sobre horários e aulas";
 
 async function chooseArea(page: Page, label: string) {
   await page.getByRole("combobox", { name: /Área do espaço/ }).click();
@@ -46,9 +46,10 @@ async function messagesPanel(page: Page) {
 // ===========================================================================
 test.describe("Configurações: Área do espaço", () => {
   for (const area of AREAS.filter((a) => a.id !== "martial_arts")) {
-    test(`trocar Lutas por ${area.label} grava a área e tira o "tatame" das mensagens`, async ({ page }) => {
+    test(`trocar Lutas por ${area.label} grava a área e mantém os textos mestres das mensagens`, async ({ page }) => {
       await seedAcademy(page);
-      expect(templateTexts(await readTenant(page)).join(" ")).toContain(MARTIAL_WELCOME);
+      const before = templateTexts(await readTenant(page));
+      expect(before.join(" ")).toContain(WELCOME);
       await page.goto("/settings");
       await expect(page.getByText("Muda padrões de novas turmas e palavras das telas.")).toBeVisible();
       await chooseArea(page, area.label);
@@ -61,13 +62,13 @@ test.describe("Configurações: Área do espaço", () => {
       const tenant = await readTenant(page);
       expect(tenant.organization.segment).toBe(area.label);
       expect(tenant.organization.customSegmentName).toBeUndefined();
+      expect(templateTexts(tenant)).toEqual(before);
       const texts = templateTexts(tenant).join("\n");
       expect(texts).not.toContain("tatame");
       expect(texts).not.toContain("Bons treinos");
-      expect(texts).toContain(OTHER_WELCOME);
 
       const panel = await messagesPanel(page);
-      await expect(panel).toContainText(OTHER_WELCOME);
+      await expect(panel).toContainText(WELCOME);
       await expect(panel).not.toContainText("tatame");
 
       // A nova turma ja abre com as vagas da area.
@@ -82,34 +83,24 @@ test.describe("Configurações: Área do espaço", () => {
     });
   }
 
-  test("mensagem editada não muda com a área; as do padrão voltam ao tom de lutas", async ({ page }) => {
+  test("voltar para Lutas não traz de volta o tom de lutas: o texto é o mestre", async ({ page }) => {
     await seedAcademy(page);
-    const own = "Oi, {aluno}! Bem-vindo ao nosso tatame.";
-    await editWorld(page, ORG, (t) => {
-      const welcome = t.messageTemplates.find((m: { content: string }) => m.content.includes(MARTIAL_WELCOME));
-      welcome.content = own;
-    });
+    const before = templateTexts(await readTenant(page));
     await page.goto("/settings");
     await chooseArea(page, "Dança");
     await saveSettings(page);
     await waitForStore(page, (t) => t.organization.classSegment === "dance");
-    let texts = templateTexts(await readTenant(page));
-    expect(texts).toContain(own);
-    expect(texts.filter((c) => c !== own).join(" ")).not.toContain("tatame");
-    expect(texts.join(" ")).toContain("nas últimas aulas da {empresa}. Seu lugar na turma está guardado!");
-
     await page.reload();
     await chooseArea(page, "Lutas");
     await saveSettings(page);
     await waitForStore(page, (t) => t.organization.classSegment === "martial_arts");
-    texts = templateTexts(await readTenant(page));
-    expect(texts).toContain(own);
-    expect(texts.join(" ")).toContain("Seu lugar no tatame está guardado!");
-    expect(texts.join(" ")).toContain("Bons treinos!");
-    expect(texts.join(" ")).not.toContain(OTHER_WELCOME);
+    const texts = templateTexts(await readTenant(page));
+    expect(texts).toEqual(before);
+    expect(texts.join(" ")).not.toContain("Bons treinos");
+    expect(texts.join(" ")).toContain(WELCOME);
   });
 
-  test("trocar entre duas áreas que não são de lutas mantém os textos de aula", async ({ page }) => {
+  test("trocar entre duas áreas que não são de lutas mantém os textos mestres", async ({ page }) => {
     await seedAcademy(page);
     await page.goto("/settings");
     await chooseArea(page, "Música");
@@ -119,7 +110,7 @@ test.describe("Configurações: Área do espaço", () => {
     await saveSettings(page);
     await waitForStore(page, (t) => t.organization.classSegment === "gastronomy");
     const texts = templateTexts(await readTenant(page)).join(" ");
-    expect(texts).toContain(OTHER_WELCOME);
+    expect(texts).toContain(WELCOME);
     expect(texts).not.toContain("tatame");
   });
 });

@@ -102,3 +102,8 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
   - **Pix:** Gera o QR Code com código Copia e Cola na hora e ativa verificação em tempo real (polling) para confirmar o pagamento assim que quitado.
   - **Cartão / Boleto:** Redireciona o pagador para o checkout seguro do parceiro.
 - **Espaço sem recebimento online:** Se a subconta estiver inativa ou não configurada, o lembrete de cobrança não inclui link quebrado.
+
+## 8. Ciclo de vida da subconta (desativar vs. encerrar)
+
+- **Hoje (feito):** desligar **`Habilitar cobranças online`** (`onlinePayments.enabled = false`) em **Recebimentos online → Configurações** (`online-payments-settings-tab.tsx`) interrompe novas cobranças online e oculta links nos lembretes/fatura pública, mantendo `gateway_account_id`, `gateway_wallet_id` e `gateway_api_key` em `organizations` caso o espaço volte a usar. **Não existe** ação no app nem no `apps/admin` para apagar a subconta no Asaas.
+- **Encerramento definitivo no Asaas (guardado para depois):** nossas subcontas seguem o modelo **não-BaaS** ([`../product/27-juridico-termos-e-identificacao.md`](../product/27-juridico-termos-e-identificacao.md) item A2), no qual a API `DELETE /v3/accounts/{id}` só apaga contas criadas há menos de 48h e sem login (exigindo Whitelist de IP); fora disso, ou o encerramento acontece manualmente no painel web do Asaas ou exige migrar para White Label/BaaS (`DELETE /v3/myAccount`). Os pré-requisitos completos (saldo zerado, cancelamento de cobranças `awaiting`, checagem de chargebacks, retenção BACEN e atualizações nos termos) estão especificados em [`../product/24-diretrizes-exclusao-e-lgpd.md`](../product/24-diretrizes-exclusao-e-lgpd.md) §7.

@@ -46,7 +46,6 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 ### 2.3 Plano Scale (Para Redes e Grandes Academias — R$ 199,00/mês ou R$ 1.990,00/ano)
 - **Multiunidade / Franquias:** Gestão centralizada de múltiplas unidades ou filiais sob uma única conta com consolidação financeira.
 - **`bi`:** Módulo de BI & Analytics preditivo (análise preditiva de churn/evasão de alunos, mapas de calor de ocupação de horários e tatames).
-- **Franquia estendida de WhatsApp:** 1.000 mensagens automáticas/mês inclusas.
 - **Taxas de pagamento personalizadas** para grandes volumes transacionados.
 
 ---
@@ -101,8 +100,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 - As mensagens saem **sempre do número de WhatsApp do próprio espaço**. Não existe número do GestaraHub para falar com alunos.
 - **Fase 1, plano Grátis: envio assistido.** O sistema monta a mensagem (cobrança, lembrete, parabéns, boas-vindas) e o botão "Enviar no WhatsApp" abre o WhatsApp do aparelho (`wa.me` com o texto pronto). A pessoa só toca em enviar. Sem custo, sem conexão e sem servidor.
 - **Fase 2, plano Pro (`messaging`): envio automático pela API oficial da Meta** (WhatsApp Business Platform), com o número do espaço conectado uma vez pelo cadastro guiado da Meta (Embedded Signup). O espaço continua usando o app do WhatsApp Business no mesmo número (coexistência). **A confirmar antes da fase 2:** elegibilidade da coexistência no Brasil e se a conexão será direta com a Meta ou por um parceiro (BSP).
-- **Franquia de mensagens automáticas (decisão do usuário, "proposta 1"):** Grátis 0 (só o assistido, sem custo), Pro 300 e Expansão 1.000 por ciclo (`TIER_WHATSAPP_QUOTA` em `packages/contracts/src/subscription.ts`). Ao esgotar, o envio automático para (sem custo extra) e o botão volta ao envio assistido, com o texto pronto: a cobrança do espaço não trava. A franquia renova quando o pagamento do plano é confirmado, não no dia 1º: com a renovação em atraso, ela não renova na tolerância. **Plano anual (decisão do usuário, 30/10/2026):** renova todo mês, no dia do ciclo (doc `technical/07` §1.2). A mensagem de franquia esgotada não oferece o Expansão, que está fora da venda.
-- A franquia mensal do Pro (`monthlyQuota`) controla o custo por mensagem, que a Meta cobra por categoria. Lembrete de cobrança é "utilidade" (barata). Parabéns tende a ser classificado como "marketing" (cerca de 5x mais caro). Responder o aluno em até 24 horas depois que ele escreve é gratuito. **Valores a conferir na tabela oficial:** a Meta está passando a cobrar em reais em 2026, e as fontes de terceiros divergem.
+- **Sem franquia de mensagens automáticas (17/11/2026):** a franquia (Grátis 0, Pro 300, Expansão 1.000 por ciclo) saiu. Como Provedor de Tecnologia, o GestaraHub não paga as mensagens: cada espaço paga a Meta direto, pela forma de pagamento da própria conta do WhatsApp (doc `technical/07` §1.5). O Pro continua com o envio automático; o custo de cada mensagem é do espaço, cobrado pela Meta por categoria (utilidade mais barata que marketing). Para o GestaraHub pagar e embutir no plano, só com um parceiro oficial da Meta; aí uma franquia volta a fazer sentido (em aberto em `pendencias.md`).
 
 ### Contexto
 - Para o aluno, a mensagem precisa vir de quem ele conhece: cobrança vinda de um número desconhecido parece golpe, e as respostas ("vou faltar hoje") precisam chegar na academia.

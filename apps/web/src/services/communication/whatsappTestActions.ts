@@ -4,6 +4,8 @@ import { apiError, forbiddenError, validationError } from "@gestarahub/core/api-
 import { runAction, type ActionResult } from "../server/action";
 import { requireTenant } from "../server/tenant";
 import { whatsappClient, WhatsAppApiError } from "./whatsappClient";
+// Registra as credenciais do espaco (fora do runWorld).
+import "./whatsappCredentials";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export interface SendTestWhatsAppMessagePayload {
@@ -34,10 +36,12 @@ export async function sendTestWhatsAppMessageAction(
     const ctx = await requireTenant();
     ctx.require("communication:manage");
     if (!whatsappTestToolEnabled()) throw forbiddenError("O envio de teste só funciona no ambiente de testes.");
-    if (!whatsappClient.isConfigured()) {
+    // Numero do proprio espaco quando conectado; senao, o do ambiente (fora de producao).
+    const metaConfig = await whatsappClient.configFor(ctx.organizationId);
+    if (!metaConfig) {
       throw apiError(
         "SERVICE_UNAVAILABLE",
-        "Credenciais da Meta não encontradas no ambiente (WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID no .env.local).",
+        "Credenciais da Meta não encontradas: conecte o WhatsApp oficial do espaço ou preencha WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID no .env.local.",
         { httpStatus: 503 },
       );
     }
@@ -71,7 +75,7 @@ export async function sendTestWhatsAppMessageAction(
         // na conta de sandbox da Meta; numa conta real a Meta recusa com 132001.
         // Prefere as boas-vindas (2 parametros: nome e espaco); cai no hello_world
         // quando a conta e a de sandbox.
-        const approved = (await whatsappClient.listTemplates()).filter((t) => t.status === "APPROVED");
+        const approved = (await whatsappClient.listTemplates(metaConfig)).filter((t) => t.status === "APPROVED");
         const welcome = approved.find((t) => t.name === "welcome_student");
         const hello = approved.find((t) => t.name === "hello_world");
         if (welcome) {
@@ -83,7 +87,7 @@ export async function sendTestWhatsAppMessageAction(
           const res = await whatsappClient.sendTemplateMessage(cleanTo, "welcome_student", {
             languageCode: "pt_BR",
             bodyParameters: ["você", String(org?.name ?? "GestaraHub")],
-          });
+          }, metaConfig);
           return {
             success: true,
             messageId: res.messages?.[0]?.id,
@@ -91,7 +95,7 @@ export async function sendTestWhatsAppMessageAction(
           };
         }
         if (hello) {
-          const res = await whatsappClient.sendTemplateMessage(cleanTo, "hello_world", { languageCode: "en_US" });
+          const res = await whatsappClient.sendTemplateMessage(cleanTo, "hello_world", { languageCode: "en_US" }, metaConfig);
           return {
             success: true,
             messageId: res.messages?.[0]?.id,
@@ -107,7 +111,7 @@ export async function sendTestWhatsAppMessageAction(
         payload.messageText?.trim() ||
         "Olá! Esta é uma mensagem de teste enviada pelo GestaraHub via Meta WhatsApp Cloud API.";
 
-      const res = await whatsappClient.sendTextMessage(cleanTo, text);
+      const res = await whatsappClient.sendTextMessage(cleanTo, text, metaConfig);
       return {
         success: true,
         messageId: res.messages?.[0]?.id,
@@ -124,7 +128,7 @@ export async function sendTestWhatsAppMessageAction(
         }
         if (err.code === 131047) {
           throw metaError(
-            "A Meta bloqueou o texto livre porque a janela de 24 horas não está aberta com esse número. Use a opção 'Modelo oficial (hello_world)' para enviar a qualquer momento.",
+            "A Meta bloqueou o texto livre porque a janela de 24 horas não está aberta com esse número. Use a opção 'Modelo aprovado' para enviar a qualquer momento.",
           );
         }
         if (err.code === 131030) {

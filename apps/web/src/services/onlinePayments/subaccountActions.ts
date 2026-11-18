@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { after } from "next/server";
-import type { OnlinePaymentSettings } from "@gestarahub/contracts";
+import { isApiError, type OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ensureSubaccountPixKey, ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
@@ -258,7 +258,14 @@ function stripGatewayFees<T extends Record<string, unknown>>(online: T): T {
  * Consulta o status do gateway da organização no banco de dados.
  */
 export async function getOrganizationGatewayAction(organizationId: string) {
-  await requireSameOrganization(organizationId);
+  try {
+    await requireSameOrganization(organizationId);
+  } catch (err) {
+    // Sessao vencida (usuario removido ou inativado): a leitura de fundo nao
+    // lanca. Lancada, virava 500 na tela antes de o app mandar para o login.
+    if (isApiError(err) && err.httpStatus === 401) return null;
+    throw err;
+  }
   const adminClient = createSupabaseAdminClient();
   const { data } = await adminClient
     .from("organizations")

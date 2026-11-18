@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addDays, format } from "date-fns";
 import type { Subscription } from "@gestarahub/contracts";
 import { dateInSpace } from "@gestarahub/core/date";
-import { addPlanCycle, annualQuotaCycleStart, quotePlanChange } from "@gestarahub/core/subscription-plan";
+import { addPlanCycle, quotePlanChange } from "@gestarahub/core/subscription-plan";
 import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
 
 /**
@@ -326,52 +326,5 @@ describe("renovação e tolerância de 5 dias", () => {
     await plan.runPlanDailyTasks(admin, "https://app.test", { organizationIds: [tenant.organizationId] });
 
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", renewsOn: addPlanCycle(today, "monthly") });
-  });
-});
-
-describe("franquia do WhatsApp no plano anual", () => {
-  async function quotaInDb() {
-    const { data } = await admin.from("whatsapp_connections").select("monthly_quota").eq("organization_id", tenant.organizationId).single();
-    return data?.monthly_quota as { used: number; included: number; cycleStart?: string };
-  }
-
-  it("renova todo mês pela rotina, no dia do ciclo, uma vez por mês", async () => {
-    const renewsOn = inDays(200);
-    await setSubscription(paidPlan({ interval: "yearly", priceCents: 79900, renewsOn }));
-    asaas.getSubscriptionPayments.mockResolvedValue({ data: [] });
-    // Franquia gasta no ciclo passado.
-    await admin
-      .from("whatsapp_connections")
-      .insert({ organization_id: tenant.organizationId, monthly_quota: { used: 300, included: 300, cycleStart: inDays(-40) } })
-      .throwOnError();
-
-    const first = await plan.runPlanDailyTasks(admin, "https://app.test", { organizationIds: [tenant.organizationId] });
-
-    expect(first.quotaRenewed).toBe(1);
-    expect(await quotaInDb()).toEqual({ used: 0, included: 300, cycleStart: annualQuotaCycleStart(renewsOn, today) });
-
-    // No mesmo mes, nao zera de novo o que ja foi usado.
-    await admin
-      .from("whatsapp_connections")
-      .update({ monthly_quota: { ...(await quotaInDb()), used: 12 } })
-      .eq("organization_id", tenant.organizationId)
-      .throwOnError();
-    const again = await plan.runPlanDailyTasks(admin, "https://app.test", { organizationIds: [tenant.organizationId] });
-    expect(again.quotaRenewed).toBe(0);
-    expect((await quotaInDb()).used).toBe(12);
-  });
-
-  it("plano mensal não renova pela rotina (renova no pagamento)", async () => {
-    await setSubscription(paidPlan({ renewsOn: inDays(10) }));
-    asaas.getSubscriptionPayments.mockResolvedValue({ data: [] });
-    await admin
-      .from("whatsapp_connections")
-      .insert({ organization_id: tenant.organizationId, monthly_quota: { used: 300, included: 300, cycleStart: inDays(-40) } })
-      .throwOnError();
-
-    const result = await plan.runPlanDailyTasks(admin, "https://app.test", { organizationIds: [tenant.organizationId] });
-
-    expect(result.quotaRenewed).toBe(0);
-    expect((await quotaInDb()).used).toBe(300);
   });
 });

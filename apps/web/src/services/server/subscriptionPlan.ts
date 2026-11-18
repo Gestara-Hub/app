@@ -46,7 +46,6 @@ import {
 } from "@/lib/subscription";
 import { confirmSubscriptionPayment, readOrganizationSubscription, writeOrganizationSubscription } from "./subscription";
 import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
-import { renewAnnualQuotaIfDue, resetWhatsAppQuota } from "./whatsappQuota";
 
 /**
  * Troca de plano, renovacao e tolerancia do Plano GestaraHub no servidor (doc
@@ -465,7 +464,6 @@ export async function applyScheduledPlanChange(
           changedAt: new Date().toISOString(),
         };
   await writeOrganizationSubscription(admin, organizationId, next);
-  if (next.tier !== "free") await resetWhatsAppQuota(admin, organizationId, next.tier, scheduled.effectiveOn);
   const courtesy = Boolean(subscription.courtesyUntil);
   await recordSubscriptionEvent(admin, organizationId, author, {
     kind: courtesy ? "courtesy_ended" : "change_applied",
@@ -586,7 +584,6 @@ export async function recordSubscriptionPaymentPaid(
   };
   await writeOrganizationSubscription(admin, organizationId, next);
   if (subscription.revertedFrom || advanced) {
-    await resetWhatsAppQuota(admin, organizationId, next.tier, payment.dueDate);
     await recordSubscriptionEvent(admin, organizationId, author, {
       kind: subscription.revertedFrom ? "reactivated" : "renewed",
       before: subscription,
@@ -687,8 +684,6 @@ export interface PlanDailyResult {
   applied: number;
   reverted: number;
   closed: number;
-  /** Franquias do WhatsApp renovadas no mes (plano anual). */
-  quotaRenewed: number;
   emails: number;
   failures: number;
   /** Codigos do registro de erros das falhas. */
@@ -705,7 +700,7 @@ export async function runPlanDailyTasks(
   appUrl: string,
   options: { organizationIds?: string[] } = {},
 ): Promise<PlanDailyResult> {
-  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, quotaRenewed: 0, emails: 0, failures: 0, errorReferences: [] };
+  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, failures: 0, errorReferences: [] };
   let query = admin.from("organizations").select("id, subscription, settings, units(address)").not("subscription", "is", null);
   // So alguns espacos (testes): a rotina nao mexe nos outros.
   if (options.organizationIds) query = query.in("id", options.organizationIds);
@@ -750,8 +745,6 @@ async function runPlanDailyStep(
   const units = (org.units ?? []) as { address?: { state?: string } | string | null }[];
   const today = dateInSpace(new Date(), resolveSpaceTimeZone(settings, units[0]?.address));
   let subscription = await reconcileRenewal(admin, organizationId, org.subscription as Subscription, today);
-  // Plano anual: a franquia do WhatsApp renova todo mes, no dia do ciclo.
-  if (await renewAnnualQuotaIfDue(admin, organizationId, subscription, today)) result.quotaRenewed += 1;
   const step = planDailyStep(subscription, today);
   if (step.applyScheduled) {
     await applyScheduledPlanChange(admin, organizationId, subscription);

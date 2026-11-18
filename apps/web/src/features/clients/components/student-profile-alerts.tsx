@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { nextBirthdayLabel } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { cn } from "@/lib/utils";
-import { whatsappNumber } from "@/lib/whatsapp";
+import { whatsappNumber, openWhatsApp } from "@/lib/whatsapp";
 import {
   chargeReference,
   chargeReminder,
@@ -320,7 +320,7 @@ export function StudentProfileAlerts({
                 const msg = `Olá, ${targetName}! Segue o link de autorização de matrícula e LGPD do aluno(a) ${student.name}: ${url}\n\nPor favor, confirme no link acima.`;
                 const cleanPhone = targetPhone.replace(/\D/g, "");
                 const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-                window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+                openWhatsApp(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`);
               }}
             >
               <MessageCircle className="size-4 text-emerald-600" />

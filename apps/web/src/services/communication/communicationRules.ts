@@ -4,23 +4,36 @@ import {
   type MessageLog,
   type MessageTemplate,
   type MessageTrigger,
+  type MetaTemplateSend,
   type SendMessagePayload,
   type WhatsAppConnection,
   type WhatsAppConnectionView,
-  tierWhatsAppQuota,
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
-import { MESSAGE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
+import {
+  MESSAGE_MAX_LENGTH,
+  fillMessage,
+  isManualTrigger,
+  whatsappNumber,
+} from "@/lib/whatsapp";
+import {
+  masterContent,
+  masterParams,
+  masterTemplateFor,
+  paymentButtonSuffix,
+} from "@/lib/whatsapp/master-templates";
 import { chargeReference } from "@/lib/messages/message-values";
 import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
 import { chargeInvoiceUrl, paymentPageUrl } from "@/lib/payment-page";
-import { store } from "@/services/world/store";
+import { inServerWorld, store } from "@/services/world/store";
+import { afterWorldCommit } from "@/services/world/effects";
 import { tenantHasFeature } from "../subscription/subscriptionService";
 import { dateInSpace } from "@gestarahub/core/date";
 import { whatsappConsentGranted } from "../clients/clientConsentRules";
+import { metaSignupConfigured, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -33,48 +46,35 @@ import { whatsappConsentGranted } from "../clients/clientConsentRules";
  */
 
 export function ensureConnection(): WhatsAppConnection {
-  // Sem assinatura = Gratis (sem envio automatico, franquia 0).
-  const tier = store.organization.subscription?.tier ?? "free";
   if (!store.whatsAppConnection) {
-    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id, tier);
-  } else {
-    // Reconcilia com a cota oficial do tier caso esteja com o default legado de 1000 no Pro
-    const expectedQuota = tierWhatsAppQuota(tier);
-    if (tier === "pro" && store.whatsAppConnection.monthlyQuota.included === 1000) {
-      store.whatsAppConnection.monthlyQuota.included = expectedQuota;
-    }
+    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id);
   }
   return store.whatsAppConnection;
 }
 
 /**
- * O envio automatico pode sair? Ainda nao ha credenciais por espaco (doc
- * technical/07 §1.1): tudo sairia do numero da plataforma. Decisao do usuario
- * (30/10/2026): em producao fica bloqueado ate o numero de cada espaco. Fora
- * de producao segue, com o numero de testes da Meta (que so alcanca os numeros
- * cadastrados como teste); o servidor do e2e tambem.
+ * O envio automatico pode ser ligado? Cada espaco conecta o proprio numero
+ * pelo cadastro guiado da Meta (doc technical/07 §1.1): em producao, so com
+ * ele configurado. Fora de producao (e no servidor do e2e) tambem vale o
+ * numero de testes do ambiente, que so alcanca os numeros cadastrados como
+ * teste. Nada sai pelo numero da plataforma em producao (decisao de 30/10/2026).
  */
 export function officialSendingAvailable(): boolean {
-  return process.env.NODE_ENV !== "production" || Boolean(process.env.E2E_NOW);
+  return platformNumberFallbackAllowed() || metaSignupConfigured();
 }
 
 export function connectionView(): WhatsAppConnectionView {
   const connection = ensureConnection();
   const canUseOfficial = tenantHasFeature("messaging");
   const officialAvailable = officialSendingAvailable();
-  const isQuotaExhausted =
-    connection.monthlyQuota.included > 0 &&
-    connection.monthlyQuota.used >= connection.monthlyQuota.included;
 
+  // Sem franquia desde 17/11/2026: o espaco paga a Meta direto pela propria
+  // conta do WhatsApp (doc technical/07 §1.5); o GestaraHub nao limita os envios.
   return {
     ...connection,
     canUseOfficial,
-    isQuotaExhausted,
     officialAvailable,
-    mode:
-      canUseOfficial && officialAvailable && connection.officialStatus === "connected" && !isQuotaExhausted
-        ? "official"
-        : "assisted",
+    mode: canUseOfficial && officialAvailable && connection.officialStatus === "connected" ? "official" : "assisted",
   };
 }
 
@@ -88,6 +88,23 @@ export function ensureTemplates(): MessageTemplate[] {
   // o espaco antigo ganha o padrao sem perder o que ja tem.
   for (const template of defaults) {
     if (!store.messageTemplates.some((t) => t.trigger === template.trigger)) store.messageTemplates.push(template);
+  }
+  // Modelos mestres (18/11/2026, doc technical/07 §1.7): o texto vem sempre do
+  // mestre (o espaco nao edita o texto do aviso), e o modelo antigo na Meta
+  // (nome sem versao) deixa de valer ate a sincronizacao criar o novo.
+  for (const template of store.messageTemplates) {
+    const master = masterTemplateFor(template.trigger);
+    if (!master) continue;
+    const content = masterContent(master);
+    if (template.content !== content) template.content = content;
+    if (template.availableVariables.join() !== master.variables.join()) template.availableVariables = [...master.variables];
+    if (template.metaTemplateName && template.metaTemplateName !== master.metaName) {
+      delete template.metaTemplateName;
+      delete template.metaTemplateId;
+      delete template.metaBody;
+      delete template.metaStatus;
+      delete template.metaRejectionReason;
+    }
   }
   return store.messageTemplates;
 }
@@ -157,6 +174,65 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
 }
 
 /**
+ * Variaveis que o espaco nunca preenche: a frase delas fica fora do modelo da
+ * Meta, onde toda variavel e obrigatoria. `{link_app}` ainda nao existe; o
+ * link do pagamento so com o pagamento online ligado.
+ */
+/**
+ * Modelo aprovado da Meta para a mensagem (doc technical/07 §1.7): o modelo
+ * mestre do aviso, so quando a mensagem e o texto do espaco com esses valores
+ * (texto editado sai como texto livre) e toda variavel tem valor (a Meta recusa
+ * variavel vazia). Nos avisos de cobranca, o botao "Pagar agora" leva a pagina
+ * de pagamento do aluno; sem ela, nao ha modelo.
+ */
+export function officialTemplateFor(
+  trigger: MessageTrigger | undefined,
+  content: string,
+  variables: Record<string, string | undefined> | undefined,
+): MetaTemplateSend | undefined {
+  const master = masterTemplateFor(trigger);
+  if (!master || !variables) return undefined;
+  const template = ensureTemplates().find((t) => t.trigger === trigger);
+  if (!template) return undefined;
+  if (template.metaStatus === "REJECTED" || template.metaStatus === "DISABLED") return undefined;
+  if (fillMessage(template.content, variables) !== content.trim()) return undefined;
+  const params = masterParams(master, variables);
+  if (!params) return undefined;
+  if (master.paymentButton) {
+    const suffix = paymentButtonSuffix(variables.link_pagamento);
+    if (!suffix) return undefined;
+    return { name: master.metaName, language: "pt_BR", params, buttonUrlSuffix: suffix };
+  }
+  return { name: master.metaName, language: "pt_BR", params };
+}
+
+/**
+ * Envio oficial de um registro: no servidor, nasce "Na fila" e a Meta e
+ * chamada depois da gravacao e da resposta (`messageDelivery.ts`); fora dele
+ * (demonstracao e testes), fica "Entregue" como antes.
+ */
+export function dispatchOfficial(log: MessageLog): void {
+  const deliver = queuedMessageDeliverer;
+  const job: QueuedMessageJob = {
+    logId: log.id,
+    organizationId: log.organizationId,
+    phone: log.recipientPhone,
+    content: log.content,
+    ...(log.metaTemplate ? { template: log.metaTemplate } : {}),
+  };
+  // A fila de efeitos so existe no servidor, durante a gravacao do espaco.
+  if (deliver && afterWorldCommit(() => deliver(job))) {
+    log.status = "queued";
+  } else if (deliver && inServerWorld()) {
+    // Sem efeito depois da gravacao (nao deveria acontecer no servidor): envia agora.
+    log.status = "sent";
+    void deliver(job);
+  } else {
+    log.status = "delivered";
+  }
+}
+
+/**
  * Parabens automatico (so no envio oficial): no dia do aniversario, a partir
  * do horario da regra, uma mensagem por aluno por dia. Roda na rotina de hora
  * em hora (`birthdayGreetingsCron.ts`), nao mais na leitura do historico: antes
@@ -164,7 +240,6 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
  */
 export function runBirthdayGreetings(): number {
   if (!tenantHasFeature("messaging") || connectionView().mode !== "official") return 0;
-  const connection = ensureConnection();
   const template = ensureTemplates().find((t) => t.trigger === "birthday_greeting");
   if (!template?.enabled) return 0;
   const now = new Date();
@@ -174,7 +249,6 @@ export function runBirthdayGreetings(): number {
   const logs = ensureLogs();
   let sent = 0;
   for (const client of store.clients) {
-    if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
     if (client.status !== "active" || !whatsappNumber(client.phone)) continue;
     // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
     if (!whatsappConsentGranted(client)) continue;
@@ -186,18 +260,22 @@ export function runBirthdayGreetings(): number {
         dateInSpace(log.sentAt) === today,
     );
     if (alreadySent) continue;
+    const variables = { aluno: client.name, empresa: store.organization.name };
+    const content = fillMessage(template.content, variables);
     const log = newLog(
       {
         recipientName: client.name,
         recipientPhone: client.phone ?? "",
         trigger: "birthday_greeting",
         clientId: client.id,
-        content: fillMessage(template.content, { aluno: client.name, empresa: store.organization.name }),
+        content,
       },
       "delivered",
     );
+    const metaTemplate = officialTemplateFor("birthday_greeting", content, variables);
+    if (metaTemplate) log.metaTemplate = metaTemplate;
+    dispatchOfficial(log);
     logs.unshift(log);
-    connection.monthlyQuota.used += 1;
     sent += 1;
   }
   if (sent > 0) {
@@ -261,7 +339,6 @@ export function runBillingReminders(): number {
     });
 
     for (const charge of targetCharges) {
-      if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
       const client = (store.clients ?? []).find((cl) => cl.id === charge.studentId);
       if (!client || client.status !== "active" || !whatsappNumber(client.phone)) continue;
       // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
@@ -285,21 +362,17 @@ export function runBillingReminders(): number {
       const onlinePayment = (store.onlinePayments ?? []).find(
         (p) => p.chargeId === charge.id && p.status !== "canceled" && p.status !== "expired",
       );
-      const hasOnlinePayments = Boolean(
-        store.organization.settings?.onlinePayments?.enabled,
-      );
+      // Sempre a pagina do GestaraHub: o botao "Pagar agora" do modelo leva a ela.
+      // Sem recebimentos online, a pagina da cobranca avisa para combinar com o
+      // espaco (doc technical/07 §1.7).
       const paymentLink = onlinePayment?.publicCode
         ? paymentPageUrl(onlinePayment.publicCode)
-        : onlinePayment?.linkUrl
-          ? onlinePayment.linkUrl
-          : hasOnlinePayments
-            ? chargeInvoiceUrl(charge.id)
-            : "";
+        : chargeInvoiceUrl(charge.id);
 
       const className = charge.classGroupId
         ? (store.classGroups ?? []).find((cg) => cg.id === charge.classGroupId)?.name
         : undefined;
-      const content = fillMessage(template.content, {
+      const variables = {
         aluno: client.name,
         valor: amountFormatted,
         vencimento: formattedDueDate,
@@ -312,7 +385,8 @@ export function runBillingReminders(): number {
           cycleIndex: charge.cycleIndex,
           cycleTotal: charge.cycleTotal,
         }),
-      });
+      };
+      const content = fillMessage(template.content, variables);
 
       const log = newLog(
         {
@@ -325,8 +399,10 @@ export function runBillingReminders(): number {
         },
         "delivered",
       );
+      const metaTemplate = officialTemplateFor(template.trigger, content, variables);
+      if (metaTemplate) log.metaTemplate = metaTemplate;
+      dispatchOfficial(log);
       logs.unshift(log);
-      connection.monthlyQuota.used += 1;
       sent += 1;
     }
   }
@@ -345,6 +421,8 @@ export interface QueuedMessageJob {
   organizationId: string;
   phone: string;
   content: string;
+  /** Modelo aprovado da Meta; sem ele, texto livre (janela de 24 horas). */
+  template?: MetaTemplateSend;
 }
 
 let queuedMessageDeliverer: ((job: QueuedMessageJob) => Promise<void>) | null = null;

@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 import { Slot } from "radix-ui"
 
+import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -109,6 +110,22 @@ function SidebarProvider({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
 
+  // No celular, arrastar da borda esquerda abre o menu (no iPhone, em vez de
+  // voltar para a tela anterior); com ele aberto, arrastar para a esquerda fecha.
+  useEdgeSwipe({ enabled: isMobile, menuOpen: openMobile, setMenuOpen: setOpenMobile })
+
+  // Menu aberto no celular: o fundo nao rola. O Radix trava so o <body>; no
+  // iPhone quem rola e o documento (<html>), e a tela de tras seguia rolando.
+  React.useEffect(() => {
+    if (!isMobile || !openMobile) return
+    const html = document.documentElement
+    const previous = html.style.overflow
+    html.style.overflow = "hidden"
+    return () => {
+      html.style.overflow = previous
+    }
+  }, [isMobile, openMobile])
+
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed"
@@ -187,7 +204,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) border-sidebar-border bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-(--sidebar-width) overscroll-contain border-sidebar-border bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

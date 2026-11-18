@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { APP_VERSION_LABEL } from "@/config/release";
 import { formatDate } from "@gestarahub/core/format";
@@ -33,7 +34,12 @@ export function ReleaseNotesSheet({ open, onOpenChange, onSeen }: ReleaseNotesSh
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
           {RELEASE_NOTES.map((note) => (
             <section key={note.version} className="space-y-2">
-              <h3 className="text-sm font-semibold">{formatDate(note.date)}</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold">{formatDate(note.date)}</h3>
+                <Badge variant="secondary" className="font-mono text-[11px]">
+                  v{note.version}
+                </Badge>
+              </div>
               <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground marker:text-primary">
                 {note.items.map((item) => (
                   <li key={item.text} className="break-words">

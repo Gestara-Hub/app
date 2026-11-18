@@ -52,7 +52,7 @@ export function nationalDigitsOf(value: string | null | undefined): string {
 
 /**
  * Celular brasileiro como os gateways de pagamento esperam: so DDD + numero,
- * sem o 55 ("+5592991844219" -> "92991844219"). Numero de outro pais ou
+ * sem o 55 ("+5511987654321" -> "11987654321"). Numero de outro pais ou
  * invalido: undefined (o Asaas so aceita telefone do Brasil).
  */
 export function brazilNationalDigits(value: string | null | undefined): string | undefined {

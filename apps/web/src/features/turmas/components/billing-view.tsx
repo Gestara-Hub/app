@@ -410,7 +410,7 @@ export function BillingView() {
 
   const {
     data: charges,
-    isLoading,
+    isLoading: chargesLoading,
     isError,
     refetch,
   } = useCharges(chargesFilter);
@@ -422,6 +422,8 @@ export function BillingView() {
     : [];
   const earlierOverdueCents = earlierOverdue.reduce((s, c) => s + c.amountCents, 0);
   const chargeActions = useChargeActions();
+  // Espera a organizacao junto das cobrancas: senao "Cobrar online" pisca travado antes de destravar.
+  const isLoading = chargesLoading || (!isError && chargeActions.isOrgPending);
   const { canManage, overRecurringLimit } = chargeActions;
   const withChargeContextMenu = chargeActions.withContextMenu;
   const renderChargeActions = chargeActions.renderActions;

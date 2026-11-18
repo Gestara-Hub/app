@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
-import { planBellAlert, quotaBellAlert } from "../bell-alerts";
+import { metaHealthBellAlert, planBellAlert } from "../bell-alerts";
 
-// Sino: avisos do plano (os leves; os de plano caindo ficam fixos no topo) e
-// da franquia de mensagens automaticas. Hoje e terca 22/09/2026.
+// Sino: avisos do plano (os leves; os de plano caindo ficam fixos no topo). Hoje e terca 22/09/2026.
 
 const TODAY = "2026-09-22";
 const PRO: Subscription = { tier: "pro", interval: "monthly", status: "active", paymentMethod: "pix", renewsOn: "2026-10-12" };
@@ -45,42 +44,37 @@ const CONNECTED: WhatsAppConnectionView = {
   organizationId: "org",
   officialStatus: "connected",
   allowedSendHours: { start: "08:00", end: "20:00" },
-  monthlyQuota: { used: 100, included: 300, cycleStart: "2026-09-12" },
+  monthlyQuota: { used: 0, included: 0 },
   mode: "official",
   canUseOfficial: true,
-  isQuotaExhausted: false,
   officialAvailable: true,
 };
-const withUsed = (used: number, exhausted = false): WhatsAppConnectionView => ({
+const health = (over: Partial<NonNullable<WhatsAppConnectionView["metaHealth"]>>) => ({
   ...CONNECTED,
-  monthlyQuota: { ...CONNECTED.monthlyQuota, used },
-  isQuotaExhausted: exhausted,
+  metaHealth: { checkedAt: "2026-09-22T12:00:00.000Z", sendState: "available" as const, paymentBlocked: false, issues: [], ...over },
 });
 
-describe("aviso da franquia de mensagens no sino", () => {
-  it("com folga, nada", () => {
-    expect(quotaBellAlert(CONNECTED)).toBeNull();
-  });
-
-  it("restando 20% ou menos, avisa quanto falta e leva à Conexão", () => {
-    expect(quotaBellAlert(withUsed(250))).toMatchObject({
-      kind: "messages",
-      title: "Restam 50 mensagens automáticas no ciclo",
-      text: "250 de 300 usadas.",
+describe("aviso da situação na Meta no sino (doc technical/07 §1.6)", () => {
+  it("sem pagamento: urgente, fixo no topo e leva à Conexão", () => {
+    expect(metaHealthBellAlert(health({ sendState: "blocked", paymentBlocked: true }))).toMatchObject({
+      key: "messages:meta:payment",
+      title: "WhatsApp automático bloqueado pela Meta",
+      text: "Cadastre um cartão na sua conta do WhatsApp na Meta.",
+      tone: "danger",
+      pinned: true,
       href: "/communication?tab=connection",
     });
-    expect(quotaBellAlert(withUsed(299))?.title).toBe("Resta 1 mensagem automática no ciclo");
   });
 
-  it("acabou: as mensagens saem com 1 toque até renovar", () => {
-    expect(quotaBellAlert(withUsed(300, true))).toMatchObject({ title: "As mensagens automáticas do ciclo acabaram", tone: "warning" });
+  it("bloqueado por outro motivo: atenção", () => {
+    expect(metaHealthBellAlert(health({ sendState: "blocked" }))).toMatchObject({ key: "messages:meta:blocked", tone: "warning" });
   });
 
-  it("sem envio automático saindo de verdade, nada", () => {
-    expect(quotaBellAlert({ ...withUsed(300, true), officialAvailable: false })).toBeNull();
-    expect(quotaBellAlert({ ...withUsed(300, true), officialStatus: "not_connected" })).toBeNull();
-    expect(quotaBellAlert({ ...withUsed(0), canUseOfficial: false, monthlyQuota: { used: 0, included: 0 } })).toBeNull();
-    expect(quotaBellAlert(undefined)).toBeNull();
+  it("liberado, sem consulta ou sem o número conectado: nada", () => {
+    expect(metaHealthBellAlert(health({ nameStatus: "pending_review" }))).toBeNull();
+    expect(metaHealthBellAlert(CONNECTED)).toBeNull();
+    expect(metaHealthBellAlert({ ...health({ paymentBlocked: true }), officialStatus: "not_connected" })).toBeNull();
+    expect(metaHealthBellAlert(undefined)).toBeNull();
   });
 });
 

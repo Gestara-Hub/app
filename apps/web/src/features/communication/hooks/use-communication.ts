@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import type {
+  ConnectOfficialWhatsAppPayload,
   Id,
   MessageLogFilter,
   MessageTrigger,
@@ -12,7 +13,7 @@ import type {
 } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { queryKeys } from "@/lib/queryKeys";
-import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
+import { fillMessage, openWhatsApp, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
 import { billingService } from "@/services/billing";
 import { clientsService } from "@/services/clients";
 import { communicationService, messageLogsPage } from "@/services/communication";
@@ -45,10 +46,16 @@ export function useWhatsAppConnection(enabled = true) {
 export function useConnectOfficialWhatsApp() {
   const invalidate = useInvalidateCommunication();
   return useMutation({
-    mutationFn: (payload?: { code?: string; phoneNumberId?: string; wabaId?: string }) =>
+    mutationFn: (payload?: ConnectOfficialWhatsAppPayload) =>
       communicationService.connectOfficial(payload),
     onSuccess: invalidate,
   });
+}
+
+/** Botao "Atualizar" da situacao na Meta (doc technical/07 §1.6). */
+export function useRefreshMetaHealth() {
+  const invalidate = useInvalidateCommunication();
+  return useMutation({ mutationFn: () => communicationService.refreshMetaHealth(), onSuccess: invalidate });
 }
 
 export function useDisconnectOfficialWhatsApp() {
@@ -233,6 +240,8 @@ export function useWhatsAppSend() {
       trigger: input.trigger,
       clientId: input.recipient.clientId,
       chargeId: input.chargeId,
+      // No oficial, texto igual ao do modelo sai pelo modelo aprovado da Meta (o servidor confere).
+      variables: { aluno: input.recipient.name, empresa: organization?.name, ...input.values },
     };
     if (mode === "official") {
       // A API envia sozinha: um toque num aviso nunca manda direto, confirma
@@ -254,8 +263,9 @@ export function useWhatsAppSend() {
       });
       return;
     }
-    window.open(whatsappLink(phone, content), "_blank", "noopener,noreferrer");
+    // Registro antes de sair: no app instalado o WhatsApp abre na mesma janela.
     register.mutate(payload);
+    openWhatsApp(whatsappLink(phone, content));
   }
 
   return {

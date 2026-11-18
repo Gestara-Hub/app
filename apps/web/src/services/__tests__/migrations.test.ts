@@ -333,7 +333,7 @@ describe("v30: WhatsApp com o numero do proprio espaco", () => {
 
   it("sem sessao antiga usa o padrao", async () => {
     const { store } = await hydrate(29, oldWorld(() => {}));
-    // Padrao do Gratis: franquia 0 (o plano pago zera e define a franquia ao ser pago).
+    // Padrao: sem franquia (sem uso desde 17/11/2026).
     expect(store.whatsAppConnection).toEqual({
       organizationId: ACADEMY_ORG,
       officialStatus: "not_connected",
@@ -412,7 +412,8 @@ describe("v31: textos das mensagens seguem a area do espaco", () => {
         t.messageTemplates = defaultMessageTemplates(t.organization.id);
       }),
     );
-    expect(contentOf(store, "absence_alert")).toContain("tatame");
+    // Desde 18/11/2026 o texto e o mestre, igual em todas as areas.
+    expect(contentOf(store, "absence_alert")).toContain("Seu lugar continua guardado");
   });
 });
 
@@ -644,8 +645,9 @@ describe("v36: modelos de WhatsApp do lembrete de cobrança e do pacote acabando
         withoutNew(t);
       }),
     );
-    expect(find(store, "package_ending")[0].content).toContain("seguir treinando");
-    expect(find(store, "charge_reminder")[0].content).toContain("Bons treinos!");
+    // Desde 18/11/2026 o texto e o mestre, igual em todas as areas.
+    expect(find(store, "package_ending")[0].content).toContain("seguir com as aulas");
+    expect(find(store, "charge_reminder")[0].content).toContain("Lembrete de pagamento:");
   });
 
   it("não duplica quem já tem e não mexe em quem está sem modelos", async () => {
@@ -685,7 +687,7 @@ describe("v37: modelos de WhatsApp so de envio manual", () => {
       expect(find(store, trigger)).toEqual([own.find((x) => x.trigger === trigger)]);
       expect(find(store, trigger)[0].enabled).toBe(false);
     }
-    expect(find(store, "class_canceled")[0].content).toContain("treino");
+    expect(find(store, "class_canceled")[0].content).toContain("a aula de hoje foi cancelada");
     expect(find(store, "birthday_greeting")[0].content).toBe("Texto meu");
     expect(saved()?.v).toBe(CURRENT_VERSION);
   });
@@ -720,7 +722,7 @@ describe("v38: atraso de 10 dias com o valor", () => {
     if (otherId) critical(world.tenants[otherId]).content = "Texto meu";
     const { store, saved } = await hydrate(37, world);
     expect(critical(store).content).toContain("{valor}");
-    expect(critical(store).content).toMatch(/Obrigado!$/);
+    expect(critical(store).content).toContain("Valor devido: {valor}");
     if (otherId) expect(critical(saved()!.data.tenants[otherId]).content).toBe("Texto meu");
   });
 });

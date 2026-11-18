@@ -18,6 +18,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.18",
+    date: "2026-11-18",
+    items: [
+      { text: "WhatsApp automático pelo número do seu espaço, no Profissional." },
+      { text: "Situação do seu WhatsApp na Meta, com aviso de pagamento." },
+      { text: "Lembretes de cobrança com botão Pagar agora no WhatsApp." },
+      { text: "Endereço de cobrança no checkout do plano." },
+      { text: "No celular, arrastar da borda esquerda abre o menu." },
+      { text: "Novidades mostram o número de cada versão." },
+    ],
+  },
+  {
     version: "2026.11.16-2",
     date: "2026-11-16",
     items: [

@@ -1,11 +1,12 @@
-import type { MessageTemplate, UpdateTemplatePayload, MetaTemplateInfo } from "@gestarahub/contracts";
-import { TEMPLATE_MAX_LENGTH, TRIGGER_TO_META_TEMPLATE, isManualTrigger } from "@/lib/whatsapp";
-import { charCount } from "@/lib/text";
+import type { MessageTemplate, UpdateTemplatePayload } from "@gestarahub/contracts";
+import { TRIGGER_TO_META_TEMPLATE, isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
+import { store } from "@/services/world/store";
 import { ensureTemplates } from "./communicationRules";
 import { whatsappClient } from "./whatsappClient";
+import { syncMetaTemplates, type MetaTemplatesSyncResult } from "./metaTemplatesSync";
 import { logWarn } from "@/lib/log";
 
 /** Faixas validas de prazo por gatilho configuravel. */
@@ -23,17 +24,17 @@ export const templatesService = {
   listTemplates(): Promise<MessageTemplate[]> {
     return readOp(async () => {
       const templates = ensureTemplates();
-      if (whatsappClient.isConfigured()) {
+      const metaConfig = await whatsappClient.configFor(store.organization.id);
+      if (metaConfig) {
         try {
-          const metaList = await whatsappClient.listTemplates();
+          const metaList = await whatsappClient.listTemplates(metaConfig);
           for (const t of templates) {
-            const metaMapping = TRIGGER_TO_META_TEMPLATE[t.trigger];
-            if (metaMapping) {
-              const match = metaList.find((m) => m.name === metaMapping.templateName);
-              if (match) {
-                t.metaStatus = match.status;
-                t.metaTemplateName = match.name;
-              }
+            // Situacao na hora (o aviso da Meta grava no banco; isto cobre o atraso).
+            const name = t.metaTemplateName ?? TRIGGER_TO_META_TEMPLATE[t.trigger]?.templateName;
+            const match = name ? metaList.find((m) => m.name === name) : undefined;
+            if (match) {
+              t.metaStatus = match.status;
+              t.metaTemplateName = match.name;
             }
           }
         } catch (err) {
@@ -76,42 +77,15 @@ export const templatesService = {
         }
       }
 
-      let contentChanged = false;
-      if (payload.content !== undefined) {
-        if (!payload.content.trim()) {
-          throw validationError([{ field: "content", message: "Escreva o texto da mensagem." }]);
-        }
-        // Folga para os nomes: a mensagem enviada aceita ate 1000 caracteres.
-        if (charCount(payload.content.trim()) > TEMPLATE_MAX_LENGTH) {
-          throw validationError([{ field: "content", message: `Use no máximo ${TEMPLATE_MAX_LENGTH} caracteres.` }]);
-        }
-        if (template.content !== payload.content.trim()) {
-          contentChanged = true;
-        }
-        template.content = payload.content.trim();
+      // O texto do aviso e o do modelo mestre (doc technical/07 §1.7): o espaco
+      // nao edita (o mesmo texto em todo espaco e o que a Meta aprovou).
+      if (payload.content !== undefined && payload.content.trim() !== template.content) {
+        throw validationError([{ field: "content", message: "O texto deste aviso é fixo." }]);
       }
       if (payload.enabled !== undefined) template.enabled = payload.enabled;
       if (payload.sendHour !== undefined) template.sendHour = payload.sendHour;
       if (payload.daysOffset !== undefined) template.daysOffset = payload.daysOffset;
       template.updatedAt = nowIso();
-
-      // Se o conteúdo mudou e a Meta está configurada, submete a nova versão para análise da Meta
-      if (contentChanged && whatsappClient.isConfigured()) {
-        const metaMapping = TRIGGER_TO_META_TEMPLATE[template.trigger];
-        if (metaMapping) {
-          try {
-            const metaRes = await whatsappClient.createOrUpdateTemplate({
-              name: metaMapping.templateName,
-              category: metaMapping.category,
-              content: template.content,
-            });
-            template.metaStatus = metaRes.status;
-            template.metaTemplateName = metaMapping.templateName;
-          } catch (err) {
-            logWarn(`[templatesService] Erro ao submeter template ${metaMapping.templateName} à Meta:`, err);
-          }
-        }
-      }
 
       auditLogService.record({
         action: "updated",
@@ -122,23 +96,13 @@ export const templatesService = {
     });
   },
 
-  /** Consulta e sincroniza os status dos templates da Meta em tempo real. */
-  syncMetaTemplates(): Promise<MetaTemplateInfo[]> {
+  /** Cria o que falta na conta do espaco, envia os textos mudados e traz a situacao de cada modelo. */
+  syncMetaTemplates(): Promise<MetaTemplatesSyncResult> {
     return writeOp(async () => {
-      if (!whatsappClient.isConfigured()) return [];
-      const metaList = await whatsappClient.listTemplates();
-      const templates = ensureTemplates();
-      for (const t of templates) {
-        const metaMapping = TRIGGER_TO_META_TEMPLATE[t.trigger];
-        if (metaMapping) {
-          const match = metaList.find((m) => m.name === metaMapping.templateName);
-          if (match) {
-            t.metaStatus = match.status;
-            t.metaTemplateName = match.name;
-          }
-        }
-      }
-      return metaList;
+      assertFeature("messaging");
+      const metaConfig = await whatsappClient.configFor(store.organization.id);
+      if (!metaConfig) return { created: 0, edited: 0, failed: 0 };
+      return syncMetaTemplates(metaConfig);
     });
   },
 };
