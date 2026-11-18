@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { AddressFields } from "@/components/form";
+import { SCALE_PLAN_ON_SALE } from "@/config/subscription";
 import { FieldShell, fieldAria } from "@/components/form/field-shell";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization, useUnit } from "@/features/settings";
@@ -101,7 +102,8 @@ export function SubscriptionCheckoutView() {
 
   // Lê parâmetros da URL (?tier=pro|scale & ?interval=monthly|yearly)
   const paramTier = searchParams.get("tier");
-  const initialTier: "pro" | "scale" = paramTier === "scale" ? "scale" : "pro";
+  // Expansao fora da venda: o link ?tier=scale cai no Profissional.
+  const initialTier: "pro" | "scale" = paramTier === "scale" && SCALE_PLAN_ON_SALE ? "scale" : "pro";
 
   const paramInterval = searchParams.get("interval");
   const initialInterval: SubscriptionInterval =
@@ -559,7 +561,8 @@ export function SubscriptionCheckoutView() {
                     noValidate
                     className="space-y-6"
                   >
-                    {/* Plano escolhido: Profissional ou Expansão */}
+                    {/* Plano escolhido: Profissional ou Expansão (so com o Expansão a venda) */}
+                    {SCALE_PLAN_ON_SALE ? (
                     <div className="space-y-2.5">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Plano escolhido
@@ -612,6 +615,7 @@ export function SubscriptionCheckoutView() {
                         </button>
                       </div>
                     </div>
+                    ) : null}
 
                     {/* Seletor Mensal / Anual */}
                     <div className="rounded-xl border border-border/80 bg-muted/30 p-4 space-y-3">

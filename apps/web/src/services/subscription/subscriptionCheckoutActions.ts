@@ -15,7 +15,7 @@ import {
 import { dateInSpace } from "@gestarahub/core/date";
 import { addPlanCycle } from "@gestarahub/core/subscription-plan";
 import type { Subscription } from "@gestarahub/contracts";
-import { SUBSCRIPTION_PRICES } from "@/config/subscription";
+import { SCALE_PLAN_ON_SALE, SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
 import { encodeSubscriptionReference } from "@/lib/subscription";
@@ -145,6 +145,18 @@ export async function createAsaasSubscriptionCheckoutAction(
   const author = async () => ({ actor: await userActor(createSupabaseAdminClient(), ctx) });
   const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
   const config = getAsaasConfig();
+
+  if (input.tier === "scale" && !SCALE_PLAN_ON_SALE) {
+    return {
+      success: false,
+      subscriptionId: "",
+      customerId: "",
+      billingType: input.billingType,
+      status: "pending",
+      value: priceConfig.value,
+      error: "O plano Expansão ainda não está disponível.",
+    };
+  }
 
   const addressError = checkoutAddressError(input.customer.address);
   if (addressError) {

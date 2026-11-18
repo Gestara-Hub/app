@@ -28,7 +28,7 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "@/features/settings";
 import { formatCents } from "@gestarahub/core/format";
-import { SUBSCRIPTION_PRICES } from "@/config/subscription";
+import { SUBSCRIPTION_PRICES, SCALE_PLAN_ON_SALE } from "@/config/subscription";
 import { platformFeeSentence, proPlatformFeeLabel } from "@gestarahub/core/payment-fees";
 import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
@@ -385,13 +385,6 @@ export function PlansView() {
     </>
   );
 }
-
-/**
- * Expansao fora da vitrine (17/11/2026): os recursos dele (multiunidade,
- * analise preditiva, suporte prioritario) ainda nao existem. Quem ja esta nele
- * continua vendo o card. Ligar quando o plano existir.
- */
-const SCALE_PLAN_ON_SALE = false;
 
 const RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, scale: 2 };
 
