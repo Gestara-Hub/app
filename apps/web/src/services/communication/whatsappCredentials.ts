@@ -1,7 +1,9 @@
 import { randomInt } from "node:crypto";
 import { apiError } from "@gestarahub/core/api-error";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { WhatsAppMetaHealth } from "@gestarahub/contracts";
 import { getWhatsAppConfig, getWhatsAppPhoneNumberDetails, WhatsAppApiError, type WhatsAppConfig } from "@/lib/whatsapp";
+import { META_HEALTH_FIELDS, parseMetaHealth, type RawMetaHealth } from "@/lib/whatsapp/meta-health";
 import { logError, logWarn } from "@/lib/log";
 import {
   setWhatsAppCredentialsGateway,
@@ -231,6 +233,43 @@ async function syncTemplates(organizationId: string): Promise<void> {
   }
 }
 
-export const whatsappCredentialsGateway: WhatsAppCredentialsGateway = { connect, disconnect, configFor, syncTemplates };
+/**
+ * Situacao do numero e da conta na Meta (doc technical/07 §1.6), com o token do
+ * proprio espaco. Sem credencial ou com a Meta fora do ar: null (a tela mantem
+ * a ultima situacao gravada).
+ */
+async function fetchHealth(organizationId: string): Promise<WhatsAppMetaHealth | null> {
+  const row = await readCredentials(organizationId);
+  if (!row?.token) return null;
+  try {
+    const raw = await graph<RawMetaHealth>(`${row.phone_number_id}?fields=${META_HEALTH_FIELDS}`, { token: row.token });
+    return parseMetaHealth(raw, new Date().toISOString());
+  } catch (err) {
+    logWarn("[whatsappCredentials] Situação na Meta não consultada:", err);
+    return null;
+  }
+}
+
+/** Consulta e grava direto na conexao (rotina e depois de conectar, fora de um espaco carregado). */
+async function refreshHealth(organizationId: string): Promise<WhatsAppMetaHealth | null> {
+  const health = await fetchHealth(organizationId);
+  if (!health) return null;
+  const { error } = await createSupabaseAdminClient()
+    .from("whatsapp_connections")
+    .update({ meta_health: health })
+    .eq("organization_id", organizationId)
+    .eq("official_status", "connected");
+  if (error) logWarn("[whatsappCredentials] Situação na Meta não gravada:", error);
+  return health;
+}
+
+export const whatsappCredentialsGateway: WhatsAppCredentialsGateway = {
+  connect,
+  disconnect,
+  configFor,
+  syncTemplates,
+  fetchHealth,
+  refreshHealth,
+};
 
 setWhatsAppCredentialsGateway(whatsappCredentialsGateway);

@@ -52,6 +52,12 @@ export function useConnectOfficialWhatsApp() {
   });
 }
 
+/** Botao "Atualizar" da situacao na Meta (doc technical/07 §1.6). */
+export function useRefreshMetaHealth() {
+  const invalidate = useInvalidateCommunication();
+  return useMutation({ mutationFn: () => communicationService.refreshMetaHealth(), onSuccess: invalidate });
+}
+
 export function useDisconnectOfficialWhatsApp() {
   const invalidate = useInvalidateCommunication();
   return useMutation({ mutationFn: () => communicationService.disconnectOfficial(), onSuccess: invalidate });

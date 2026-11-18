@@ -65,6 +65,38 @@ export function whatsappPendingConnectionBellAlert(connection: WhatsAppConnectio
   };
 }
 
+/**
+ * Situacao na Meta (doc technical/07 §1.6): com o numero conectado e a Meta
+ * bloqueando as mensagens iniciadas pelo espaco. Falta de pagamento e urgente
+ * (fica no topo ate resolver): os lembretes automaticos param de sair.
+ */
+export function metaHealthBellAlert(connection: WhatsAppConnectionView | undefined): BellAlert | null {
+  const health = connection?.metaHealth;
+  if (!connection?.canUseOfficial || connection.officialStatus !== "connected" || !health) return null;
+  const base = { kind: "messages" as const, href: "/communication?tab=connection", action: "Ver" };
+  if (health.paymentBlocked) {
+    return {
+      ...base,
+      key: "messages:meta:payment",
+      title: "WhatsApp automático bloqueado pela Meta",
+      text: "Cadastre um cartão na sua conta do WhatsApp na Meta.",
+      tone: "danger",
+      pinned: true,
+      modal: true,
+    };
+  }
+  if (health.sendState === "blocked") {
+    return {
+      ...base,
+      key: "messages:meta:blocked",
+      title: "WhatsApp automático bloqueado pela Meta",
+      text: "As mensagens automáticas não estão saindo. Veja o motivo.",
+      tone: "warning",
+    };
+  }
+  return null;
+}
+
 /** Avisos de documento no sino: no maximo 5, o mais urgente primeiro. */
 export const MAX_DOCUMENT_BELL_ALERTS = 5;
 

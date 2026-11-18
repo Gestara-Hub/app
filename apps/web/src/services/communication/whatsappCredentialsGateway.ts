@@ -1,4 +1,4 @@
-import type { WhatsAppOnboarding } from "@gestarahub/contracts";
+import type { WhatsAppMetaHealth, WhatsAppOnboarding } from "@gestarahub/contracts";
 import type { WhatsAppConfig } from "@/lib/whatsapp";
 
 /**
@@ -30,6 +30,10 @@ export interface WhatsAppCredentialsGateway {
   disconnect(organizationId: string): Promise<void>;
   /** Envia os modelos do espaco a Meta numa gravacao propria (depois de conectar). */
   syncTemplates(organizationId: string): Promise<void>;
+  /** Situacao do numero e da conta na Meta, sem gravar (null sem credencial ou com falha). */
+  fetchHealth(organizationId: string): Promise<WhatsAppMetaHealth | null>;
+  /** Consulta e grava a situacao direto na conexao (fora de um espaco carregado). */
+  refreshHealth(organizationId: string): Promise<WhatsAppMetaHealth | null>;
   /** Configuracao da Meta do espaco (token, id do numero e da conta), ou null sem credencial. */
   configFor(organizationId: string): Promise<Partial<WhatsAppConfig> | null>;
 }

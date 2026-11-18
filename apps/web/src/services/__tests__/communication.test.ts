@@ -158,6 +158,8 @@ describe("conexao do WhatsApp", () => {
       disconnect: vi.fn(async () => undefined),
       configFor: vi.fn(async () => null),
       syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => null),
+      refreshHealth: vi.fn(async () => null),
     };
     setWhatsAppCredentialsGateway(gateway);
     vi.stubEnv("NODE_ENV", "production");
@@ -208,6 +210,8 @@ describe("conexao do WhatsApp", () => {
       disconnect: vi.fn(),
       configFor: vi.fn(async () => null),
       syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => null),
+      refreshHealth: vi.fn(async () => null),
     });
     try {
       await expect(
@@ -1217,5 +1221,53 @@ describe("compositor e filtro por periodo", () => {
 
     const page = await communicationService.listLogsPaginated({ dateFrom: "2026-09-20", dateTo: "2026-09-22" });
     expect(page.items.map((l) => l.recipientName)).toEqual(["Recente"]);
+  });
+});
+
+describe("situação na Meta (doc technical/07 §1.6)", () => {
+  const health = {
+    checkedAt: "2026-09-22T12:00:00.000Z",
+    sendState: "blocked" as const,
+    paymentBlocked: true,
+    issues: [{ code: 141006, payment: true, text: "Sem pagamento." }],
+  };
+
+  function fakeGateway(result: typeof health | null) {
+    return {
+      connect: vi.fn(),
+      disconnect: vi.fn(async () => undefined),
+      configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
+      fetchHealth: vi.fn(async () => result),
+      refreshHealth: vi.fn(async () => result),
+    };
+  }
+
+  it("Atualizar grava a situação na conexão; desconectar apaga", async () => {
+    await connectOfficial();
+    setWhatsAppCredentialsGateway(fakeGateway(health));
+    const view = await communicationService.refreshMetaHealth();
+    expect(view.metaHealth).toEqual(health);
+    expect(store.whatsAppConnection?.metaHealth).toEqual(health);
+
+    const after = await communicationService.disconnectOfficial();
+    expect(after.metaHealth).toBeUndefined();
+  });
+
+  it("Meta fora do ar: avisa e mantém a última situação", async () => {
+    await connectOfficial();
+    store.whatsAppConnection!.metaHealth = health;
+    setWhatsAppCredentialsGateway(fakeGateway(null));
+    await expect(communicationService.refreshMetaHealth()).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    expect(store.whatsAppConnection?.metaHealth).toEqual(health);
+  });
+
+  it("sem o número conectado, não consulta", async () => {
+    await connectOfficial();
+    await communicationService.disconnectOfficial();
+    const gateway = fakeGateway(health);
+    setWhatsAppCredentialsGateway(gateway);
+    await communicationService.refreshMetaHealth();
+    expect(gateway.fetchHealth).not.toHaveBeenCalled();
   });
 });

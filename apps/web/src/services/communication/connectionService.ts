@@ -11,7 +11,8 @@ import { assertFeature } from "../subscription/subscriptionService";
 import { ensureConnection, connectionView, officialSendingAvailable } from "./communicationRules";
 import { getWhatsAppCredentialsGateway, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
 import { afterWorldCommit } from "@/services/world/effects";
-import { logError } from "@/lib/log";
+import { logError, logWarn } from "@/lib/log";
+import { syncMetaTemplates } from "./metaTemplatesSync";
 
 /** Conexao do WhatsApp: status, ligar e desligar a API oficial e ajustes. */
 export const connectionService = {
@@ -67,6 +68,10 @@ export const connectionService = {
         // na hora prendia o botao uns 30 s). Falha num modelo nao desfaz a conexao.
         const organizationId = store.organization.id;
         afterWorldCommit(() => gateway.syncTemplates(organizationId));
+        // Situacao na Meta (pagamento, nome, limite) logo depois de conectar (§1.6).
+        afterWorldCommit(async () => {
+          await gateway.refreshHealth(organizationId);
+        });
       } else if (!platformNumberFallbackAllowed()) {
         // Em producao, so com as credenciais do proprio numero.
         throw apiError("SERVICE_UNAVAILABLE", "Conclua a conexão na janela da Meta para ligar o envio automático.", {
@@ -107,6 +112,38 @@ export const connectionService = {
       return connectionView();
     });
   },
+  /**
+   * Consulta agora a situacao do numero e da conta na Meta (botao "Atualizar"
+   * da Conexao, doc technical/07 §1.6). Sem a ponte com a Meta (navegador,
+   * demonstracao, testes), devolve a conexao como esta.
+   */
+  refreshMetaHealth(): Promise<WhatsAppConnectionView> {
+    return writeOp(async () => {
+      assertFeature("messaging");
+      const connection = ensureConnection();
+      if (connection.officialStatus !== "connected") return connectionView();
+      const gateway = getWhatsAppCredentialsGateway();
+      if (!gateway) return connectionView();
+      const health = await gateway.fetchHealth(store.organization.id);
+      if (!health) {
+        throw apiError("SERVICE_UNAVAILABLE", "Não foi possível consultar a Meta agora. Tente de novo em instantes.", {
+          httpStatus: 502,
+        });
+      }
+      connection.metaHealth = health;
+      // Os modelos tambem (doc technical/07 §1.7): cria os que faltam e traz a
+      // situacao de cada um. Falha aqui nao impede a situacao de aparecer.
+      const config = await gateway.configFor(store.organization.id);
+      if (config) {
+        try {
+          await syncMetaTemplates(config);
+        } catch (err) {
+          logWarn("[connectionService] Modelos não sincronizados ao atualizar:", err);
+        }
+      }
+      return connectionView();
+    });
+  },
   disconnectOfficial(): Promise<WhatsAppConnectionView> {
     return writeOp(async () => {
       assertFeature("messaging");
@@ -117,6 +154,7 @@ export const connectionService = {
       delete connection.phoneNumber;
       delete connection.displayName;
       delete connection.connectedAt;
+      delete connection.metaHealth;
 
       auditLogService.record({
         action: "updated",

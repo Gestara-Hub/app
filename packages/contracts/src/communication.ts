@@ -14,6 +14,40 @@ export type WhatsAppSendMode = "assisted" | "official";
 /** Conexao do numero do espaco com a API oficial da Meta. */
 export type WhatsAppOfficialStatus = "not_connected" | "pending" | "connected";
 
+/** Envio de mensagens iniciadas pelo espaco, segundo a Meta (`health_status`). */
+export type WhatsAppMetaSendState = "available" | "limited" | "blocked";
+
+/** Situacao do nome exibido do numero na Meta (`name_status`). */
+export type WhatsAppMetaNameStatus = "approved" | "pending_review" | "declined" | "other";
+
+/** Qualidade do numero na Meta (`quality_rating`). */
+export type WhatsAppMetaQuality = "green" | "yellow" | "red" | "unknown";
+
+/** Um problema apontado pela Meta, ja em portugues. */
+export interface WhatsAppMetaIssue {
+  code: number;
+  text: string;
+  /** Falta ou falha da forma de pagamento da conta do WhatsApp na Meta. */
+  payment: boolean;
+}
+
+/**
+ * Situacao do numero e da conta do WhatsApp do espaco na Meta (17/11/2026, doc
+ * technical/07 §1.6): consultada ao conectar, de hora em hora pela rotina e no
+ * botao "Atualizar" da Conexao.
+ */
+export interface WhatsAppMetaHealth {
+  checkedAt: DateTimeISO;
+  sendState: WhatsAppMetaSendState;
+  /** A Meta bloqueia as mensagens iniciadas pelo espaco por falta de pagamento. */
+  paymentBlocked: boolean;
+  nameStatus?: WhatsAppMetaNameStatus;
+  quality?: WhatsAppMetaQuality;
+  /** Conversas iniciadas pelo espaco por dia (`messaging_limit_tier`); sem limite = null. */
+  dailyLimit?: number | null;
+  issues: WhatsAppMetaIssue[];
+}
+
 export interface WhatsAppConnection {
   organizationId: Id;
   officialStatus: WhatsAppOfficialStatus;
@@ -37,6 +71,8 @@ export interface WhatsAppConnection {
     included: number;
     cycleStart?: string;
   };
+  /** Situacao na Meta (so com o numero conectado e consultado). */
+  metaHealth?: WhatsAppMetaHealth;
 }
 
 /** Leitura da conexao com o modo em uso (Pro e conectado = oficial). */

@@ -25,6 +25,7 @@ import {
   useWhatsAppConnection,
 } from "../hooks/use-communication";
 import { useMetaEmbeddedSignup } from "../hooks/use-meta-embedded-signup";
+import { MetaHealthPanel } from "./meta-health-panel";
 import { TestWhatsAppDialog } from "./test-whatsapp-dialog";
 
 const ASSISTED_STEPS = [
@@ -336,10 +337,13 @@ export function ConnectionSettingsTab() {
           </div>
         </div>
         <div className="border-t border-border/60 pt-4">
+          <MetaHealthPanel connection={connection} canManage={canManage} />
+        </div>
+        <div className="border-t border-border/60 pt-4">
           <SendHoursForm connection={connection} disabled={!canManage} />
         </div>
         {/* Sem franquia desde 17/11/2026: o espaco paga a Meta direto (doc technical/07 §1.5). */}
-        <MetaCostNotice />
+        <MetaCostNotice paymentOk={connection.metaHealth ? !connection.metaHealth.paymentBlocked : false} />
       </section>
       {dialog}
     </div>

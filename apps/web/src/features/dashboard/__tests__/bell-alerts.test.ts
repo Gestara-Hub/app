@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Subscription } from "@gestarahub/contracts";
-import { planBellAlert } from "../bell-alerts";
+import type { Subscription, WhatsAppConnectionView } from "@gestarahub/contracts";
+import { metaHealthBellAlert, planBellAlert } from "../bell-alerts";
 
 // Sino: avisos do plano (os leves; os de plano caindo ficam fixos no topo). Hoje e terca 22/09/2026.
 
@@ -37,6 +37,44 @@ describe("aviso do plano no sino", () => {
       planBellAlert({ ...PRO, renewsOn: "2026-09-24", scheduledChange: { tier: "free", effectiveOn: "2026-09-24" } }, TODAY),
     ).toBeNull();
     expect(planBellAlert(undefined, TODAY)).toBeNull();
+  });
+});
+
+const CONNECTED: WhatsAppConnectionView = {
+  organizationId: "org",
+  officialStatus: "connected",
+  allowedSendHours: { start: "08:00", end: "20:00" },
+  monthlyQuota: { used: 0, included: 0 },
+  mode: "official",
+  canUseOfficial: true,
+  officialAvailable: true,
+};
+const health = (over: Partial<NonNullable<WhatsAppConnectionView["metaHealth"]>>) => ({
+  ...CONNECTED,
+  metaHealth: { checkedAt: "2026-09-22T12:00:00.000Z", sendState: "available" as const, paymentBlocked: false, issues: [], ...over },
+});
+
+describe("aviso da situação na Meta no sino (doc technical/07 §1.6)", () => {
+  it("sem pagamento: urgente, fixo no topo e leva à Conexão", () => {
+    expect(metaHealthBellAlert(health({ sendState: "blocked", paymentBlocked: true }))).toMatchObject({
+      key: "messages:meta:payment",
+      title: "WhatsApp automático bloqueado pela Meta",
+      text: "Cadastre um cartão na sua conta do WhatsApp na Meta.",
+      tone: "danger",
+      pinned: true,
+      href: "/communication?tab=connection",
+    });
+  });
+
+  it("bloqueado por outro motivo: atenção", () => {
+    expect(metaHealthBellAlert(health({ sendState: "blocked" }))).toMatchObject({ key: "messages:meta:blocked", tone: "warning" });
+  });
+
+  it("liberado, sem consulta ou sem o número conectado: nada", () => {
+    expect(metaHealthBellAlert(health({ nameStatus: "pending_review" }))).toBeNull();
+    expect(metaHealthBellAlert(CONNECTED)).toBeNull();
+    expect(metaHealthBellAlert({ ...health({ paymentBlocked: true }), officialStatus: "not_connected" })).toBeNull();
+    expect(metaHealthBellAlert(undefined)).toBeNull();
   });
 });
 

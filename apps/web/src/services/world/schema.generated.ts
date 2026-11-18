@@ -2784,6 +2784,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "meta_health": {
+        "type": "jsonb",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   }

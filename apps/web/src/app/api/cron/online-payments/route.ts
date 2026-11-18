@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runAllBirthdayGreetings } from "@/services/communication/birthdayGreetingsCron";
 import { runAllBillingReminders } from "@/services/communication/billingRemindersCron";
+import { refreshAllMetaHealth } from "@/services/communication/whatsappHealthCron";
 import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
 import { reportError } from "@/lib/log";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -12,7 +13,8 @@ import { releaseAllExpiredEventReservations } from "@/services/events/eventReser
  * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
  * cancela no Asaas, que aceita pagamento por ate 12 meses depois do
  * vencimento; tenta de novo os cancelamentos que falharam. Parabens automatico
- * dos espacos com o WhatsApp oficial (doc 19, secao 12). Protegida por CRON_SECRET.
+ * dos espacos com o WhatsApp oficial (doc 19, secao 12) e a situacao de cada
+ * numero na Meta (doc technical/07 §1.6). Protegida por CRON_SECRET.
  */
 export const runtime = "nodejs";
 // Até 5 minutos: muitas chamadas ao Asaas numa rodada.
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   const runId = await startJobRun(admin, "cron.online-payments");
   const errorReferences: string[] = [];
-  const result = { expired: 0, retriedCancels: 0, releasedReservations: 0, birthdayGreetings: 0, billingReminders: 0, failures: 0 };
+  const result = { expired: 0, retriedCancels: 0, releasedReservations: 0, birthdayGreetings: 0, billingReminders: 0, metaHealthChecked: 0, metaHealthBlocked: 0, failures: 0 };
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
@@ -61,6 +63,17 @@ export async function POST(req: Request) {
     result.failures += greetings.failures;
   } catch (err) {
     errorReferences.push(await reportError("cron.hourly.parabens", err, { source: "cron" }));
+    result.failures += 1;
+  }
+
+  // Situacao na Meta dos numeros conectados (doc technical/07 §1.6): uma consulta por espaco.
+  try {
+    const health = await refreshAllMetaHealth(started + 60_000);
+    result.metaHealthChecked = health.checked;
+    result.metaHealthBlocked = health.blocked;
+    result.failures += health.failures;
+  } catch (err) {
+    errorReferences.push(await reportError("cron.hourly.situacao-meta", err, { source: "cron" }));
     result.failures += 1;
   }
 

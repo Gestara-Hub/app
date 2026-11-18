@@ -51,6 +51,8 @@ beforeEach(() => {
     connect: vi.fn(),
     disconnect: vi.fn(),
     syncTemplates: vi.fn(async () => undefined),
+    fetchHealth: vi.fn(async () => null),
+    refreshHealth: vi.fn(async () => null),
     configFor: vi.fn(async (org: string) =>
       org === "org_1" ? { apiToken: "space-token", phoneNumberId: "1111111111", businessAccountId: "2222222222" } : null,
     ),

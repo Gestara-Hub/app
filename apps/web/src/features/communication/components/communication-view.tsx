@@ -64,6 +64,32 @@ function ModeBanner({
   onConnect: () => void;
 }) {
   if (connection.officialStatus === "connected" && connection.canUseOfficial) {
+    // Bloqueio na Meta (doc technical/07 §1.6): a faixa avisa e leva a Conexao.
+    const health = connection.metaHealth;
+    if (health?.sendState === "blocked" || health?.paymentBlocked) {
+      return (
+        <div className="flex flex-col gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+              <MessageCircle className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Mensagens automáticas bloqueadas pela Meta</p>
+              <p className="break-words text-xs text-muted-foreground">
+                {health.paymentBlocked
+                  ? "Falta uma forma de pagamento válida na sua conta do WhatsApp na Meta."
+                  : "A Meta não está deixando as mensagens automáticas saírem."}
+              </p>
+            </div>
+          </div>
+          {!isCurrentTabConnection ? (
+            <Button type="button" variant="outline" onClick={onConnect}>
+              Ver na Conexão
+            </Button>
+          ) : null}
+        </div>
+      );
+    }
     return (
       <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
         <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">

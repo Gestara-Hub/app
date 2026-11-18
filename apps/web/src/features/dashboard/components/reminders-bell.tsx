@@ -22,6 +22,7 @@ import {
   gatewayRejectedBellAlert,
   planBellAlert,
   whatsappPendingConnectionBellAlert,
+  metaHealthBellAlert,
   type BellAlert,
 } from "../bell-alerts";
 import { installAudioUnlock, playBellChime } from "@/lib/audio-feedback";
@@ -72,6 +73,7 @@ export function useBellAlerts(today: string): BellAlert[] {
         planBellAlert(subscription, today),
         gatewayRejectedBellAlert(organization?.settings?.onlinePayments),
         whatsappPendingConnectionBellAlert(connection),
+        metaHealthBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)
     : [];
   return [...(seesPayments ? disputeBellAlerts(disputed, studentNameOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
