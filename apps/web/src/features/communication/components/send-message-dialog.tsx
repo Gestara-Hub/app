@@ -373,6 +373,8 @@ function SendMessageForm({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-xs"
+                  // Sem a lista carregada o clique nao seleciona ninguem: espera chegar.
+                  disabled={!fixed && !composerContext}
                   onClick={selectAllEligible}
                 >
                   Selecionar todos com WhatsApp
