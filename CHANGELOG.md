@@ -2,18 +2,41 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
-## 2026.11.17 (2026-11-17)
+## 2026.11.18 (2026-11-18)
 
 Desde v2026.11.16-2.
 
 ### Documentação
 
+- whatsapp: situação na Meta, modelos mestres e reconexão
+- email: retorno de bounce e reclamação do SES
 - whatsapp: passo a passo da Meta e decisão do cadastro incorporado
 - whatsapp: credenciais, envio por modelo e avisos por espaço
 - invoice phase 1 spec, subaccount closing and account deletion plan
 
+### Correções
+
+- communication: selecionar todos espera a lista de alunos carregar
+- communication: teste de envio no padrão dos formulários, sem número real
+- whatsapp: reconectar número já ativo sem registrar o PIN de novo
+- whatsapp: texto maior no lembrete de evento para a Meta aceitar
+- whatsapp: conexão pela Meta salva o número e envia os modelos em segundo plano
+- reminders: painel de Lembretes fecha ao abrir um link
+- layout: fundo não rola com o menu aberto no celular
+- layout: cartão do plano fecha o menu no celular
+- whatsapp: abrir o WhatsApp na mesma janela no app instalado
+- e2e: sessão vencida sem 500 na leitura da conta de pagamento e menu da linha à espera do Acompanhamento
+- e2e: corrigir condições de corrida no smoke de cobrança online e graduação
+
 ### Novo
 
+- whatsapp: modelos mestres, com a cobrança pela biblioteca da Meta
+- whatsapp: situação do número na Meta dentro do sistema
+- whatsapp: sem franquia de mensagens; o espaço paga a Meta direto, explícito no app
+- plans: Expansão fora do checkout e da troca de plano
+- layout: arrastar da borda esquerda abre o menu no celular
+- plans: Expansão fora da vitrine e frase da taxa mais simples
+- subscription: endereço de cobrança obrigatório no checkout do plano
 - communication: WhatsApp oficial pelo número de cada espaço
 - contracts: conexão do WhatsApp por espaço e campos do modelo da Meta
 - db: guardar modelo da Meta nos registros e nos modelos de mensagem
@@ -21,9 +44,10 @@ Desde v2026.11.16-2.
 - releases: adicionar badge de versão nos cabeçalhos de novidades
 - admin: exibir versão da aplicação no rodapé da barra lateral
 
-### Correções
+### Manutenção
 
-- e2e: corrigir condições de corrida no smoke de cobrança online e graduação
+- supabase: login local também em https
+- release: 2026.11.17
 
 ### Desempenho
 
