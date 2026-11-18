@@ -92,6 +92,25 @@ async function dropCredentials(organizationId: string): Promise<void> {
   if (error) logError("[whatsappCredentials] Credenciais não apagadas:", error);
 }
 
+/** PIN de dois fatores diferente do que esta no numero (Cloud API). */
+const PIN_MISMATCH = 133005;
+
+/**
+ * O numero ja esta ativo na API oficial (`platform_type` CLOUD_API e `status`
+ * CONNECTED)? Sem resposta da Meta, considera que nao (o registro segue).
+ */
+async function alreadyOnCloudApi(phoneNumberId: string, token: string): Promise<boolean> {
+  try {
+    const data = await graph<{ status?: string; platform_type?: string }>(`${phoneNumberId}?fields=status,platform_type`, {
+      token,
+    });
+    return data.platform_type === "CLOUD_API" && data.status === "CONNECTED";
+  } catch (err) {
+    logWarn("[whatsappCredentials] Situação do número não consultada antes do registro:", err);
+    return false;
+  }
+}
+
 async function connect(input: ConnectWhatsAppInput): Promise<ConnectedWhatsAppNumber> {
   const { organizationId, code, phoneNumberId, wabaId, businessId, onboarding } = input;
   if (!META_ID.test(phoneNumberId) || !META_ID.test(wabaId) || (businessId && !META_ID.test(businessId))) {
@@ -118,7 +137,10 @@ async function connect(input: ConnectWhatsAppInput): Promise<ConnectedWhatsAppNu
 
   // Numero novo na API: registro com PIN de dois fatores (guardado no Vault).
   // Coexistencia: o numero ja esta no app WhatsApp Business, sem registro.
-  const pin = onboarding === "cloud" ? String(randomInt(0, 1_000_000)).padStart(6, "0") : null;
+  // Numero que ja esta ativo na API (reconectar depois de desconectar): sem
+  // registro de novo, que pediria o PIN antigo, apagado ao desconectar (18/11/2026).
+  const needsRegister = onboarding === "cloud" && !(await alreadyOnCloudApi(phoneNumberId, token));
+  const pin = needsRegister ? String(randomInt(0, 1_000_000)).padStart(6, "0") : null;
 
   const admin = createSupabaseAdminClient();
   const { error: saveError } = await admin.rpc("whatsapp_credentials_save", {
@@ -150,8 +172,14 @@ async function connect(input: ConnectWhatsAppInput): Promise<ConnectedWhatsAppNu
       stamps.registered_at = new Date().toISOString();
     }
   } catch (err) {
-    await dropCredentials(organizationId);
-    metaFailure("ativar o número na API do WhatsApp", err);
+    // PIN diferente do que esta no numero (133005): ele ja esta registrado na
+    // API; segue sem o registro novo.
+    if (err instanceof WhatsAppApiError && err.code === PIN_MISMATCH) {
+      logWarn("[whatsappCredentials] Número já registrado com outro PIN; segue sem registrar de novo.");
+    } else {
+      await dropCredentials(organizationId);
+      metaFailure("ativar o número na API do WhatsApp", err);
+    }
   }
   try {
     await graph(`${wabaId}/subscribed_apps`, { method: "POST", token });

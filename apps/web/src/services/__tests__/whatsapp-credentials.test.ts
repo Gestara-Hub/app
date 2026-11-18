@@ -49,6 +49,10 @@ beforeAll(async () => {
 type Call = { method: string; url: string; body?: unknown };
 let calls: Call[] = [];
 let failOn: string | null = null;
+/** Situacao do numero na Meta antes do registro. */
+let numberState: { status: string; platform_type: string } = { status: "PENDING", platform_type: "NOT_APPLICABLE" };
+/** Resposta do registro (para simular o PIN diferente). */
+let registerError: { code: number; message: string } | null = null;
 
 function fakeMeta() {
   return vi.fn(async (input: string | URL, init?: RequestInit) => {
@@ -58,6 +62,8 @@ function fakeMeta() {
     const json = (status: number, data: unknown) => new Response(JSON.stringify(data), { status });
     if (failOn && url.includes(failOn)) return json(400, { error: { message: "Recusado", code: 100 } });
     if (url.includes("/oauth/access_token")) return json(200, { access_token: "space-token" });
+    if (url.includes("fields=status,platform_type")) return json(200, numberState);
+    if (registerError && url.endsWith("/register")) return json(400, { error: registerError });
     if (url.includes("fields=verified_name")) {
       return json(200, { id: "1111111111", verified_name: "Academia Ribeiro", display_phone_number: "+55 92 98888-7777" });
     }
@@ -80,6 +86,8 @@ beforeEach(() => {
   db.updates = [];
   calls = [];
   failOn = null;
+  numberState = { status: "PENDING", platform_type: "NOT_APPLICABLE" };
+  registerError = null;
   vi.stubEnv("META_APP_ID", "app-1");
   vi.stubEnv("META_APP_SECRET", "secret-1");
   vi.stubGlobal("fetch", fakeMeta());
@@ -112,6 +120,24 @@ describe("conectar o numero do espaco", () => {
     expect(register).toMatchObject({ method: "POST", body: { messaging_product: "whatsapp", pin: save.args.p_pin } });
     expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/2222222222/subscribed_apps"))).toBe(true);
     expect(Object.keys(db.updates[0]!)).toEqual(["registered_at", "subscribed_at"]);
+  });
+
+  it("reconectar número que já está ativo na API: sem registro de novo e sem PIN", async () => {
+    numberState = { status: "CONNECTED", platform_type: "CLOUD_API" };
+    await whatsappCredentialsGateway.connect({ ...input, onboarding: "cloud" });
+    expect(db.rpc.find((r) => r.fn === "whatsapp_credentials_save")!.args.p_pin).toBeNull();
+    expect(calls.some((c) => c.url.includes("/register"))).toBe(false);
+    expect(Object.keys(db.updates[0]!)).toEqual(["subscribed_at"]);
+    expect(db.deleted).toEqual([]);
+  });
+
+  it("PIN diferente no registro (133005): segue conectado, sem apagar as credenciais", async () => {
+    registerError = { code: 133005, message: "Two step verification PIN Mismatch" };
+    await expect(whatsappCredentialsGateway.connect({ ...input, onboarding: "cloud" })).resolves.toMatchObject({
+      verifiedName: "Academia Ribeiro",
+    });
+    expect(db.deleted).toEqual([]);
+    expect(Object.keys(db.updates[0]!)).toEqual(["subscribed_at"]);
   });
 
   it("coexistencia (app WhatsApp Business no mesmo numero): sem registro e sem PIN", async () => {
