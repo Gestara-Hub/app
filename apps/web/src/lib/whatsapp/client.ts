@@ -27,7 +27,7 @@ export function getWhatsAppConfig(): WhatsAppConfig {
 
 /**
  * Normaliza o telefone para o formato exigido pela Meta:
- * Somente dígitos com DDI e DDD (ex: 5592991844219).
+ * Somente dígitos com DDI e DDD (ex: 5511987654321).
  */
 export function normalizeWhatsAppNumber(phone: string): string {
   if (!phone) return "";
@@ -359,6 +359,76 @@ export async function createOrUpdateWhatsAppTemplate(
     id: data.id,
     status: data.status || "PENDING",
   };
+}
+
+/**
+ * Cria um modelo a partir da biblioteca da Meta (doc technical/07 §1.7): texto
+ * fixo da Meta, so utilidade, aprovado na hora. `buttonBaseUrl` e o inicio do
+ * endereco do botao de link ("Pagar agora"), com o final variavel no envio.
+ */
+export async function createWhatsAppLibraryTemplate(
+  payload: { name: string; libraryName: string; buttonBaseUrl?: string; languageCode?: string },
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<{ id: string; status: MetaTemplateStatus }> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken || !config.businessAccountId) {
+    throw new Error("[WhatsApp] Credenciais da conta do WhatsApp são obrigatórias para criar o modelo.");
+  }
+  const body = {
+    name: payload.name,
+    category: "UTILITY",
+    language: payload.languageCode || "pt_BR",
+    library_template_name: payload.libraryName,
+    ...(payload.buttonBaseUrl
+      ? {
+          library_template_button_inputs: [
+            {
+              type: "URL",
+              url: { base_url: `${payload.buttonBaseUrl}{{1}}`, url_suffix_example: `${payload.buttonBaseUrl}exemplo` },
+            },
+          ],
+        }
+      : {}),
+  };
+  const res = await fetch(`${config.apiUrl}/${config.businessAccountId}/message_templates`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.apiToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = data as WhatsAppErrorResponse;
+    logError("[WhatsApp Library Template Error]:", err);
+    throw new WhatsAppApiError(
+      err.error?.error_user_msg || err.error?.message || "Erro ao criar o modelo da biblioteca na Meta.",
+      err.error?.code || res.status,
+      err.error?.type || "ApiError",
+      err.error?.fbtrace_id,
+    );
+  }
+  return { id: data.id, status: data.status || "PENDING" };
+}
+
+/** Apaga da conta do espaco um modelo pelo nome (todas as linguas). */
+export async function deleteWhatsAppTemplateByName(
+  name: string,
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<void> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken || !config.businessAccountId) return;
+  const res = await fetch(
+    `${config.apiUrl}/${config.businessAccountId}/message_templates?name=${encodeURIComponent(name)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${config.apiToken}` } },
+  );
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as WhatsAppErrorResponse;
+    throw new WhatsAppApiError(
+      data.error?.message || "Erro ao apagar o modelo na Meta.",
+      data.error?.code || res.status,
+      data.error?.type || "ApiError",
+      data.error?.fbtrace_id,
+    );
+  }
 }
 
 /**

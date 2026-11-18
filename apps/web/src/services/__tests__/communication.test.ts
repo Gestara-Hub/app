@@ -4,7 +4,6 @@ import { store } from "@/mocks/store";
 import {
   runBillingReminders,
   runBirthdayGreetings,
-  metaBodyFor,
   officialTemplateFor,
   setQueuedMessageDeliverer,
   type QueuedMessageJob,
@@ -293,32 +292,29 @@ describe("modelos de mensagem", () => {
     }
   });
 
-  it("textos dos modelos manuais seguem a area do espaco", () => {
+  it("texto mestre: igual em todas as áreas (doc technical/07 §1.7)", () => {
     const fill = (segment: "martial_arts" | "music", trigger: string, values: Record<string, string> = {}) => {
       const template = defaultMessageTemplates(ACADEMY_ORG, segment).find((t) => t.trigger === trigger)!;
       return fillMessage(template.content, { aluno: "Ana", empresa: "Espaço", ...values }).replace(/\u00a0/g, " ");
     };
+    for (const trigger of ["payment_received", "level_up", "class_canceled", "holiday_notice", "billing_before_due"]) {
+      expect(fill("martial_arts", trigger)).toBe(fill("music", trigger));
+    }
     expect(fill("music", "payment_received", { valor: "R$ 150,00", referencia: "mensalidade de outubro" })).toBe(
-      "Oi, Ana! Recebemos o pagamento de R$ 150,00 da mensalidade de outubro. Obrigado! Boas aulas!",
-    );
-    expect(fill("martial_arts", "level_up", { nivel: "Faixa Azul" })).toBe(
-      "Parabéns, Ana! 🎉 Nova conquista na Espaço: Faixa Azul. É resultado da sua dedicação. Bons treinos! 🥋",
+      "Oi, Ana. Confirmamos o recebimento do pagamento de R$ 150,00 referente a mensalidade de outubro. Este aviso é a sua confirmação.",
     );
     expect(fill("martial_arts", "class_canceled")).toBe(
-      "Oi, Ana! O treino de hoje na Espaço foi cancelado. Desculpe o transtorno, nos vemos no próximo treino!",
+      "Oi, Ana. Aviso da Espaço: a aula de hoje foi cancelada. Desculpe o transtorno, nos vemos na próxima aula.",
     );
-    expect(fill("music", "class_canceled")).toContain("A aula de hoje na Espaço foi cancelada.");
-    expect(fill("music", "schedule_change")).toBe(
-      "Oi, Ana! Aviso de Espaço: sua turma vai mudar de horário. Novo horário:",
+    expect(fill("music", "billing_before_due", { valor: "R$ 150,00", vencimento: "20/10/2026", link_pagamento: "https://x.test/p/c/1" })).toBe(
+      "Lembrete de pagamento:\n\nConta: Mensalidade na Espaço\nValor a pagar: R$ 150,00\nData de vencimento: 20/10/2026\n\nPague agora para evitar pendências.\n\nSe você já pagou, ignore esta mensagem.\n\nPague pelo link: https://x.test/p/c/1",
     );
-    expect(fill("music", "holiday_notice")).toContain("no feriado não teremos aula.");
-    expect(fill("martial_arts", "holiday_notice")).toContain("no feriado não teremos treino.");
   });
 
-  it("modelo manual tem texto livre, mas nao liga envio automatico nem no Pro", async () => {
-    expect(
-      (await communicationService.updateTemplate({ id: tmpl("holiday-notice"), content: "Sem aula, {aluno}." })).content,
-    ).toBe("Sem aula, {aluno}.");
+  it("o texto do aviso é fixo; modelo manual não liga envio automático nem no Pro", async () => {
+    await expect(
+      communicationService.updateTemplate({ id: tmpl("holiday-notice"), content: "Sem aula, {aluno}." }),
+    ).rejects.toMatchObject({ code: "VALIDATION", fields: [{ field: "content" }] });
     setTier("pro");
     await expect(
       communicationService.updateTemplate({ id: tmpl("holiday-notice"), enabled: true }),
@@ -341,29 +337,25 @@ describe("modelos de mensagem", () => {
     });
   });
 
-  it("textos padrao dos modelos novos saem completos (sem o link quando nao ha cobranca online)", () => {
+  it("textos padrao dos modelos novos saem completos (sem o link, a linha do link sai)", () => {
     const templates = defaultMessageTemplates(ACADEMY_ORG, "gastronomy");
     const reminder = templates.find((t) => t.trigger === "charge_reminder")!;
     const values = chargeReminder(
       { kind: "package", status: "pending", amountCents: 15000, dueDate: "2026-10-20", description: "10 aulas" },
       TODAY,
     )!.values;
-    expect(fillMessage(reminder.content, { aluno: "Ana", empresa: "Ateliê", ...values }).replace(/\u00a0/g, " ")).toBe(
-      "Olá, Ana! Lembrete da compra do pacote 10 aulas de R$ 150,00 na Ateliê, com vencimento em 20/10. Boas aulas!",
-    );
+    const filled = fillMessage(reminder.content, { aluno: "Ana", empresa: "Ateliê", ...values }).replace(/\u00a0/g, " ");
+    expect(filled).toContain("Conta: compra do pacote 10 aulas na Ateliê");
+    expect(filled).not.toContain("Pague pelo link");
+    expect(filled).not.toMatch(/\{\w+\}/);
     const ending = templates.find((t) => t.trigger === "package_ending")!;
     const restante = packageRemainingText({ lessonsTotal: 10, lessonsUsed: 9, status: "active" }, TODAY);
     expect(fillMessage(ending.content, { aluno: "Ana", empresa: "Ateliê", pacote: "10 aulas", restante })).toBe(
-      "Oi, Ana! Sobre seu pacote 10 aulas na Ateliê: resta 1 aula. Quer renovar e seguir com as aulas?",
+      "Oi, Ana! Passando para avisar sobre o seu pacote 10 aulas na Ateliê: resta 1 aula. Se quiser renovar e seguir com as aulas, é só responder esta mensagem.",
     );
   });
 
-  it("os modelos novos tem texto livre no gratis e automacao so no Pro", async () => {
-    const updated = await communicationService.updateTemplate({
-      id: tmpl("charge-reminder"),
-      content: "Oi, {aluno}! Falta a {referencia}.",
-    });
-    expect(updated.content).toBe("Oi, {aluno}! Falta a {referencia}.");
+  it("os modelos novos tem automacao so no Pro", async () => {
     await expect(
       communicationService.updateTemplate({ id: tmpl("package-ending"), enabled: false }),
     ).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
@@ -373,9 +365,10 @@ describe("modelos de mensagem", () => {
     });
   });
 
-  it("texto e livre no gratis (o assistido usa o mesmo texto)", async () => {
-    const updated = await communicationService.updateTemplate({ id: tmpl("birthday"), content: "  Parabéns, {aluno}!  " });
-    expect(updated.content).toBe("Parabéns, {aluno}!");
+  it("salvar o mesmo texto do aviso passa e audita", async () => {
+    const current = store.messageTemplates.find((t) => t.id === tmpl("birthday"))!.content;
+    const updated = await communicationService.updateTemplate({ id: tmpl("birthday"), content: current });
+    expect(updated.content).toBe(current);
     expect(lastAudit()).toBe('Ana Ribeiro atualizou a mensagem "Aniversário"');
   });
 
@@ -390,14 +383,15 @@ describe("modelos de mensagem", () => {
   });
 
   it("gratis pode salvar o formulario com os mesmos valores de automacao", async () => {
+    const current = store.messageTemplates.find((t) => t.id === tmpl("birthday"))!.content;
     const updated = await communicationService.updateTemplate({
       id: tmpl("birthday"),
       enabled: true,
       sendHour: "08:30",
       daysOffset: 0,
-      content: "Feliz aniversário, {aluno}!",
+      content: current,
     });
-    expect(updated.content).toBe("Feliz aniversário, {aluno}!");
+    expect(updated.content).toBe(current);
   });
 
   it("Pro liga, desliga e muda horario e prazo", async () => {
@@ -651,12 +645,13 @@ describe("parabens automatico", () => {
     await expect(send(bia.id, "Bia")).resolves.toMatchObject({ clientId: bia.id });
   });
 
-  it("usa o texto editado do modelo", async () => {
+  it("usa o texto mestre do aniversário", async () => {
     await birthdayStudent();
     await connectOfficial();
-    await communicationService.updateTemplate({ id: tmpl("birthday"), content: "Feliz dia, {aluno}! Abraço da {empresa}." });
     greet();
-    expect(greetings()[0].content).toBe("Feliz dia, Bia! Abraço da Academia X.");
+    expect(greetings()[0].content).toBe(
+      "Parabéns pelo seu dia, Bia! 🎂 Toda a equipe da Academia X deseja muita saúde e conquistas. Aproveite o seu dia!",
+    );
   });
 
   it("no assistido (gratis ou Pro sem conectar) nao envia", async () => {
@@ -875,17 +870,11 @@ describe("numeros do mes", () => {
 describe("limite de caracteres com emoji (ALU-38)", () => {
   beforeEach(() => resetAcademy());
 
-  it("emoji conta 1 na mensagem (1000) e no modelo (900)", async () => {
+  it("emoji conta 1 na mensagem (1000)", async () => {
     await communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1000) }));
     await expect(
       communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1001) })),
     ).rejects.toMatchObject({ fields: [{ field: "content", message: "Use no máximo 1000 caracteres." }] });
-
-    const id = tmpl("birthday");
-    await communicationService.updateTemplate({ id, content: "🎉".repeat(900) });
-    await expect(communicationService.updateTemplate({ id, content: "🎉".repeat(901) })).rejects.toMatchObject({
-      fields: [{ field: "content", message: "Use no máximo 900 caracteres." }],
-    });
   });
 
   it("valida formato de horario e faixa de prazo ao atualizar modelo no Pro", async () => {
@@ -984,15 +973,14 @@ describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
     };
   }
 
-  it("texto do modelo usa o modelo, com as variaveis na ordem; texto editado ou variavel vazia, nao", async () => {
+  it("texto do aviso usa o modelo mestre, com as variaveis na ordem; texto editado ou variavel vazia, nao", async () => {
     const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
-    template.content = "Olá {aluno}! Bem-vindo ao {empresa}, {aluno}.";
     const variables = { aluno: "Maria", empresa: "Academia Ribeiro" };
     const content = fillMessage(template.content, variables);
     expect(officialTemplateFor("welcome_student", content, variables)).toEqual({
-      name: "welcome_student",
+      name: "welcome_student_v2",
       language: "pt_BR",
-      params: ["Maria", "Academia Ribeiro", "Maria"],
+      params: ["Academia Ribeiro", "Maria"],
     });
     expect(officialTemplateFor("welcome_student", `${content} Até logo!`, variables)).toBeUndefined();
     expect(officialTemplateFor("welcome_student", content, undefined)).toBeUndefined();
@@ -1001,10 +989,29 @@ describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
     expect(officialTemplateFor("welcome_student", withoutName, { aluno: "", empresa: "Academia Ribeiro" })).toBeUndefined();
   });
 
+  it("cobrança usa o modelo da biblioteca com o botão da página de pagamento", () => {
+    const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
+    const variables = {
+      aluno: "Ana",
+      valor: "R$\u00a0180,00",
+      vencimento: "25/09/2026",
+      empresa: "Academia X",
+      link_pagamento: "https://app.test/p/c/chg-1",
+    };
+    expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, variables), variables)).toEqual({
+      name: "billing_before_due_v2",
+      language: "pt_BR",
+      params: ["Mensalidade na Academia X", "R$ 180,00", "25/09/2026", "pendências"],
+      buttonUrlSuffix: "c/chg-1",
+    });
+    // Link de fora (sem a pagina do GestaraHub): sem botao, sem modelo.
+    const outside = { ...variables, link_pagamento: "https://parceiro.test/pagar" };
+    expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, outside), outside)).toBeUndefined();
+  });
+
   it("envio manual do modelo vai para a fila com o modelo; o reenvio repete o mesmo modelo", async () => {
     await connectOfficial();
     const template = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
-    template.content = "Olá, {aluno}! Bem-vindo ao {empresa}.";
     const variables = { aluno: "Maria", empresa: store.organization.name };
     const content = fillMessage(template.content, variables);
     const queue = serverQueue();
@@ -1013,7 +1020,7 @@ describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
         message({ trigger: "welcome_student", clientId: "cli-1", content, variables }),
       );
       expect(log.status).toBe("queued");
-      expect(log.metaTemplate?.name).toBe("welcome_student");
+      expect(log.metaTemplate?.name).toBe("welcome_student_v2");
       await queue.flush();
       expect(queue.jobs[0]?.template).toEqual(log.metaTemplate);
 
@@ -1073,8 +1080,12 @@ describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
       expect(runBillingReminders()).toBe(1);
       const log = store.messageLogs[0]!;
       expect(log).toMatchObject({ trigger: "billing_before_due", status: "queued" });
-      expect(log.metaTemplate).toMatchObject({ name: "billing_before_due", language: "pt_BR" });
-      expect(log.metaTemplate?.params).toContain("Lucas Silva");
+      expect(log.metaTemplate).toMatchObject({
+        name: "billing_before_due_v2",
+        language: "pt_BR",
+        buttonUrlSuffix: "c/chg-membership-1",
+      });
+      expect(log.metaTemplate?.params[0]).toBe(`Mensalidade na ${store.organization.name}`);
       await queue.flush();
       expect(queue.jobs).toEqual([
         expect.objectContaining({ logId: log.id, phone: log.recipientPhone, template: log.metaTemplate }),
@@ -1088,52 +1099,68 @@ describe("envio por modelo aprovado da Meta (doc technical/07 §3.3)", () => {
 describe("modelos na conta do WhatsApp do espaco (doc technical/07 §1.4)", () => {
   beforeEach(() => resetAcademy());
 
-  it("o modelo na Meta deixa de fora a frase da variavel que o espaco nunca preenche", () => {
+  it("o texto do espaço vem sempre do modelo mestre; o modelo antigo na Meta deixa de valer", async () => {
     const welcome = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
-    expect(welcome.content).toContain("{link_app}");
-    expect(metaBodyFor(welcome)).not.toContain("{link_app}");
-    // As boas-vindas do jeito que a tela monta agora cabem no modelo.
-    const variables = { aluno: "Maria", empresa: store.organization.name };
-    const content = fillMessage(welcome.content, variables);
-    expect(officialTemplateFor("welcome_student", content, variables)?.params).toEqual([store.organization.name, "Maria"]);
-
-    const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
-    store.organization.settings = { ...store.organization.settings, onlinePayments: { enabled: false } } as typeof store.organization.settings;
-    expect(metaBodyFor(reminder)).not.toContain("{link_pagamento}");
-    store.organization.settings = { ...store.organization.settings, onlinePayments: { enabled: true } } as typeof store.organization.settings;
-    expect(metaBodyFor(reminder)).toContain("{link_pagamento}");
+    welcome.content = "Texto antigo de lutas, {aluno}. Bons treinos! 🥋";
+    Object.assign(welcome, { metaTemplateName: "welcome_student", metaTemplateId: "old", metaStatus: "PENDING" });
+    const list = await communicationService.listTemplates();
+    const after = list.find((t) => t.trigger === "welcome_student")!;
+    expect(after.content).toBe(
+      "Seja bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada. Qualquer dúvida sobre horários e aulas, é só responder esta mensagem.",
+    );
+    expect(after.metaTemplateName).toBeUndefined();
+    expect(after.metaStatus).toBeUndefined();
   });
 
-  it("cria o que falta, edita o texto que mudou e so atualiza a situacao do que ja esta igual", async () => {
+  it("cria o que falta (cobrança pela biblioteca), traz a situação e apaga os modelos antigos", async () => {
     const list = vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([
-      { name: "welcome_student", id: "meta-welcome", status: "APPROVED", category: "MARKETING", language: "pt_BR" },
+      { name: "welcome_student_v2", id: "meta-welcome", status: "APPROVED", category: "MARKETING", language: "pt_BR" },
+      { name: "billing_due_date", id: "meta-old", status: "PENDING", category: "MARKETING", language: "pt_BR" },
     ]);
     const create = vi
       .spyOn(whatsappClient, "createOrUpdateTemplate")
       .mockImplementation(async (payload) => ({ id: `meta-${payload.name}`, status: "PENDING" }));
-    const edit = vi.spyOn(whatsappClient, "editTemplate").mockResolvedValue({ id: "meta-welcome", status: "PENDING" });
+    const library = vi
+      .spyOn(whatsappClient, "createLibraryTemplate")
+      .mockImplementation(async (payload) => ({ id: `lib-${payload.name}`, status: "APPROVED" }));
+    const remove = vi.spyOn(whatsappClient, "deleteTemplate").mockResolvedValue(undefined);
     try {
       const first = await syncMetaTemplates({});
-      const automatic = store.messageTemplates.filter((t) => t.trigger !== "manual_broadcast");
-      expect(first).toEqual({ created: automatic.length - 1, edited: 1, failed: 0 });
-      expect(edit).toHaveBeenCalledWith("meta-welcome", expect.not.stringContaining("{link_app}"), {});
-      const welcome = store.messageTemplates.find((t) => t.trigger === "welcome_student")!;
-      expect(welcome).toMatchObject({ metaTemplateId: "meta-welcome", metaStatus: "PENDING", metaBody: metaBodyFor(welcome) });
-      const before = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
-      expect(before).toMatchObject({ metaTemplateName: "billing_before_due", metaStatus: "PENDING" });
+      expect(first).toEqual({ created: store.messageTemplates.length - 1, edited: 0, failed: 0 });
+      // Os cinco de cobranca saem da biblioteca, com o botao da pagina de pagamento.
+      expect(library).toHaveBeenCalledTimes(5);
+      expect(library).toHaveBeenCalledWith(
+        { name: "billing_before_due_v2", libraryName: "payment_reminder_3", buttonBaseUrl: expect.stringMatching(/\/p\/$/) },
+        {},
+      );
+      expect(library).toHaveBeenCalledWith(expect.objectContaining({ name: "billing_after_due_v2", libraryName: "payment_overdue_2" }), {});
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "birthday_greeting_v2", category: "MARKETING", content: expect.stringContaining("{aluno}") }),
+        {},
+      );
+      expect(store.messageTemplates.find((t) => t.trigger === "billing_before_due")).toMatchObject({
+        metaTemplateName: "billing_before_due_v2",
+        metaStatus: "APPROVED",
+      });
+      expect(store.messageTemplates.find((t) => t.trigger === "welcome_student")).toMatchObject({
+        metaTemplateId: "meta-welcome",
+        metaStatus: "APPROVED",
+      });
+      expect(remove).toHaveBeenCalledWith("billing_due_date", {});
+      expect(remove).toHaveBeenCalledTimes(1);
 
-      // Tudo na Meta com o mesmo texto: so a situacao muda.
+      // Tudo na Meta: so a situacao muda.
       list.mockResolvedValue(
         store.messageTemplates
           .filter((t) => t.metaTemplateName)
           .map((t) => ({ name: t.metaTemplateName!, id: t.metaTemplateId!, status: "APPROVED" as const, category: "UTILITY", language: "pt_BR" })),
       );
       create.mockClear();
-      edit.mockClear();
+      library.mockClear();
       expect(await syncMetaTemplates({})).toEqual({ created: 0, edited: 0, failed: 0 });
       expect(create).not.toHaveBeenCalled();
-      expect(edit).not.toHaveBeenCalled();
-      expect(store.messageTemplates.find((t) => t.trigger === "billing_before_due")?.metaStatus).toBe("APPROVED");
+      expect(library).not.toHaveBeenCalled();
+      expect(store.messageTemplates.find((t) => t.trigger === "birthday_greeting")?.metaStatus).toBe("APPROVED");
     } finally {
       vi.restoreAllMocks();
     }
@@ -1141,8 +1168,9 @@ describe("modelos na conta do WhatsApp do espaco (doc technical/07 §1.4)", () =
 
   it("falha num modelo guarda o motivo e nao para os outros; recusado nao e usado no envio", async () => {
     vi.spyOn(whatsappClient, "listTemplates").mockResolvedValue([]);
+    vi.spyOn(whatsappClient, "createLibraryTemplate").mockImplementation(async (payload) => ({ id: `lib-${payload.name}`, status: "APPROVED" }));
     vi.spyOn(whatsappClient, "createOrUpdateTemplate").mockImplementation(async (payload) => {
-      if (payload.name === "birthday_greeting") throw new Error("Texto recusado");
+      if (payload.name === "birthday_greeting_v2") throw new Error("Texto recusado");
       return { id: `meta-${payload.name}`, status: "PENDING" };
     });
     try {
@@ -1154,7 +1182,7 @@ describe("modelos na conta do WhatsApp do espaco (doc technical/07 §1.4)", () =
 
       const reminder = store.messageTemplates.find((t) => t.trigger === "billing_before_due")!;
       reminder.metaStatus = "REJECTED";
-      const variables = { aluno: "Ana", valor: "R$ 10,00", vencimento: "25/09/2026", empresa: "X", referencia: "mensalidade", link_pagamento: "https://x" };
+      const variables = { aluno: "Ana", valor: "R$ 10,00", vencimento: "25/09/2026", empresa: "X", link_pagamento: "https://x.test/p/c/1" };
       expect(officialTemplateFor("billing_before_due", fillMessage(reminder.content, variables), variables)).toBeUndefined();
     } finally {
       vi.restoreAllMocks();

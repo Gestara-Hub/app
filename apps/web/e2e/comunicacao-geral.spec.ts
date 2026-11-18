@@ -113,7 +113,7 @@ test.describe("envio assistido de vários lugares", () => {
 
     const link = await openedWhatsApp(page, () => page.getByRole("button", { name: "Enviar boas-vindas" }).click());
     expect(link.phone).toBe("5511955554444");
-    expect(link.text).toContain("Seja muito bem-vindo(a) à Academia X, Diego Novo!");
+    expect(link.text).toContain("Seja bem-vindo(a) à Academia X, Diego Novo!");
     expect(link.text).not.toContain("{");
     await waitWorld(page, ORG, logsInWorld(1));
 
@@ -171,7 +171,8 @@ test.describe("envio assistido de vários lugares", () => {
     await page.getByRole("button", { name: "Ações de Bruna Lima", exact: true }).click();
     const link = await openedWhatsApp(page, () => page.getByRole("menuitem", { name: "Lembrar no WhatsApp" }).click());
     expect(link.phone).toBe("5511988881111");
-    expect(link.text).toContain("Bruna Lima");
+    // Texto mestre da biblioteca da Meta: sem o nome do aluno (doc technical/07 §1.7).
+    expect(link.text).toContain("Lembrete de pagamento:");
     expect(link.text).toContain("Kimono");
     expect(link.text).toContain("R$ 250,00");
     expect(link.text).toContain("25/09");

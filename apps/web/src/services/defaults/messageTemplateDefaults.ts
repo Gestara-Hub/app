@@ -1,4 +1,5 @@
 import type { ClassesBusinessSegment, Id, MessageTemplate } from "@gestarahub/contracts";
+import { masterContent, masterTemplateFor } from "@/lib/whatsapp/master-templates";
 import { timestamps } from "./financialDefaults";
 
 /**
@@ -9,38 +10,30 @@ import { timestamps } from "./financialDefaults";
  */
 
 /**
- * Modelos de mensagem de um espaco novo, no tom da area.
+ * Modelos de mensagem de um espaco novo.
  */
 
-/** Trechos que mudam conforme a area: lutas fala em treino e tatame; o resto, em aula. */
-function messageTone(segment: ClassesBusinessSegment | undefined) {
-  if (!segment || segment === "martial_arts") {
-    return {
-      closing: " Bons treinos! 🥋",
-      welcomeTail: "acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
-      absenceLine: "nos últimos treinos da {empresa}. Seu lugar no tatame está guardado!",
-      renewQuestion: "Quer renovar e seguir treinando?",
-      canceledLine: "O treino de hoje na {empresa} foi cancelado. Desculpe o transtorno, nos vemos no próximo treino!",
-      noClass: "não teremos treino",
-    };
-  }
-  return {
-    closing: " Boas aulas!",
-    welcomeTail: "acompanhar suas aulas, horários e evolução. Até a primeira aula!",
-    absenceLine: "nas últimas aulas da {empresa}. Seu lugar na turma está guardado!",
-    renewQuestion: "Quer renovar e seguir com as aulas?",
-    canceledLine: "A aula de hoje na {empresa} foi cancelada. Desculpe o transtorno, nos vemos na próxima aula!",
-    noClass: "não teremos aula",
-  };
+/**
+ * Texto e variaveis de cada aviso: os do modelo mestre (doc technical/07 §1.7),
+ * iguais para todas as areas desde 18/11/2026 (antes, lutas falava em treino e
+ * tatame). A area fica no parametro so por compatibilidade.
+ */
+type WithoutText = Omit<MessageTemplate, "content" | "availableVariables">;
+
+function withMasterText(templates: WithoutText[]): MessageTemplate[] {
+  return templates.map((template) => {
+    const master = masterTemplateFor(template.trigger)!;
+    return { ...template, content: masterContent(master), availableVariables: [...master.variables] };
+  });
 }
 
 export function defaultMessageTemplates(
   organizationId: Id,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a area nao muda mais o texto (18/11/2026)
   segment?: ClassesBusinessSegment,
 ): MessageTemplate[] {
   const ts = timestamps();
-  const tone = messageTone(segment);
-  return [
+  return withMasterText([
     {
       id: `tmpl-${organizationId}-before-due`,
       organizationId,
@@ -51,9 +44,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "09:00",
       daysOffset: -3,
-      content:
-        `Olá, {aluno}! Passando para lembrar que sua mensalidade de {valor} na {empresa} vence em {vencimento}. Pague com facilidade pelo Pix Copia e Cola: {link_pagamento}.${tone.closing}`,
-      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
     {
@@ -66,9 +56,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "09:30",
       daysOffset: 0,
-      content:
-        "Olá, {aluno}! Sua mensalidade da {empresa} no valor de {valor} vence hoje ({vencimento}). Garanta sua vaga ativa acessando o link seguro de pagamento: {link_pagamento}. Obrigado!",
-      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
     {
@@ -81,9 +68,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "10:00",
       daysOffset: 3,
-      content:
-        "Oi, {aluno}! Notamos que a mensalidade de {valor} da {empresa} que venceu em {vencimento} ainda está em aberto. Para regularizar sem complicações, basta acessar: {link_pagamento}. Qualquer dúvida, estamos à disposição!",
-      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
     {
@@ -96,9 +80,6 @@ export function defaultMessageTemplates(
       enabled: false,
       sendHour: "11:00",
       daysOffset: 10,
-      content:
-        "Olá, {aluno}. A mensalidade de {valor} na {empresa}, vencida em {vencimento}, segue em aberto. Para não suspender as aulas, pague pelo link {link_pagamento} ou fale com a recepção. Obrigado!",
-      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
     {
@@ -113,9 +94,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "09:00",
       daysOffset: -3,
-      content:
-        `Olá, {aluno}! Lembrete da {referencia} de {valor} na {empresa}, com vencimento em {vencimento}. Pague pelo link: {link_pagamento}.${tone.closing}`,
-      availableVariables: ["{aluno}", "{referencia}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
     {
@@ -128,9 +106,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "08:00",
       daysOffset: 0,
-      content:
-        `Seja muito bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link {link_app} para ${tone.welcomeTail}`,
-      availableVariables: ["{aluno}", "{empresa}", "{link_app}"],
       ...ts,
     },
     {
@@ -143,9 +118,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "14:00",
       daysOffset: 3,
-      content:
-        `Oi, {aluno}! Tudo bem? Sentimos muito a sua falta ${tone.absenceLine} Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪`,
-      availableVariables: ["{aluno}", "{empresa}"],
       ...ts,
     },
     {
@@ -158,8 +130,6 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "10:00",
       daysOffset: 7,
-      content: `Oi, {aluno}! Sobre seu pacote {pacote} na {empresa}: {restante}. ${tone.renewQuestion}`,
-      availableVariables: ["{aluno}", "{pacote}", "{restante}", "{empresa}"],
       ...ts,
     },
     {
@@ -172,26 +142,19 @@ export function defaultMessageTemplates(
       enabled: true,
       sendHour: "08:30",
       daysOffset: 0,
-      content:
-        "Parabéns pelo seu dia, {aluno}! 🎂 Toda a equipe da {empresa} deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
-      availableVariables: ["{aluno}", "{empresa}"],
       ...ts,
     },
     // So envio manual (sem automatico): sugeridos na mensagem para o aluno.
-    ...manualMessageTemplates(organizationId, tone, ts),
-  ];
+    ...manualMessageTemplates(organizationId, ts),
+  ]);
 }
 
 /** Modelos so de envio manual: desligados, sem horario nem prazo que valham. */
-function manualMessageTemplates(
-  organizationId: Id,
-  tone: ReturnType<typeof messageTone>,
-  ts: ReturnType<typeof timestamps>,
-): MessageTemplate[] {
+function manualMessageTemplates(organizationId: Id, ts: ReturnType<typeof timestamps>): WithoutText[] {
   const manual = (
     key: string,
-    template: Pick<MessageTemplate, "trigger" | "category" | "title" | "description" | "content" | "availableVariables">,
-  ): MessageTemplate => ({
+    template: Pick<MessageTemplate, "trigger" | "category" | "title" | "description">,
+  ): WithoutText => ({
     id: `tmpl-${organizationId}-${key}`,
     organizationId,
     enabled: false,
@@ -206,56 +169,42 @@ function manualMessageTemplates(
       category: "retention",
       title: "Chamar de volta (experimental)",
       description: "Para quem fez aula experimental e ainda não voltou",
-      content: `Oi, {aluno}! Foi muito bom ter você na aula experimental. Que tal continuar com a gente? Me conta o que achou e te ajudo a escolher a turma e o plano.${tone.closing}`,
-      availableVariables: ["{aluno}", "{empresa}"],
     }),
     manual("event-reminder", {
       trigger: "event_reminder",
       category: "administrative",
       title: "Evento amanhã",
       description: "Para os inscritos, na véspera do evento",
-      content: "Oi, {aluno}! Passando para lembrar que amanhã tem {evento} na {empresa}, {dia} às {horario}. Chegue alguns minutos antes para começarmos no horário. Te esperamos!",
-      availableVariables: ["{aluno}", "{evento}", "{dia}", "{horario}", "{empresa}"],
     }),
     manual("payment-received", {
       trigger: "payment_received",
       category: "billing",
       title: "Pagamento recebido",
       description: "Agradecimento depois de um pagamento",
-      content: `Oi, {aluno}! Recebemos o pagamento de {valor} da {referencia}. Obrigado!${tone.closing}`,
-      availableVariables: ["{aluno}", "{valor}", "{referencia}", "{empresa}"],
     }),
     manual("level-up", {
       trigger: "level_up",
       category: "retention",
       title: "Parabéns pelo avanço",
       description: "Depois de uma graduação ou troca de nível",
-      content: `Parabéns, {aluno}! 🎉 Nova conquista na {empresa}: {nivel}. É resultado da sua dedicação.${tone.closing}`,
-      availableVariables: ["{aluno}", "{nivel}", "{empresa}"],
     }),
     manual("class-canceled", {
       trigger: "class_canceled",
       category: "administrative",
       title: "Aula cancelada",
       description: "Aviso de aula cancelada",
-      content: `Oi, {aluno}! ${tone.canceledLine}`,
-      availableVariables: ["{aluno}", "{empresa}"],
     }),
     manual("schedule-change", {
       trigger: "schedule_change",
       category: "administrative",
       title: "Mudança de horário",
       description: "Aviso de novo horário da turma",
-      content: "Oi, {aluno}! Aviso de {empresa}: sua turma vai mudar de horário. Novo horário:",
-      availableVariables: ["{aluno}", "{empresa}"],
     }),
     manual("holiday-notice", {
       trigger: "holiday_notice",
       category: "administrative",
       title: "Feriado ou recesso",
       description: "Aviso de pausa nas aulas",
-      content: `Oi, {aluno}! Aviso de {empresa}: no feriado ${tone.noClass}. Bom descanso e até a volta!`,
-      availableVariables: ["{aluno}", "{empresa}"],
     }),
   ];
 }

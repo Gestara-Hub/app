@@ -1,6 +1,5 @@
 import type { MessageTemplate, UpdateTemplatePayload } from "@gestarahub/contracts";
-import { TEMPLATE_MAX_LENGTH, TRIGGER_TO_META_TEMPLATE, isManualTrigger } from "@/lib/whatsapp";
-import { charCount } from "@/lib/text";
+import { TRIGGER_TO_META_TEMPLATE, isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
@@ -78,36 +77,15 @@ export const templatesService = {
         }
       }
 
-      let contentChanged = false;
-      if (payload.content !== undefined) {
-        if (!payload.content.trim()) {
-          throw validationError([{ field: "content", message: "Escreva o texto da mensagem." }]);
-        }
-        // Folga para os nomes: a mensagem enviada aceita ate 1000 caracteres.
-        if (charCount(payload.content.trim()) > TEMPLATE_MAX_LENGTH) {
-          throw validationError([{ field: "content", message: `Use no máximo ${TEMPLATE_MAX_LENGTH} caracteres.` }]);
-        }
-        if (template.content !== payload.content.trim()) {
-          contentChanged = true;
-        }
-        template.content = payload.content.trim();
+      // O texto do aviso e o do modelo mestre (doc technical/07 §1.7): o espaco
+      // nao edita (o mesmo texto em todo espaco e o que a Meta aprovou).
+      if (payload.content !== undefined && payload.content.trim() !== template.content) {
+        throw validationError([{ field: "content", message: "O texto deste aviso é fixo." }]);
       }
       if (payload.enabled !== undefined) template.enabled = payload.enabled;
       if (payload.sendHour !== undefined) template.sendHour = payload.sendHour;
       if (payload.daysOffset !== undefined) template.daysOffset = payload.daysOffset;
       template.updatedAt = nowIso();
-
-      // Se o conteúdo mudou e a Meta está configurada, submete a nova versão para análise da Meta
-      // Texto novo vai para a Meta analisar de novo (o envio segue com o texto
-      // aprovado ate la: `metaBody`).
-      const metaConfig = contentChanged ? await whatsappClient.configFor(store.organization.id) : null;
-      if (metaConfig) {
-        try {
-          await syncMetaTemplates(metaConfig, [template.trigger]);
-        } catch (err) {
-          logWarn(`[templatesService] Modelo ${template.trigger} não enviado à Meta:`, err);
-        }
-      }
 
       auditLogService.record({
         action: "updated",

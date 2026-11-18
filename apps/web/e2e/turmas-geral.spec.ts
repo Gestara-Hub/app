@@ -133,7 +133,7 @@ test.describe("cadastro de turma", () => {
     await ask.getByRole("button", { name: "Avisar alunos" }).click();
     const sheet = page.getByRole("dialog", { name: "Enviar em sequência" });
     await expect(sheet).toContainText("1 de 1");
-    await expect(sheet).toContainText("sua turma vai mudar de horário. Novo horário:");
+    await expect(sheet).toContainText("o horário da sua turma mudou. Novo horário:");
     await expect(sheet).toContainText("20:00");
   });
 

@@ -5,6 +5,8 @@ import {
   listWhatsAppTemplates as libListTemplates,
   createOrUpdateWhatsAppTemplate as libCreateOrUpdateTemplate,
   editWhatsAppTemplate as libEditTemplate,
+  createWhatsAppLibraryTemplate as libCreateLibraryTemplate,
+  deleteWhatsAppTemplateByName as libDeleteTemplateByName,
   getWhatsAppPhoneNumberDetails as libGetPhoneNumberDetails,
   normalizeWhatsAppNumber,
   getWhatsAppConfig,
@@ -131,6 +133,19 @@ export const whatsappClient = {
     return libCreateOrUpdateTemplate(payload, config);
   },
 
+  /** Cria um modelo da biblioteca da Meta na conta do espaco (utilidade, aprovado na hora). */
+  async createLibraryTemplate(
+    payload: { name: string; libraryName: string; buttonBaseUrl?: string },
+    config: SpaceWhatsAppConfig,
+  ): Promise<{ id: string; status: MetaTemplateStatus }> {
+    return libCreateLibraryTemplate(payload, config);
+  },
+
+  /** Apaga um modelo da conta do espaco pelo nome. */
+  async deleteTemplate(name: string, config: SpaceWhatsAppConfig): Promise<void> {
+    return libDeleteTemplateByName(name, config);
+  },
+
   /** Edita o texto de um modelo que ja existe na conta do espaco (a Meta analisa de novo). */
   async editTemplate(
     templateId: string,
@@ -156,14 +171,20 @@ export function sendOfficial(
   template: MetaTemplateSend | undefined,
   config: SpaceWhatsAppConfig,
 ): Promise<WhatsAppMessageResponse> {
-  return template
-    ? whatsappClient.sendTemplateMessage(
-        to,
-        template.name,
-        { languageCode: template.language, bodyParameters: template.params },
-        config,
-      )
-    : whatsappClient.sendTextMessage(to, content, config);
+  if (!template) return whatsappClient.sendTextMessage(to, content, config);
+  const components: WhatsAppTemplateComponent[] = [
+    { type: "body", parameters: template.params.map((text) => ({ type: "text" as const, text })) },
+  ];
+  // Botao "Pagar agora" dos modelos de cobranca: o final do endereco (doc technical/07 §1.7).
+  if (template.buttonUrlSuffix) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text" as const, text: template.buttonUrlSuffix }],
+    });
+  }
+  return whatsappClient.sendTemplateMessage(to, template.name, { languageCode: template.language, components }, config);
 }
 
 /**

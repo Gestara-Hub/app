@@ -13,13 +13,16 @@ import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
 import {
   MESSAGE_MAX_LENGTH,
-  TRIGGER_TO_META_TEMPLATE,
-  dropSentencesWith,
   fillMessage,
   isManualTrigger,
-  metaTemplateParams,
   whatsappNumber,
 } from "@/lib/whatsapp";
+import {
+  masterContent,
+  masterParams,
+  masterTemplateFor,
+  paymentButtonSuffix,
+} from "@/lib/whatsapp/master-templates";
 import { chargeReference } from "@/lib/messages/message-values";
 import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
@@ -85,6 +88,23 @@ export function ensureTemplates(): MessageTemplate[] {
   // o espaco antigo ganha o padrao sem perder o que ja tem.
   for (const template of defaults) {
     if (!store.messageTemplates.some((t) => t.trigger === template.trigger)) store.messageTemplates.push(template);
+  }
+  // Modelos mestres (18/11/2026, doc technical/07 §1.7): o texto vem sempre do
+  // mestre (o espaco nao edita o texto do aviso), e o modelo antigo na Meta
+  // (nome sem versao) deixa de valer ate a sincronizacao criar o novo.
+  for (const template of store.messageTemplates) {
+    const master = masterTemplateFor(template.trigger);
+    if (!master) continue;
+    const content = masterContent(master);
+    if (template.content !== content) template.content = content;
+    if (template.availableVariables.join() !== master.variables.join()) template.availableVariables = [...master.variables];
+    if (template.metaTemplateName && template.metaTemplateName !== master.metaName) {
+      delete template.metaTemplateName;
+      delete template.metaTemplateId;
+      delete template.metaBody;
+      delete template.metaStatus;
+      delete template.metaRejectionReason;
+    }
   }
   return store.messageTemplates;
 }
@@ -158,38 +178,32 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
  * Meta, onde toda variavel e obrigatoria. `{link_app}` ainda nao existe; o
  * link do pagamento so com o pagamento online ligado.
  */
-export function unavailableVariables(): string[] {
-  const keys = ["link_app"];
-  if (!store.organization.settings?.onlinePayments?.enabled) keys.push("link_pagamento");
-  return keys;
-}
-
-/** Texto do modelo na Meta: o do espaco, sem as frases das variaveis que nunca tem valor. */
-export function metaBodyFor(template: MessageTemplate): string {
-  return dropSentencesWith(template.content, unavailableVariables());
-}
-
 /**
- * Modelo aprovado da Meta para a mensagem (doc technical/07 §3.3): so quando o
- * texto e o do modelo do espaco na Meta com esses valores (texto editado sai
- * como texto livre) e toda variavel tem valor (a Meta recusa variavel vazia).
- * Vale o texto enviado a Meta (`metaBody`); antes dele, o que seria enviado.
+ * Modelo aprovado da Meta para a mensagem (doc technical/07 §1.7): o modelo
+ * mestre do aviso, so quando a mensagem e o texto do espaco com esses valores
+ * (texto editado sai como texto livre) e toda variavel tem valor (a Meta recusa
+ * variavel vazia). Nos avisos de cobranca, o botao "Pagar agora" leva a pagina
+ * de pagamento do aluno; sem ela, nao ha modelo.
  */
 export function officialTemplateFor(
   trigger: MessageTrigger | undefined,
   content: string,
   variables: Record<string, string | undefined> | undefined,
 ): MetaTemplateSend | undefined {
-  if (!trigger || !variables) return undefined;
-  const mapping = TRIGGER_TO_META_TEMPLATE[trigger];
+  const master = masterTemplateFor(trigger);
+  if (!master || !variables) return undefined;
   const template = ensureTemplates().find((t) => t.trigger === trigger);
-  if (!mapping || !template) return undefined;
+  if (!template) return undefined;
   if (template.metaStatus === "REJECTED" || template.metaStatus === "DISABLED") return undefined;
-  const body = template.metaBody ?? metaBodyFor(template);
-  if (fillMessage(body, variables) !== content.trim()) return undefined;
-  const params = metaTemplateParams(body, variables);
+  if (fillMessage(template.content, variables) !== content.trim()) return undefined;
+  const params = masterParams(master, variables);
   if (!params) return undefined;
-  return { name: template.metaTemplateName ?? mapping.templateName, language: "pt_BR", params };
+  if (master.paymentButton) {
+    const suffix = paymentButtonSuffix(variables.link_pagamento);
+    if (!suffix) return undefined;
+    return { name: master.metaName, language: "pt_BR", params, buttonUrlSuffix: suffix };
+  }
+  return { name: master.metaName, language: "pt_BR", params };
 }
 
 /**
@@ -348,16 +362,12 @@ export function runBillingReminders(): number {
       const onlinePayment = (store.onlinePayments ?? []).find(
         (p) => p.chargeId === charge.id && p.status !== "canceled" && p.status !== "expired",
       );
-      const hasOnlinePayments = Boolean(
-        store.organization.settings?.onlinePayments?.enabled,
-      );
+      // Sempre a pagina do GestaraHub: o botao "Pagar agora" do modelo leva a ela.
+      // Sem recebimentos online, a pagina da cobranca avisa para combinar com o
+      // espaco (doc technical/07 §1.7).
       const paymentLink = onlinePayment?.publicCode
         ? paymentPageUrl(onlinePayment.publicCode)
-        : onlinePayment?.linkUrl
-          ? onlinePayment.linkUrl
-          : hasOnlinePayments
-            ? chargeInvoiceUrl(charge.id)
-            : "";
+        : chargeInvoiceUrl(charge.id);
 
       const className = charge.classGroupId
         ? (store.classGroups ?? []).find((cg) => cg.id === charge.classGroupId)?.name

@@ -248,27 +248,30 @@ test.describe("WhatsApp", () => {
     await page.goto("/classes/billing?status=all");
     const remind = (name: string) => openedWhatsApp(page, () => menuAction(page, name, "Lembrar no WhatsApp"));
 
-    // Mensalidade continua com o modelo da situacao (atrasada: "Em atraso").
+    // Mensalidade continua com o modelo da situacao (atrasada: "Em atraso"),
+    // no texto mestre (doc technical/07 §1.7). Sem cobranca online, a linha do link sai.
     const membership = await remind("Aluno Mensal");
     expect(membership.text).toBe(
-      "Oi, Aluno Mensal! Notamos que a mensalidade de R$ 55,00 da Academia X que venceu em 20/09 ainda está em aberto. Qualquer dúvida, estamos à disposição!",
+      "Olá, Aluno Mensal, você tem um pagamento atrasado:\n\nConta: Mensalidade na Academia X\nValor devido: R$ 55,00\nData prevista: 20/09\n\nPor favor ignore esta mensagem se você já pagou.",
     );
 
     const kimono = await remind("Aluna Kimono");
     expect(kimono.origin).toBe("https://api.whatsapp.com/send");
     expect(kimono.phone).toBe("5511977770000");
-    // Sem cobranca online no gratis: a frase do link sai inteira.
+    // Sem cobranca online no gratis: a linha do link sai inteira.
     expect(kimono.text).toBe(
-      "Olá, Aluna Kimono! Lembrete da cobrança Kimono de R$ 250,00 na Academia X, com vencimento em 25/09. Bons treinos! 🥋",
+      "Lembrete de pagamento:\n\nConta: cobrança Kimono na Academia X\nValor a pagar: R$ 250,00\nData de vencimento: 25/09\n\nPague agora para evitar pendências.\n\nSe você já pagou, ignore esta mensagem.",
     );
     const parcel = await remind("Aluno Parcela");
     expect(parcel.phone).toBe("5511911112222");
-    expect(parcel.text).toContain("Lembrete da parcela 2 de 3 da cobrança Kimono de R$ 100,00 na Academia X, com vencimento em 30/09.");
-    expect((await remind("Aluna Curso Vista")).text).toContain("Lembrete da matrícula no curso Confeitaria de R$ 800,00");
-    expect((await remind("Aluno Curso Parcela")).text).toContain("Lembrete da parcela 2 de 4 do curso Confeitaria de R$ 200,00");
-    expect((await remind("Aluna Pacote Vista")).text).toContain("Lembrete da compra do pacote 10 aulas de R$ 500,00");
+    expect(parcel.text).toContain(
+      "Conta: parcela 2 de 3 da cobrança Kimono na Academia X\nValor a pagar: R$ 100,00\nData de vencimento: 30/09",
+    );
+    expect((await remind("Aluna Curso Vista")).text).toContain("Conta: matrícula no curso Confeitaria na Academia X\nValor a pagar: R$ 800,00");
+    expect((await remind("Aluno Curso Parcela")).text).toContain("Conta: parcela 2 de 4 do curso Confeitaria na Academia X\nValor a pagar: R$ 200,00");
+    expect((await remind("Aluna Pacote Vista")).text).toContain("Conta: compra do pacote 10 aulas na Academia X\nValor a pagar: R$ 500,00");
     expect((await remind("Aluno Pacote Parcela")).text).toContain(
-      "Lembrete da parcela 1 de 2 do pacote 10 aulas de R$ 250,00 na Academia X, com vencimento em 23/09.",
+      "Conta: parcela 1 de 2 do pacote 10 aulas na Academia X\nValor a pagar: R$ 250,00\nData de vencimento: 23/09",
     );
     expect(await openMenuItems(page, "Aluno Aula")).not.toContain("Lembrar no WhatsApp");
 
@@ -287,7 +290,7 @@ test.describe("WhatsApp", () => {
     await expect(page.getByText("Pacote acabando", { exact: true })).toBeVisible();
   });
 
-  test("gastronomia: trocar a área reescreve o fecho do lembrete (\"Boas aulas!\")", async ({ page }) => {
+  test("gastronomia: trocar a área não muda o lembrete (texto mestre, sem fecho de área)", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [noPlan("c-1", "Aluna Doce")], (t.charges = [extra("x-1", "c-1", { description: "Avental" })])) });
     await page.goto("/settings");
     await page.getByRole("combobox", { name: /Área do espaço/ }).click();
@@ -298,9 +301,8 @@ test.describe("WhatsApp", () => {
 
     await page.goto("/classes/billing?status=all");
     const link = await openedWhatsApp(page, () => menuAction(page, "Aluna Doce", "Lembrar no WhatsApp"));
-    expect(link.text).toBe(
-      "Olá, Aluna Doce! Lembrete da cobrança Avental de R$ 250,00 na Academia X, com vencimento em 25/09. Boas aulas!",
-    );
+    expect(link.text).toContain("Conta: cobrança Avental na Academia X\nValor a pagar: R$ 250,00\nData de vencimento: 25/09");
+    expect(link.text).not.toContain("Boas aulas");
   });
 });
 

@@ -75,10 +75,10 @@ test.describe("envio assistido (grátis)", () => {
     const link = await openedWhatsApp(page, () => chargeAction(page, "Aluno A20", "Lembrar no WhatsApp"));
     expect(link.origin).toBe("https://api.whatsapp.com/send");
     expect(link.phone).toBe("5511977770000");
-    // Modelo "Em atraso" com os dados da cobranca; a frase do link de pagamento
-    // sai inteira (o espaco nao cobra online no gratis).
+    // Modelo "Em atraso" (texto mestre, doc technical/07 §1.7) com os dados da
+    // cobranca; a linha do link sai inteira (o espaco nao cobra online no gratis).
     expect(link.text).toBe(
-      "Oi, Aluno A20! Notamos que a mensalidade de R$ 55,00 da Academia X que venceu em 20/09 ainda está em aberto. Qualquer dúvida, estamos à disposição!",
+      "Olá, Aluno A20, você tem um pagamento atrasado:\n\nConta: Mensalidade na Academia X\nValor devido: R$ 55,00\nData prevista: 20/09\n\nPor favor ignore esta mensagem se você já pagou.",
     );
     expect(link.text).not.toContain("{");
 
@@ -97,7 +97,7 @@ test.describe("envio assistido (grátis)", () => {
     await row.click();
     const detail = page.getByRole("dialog", { name: "Em atraso" });
     await expect(detail).toContainText("O WhatsApp foi aberto com esta mensagem.");
-    await expect(detail).toContainText("venceu em 20/09");
+    await expect(detail).toContainText("Data prevista: 20/09");
   });
 
   test("mensagem para vários alunos: seleciona todos e abre o WhatsApp de cada um, em sequência", async ({ page }) => {
@@ -215,7 +215,9 @@ test.describe("WhatsApp oficial (Pro)", () => {
     await expect(page.getByText("WhatsApp oficial conectado.")).toBeVisible();
 
     await expect(page.getByText("Mensagens automáticas pelo WhatsApp oficial do seu espaço.")).toBeVisible();
-    await expect(page.getByText("Academia X · (11) 4002-8922. As mensagens ligadas saem sozinhas.")).toBeVisible();
+    await expect(
+      page.getByText("Academia X · (11) 4002-8922. As mensagens ligadas saem sozinhas e a Meta cobra cada uma na sua conta."),
+    ).toBeVisible();
     await expect(page.getByText("Horário de envio automático")).toBeVisible();
     await openTab(page, "Mensagens");
     await expect(page.getByRole("switch", { name: "Envio automático: Em atraso" })).toBeVisible();

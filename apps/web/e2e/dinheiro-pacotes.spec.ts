@@ -611,7 +611,7 @@ test.describe("Dashboard: pacotes acabando", () => {
     const sheet = page.getByRole("dialog", { name: "Enviar em sequência" });
     await expect(sheet).toContainText("1 de 4");
     await expect(sheet).toContainText("Aluna Venceu");
-    await expect(sheet).toContainText("Sobre seu pacote 10 aulas na Academia X: venceu em 18/09.");
+    await expect(sheet).toContainText("sobre o seu pacote 10 aulas na Academia X: venceu em 18/09.");
     await expect(sheet).toContainText("Próximo: Aluna Acabou");
 
     const first = await openedWhatsApp(page, () => sheet.getByRole("button", { name: "Abrir WhatsApp" }).click());
@@ -651,13 +651,15 @@ test.describe("Dashboard: pacotes acabando", () => {
       row.getByRole("button", { name: "Avisar Aluna Última no WhatsApp" }).click(),
     );
     expect(link.phone).toBe("5511955554444");
-    expect(link.text).toBe("Oi, Aluna Última! Sobre seu pacote 10 aulas na Academia X: resta 1 aula. Quer renovar e seguir treinando?");
+    expect(link.text).toBe(
+      "Oi, Aluna Última! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula. Se quiser renovar e seguir com as aulas, é só responder esta mensagem.",
+    );
     await expect(lines.nth(3)).toContainText("Avisado hoje");
     await expect(row).toContainText("3 pacotes acabando");
     const expired = await openedWhatsApp(page, () =>
       row.getByRole("button", { name: "Avisar Aluna Venceu no WhatsApp" }).click(),
     );
-    expect(expired.text).toContain("Sobre seu pacote 10 aulas na Academia X: venceu em 18/09.");
+    expect(expired.text).toContain("sobre o seu pacote 10 aulas na Academia X: venceu em 18/09.");
 
     // Vender pacote pelo Dashboard: o aluno sai da lista.
     await lines.nth(2).getByRole("button", { name: "Vender pacote" }).click();

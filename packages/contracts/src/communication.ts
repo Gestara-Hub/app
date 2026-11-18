@@ -200,6 +200,8 @@ export interface MetaTemplateSend {
   name: string;
   language: string;
   params: string[];
+  /** Final do endereco do botao "Pagar agora" (modelos de cobranca da biblioteca da Meta). */
+  buttonUrlSuffix?: string;
 }
 
 export interface CommunicationMetrics {

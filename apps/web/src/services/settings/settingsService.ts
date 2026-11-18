@@ -3,7 +3,6 @@ import type {
   Address,
   BusinessHoursDay,
   Category,
-  ClassesBusinessSegment,
   Id,
   Organization,
   Unit,
@@ -14,7 +13,6 @@ import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/moc
 import { unwrap } from "../server/action";
 import { serviceAction } from "../world/serviceActions";
 import { encodeArgs } from "../world/transport";
-import { defaultMessageTemplates } from "@/services/defaults";
 import { readOp, writeOp, validationError } from "@/services/world/ops";
 import { fetchService, realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../audit/auditLogService";
@@ -48,27 +46,6 @@ export type UpdateUnit = Partial<{
   businessHours: BusinessHoursDay[];
 }>;
 
-/**
- * Troca de area: os modelos de mensagem que ainda estao no texto padrao da area
- * anterior passam para o texto da nova. Os editados pelo tenant ficam como estao.
- */
-function syncTemplatesWithSegment(previous: ClassesBusinessSegment | undefined) {
-  if (!store.messageTemplates?.length) return;
-  const orgId = store.organization.id;
-  const oldDefaults = new Map(
-    defaultMessageTemplates(orgId, previous).map((t) => [t.trigger, t.content]),
-  );
-  const newDefaults = new Map(
-    defaultMessageTemplates(orgId, store.organization.classSegment).map((t) => [t.trigger, t.content]),
-  );
-  for (const template of store.messageTemplates) {
-    const next = newDefaults.get(template.trigger);
-    if (next && template.content === oldDefaults.get(template.trigger)) {
-      template.content = next;
-    }
-  }
-}
-
 /** Regras de configuracao do espaco (rodam no servidor na conta real). */
 const settingsServiceImpl = {
   getOrganization(): Promise<Organization> {
@@ -85,7 +62,6 @@ const settingsServiceImpl = {
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "organizationName", message: "Use até 80 caracteres." }]);
       }
-      const previousSegment = store.organization.classSegment;
       store.organization = {
         ...store.organization,
         ...payload,
@@ -102,9 +78,6 @@ const settingsServiceImpl = {
             ? { ...store.organization.settings, ...payload.settings }
             : store.organization.settings,
       };
-      if (store.organization.classSegment !== previousSegment) {
-        syncTemplatesWithSegment(previousSegment);
-      }
       auditLogService.record({
         action: "updated",
         target: { type: "settings", label: "Dados da organização" },
