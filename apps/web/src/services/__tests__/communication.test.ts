@@ -1,4 +1,4 @@
-import { tierWhatsAppQuota, type SendMessagePayload } from "@gestarahub/contracts";
+import type { SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
 import {
@@ -50,10 +50,6 @@ function message(overrides: Partial<SendMessagePayload> = {}): SendMessagePayloa
 
 function setTier(tier: "free" | "pro" | "scale") {
   store.organization.subscription = { tier };
-  // Como o pagamento do plano faz no servidor (resetWhatsAppQuota): a franquia do plano.
-  if (store.whatsAppConnection) {
-    store.whatsAppConnection.monthlyQuota = { used: 0, included: tierWhatsAppQuota(tier) };
-  }
 }
 
 /** Pro com o numero oficial conectado (telefone da unidade). */
@@ -426,7 +422,7 @@ describe("modelos de mensagem", () => {
 describe("envio assistido", () => {
   beforeEach(() => resetAcademy());
 
-  it("registra Aberto no WhatsApp com aluno e cobranca, sem gastar franquia", async () => {
+  it("registra Aberto no WhatsApp com aluno e cobranca", async () => {
     const log = await communicationService.registerAssistedMessage(
       message({ trigger: "billing_due_date", clientId: "cli-1", chargeId: "chg-1", content: "  Vence hoje.  " }),
     );
@@ -441,14 +437,12 @@ describe("envio assistido", () => {
       content: "Vence hoje.",
     });
     expect(store.messageLogs[0].id).toBe(log.id);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
     expect(lastAudit()).toContain("abriu no WhatsApp uma mensagem para Maria");
   });
 
-  it("funciona no gratis e tambem no Pro conectado, sem gastar franquia", async () => {
+  it("funciona no gratis e tambem no Pro conectado", async () => {
     await connectOfficial();
     await communicationService.registerAssistedMessage(message());
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("sem gatilho e mensagem administrativa; retencao para boas-vindas", async () => {
@@ -530,7 +524,6 @@ describe("envio automatico (oficial)", () => {
     try {
       const log = await communicationService.sendMessage(message({ clientId: "cli-1" }));
       expect(log.status).toBe("queued");
-      expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
       // A Meta ainda nao foi chamada: so no efeito, depois da gravacao e da resposta.
       expect(effects).toHaveLength(1);
       expect(jobs).toHaveLength(0);
@@ -544,20 +537,18 @@ describe("envio automatico (oficial)", () => {
     }
   });
 
-  it("Pro conectado envia, conta na franquia e audita", async () => {
+  it("Pro conectado envia e audita", async () => {
     await connectOfficial();
     const log = await communicationService.sendMessage(message({ trigger: "absence_alert", clientId: "cli-1" }));
     expect(log).toMatchObject({ status: "delivered", category: "retention", clientId: "cli-1" });
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
     expect(lastAudit()).toBe("Ana Ribeiro enviou mensagem de WhatsApp para Maria");
   });
 
-  it("mensagem invalida nao gasta franquia", async () => {
+  it("mensagem invalida nao sai", async () => {
     await connectOfficial();
     await expect(communicationService.sendMessage(message({ recipientPhone: "123" }))).rejects.toMatchObject({
       code: "VALIDATION",
     });
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("reenviar falha e do Pro e marca como entregue", async () => {
@@ -624,14 +615,12 @@ describe("parabens automatico", () => {
     expect(logs[0].content).toContain("Parabéns pelo seu dia, Bia!");
     expect(logs[0].content).toContain("equipe da Academia X");
     expect(logs[0].content).not.toMatch(/\{\w+\}/);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
 
     // A rotina de novo no mesmo dia nao duplica.
     greet();
     at("19:00");
     greet();
     expect(greetings()).toHaveLength(1);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
   });
 
   it("sem a autorização do aluno (ou depois do SAIR) o automático não sai", async () => {
@@ -732,7 +721,6 @@ describe("parabens automatico", () => {
     await connectOfficial();
     greet();
     expect(greetings().map((l) => l.status)).toEqual(["opened"]);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
   });
 
   it("recorte da rotina (servidor) igual ao espaço inteiro", async () => {
@@ -753,7 +741,6 @@ describe("parabens automatico", () => {
     await connectOfficial();
     greet();
     expect(greetings().map((l) => l.recipientName).sort()).toEqual(["Bia", "Caio"]);
-    expect(store.whatsAppConnection?.monthlyQuota.used).toBe(2);
   });
 });
 
@@ -793,11 +780,10 @@ describe("numeros do mes", () => {
     const failed = await communicationService.registerAssistedMessage(message());
     store.messageLogs.find((l) => l.id === failed.id)!.status = "failed";
     const metrics = await communicationService.getMetrics();
-    // Gratis: sem envio automatico, franquia 0 (Pro 300, Expansao 1.000).
+    // Gratis: sem envio automatico.
     expect(metrics).toMatchObject({
       mode: "assisted",
       messagesThisMonth: 2,
-      monthlyQuota: 0,
       deliveryRate: null,
       readRate: null,
       recoveredAmountCents: 0,

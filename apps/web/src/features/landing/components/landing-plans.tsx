@@ -25,6 +25,7 @@ const PLAN_CARD = "flex h-full flex-col gap-6 rounded-2xl border bg-card p-6 sm:
 const PRO_POINTS = [
   "Pagamento online com baixa automática",
   "Lembretes automáticos no WhatsApp",
+  "Mensagens pagas por você, direto à Meta",
   "Relatórios avançados",
   "Certificado de conclusão de curso",
   "Inscrição em evento por link, com ingresso",

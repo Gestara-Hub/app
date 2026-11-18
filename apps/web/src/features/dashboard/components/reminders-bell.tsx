@@ -21,7 +21,6 @@ import {
   documentBellAlerts,
   gatewayRejectedBellAlert,
   planBellAlert,
-  quotaBellAlert,
   whatsappPendingConnectionBellAlert,
   type BellAlert,
 } from "../bell-alerts";
@@ -41,7 +40,7 @@ import { dateInSpace } from "@gestarahub/core/date";
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
  * tocar, a mesma lista do painel num painel lateral. Some sem pendencia. So no
  * modelo de turmas, para quem manda mensagem e para o professor (so os alunos dele).
- * Dono e gerente veem tambem os avisos do espaco (plano, franquia, pagamento online).
+ * Dono e gerente veem tambem os avisos do espaco (plano, WhatsApp, pagamento online).
  *
  * Niveis (doc product/25, "Níveis, urgência e novos lembretes"): o sino pulsa
  * tres vezes quando ha item de atencao ou urgencia novo desde a ultima abertura.
@@ -53,7 +52,7 @@ export function RemindersBell() {
   return <RemindersBellButton />;
 }
 
-/** Avisos do espaco (plano, franquia, pagamento online, documentos), conforme quem ve. */
+/** Avisos do espaco (plano, WhatsApp, pagamento online, documentos), conforme quem ve. */
 export function useBellAlerts(today: string): BellAlert[] {
   const eligible = seesPlanNotices(useCurrentUser().profile);
   const can = useCan();
@@ -73,7 +72,6 @@ export function useBellAlerts(today: string): BellAlert[] {
         planBellAlert(subscription, today),
         gatewayRejectedBellAlert(organization?.settings?.onlinePayments),
         whatsappPendingConnectionBellAlert(connection),
-        quotaBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)
     : [];
   return [...(seesPayments ? disputeBellAlerts(disputed, studentNameOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];

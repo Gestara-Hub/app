@@ -20,7 +20,6 @@ import { whatsappConsentGranted } from "../clients/clientConsentRules";
 import { teacherSeesClass, teacherStudentIds } from "../classes/teacherScope";
 import { assertFeature } from "../subscription/subscriptionService";
 import {
-  ensureConnection,
   connectionView,
   ensureTemplates,
   ensureLogs,
@@ -92,7 +91,7 @@ export const messagesService = {
   },
   /**
    * Envio assistido: a tela ja abriu o WhatsApp com o texto. Registra
-   * "Aberto no WhatsApp" (o envio em si nao e confirmado). Nao gasta franquia.
+   * "Aberto no WhatsApp" (o envio em si nao e confirmado).
    */
   registerAssistedMessage(payload: SendMessagePayload): Promise<MessageLog> {
     return writeOp(async () => {
@@ -115,13 +114,6 @@ export const messagesService = {
       assertFeature("messaging");
       const view = connectionView();
       if (view.mode !== "official") {
-        if (view.isQuotaExhausted) {
-          throw apiError(
-            "CONFLICT",
-            `Franquia de mensagens automáticas atingida (${view.monthlyQuota.used} de ${view.monthlyQuota.included}). Use o envio assistido até a franquia renovar, no próximo ciclo do plano.`,
-            { httpStatus: 409 },
-          );
-        }
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para enviar automaticamente.", {
           httpStatus: 409,
         });
@@ -140,8 +132,6 @@ export const messagesService = {
           { httpStatus: 409, fields: [{ field: "whatsappConsentStatus", message: "Sem autorização para WhatsApp." }] },
         );
       }
-      const connection = ensureConnection();
-
       let messageId: string | undefined;
       let status: MessageLog["status"] = "sent";
       let errorReason: string | undefined;
@@ -177,7 +167,6 @@ export const messagesService = {
       }
       if (queued) dispatchOfficial(log);
       ensureLogs().unshift(log);
-      connection.monthlyQuota.used += 1;
 
       auditLogService.record({
         action: "created",
@@ -271,7 +260,6 @@ export const messagesService = {
         // Assistido: so as abertas no WhatsApp (falha nao conta).
         messagesThisMonth:
           view.mode === "official" ? sent.length : monthLogs.filter((l) => l.status === "opened").length,
-        monthlyQuota: view.monthlyQuota.included,
         // Taxas so no oficial (no assistido nao ha entrega a medir).
         deliveryRate:
           view.mode === "official" && sent.length > 0 ? Math.round((delivered / sent.length) * 1000) / 10 : null,

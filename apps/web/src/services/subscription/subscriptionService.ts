@@ -4,7 +4,6 @@ import {
   type Subscription,
   type SubscriptionInterval,
   type SubscriptionTier,
-  tierWhatsAppQuota,
 } from "@gestarahub/contracts";
 import { hasFeature, isSubscriptionTier, tierOf } from "@/lib/subscription";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
@@ -106,11 +105,8 @@ export const subscriptionService = {
         ? await unwrap(updateOrganizationSubscriptionAction(store.organization.id, tier))
         : { tier, changedAt: nowIso(), status: tier === "free" ? undefined : ("active" as const) };
       store.organization = { ...store.organization, subscription };
-      // Conta real: o servidor grava o historico, a Auditoria e zera a franquia.
+      // Conta real: o servidor grava o historico e a Auditoria.
       if (realAccountInBrowser()) return currentSubscription();
-      if (store.whatsAppConnection) {
-        store.whatsAppConnection.monthlyQuota = { used: 0, included: tierWhatsAppQuota(tier) };
-      }
 
       auditLogService.record({
         action: "updated",
@@ -234,9 +230,6 @@ export const subscriptionService = {
       store.organization = { ...store.organization, subscription };
       const tier = subscription.tier;
       if (realAccountInBrowser()) return currentSubscription();
-      if (store.whatsAppConnection) {
-        store.whatsAppConnection.monthlyQuota = { used: 0, included: tierWhatsAppQuota(tier) };
-      }
 
       auditLogService.record({
         action: "updated",

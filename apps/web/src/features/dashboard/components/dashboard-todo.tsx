@@ -271,7 +271,7 @@ export function DashboardTodo({
   today: string;
   /** Sem o cartao (no painel do sino). */
   bare?: boolean;
-  /** Avisos do espaco (plano, franquia), so no sino, antes dos lembretes. */
+  /** Avisos do espaco (plano, WhatsApp), so no sino, antes dos lembretes. */
   alerts?: BellAlert[];
 }) {
   const areaVocabulary = useSegmentVocabulary();

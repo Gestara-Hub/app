@@ -8,7 +8,6 @@ import {
   type SendMessagePayload,
   type WhatsAppConnection,
   type WhatsAppConnectionView,
-  tierWhatsAppQuota,
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
@@ -44,16 +43,8 @@ import { metaSignupConfigured, platformNumberFallbackAllowed } from "./whatsappC
  */
 
 export function ensureConnection(): WhatsAppConnection {
-  // Sem assinatura = Gratis (sem envio automatico, franquia 0).
-  const tier = store.organization.subscription?.tier ?? "free";
   if (!store.whatsAppConnection) {
-    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id, tier);
-  } else {
-    // Reconcilia com a cota oficial do tier caso esteja com o default legado de 1000 no Pro
-    const expectedQuota = tierWhatsAppQuota(tier);
-    if (tier === "pro" && store.whatsAppConnection.monthlyQuota.included === 1000) {
-      store.whatsAppConnection.monthlyQuota.included = expectedQuota;
-    }
+    store.whatsAppConnection = defaultWhatsAppConnection(store.organization.id);
   }
   return store.whatsAppConnection;
 }
@@ -73,19 +64,14 @@ export function connectionView(): WhatsAppConnectionView {
   const connection = ensureConnection();
   const canUseOfficial = tenantHasFeature("messaging");
   const officialAvailable = officialSendingAvailable();
-  const isQuotaExhausted =
-    connection.monthlyQuota.included > 0 &&
-    connection.monthlyQuota.used >= connection.monthlyQuota.included;
 
+  // Sem franquia desde 17/11/2026: o espaco paga a Meta direto pela propria
+  // conta do WhatsApp (doc technical/07 §1.5); o GestaraHub nao limita os envios.
   return {
     ...connection,
     canUseOfficial,
-    isQuotaExhausted,
     officialAvailable,
-    mode:
-      canUseOfficial && officialAvailable && connection.officialStatus === "connected" && !isQuotaExhausted
-        ? "official"
-        : "assisted",
+    mode: canUseOfficial && officialAvailable && connection.officialStatus === "connected" ? "official" : "assisted",
   };
 }
 
@@ -240,7 +226,6 @@ export function dispatchOfficial(log: MessageLog): void {
  */
 export function runBirthdayGreetings(): number {
   if (!tenantHasFeature("messaging") || connectionView().mode !== "official") return 0;
-  const connection = ensureConnection();
   const template = ensureTemplates().find((t) => t.trigger === "birthday_greeting");
   if (!template?.enabled) return 0;
   const now = new Date();
@@ -250,7 +235,6 @@ export function runBirthdayGreetings(): number {
   const logs = ensureLogs();
   let sent = 0;
   for (const client of store.clients) {
-    if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
     if (client.status !== "active" || !whatsappNumber(client.phone)) continue;
     // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
     if (!whatsappConsentGranted(client)) continue;
@@ -278,7 +262,6 @@ export function runBirthdayGreetings(): number {
     if (metaTemplate) log.metaTemplate = metaTemplate;
     dispatchOfficial(log);
     logs.unshift(log);
-    connection.monthlyQuota.used += 1;
     sent += 1;
   }
   if (sent > 0) {
@@ -342,7 +325,6 @@ export function runBillingReminders(): number {
     });
 
     for (const charge of targetCharges) {
-      if (connection.monthlyQuota.used >= connection.monthlyQuota.included) break;
       const client = (store.clients ?? []).find((cl) => cl.id === charge.studentId);
       if (!client || client.status !== "active" || !whatsappNumber(client.phone)) continue;
       // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
@@ -411,7 +393,6 @@ export function runBillingReminders(): number {
       if (metaTemplate) log.metaTemplate = metaTemplate;
       dispatchOfficial(log);
       logs.unshift(log);
-      connection.monthlyQuota.used += 1;
       sent += 1;
     }
   }

@@ -10,6 +10,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { META_COST_SHORT } from "@/lib/whatsapp/meta-cost";
 import { toast } from "@/lib/toast";
 import type { SubscriptionTier } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -400,6 +401,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   "Lembretes e avisos no WhatsApp sem clique",
+  META_COST_SHORT,
   "Relatório do resultado do mês",
   "Retenção de alunos",
   "Certificado de conclusão em PDF",
@@ -408,7 +410,7 @@ const PRO_FEATURES = [
 ];
 
 const SCALE_FEATURES = [
-  "1.000 mensagens no WhatsApp por mês",
+  "WhatsApp automático em todas as unidades",
   "Multiunidades e filiais da rede",
   "Taxa reduzida de pagamento online",
   "Inteligência analítica preditiva",

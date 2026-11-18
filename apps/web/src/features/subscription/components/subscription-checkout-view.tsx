@@ -22,8 +22,10 @@ import {
   Smartphone,
   Sparkles,
   Ticket,
+  Info,
   Zap,
 } from "lucide-react";
+import { META_COST_SHORT } from "@/lib/whatsapp/meta-cost";
 import { toast } from "@/lib/toast";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
 import { formatDate } from "@gestarahub/core/format";
@@ -373,12 +375,12 @@ export function SubscriptionCheckoutView() {
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-bold text-foreground">Próximo passo recomendado</p>
-                  <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[10px] font-semibold text-primary">
-                    300 mensagens/mês
-                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
                   Conecte o número do seu espaço para que cobranças, avisos de aula e boas-vindas saiam sozinhos pelo WhatsApp oficial.
+                </p>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed max-w-sm">
+                  As mensagens automáticas são cobradas pela Meta, no cartão da sua conta do WhatsApp. O GestaraHub não cobra por elas.
                 </p>
               </div>
             </div>
@@ -1264,6 +1266,10 @@ export function SubscriptionCheckoutView() {
                         <span>WhatsApp automático (lembretes e avisos)</span>
                       </li>
                       <li className="flex items-start gap-2">
+                        <Info className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                        <span>{META_COST_SHORT}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
                         <span>Relatório do resultado do mês e retenção</span>
                       </li>
@@ -1284,7 +1290,7 @@ export function SubscriptionCheckoutView() {
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                        <span>1.000 mensagens no WhatsApp por mês</span>
+                        <span>WhatsApp automático em todas as unidades</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />

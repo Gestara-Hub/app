@@ -98,8 +98,6 @@ function SendMessageForm({
     ? picked.filter((c) => c.whatsappConsentStatus !== undefined && c.whatsappConsentStatus !== "granted")
     : [];
   const eligiblePicked = picked.filter((c) => Boolean(whatsappNumber(c.phone)) && hasOfficialConsent(c));
-  const quotaInfo = whatsapp.connection?.monthlyQuota;
-  const remainingQuota = quotaInfo ? Math.max(0, quotaInfo.included - quotaInfo.used) : Infinity;
 
   const suggestions = useMessageSuggestions(recipient?.id);
   // Modelo escolhido (o envio leva o tipo dele e a cobranca ligada).
@@ -228,22 +226,17 @@ function SendMessageForm({
           });
           return;
         }
-        if (remainingQuota <= 0) {
-          toast.error("Franquia mensal do WhatsApp oficial esgotada.");
-          return;
-        }
         if (!confirmingBatch) {
           setConfirmingBatch(true);
           return;
         }
-        const capped = Number.isFinite(remainingQuota) ? toSend.slice(0, remainingQuota) : toSend;
         let sentCount = 0;
         let queuedCount = 0;
         let failedCount = 0;
         let lastError = "";
-        for (let i = 0; i < capped.length; i += 1) {
-          setBatchProgress({ done: i, total: capped.length });
-          const c = capped[i];
+        for (let i = 0; i < toSend.length; i += 1) {
+          setBatchProgress({ done: i, total: toSend.length });
+          const c = toSend[i];
           const phone = whatsappNumber(c.phone);
           if (!phone) continue;
           try {
@@ -259,7 +252,6 @@ function SendMessageForm({
           } catch (err) {
             failedCount += 1;
             lastError = getErrorMessage(err, "Falha ao enviar");
-            if (lastError.toLowerCase().includes("franquia")) break;
           }
         }
         setBatchProgress(null);
@@ -476,15 +468,9 @@ function SendMessageForm({
           {confirmingBatch && official && many ? (
             <div className="space-y-1 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
               <p className="font-semibold">
-                Confirmar envio oficial para {plural(Math.min(eligiblePicked.length, remainingQuota), "aluno", "alunos")}?
+                Confirmar envio oficial para {plural(eligiblePicked.length, "aluno", "alunos")}?
               </p>
-              {quotaInfo ? (
-                <p className="text-muted-foreground">
-                  {remainingQuota < eligiblePicked.length
-                    ? `Sua franquia restante (${remainingQuota}) comporta apenas ${remainingQuota} de ${eligiblePicked.length} envios; os demais não serão disparados.`
-                    : `Consome ${eligiblePicked.length} de ${remainingQuota} mensagens restantes na franquia do ciclo.`}
-                </p>
-              ) : null}
+              <p className="text-muted-foreground">A Meta cobra cada mensagem da conta do WhatsApp do seu espaço.</p>
             </div>
           ) : null}
         </DialogBody>
@@ -512,7 +498,7 @@ function SendMessageForm({
               : many
                 ? official
                   ? confirmingBatch
-                    ? `Confirmar envio (${Math.min(eligiblePicked.length, remainingQuota)})`
+                    ? `Confirmar envio (${eligiblePicked.length})`
                     : `Enviar para ${eligiblePicked.length}`
                   : `Começar o envio (${picked.length})`
                 : official

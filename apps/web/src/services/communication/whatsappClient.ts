@@ -166,31 +166,42 @@ export function sendOfficial(
     : whatsappClient.sendTextMessage(to, content, config);
 }
 
-/** Motivo da falha da Meta para o Historico, em portugues (codigos da Cloud API). */
-export function metaErrorReason(err: unknown): string {
-  if (err instanceof WhatsAppApiError) {
-    switch (err.code) {
-      case 131047:
-        return "Fora da janela de 24 horas: esta mensagem precisa de um modelo aprovado no WhatsApp.";
-      case 132000:
-        return "As informações da mensagem não batem com o modelo aprovado no WhatsApp.";
-      case 132001:
-        return "O modelo desta mensagem ainda não existe ou não foi aprovado no WhatsApp do espaço.";
-      case 132015:
-        return "O modelo desta mensagem está pausado pelo WhatsApp.";
-      case 132016:
-        return "O modelo desta mensagem foi desativado pelo WhatsApp.";
-      case 131026:
-        return "O número não recebe mensagens pelo WhatsApp.";
-      case 131049:
-        return "O WhatsApp não entregou para manter a qualidade das mensagens. Tente mais tarde.";
-      case 131050:
-        return "O aluno parou de receber mensagens deste espaço pelo WhatsApp.";
-      case 190:
-        return "A conexão com o WhatsApp expirou. Conecte de novo em Comunicação.";
-      default:
-        return `O WhatsApp recusou o envio (código ${err.code}): ${err.message}`;
-    }
+/**
+ * Motivo da falha da Meta para o Historico, em portugues, pelo codigo da Cloud
+ * API. Vale para o erro na hora do envio e para a falha que chega depois pelo
+ * webhook (status `failed`).
+ */
+export function metaReasonForCode(code: number | undefined, message?: string): string {
+  switch (code) {
+    case 131042:
+      return "A conta do WhatsApp do espaço está sem forma de pagamento na Meta. Cadastre o pagamento no Gerenciador do WhatsApp.";
+    case 131047:
+      return "Fora da janela de 24 horas: esta mensagem precisa de um modelo aprovado no WhatsApp.";
+    case 132000:
+      return "As informações da mensagem não batem com o modelo aprovado no WhatsApp.";
+    case 132001:
+      return "O modelo desta mensagem ainda não existe ou não foi aprovado no WhatsApp do espaço.";
+    case 132015:
+      return "O modelo desta mensagem está pausado pelo WhatsApp.";
+    case 132016:
+      return "O modelo desta mensagem foi desativado pelo WhatsApp.";
+    case 131026:
+      return "O número não recebe mensagens pelo WhatsApp.";
+    case 131049:
+      return "O WhatsApp não entregou para manter a qualidade das mensagens. Tente mais tarde.";
+    case 131050:
+      return "O aluno parou de receber mensagens deste espaço pelo WhatsApp.";
+    case 190:
+      return "A conexão com o WhatsApp expirou. Conecte de novo em Comunicação.";
+    default:
+      return code !== undefined
+        ? `O WhatsApp recusou o envio (código ${code})${message ? `: ${message}` : ""}`
+        : message || "Falha na entrega pelo WhatsApp.";
   }
+}
+
+/** Motivo da falha de um envio (erro da chamada a Meta). */
+export function metaErrorReason(err: unknown): string {
+  if (err instanceof WhatsAppApiError) return metaReasonForCode(err.code, err.message);
   return err instanceof Error ? err.message : "Falha ao enviar mensagem de WhatsApp.";
 }

@@ -27,11 +27,14 @@ export interface WhatsAppConnection {
     start: string;
     end: string;
   };
-  /** Franquia mensal do envio automatico (custo por mensagem da Meta). */
+  /**
+   * @deprecated Franquia mensal do envio automatico, sem uso desde 17/11/2026:
+   * o espaco paga a Meta direto pela propria conta do WhatsApp (doc
+   * technical/07 §1.5). Fica so porque a coluna `monthly_quota` e obrigatoria.
+   */
   monthlyQuota: {
     used: number;
     included: number;
-    /** Inicio do ciclo atual da franquia (zera no pagamento do plano; no anual, todo mes). */
     cycleStart?: string;
   };
 }
@@ -41,8 +44,6 @@ export interface WhatsAppConnectionView extends WhatsAppConnection {
   mode: WhatsAppSendMode;
   /** O plano tem envio automatico (recurso `messaging`). */
   canUseOfficial: boolean;
-  /** Franquia mensal do plano esgotada no ciclo atual. */
-  isQuotaExhausted: boolean;
   /**
    * O envio automatico pode ser ligado neste ambiente. Em producao, so com o
    * cadastro guiado da Meta configurado: cada espaco conecta o proprio numero
@@ -169,7 +170,6 @@ export interface CommunicationMetrics {
   mode: WhatsAppSendMode;
   /** Mensagens do mes: abertas no WhatsApp (assistido) ou enviadas (oficial). */
   messagesThisMonth: number;
-  monthlyQuota: number;
   /** So no oficial; `null` sem envios no mes. */
   deliveryRate: number | null;
   readRate: number | null;

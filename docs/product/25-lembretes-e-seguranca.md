@@ -119,7 +119,7 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (abre S
 A pedido do usuário, o selo do plano saiu do topo e os avisos do espaço foram para o sino, acima dos lembretes dos alunos. Só dono e gerente veem, os mesmos que recebem o e-mail do plano.
 
 - **Plano:** "Seu plano renova em 13/11" (Pix), "Pagamento do plano pendente" e "A assinatura do plano foi encerrada", com os textos do e-mail (`lib/plan-notice-copy.ts`). Levam a Configurações → Plano, onde fica o Pix; a encerrada leva aos Planos. Com o plano para cair ou já no Grátis, o aviso fica fixo no topo e sai do sino (doc 13 §6).
-- **Mensagens automáticas:** restando 20% ou menos da franquia do ciclo, "Restam 50 mensagens automáticas no ciclo"; ao acabar, "As mensagens automáticas do ciclo acabaram". Só com o envio automático ligado e saindo de verdade. Leva a Comunicação → Conexão (`/communication?tab=connection`).
+- **Mensagens automáticas:** o aviso de franquia (20% e acabou) saiu em 17/11/2026 com a franquia (doc `technical/07` §1.2).
 - Somem quando resolvidos; não têm "Lembrar amanhã" nem "Não lembrar deste". Contam no número do sino, não no bloco Lembretes do painel.
 - Código: `features/dashboard/bell-alerts.ts` (`planBellAlert`, `quotaBellAlert`), no sino (`reminders-bell.tsx`). Testes: `features/dashboard/__tests__/bell-alerts.test.ts`; e2e em `plano-gestarahub` (aviso no sino e aviso fixo com 2 dias).
 
@@ -131,7 +131,7 @@ Revisão das notificações com o usuário. Até aqui os três tons do sino (inf
 
 | Nível | O que entra | Comportamento |
 | --- | --- | --- |
-| **Informativo** (`info`, azul) | aniversário, boas-vindas, avanço de nível, pagamento para agradecer, cobrança a vencer, franquia em 20%, "Ative o WhatsApp oficial", evento amanhã (aviso ao inscrito), chamada de ontem em aberto | só conta no número do sino |
+| **Informativo** (`info`, azul) | aniversário, boas-vindas, avanço de nível, pagamento para agradecer, cobrança a vencer, "Ative o WhatsApp oficial", evento amanhã (aviso ao inscrito), chamada de ontem em aberto | só conta no número do sino |
 | **Atenção** (`warning`, âmbar) | cobrança em atraso, cobrança vence hoje, pacote acabando, 3 faltas seguidas, experimental ou visitante sem voltar, documento vencendo, curso terminando, plano do aluno vencendo, presentes sem certificado, plano do espaço pendente, franquia esgotada | conta no sino e o sino **pulsa** |
 | **Urgente** (`danger`, vermelho) | plano do espaço a 2 dias de cair ou já no Grátis, assinatura encerrando, pagamento online desligado ou com falha do parceiro, estorno ou contestação, documento de saúde vencido de aluno ativo | conta no sino, pulsa, **aviso fixo no topo** até resolver e, nos casos que afetam o funcionamento do espaço, uma **modal** uma vez por item |
 

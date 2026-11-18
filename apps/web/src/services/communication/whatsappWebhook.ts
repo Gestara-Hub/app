@@ -9,6 +9,7 @@ import type {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
 import { applyWhatsAppOptOut, isOptOutText } from "./whatsappOptOut";
+import { metaReasonForCode } from "./whatsappClient";
 
 /**
  * Avisos da Meta (doc technical/07 §1.4). Cada aviso chega pela conta do
@@ -56,7 +57,7 @@ export async function processWhatsAppStatusUpdate(
 
   const errorReason =
     status.status === "failed"
-      ? status.errors?.[0]?.message || status.errors?.[0]?.title || "Falha na entrega"
+      ? metaReasonForCode(status.errors?.[0]?.code, status.errors?.[0]?.message || status.errors?.[0]?.title)
       : undefined;
 
   // O aviso chega fora de um espaco carregado: grava direto no banco (o gatilho

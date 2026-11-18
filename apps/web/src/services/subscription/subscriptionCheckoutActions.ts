@@ -29,7 +29,6 @@ import {
 } from "../server/subscription";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { userActor } from "../server/systemAudit";
-import { resetWhatsAppQuota } from "../server/whatsappQuota";
 import { logError } from "@/lib/log";
 
 /**
@@ -201,7 +200,6 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
-      await resetWhatsAppQuota(createSupabaseAdminClient(), input.organizationId, subscription.tier);
       await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
@@ -315,7 +313,6 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
-      await resetWhatsAppQuota(createSupabaseAdminClient(), input.organizationId, subscription.tier);
       await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
@@ -427,7 +424,6 @@ export async function simulateAsaasSubscriptionPaymentAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
-      await resetWhatsAppQuota(admin, ctx.organizationId, subscription.tier);
       await recordActivation(admin, ctx.organizationId, { actor: await userActor(admin, ctx) }, undefined, subscription);
       return { success: true, subscription };
     }

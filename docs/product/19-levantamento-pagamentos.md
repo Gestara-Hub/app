@@ -10,7 +10,7 @@
 | # | Quem paga | Quem recebe | O quê | Definição (19/10/2026) |
 |---|---|---|---|---|
 | 1 | Espaço | GestaraHub | Assinatura do plano (Pro: R$ 79,90/mês ou R$ 799/ano; Scale: R$ 199/mês ou R$ 1.990/ano) | Asaas (Assinatura por Pix Automático, Pix ou Cartão) |
-| 2 | GestaraHub | Meta (ou parceiro) | Mensagens do WhatsApp oficial | Pro com franquia de 300 msgs/mês; excedente pré-pago |
+| 2 | GestaraHub | Meta (ou parceiro) | Mensagens do WhatsApp oficial | Desde 17/11/2026, o espaço paga a Meta direto pela própria conta do WhatsApp; sem franquia (doc `technical/07` §1.5) |
 | 3 | Aluno | Espaço (com taxa do GestaraHub) | Mensalidade online: Pix, link, Pix Automático | Asaas (Subconta da academia com split automático na liquidação) |
 
 ## 2. Fluxo 1: assinatura do GestaraHub
@@ -31,7 +31,7 @@
 - A Meta anunciou cobrança **em reais** para contas do Brasil em 2026. Fontes de terceiros falam em algo como R$ 0,04 a R$ 0,08 por mensagem de utilidade e perto de R$ 0,38 por mensagem de marketing, mas divergem entre si. **Usar só a tabela oficial para fechar preço.**
 - Por um parceiro (BSP), soma-se a margem dele.
 
-### A decidir: o que acontece quando a franquia acaba
+### A decidir: o que acontece quando a franquia acaba (superado em 17/11/2026: a franquia saiu, o espaço paga a Meta direto; doc `technical/07` §1.5)
 O Pro inclui uma franquia mensal (hoje 1.000 no mock). Opções para o excedente:
 
 | | Como funciona | A favor | Contra |

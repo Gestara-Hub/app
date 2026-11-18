@@ -920,6 +920,24 @@
     "text": "No plano Grátis, o envio é assistido: o sistema monta a mensagem e abre o WhatsApp do seu aparelho com o texto pronto, e você só envia. No plano Profissional, com o WhatsApp oficial conectado, as mensagens saem sozinhas."
   },
   {
+    "id": "comunicacao-e-lembretes#quem-paga-as-mensagens-automaticas",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Quem paga as mensagens automáticas",
+    "route": "/communication",
+    "text": "A conta do WhatsApp conectada no Profissional é sua, na Meta. A Meta cobra cada mensagem automática no cartão dessa conta; o GestaraHub não cobra pelas mensagens, só automatiza o envio. Mensagem automática usa um modelo aprovado pela Meta: é o único jeito de escrever para quem não falou com você antes. Responder quem escreveu para você nas últimas 24 horas é grátis, até 1.000 respostas por mês. Sem cartão na Meta, as mensagens automáticas não saem. O envio assistido (o botão que abre o WhatsApp do aparelho) não tem custo.",
+    "summary": "Você, direto à Meta, na sua conta do WhatsApp.",
+    "guide": {
+      "route": "/communication?tab=connection",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Conexão",
+          "text": "Aqui ficam o número conectado e o aviso de pagamento."
+        }
+      ]
+    }
+  },
+  {
     "id": "comunicacao-e-lembretes#enviar-uma-mensagem",
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Enviar uma mensagem",
@@ -2240,6 +2258,13 @@
     "title": "O que o Profissional acrescenta",
     "route": "/plans",
     "text": "Lembretes e avisos no WhatsApp sem clique, relatório do resultado do mês, retenção de alunos, certificado de conclusão em PDF e taxa menor por Pix pago."
+  },
+  {
+    "id": "plano-gestarahub#quem-paga-as-mensagens-automaticas-do-whatsapp",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "Quem paga as mensagens automáticas do WhatsApp",
+    "route": "/plans",
+    "text": "As mensagens automáticas do Profissional são cobradas pela Meta, no cartão da sua conta do WhatsApp. O GestaraHub não cobra por elas nem limita a quantidade."
   },
   {
     "id": "plano-gestarahub#assinar-o-profissional",

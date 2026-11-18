@@ -12,7 +12,7 @@ Data: 2026-10-14.
 | Envio assistido (`api.whatsapp.com/send` com o texto pronto) | **Real.** Abre o WhatsApp do aparelho; registra "Aberto no WhatsApp". |
 | Botão "Conectar WhatsApp oficial" | Abre o cadastro guiado da Meta (`use-meta-embedded-signup.ts`, SDK v21, `pt_BR`). Com o id do número devolvido, consulta o número e o nome verificados na Meta (`getWhatsAppPhoneNumberDetails`). Sem número confirmado (pela Meta ou no cadastro do espaço), não conecta: nunca grava o id da Meta nem um número inventado como telefone. Unidade sem telefone recebe o número confirmado pela Meta. |
 | Envio pelo oficial, status "Entregue/Lida/Falhou" | Real pela Cloud API, **com o número da plataforma** (variáveis `WHATSAPP_*` do ambiente). Status pelo webhook da Meta (`/api/webhooks/whatsapp`). |
-| Parabéns automático e lembretes de cobrança | Rotinas automáticas (só no Pro, só no oficial, até a franquia). O lembrete leva o link do pagamento online; sem ele, o da fatura pública (`/p/c/<cobrança>`, doc 25 §7). |
+| Parabéns automático e lembretes de cobrança | Rotinas automáticas (só no Pro, só no oficial). O lembrete leva o link do pagamento online; sem ele, o da fatura pública (`/p/c/<cobrança>`, doc 25 §7). |
 | Situação dos modelos na Meta (Comunicação → Mensagens) | Só aparece quando pede atenção (`metaStatusNotice`, `message-meta.ts`): "Em análise no WhatsApp", "Recusado pelo WhatsApp: ajuste o texto" e "Pausado pelo WhatsApp: revise o texto", como texto curto na linha do prazo; recusado e pausado abrem a edição. Aprovado (o normal) não mostra nada. Na tela é "WhatsApp", não "Meta" (30/10/2026). |
 | Mensagem de teste ("Testar envio real") | Ferramenta de desenvolvimento: só fora de produção e para quem gerencia a comunicação (`whatsappTestActions.ts`). Usa o número da plataforma. |
 
@@ -55,8 +55,16 @@ Mensagem que o espaço inicia só sai fora da janela de 24 horas por **modelo ap
 - **Pendente:** ligar ou desligar o pagamento online muda o texto dos lembretes na Meta (com ou sem a frase do link); até um "Sincronizar", os lembretes saem como texto livre. Sincronizar sozinho nessa troca fica para depois (`docs/pendencias.md`).
 - Testes: `communication.test.ts` (texto sem frase opcional, criar, editar e só atualizar, falha num modelo, recusado fora do envio) e `whatsappWebhook.db.test.ts` (situação do modelo só na conta certa, entrega pelo número, "SAIR" só no espaço do número).
 
-### 1.2 Franquia de mensagens automáticas
-Grátis 0, Pro 300 e Expansão 1.000 por ciclo (`TIER_WHATSAPP_QUOTA`, doc 13 §5). Ao esgotar, o automático para e o botão volta ao envio assistido. A franquia zera quando o pagamento do plano é confirmado (`resetWhatsAppQuota`, `services/server/whatsappQuota.ts`): ativação, renovação, religar e troca aplicada. **Plano anual (decisão do usuário, 30/10/2026): renova todo mês, no dia do ciclo**, pela rotina diária (`renewAnnualQuotaIfDue`), contando mês a mês desde o início do ano pago (`annualQuotaCycleStart` em `@gestarahub/core/subscription-plan`, sem deriva de fim de mês). A franquia guarda o início do ciclo (`monthlyQuota.cycleStart`). Com a renovação anual vencida (tolerância), não renova. Com 20% ou menos da franquia, e quando ela acaba, dono e gerente veem o aviso no sino (doc 25, "Avisos do espaço no sino").
+### 1.2 Sem franquia de mensagens (17/11/2026)
+Até 17/11/2026 havia uma franquia por ciclo (Grátis 0, Pro 300, Expansão 1.000), renovada no pagamento do plano e, no anual, todo mês. Saiu: como Provedor de Tecnologia (Tech Provider), o GestaraHub não paga as mensagens (§1.5), então a franquia só limitava o espaço por um custo que é dele. Saíram o limite no envio e nas rotinas automáticas, a renovação no pagamento do plano e na rotina diária (`whatsappQuota.ts`, `annualQuotaCycleStart`), o aviso de franquia no sino e a barra "Franquia do ciclo". O cartão "Enviadas no mês" mostra só a contagem. A coluna `whatsapp_connections.monthly_quota` continua (obrigatória, sem uso; `monthlyQuota` marcado como `@deprecated` no contrato).
+
+### 1.5 Quem paga as mensagens: o espaço, direto à Meta (17/11/2026)
+- Cada espaço conecta o próprio número e fica com a **própria conta do WhatsApp (WABA) na Meta**. A Meta cobra cada mensagem iniciada pelo espaço (modelos de marketing, utilidade e autenticação) **da forma de pagamento dessa conta**. Provedor de Tecnologia não tem linha de crédito: não dá para o GestaraHub pagar pelo cliente.
+- Sem forma de pagamento na conta, a Meta bloqueia as mensagens iniciadas pelo espaço (`health_status` com o erro 141006; no envio, código 131042). O envio aceita e a falha chega depois pelo webhook, com o motivo em português (`metaReasonForCode` em `whatsappClient.ts`, usado no envio e no webhook).
+- As **1.000 mensagens grátis por número por mês** da Meta valem só para mensagens de serviço (respostas a quem escreveu nas últimas 24 horas), não para os avisos automáticos.
+- Na tela: a aba Conexão, com o número conectado, mostra "Pagamento das mensagens na Meta" com o link para o faturamento da Meta (Billing Hub); a confirmação do envio em lote lembra que a Meta cobra cada mensagem.
+- Teste de 17/11/2026: o cadastro guiado criou uma conta nova ("GestaraHub", 2228262711449794), sem pagamento, em vez de usar a que já tinha cartão; o envio ficou bloqueado até cadastrar o pagamento nela.
+- **Para o espaço não precisar de cartão:** só com um parceiro oficial da Meta (Solution Partner) que compartilhe a linha de crédito (soluções com vários parceiros), ou virando parceiro. Aí o GestaraHub paga a Meta e embute no plano, e uma franquia volta a fazer sentido. Decisão de negócio em aberto (`pendencias.md`).
 
 Contrato pronto para a integração (`packages/contracts/src/communication.ts`): `WhatsAppConnection` (`officialStatus` com `pending`, número, nome exibido, `allowedSendHours`, `monthlyQuota`), `MessageTemplate`, `MessageLog` (status, `clientId`, `chargeId`, `errorReason`).
 
@@ -107,7 +115,7 @@ Mensagem que o espaço inicia (lembrete, parabéns, boas-vindas, falta) só sai 
 
 ### 3.4 Envio
 - [ ] Envio pela API (parceiro ou Meta), guardando o identificador externo da mensagem no `MessageLog`.
-- [ ] Respeitar `allowedSendHours` e a franquia mensal (ver doc 19, seção 3).
+- [ ] Respeitar `allowedSendHours` (a franquia mensal saiu em 17/11/2026, §1.2).
 - [ ] Resposta livre ao aluno só dentro de **24 horas** depois da última mensagem dele; fora disso, só modelo aprovado.
 - [ ] Tarefas agendadas (Supabase Cron, ver [08](08-backend-supabase.md)): lembretes de cobrança (antes, no dia, depois e crítico da mensalidade; o `charge_reminder` das outras cobranças, 3 dias antes por padrão), pacote acabando (última aula e 7 dias antes de vencer) e parabéns, sem duplicar.
 
