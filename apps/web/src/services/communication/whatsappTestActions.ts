@@ -128,7 +128,7 @@ export async function sendTestWhatsAppMessageAction(
         }
         if (err.code === 131047) {
           throw metaError(
-            "A Meta bloqueou o texto livre porque a janela de 24 horas não está aberta com esse número. Use a opção 'Modelo oficial (hello_world)' para enviar a qualquer momento.",
+            "A Meta bloqueou o texto livre porque a janela de 24 horas não está aberta com esse número. Use a opção 'Modelo aprovado' para enviar a qualquer momento.",
           );
         }
         if (err.code === 131030) {

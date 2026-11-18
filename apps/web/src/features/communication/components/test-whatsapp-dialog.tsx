@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MessageSquare, Send } from "lucide-react";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { MessageSquare, Send } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { unwrap } from "@/services/server/action";
 import { sendTestWhatsAppMessageAction } from "@/services/communication/whatsappTestActions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -15,47 +17,76 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { InputPhone, InputText, SegmentedChoiceField } from "@/components/form";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 
 interface TestWhatsAppDialogProps {
   connectedPhone?: string;
-  defaultPhone?: string;
 }
 
-export function TestWhatsAppDialog({ connectedPhone, defaultPhone }: TestWhatsAppDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [phone, setPhone] = useState(defaultPhone || "");
-  const [type, setType] = useState<"template" | "text">("template");
-  const [customText, setCustomText] = useState("");
-  const [isSending, setIsSending] = useState(false);
+interface TestValues {
+  /** E.164, como o resto do sistema (`InputPhone`). */
+  to: string;
+  type: "template" | "text";
+  messageText: string;
+}
 
-  async function handleSend() {
-    const rawTo = phone.trim();
-    if (!rawTo) {
-      toast.error("Informe o número de telefone com DDD.");
+const DEFAULTS: TestValues = { to: "", type: "template", messageText: "" };
+
+const TYPE_OPTIONS = [
+  {
+    value: "template",
+    label: "Modelo aprovado",
+    description: "Chega mesmo fora da janela de 24 horas.",
+  },
+  {
+    value: "text",
+    label: "Texto livre",
+    description: "Só chega se a pessoa escreveu nas últimas 24 horas.",
+  },
+];
+
+/** Mesmo numero do espaco (ou com os mesmos 8 ultimos digitos): o WhatsApp nao envia para si mesmo. */
+function sameAsConnected(to: string, connected?: string): boolean {
+  const digitsTo = to.replace(/\D/g, "");
+  const digitsConnected = (connected ?? "").replace(/\D/g, "");
+  if (!digitsConnected) return false;
+  return digitsTo === digitsConnected || (digitsConnected.length >= 8 && digitsTo.endsWith(digitsConnected.slice(-8)));
+}
+
+/** Ferramenta de desenvolvimento: envio real pela API oficial (fora do build de producao). */
+export function TestWhatsAppDialog({ connectedPhone }: TestWhatsAppDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const form = useForm<TestValues>({ defaultValues: DEFAULTS });
+  const type = useWatch({ control: form.control, name: "type" });
+
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next) form.reset(DEFAULTS);
+  }
+
+  async function onSubmit(values: TestValues) {
+    if (!values.to.replace(/\D/g, "")) {
+      form.setError("to", { message: "Informe o celular que vai receber o teste." });
       return;
     }
-
-    const digitsTo = rawTo.replace(/\D/g, "");
-    const digitsConnected = (connectedPhone ?? "").replace(/\D/g, "");
-    if (digitsConnected && (digitsTo === digitsConnected || (digitsConnected.length >= 8 && digitsTo.endsWith(digitsConnected.slice(-8))))) {
-      toast.error("O número de destino não pode ser o mesmo do espaço conectado. Digite o número de outro celular para receber o teste.");
+    if (sameAsConnected(values.to, connectedPhone)) {
+      form.setError("to", { message: "Use outro celular: o WhatsApp não envia para o próprio número do espaço." });
+      return;
+    }
+    if (values.type === "text" && !values.messageText.trim()) {
+      form.setError("messageText", { message: "Escreva o texto do teste." });
       return;
     }
 
     setIsSending(true);
     try {
       const res = await unwrap(
-        sendTestWhatsAppMessageAction({
-          to: phone,
-          type,
-          messageText: customText,
-        }),
+        sendTestWhatsAppMessageAction({ to: values.to, type: values.type, messageText: values.messageText }),
       );
       toast.success(res.details);
-      setOpen(false);
+      onOpenChange(false);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Falha ao enviar mensagem de teste."));
     } finally {
@@ -64,135 +95,60 @@ export function TestWhatsAppDialog({ connectedPhone, defaultPhone }: TestWhatsAp
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Send className="size-3.5" />
+          <Send className="size-4" />
           Testar envio real
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <MessageSquare className="size-4 text-emerald-600 dark:text-emerald-400" />
-            Enviar mensagem de teste
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            Dispare uma mensagem real para validar a comunicação entre o GestaraHub e a API oficial do WhatsApp.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <FormProvider {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden" noValidate>
+            <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="size-4 text-emerald-600 dark:text-emerald-400" />
+                Enviar mensagem de teste
+              </DialogTitle>
+              <DialogDescription>Uma mensagem real pela API oficial do WhatsApp.</DialogDescription>
+            </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="test-phone" className="text-xs font-medium">
-              Número de destino (com DDD)
-            </Label>
-            <Input
-              id="test-phone"
-              placeholder="Ex: (92) 99184-4219 (celular pessoal)"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="text-sm"
-              disabled={isSending}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Informe outro aparelho (seu celular pessoal com DDD). O WhatsApp não permite que o mesmo número envie mensagem para si mesmo.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Tipo de mensagem</Label>
-            <div className="grid grid-cols-1 gap-2">
-              <label
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                  type === "template"
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="messageType"
-                  value="template"
-                  checked={type === "template"}
-                  onChange={() => setType("template")}
-                  className="mt-1"
-                  disabled={isSending}
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-semibold text-foreground">
-                    Modelo aprovado da conta
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Boas-vindas aprovadas na Meta (ou hello_world na sandbox): chega mesmo fora da janela de 24 horas.
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                  type === "text"
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="messageType"
-                  value="text"
-                  checked={type === "text"}
-                  onChange={() => setType("text")}
-                  className="mt-1"
-                  disabled={isSending}
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-semibold text-foreground">Texto livre</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Exige que o destinatário tenha respondido ao número de teste nas últimas 24h.
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {type === "text" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="custom-text" className="text-xs font-medium">
-                Texto da mensagem
-              </Label>
-              <Input
-                id="custom-text"
-                placeholder="Digite a mensagem de teste..."
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                className="text-sm"
+            <DialogBody className="space-y-4">
+              <InputPhone<TestValues>
+                name="to"
+                label="Celular que vai receber"
+                hint="Outro aparelho: o WhatsApp não envia para o próprio número do espaço."
+                required
                 disabled={isSending}
               />
-            </div>
-          )}
-        </div>
+              <SegmentedChoiceField<TestValues>
+                name="type"
+                options={TYPE_OPTIONS}
+                ariaLabel="Tipo de mensagem"
+                variant="cards"
+                disabled={isSending}
+              />
+              {type === "text" ? (
+                <InputText<TestValues>
+                  name="messageText"
+                  label="Texto da mensagem"
+                  placeholder="Escreva o texto do teste"
+                  required
+                  disabled={isSending}
+                />
+              ) : null}
+            </DialogBody>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setOpen(false)}
-            disabled={isSending}
-          >
-            Cancelar
-          </Button>
-          <Button type="button" size="sm" onClick={handleSend} disabled={isSending}>
-            {isSending ? (
-              <>
-                <Loader2 className="mr-2 size-3.5 animate-spin" />
-                Enviando via Meta...
-              </>
-            ) : (
-              "Disparar teste agora"
-            )}
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4" saving={isSending}>
+              <Button type="button" variant="outline" disabled={isSending} onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSending}>
+                {isSending ? "Enviando..." : "Enviar teste"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </FormProvider>
       </DialogContent>
     </Dialog>
   );

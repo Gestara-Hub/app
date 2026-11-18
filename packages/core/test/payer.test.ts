@@ -32,7 +32,7 @@ describe("CPF", () => {
 });
 
 describe("pagador da cobrança online", () => {
-  const base = { name: "Ana", phone: "+5592991844219", email: "ana@exemplo.com" };
+  const base = { name: "Ana", phone: "+5511987654321", email: "ana@exemplo.com" };
 
   it("maior de idade paga com o próprio CPF", () => {
     const r = resolveOnlinePayer({ ...base, birthDate: "1990-01-01", cpf: ADULT_CPF }, TODAY);
