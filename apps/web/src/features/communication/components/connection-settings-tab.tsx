@@ -263,6 +263,12 @@ export function ConnectionSettingsTab() {
               }
               try {
                 const result = await launchSignup({ businessName: unit?.name, phone: phone ?? undefined });
+                // Sem o codigo ou sem os dados do numero, a Meta nao concluiu: nao cai
+                // na conexao pelo telefone do espaco, que nao e o caso aqui.
+                if (!result.code || !result.phoneNumberId || !result.wabaId) {
+                  toast.error("A Meta não confirmou a conexão. Tente de novo.");
+                  return;
+                }
                 connectMut.mutate(
                   {
                     code: result.code,

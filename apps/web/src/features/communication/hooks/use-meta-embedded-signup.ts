@@ -68,6 +68,14 @@ function extractBrazilianLocalPhone(phone?: string): string | undefined {
   return digits || undefined;
 }
 
+/**
+ * Quanto esperar o aviso de conclusao da janela da Meta depois do callback do
+ * FB.login. Os dois chegam separados e sem ordem garantida (17/11/2026: o app
+ * resolvia so com o code, sem o numero, e a conexao caia no "cadastre o
+ * telefone do espaco").
+ */
+const FINISH_WAIT_MS = 10_000;
+
 export function useMetaEmbeddedSignup() {
   const [isSdkLoaded, setIsSdkLoaded] = useState(
     () => typeof window !== "undefined" && Boolean(window.FB),
@@ -82,6 +90,22 @@ export function useMetaEmbeddedSignup() {
     onboarding?: WhatsAppOnboarding;
     code?: string;
   }>({});
+
+  /** Conclui a sessao uma vez so, com o que ja chegou (code e dados do numero). */
+  const settleSignup = useCallback(() => {
+    const session = signupSessionRef.current;
+    if (!session.resolve) return;
+    session.resolve({
+      code: session.code,
+      phoneNumberId: session.phoneNumberId,
+      wabaId: session.wabaId,
+      businessId: session.businessId,
+      onboarding: session.onboarding,
+    });
+    session.resolve = undefined;
+    session.reject = undefined;
+    setIsSigningUp(false);
+  }, []);
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID?.trim();
   const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID?.trim();
@@ -142,22 +166,15 @@ export function useMetaEmbeddedSignup() {
             signupSessionRef.current.businessId = signupData.business_id;
             signupSessionRef.current.onboarding = data.event === "FINISH" ? "cloud" : "coexistence";
 
-            // Se o code também já foi capturado pelo callback do FB.login, resolve agora
-            if (signupSessionRef.current.resolve) {
-              signupSessionRef.current.resolve({
-                code: signupSessionRef.current.code,
-                phoneNumberId: signupSessionRef.current.phoneNumberId,
-                wabaId: signupSessionRef.current.wabaId,
-                businessId: signupSessionRef.current.businessId,
-                onboarding: signupSessionRef.current.onboarding,
-              });
-              signupSessionRef.current.resolve = undefined;
-            }
+            // So conclui com o code do FB.login tambem; sem ele, espera o callback.
+            if (signupSessionRef.current.code) settleSignup();
           } else if (data.event === "CANCEL") {
             if (signupSessionRef.current.reject) {
               signupSessionRef.current.reject(new Error("Conexão cancelada pelo usuário no popup da Meta."));
               signupSessionRef.current.reject = undefined;
+              signupSessionRef.current.resolve = undefined;
             }
+            setIsSigningUp(false);
           }
         }
       } catch {
@@ -169,7 +186,7 @@ export function useMetaEmbeddedSignup() {
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, [settleSignup]);
 
   const launchSignup = useCallback(
     (options?: MetaEmbeddedSignupOptions): Promise<MetaEmbeddedSignupResult> => {
@@ -233,21 +250,14 @@ export function useMetaEmbeddedSignup() {
               const code = response.authResponse?.code;
               signupSessionRef.current.code = code;
 
-              // Se já recebeu o evento message do popup ou se recebeu code
               if (response.status === "connected" || code) {
-                setTimeout(() => {
-                  if (signupSessionRef.current.resolve) {
-                    signupSessionRef.current.resolve({
-                      code: signupSessionRef.current.code,
-                      phoneNumberId: signupSessionRef.current.phoneNumberId,
-                      wabaId: signupSessionRef.current.wabaId,
-                      businessId: signupSessionRef.current.businessId,
-                      onboarding: signupSessionRef.current.onboarding,
-                    });
-                    signupSessionRef.current.resolve = undefined;
-                  }
-                  setIsSigningUp(false);
-                }, 500);
+                // O aviso de conclusao (numero e conta) pode chegar depois do
+                // callback: conclui ja se chegou, senao espera ate FINISH_WAIT_MS.
+                if (signupSessionRef.current.wabaId) {
+                  settleSignup();
+                } else {
+                  setTimeout(settleSignup, FINISH_WAIT_MS);
+                }
               } else {
                 setIsSigningUp(false);
                 reject(new Error("Acesso não autorizado na janela da Meta."));
@@ -272,7 +282,7 @@ export function useMetaEmbeddedSignup() {
         }
       });
     },
-    [appId, configId],
+    [appId, configId, settleSignup],
   );
 
   return {

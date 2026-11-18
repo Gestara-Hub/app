@@ -28,6 +28,8 @@ export interface WhatsAppCredentialsGateway {
   connect(input: ConnectWhatsAppInput): Promise<ConnectedWhatsAppNumber>;
   /** Cancela os avisos na conta do espaco e apaga as credenciais. */
   disconnect(organizationId: string): Promise<void>;
+  /** Envia os modelos do espaco a Meta numa gravacao propria (depois de conectar). */
+  syncTemplates(organizationId: string): Promise<void>;
   /** Configuracao da Meta do espaco (token, id do numero e da conta), ou null sem credencial. */
   configFor(organizationId: string): Promise<Partial<WhatsAppConfig> | null>;
 }

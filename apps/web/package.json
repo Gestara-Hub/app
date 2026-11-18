@@ -13,7 +13,8 @@
     "./src/mocks/store.ts",
     "./src/services/world/scope.ts",
     "./src/services/personDocuments/personDocumentFiles.ts",
-    "./src/services/communication/messageDelivery.ts"
+    "./src/services/communication/messageDelivery.ts",
+    "./src/services/communication/whatsappCredentials.ts"
   ],
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=2048' next dev -p 3200",

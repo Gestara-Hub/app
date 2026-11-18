@@ -50,6 +50,7 @@ beforeEach(() => {
   m.setGateway({
     connect: vi.fn(),
     disconnect: vi.fn(),
+    syncTemplates: vi.fn(async () => undefined),
     configFor: vi.fn(async (org: string) =>
       org === "org_1" ? { apiToken: "space-token", phoneNumberId: "1111111111", businessAccountId: "2222222222" } : null,
     ),

@@ -210,6 +210,27 @@ async function disconnect(organizationId: string): Promise<void> {
   await dropCredentials(organizationId);
 }
 
-export const whatsappCredentialsGateway: WhatsAppCredentialsGateway = { connect, disconnect, configFor };
+/**
+ * Modelos do espaco para a Meta logo depois de conectar, fora da requisicao
+ * que conectou: numa gravacao propria do espaco, como o cron. Imports
+ * dinamicos porque o `runWorld` importa este arquivo.
+ */
+async function syncTemplates(organizationId: string): Promise<void> {
+  try {
+    const [{ cronContext }, { runInWorld }, { templatesService }] = await Promise.all([
+      import("./billingRemindersCron"),
+      import("../world/runWorld"),
+      import("./templatesService"),
+    ]);
+    const ctx = await cronContext(organizationId);
+    if (!ctx) return;
+    const result = await runInWorld(ctx, () => templatesService.syncMetaTemplates(), { name: "whatsapp.syncTemplates" });
+    if (result.failed > 0) logWarn(`[whatsappCredentials] ${result.failed} modelo(s) não enviados à Meta ao conectar.`);
+  } catch (err) {
+    logError("[whatsappCredentials] Modelos não enviados à Meta ao conectar:", err);
+  }
+}
+
+export const whatsappCredentialsGateway: WhatsAppCredentialsGateway = { connect, disconnect, configFor, syncTemplates };
 
 setWhatsAppCredentialsGateway(whatsappCredentialsGateway);

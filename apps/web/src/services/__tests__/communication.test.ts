@@ -161,6 +161,7 @@ describe("conexao do WhatsApp", () => {
       connect: vi.fn(async () => ({ displayPhoneNumber: "+55 92 98888-7777", verifiedName: "Academia Ribeiro" })),
       disconnect: vi.fn(async () => undefined),
       configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
     };
     setWhatsAppCredentialsGateway(gateway);
     vi.stubEnv("NODE_ENV", "production");
@@ -210,6 +211,7 @@ describe("conexao do WhatsApp", () => {
       }),
       disconnect: vi.fn(),
       configFor: vi.fn(async () => null),
+      syncTemplates: vi.fn(async () => undefined),
     });
     try {
       await expect(

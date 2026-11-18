@@ -21,7 +21,8 @@ export const billingRemindersSlice: MethodSlice = async (_args, load) => {
 
 const CONCURRENCY = 4;
 
-async function cronContext(organizationId: string): Promise<TenantContext | null> {
+/** Contexto de servidor do espaco (dono), para gravacoes fora de uma requisicao. */
+export async function cronContext(organizationId: string): Promise<TenantContext | null> {
   const admin = createSupabaseAdminClient();
   const { data: owner } = await admin
     .from("users")

@@ -10,8 +10,8 @@ import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
 import { ensureConnection, connectionView, officialSendingAvailable } from "./communicationRules";
 import { getWhatsAppCredentialsGateway, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
-import { syncMetaTemplates } from "./metaTemplatesSync";
-import { logWarn } from "@/lib/log";
+import { afterWorldCommit } from "@/services/world/effects";
+import { logError } from "@/lib/log";
 
 /** Conexao do WhatsApp: status, ligar e desligar a API oficial e ajustes. */
 export const connectionService = {
@@ -43,6 +43,14 @@ export const connectionService = {
       let displayName = store.organization.name;
       // Numero confirmado pela Meta no cadastro guiado (Embedded Signup).
       let phoneFromMeta: string | null = null;
+      if (fromSignup && !gateway) {
+        // A ponte com a Meta nao foi registrada no servidor (17/11/2026: o import
+        // de efeito caiu no build sem estar em `sideEffects` do package.json).
+        logError("[connectionService] Ponte das credenciais do WhatsApp ausente no servidor.");
+        throw apiError("SERVICE_UNAVAILABLE", "Não foi possível concluir a conexão com a Meta. Fale com o suporte.", {
+          httpStatus: 503,
+        });
+      }
       if (fromSignup && gateway) {
         const confirmed = await gateway.connect({
           organizationId: store.organization.id,
@@ -54,16 +62,11 @@ export const connectionService = {
         });
         phoneFromMeta = whatsappNumber(confirmed.displayPhoneNumber);
         if (confirmed.verifiedName) displayName = confirmed.verifiedName;
-        // Modelos de cada gatilho na conta do espaco (doc technical/07 §1.4): a
-        // Meta analisa em minutos; falha num modelo nao impede a conexao.
-        const config = await gateway.configFor(store.organization.id);
-        if (config) {
-          try {
-            await syncMetaTemplates(config);
-          } catch (err) {
-            logWarn("[connectionService] Modelos não enviados à Meta ao conectar:", err);
-          }
-        }
+        // Modelos de cada gatilho na conta do espaco (doc technical/07 §1.4): vao
+        // depois da conexao gravada, em segundo plano (17/11/2026: enviar os 16
+        // na hora prendia o botao uns 30 s). Falha num modelo nao desfaz a conexao.
+        const organizationId = store.organization.id;
+        afterWorldCommit(() => gateway.syncTemplates(organizationId));
       } else if (!platformNumberFallbackAllowed()) {
         // Em producao, so com as credenciais do proprio numero.
         throw apiError("SERVICE_UNAVAILABLE", "Conclua a conexão na janela da Meta para ligar o envio automático.", {
