@@ -166,7 +166,13 @@ function RemindersBellButton() {
               {count > 0 ? plural(count, "pendência", "pendências") : "Tudo em dia."}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Um link do lembrete leva para outra tela: fecha o painel junto (17/11/2026). */}
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            onClickCapture={(event) => {
+              if (event.target instanceof Element && event.target.closest("a[href]")) setOpen(false);
+            }}
+          >
             <DashboardTodo today={today} bare alerts={alerts} />
           </div>
         </SheetContent>
