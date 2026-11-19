@@ -40,9 +40,22 @@ async function organizationByPhoneNumberId(admin: SupabaseClient, phoneNumberId:
 }
 
 /**
+ * De qual situacao cada aviso pode partir: a situacao so avanca (enviada,
+ * entregue, lida). A Meta nao garante a ordem dos avisos: um "entregue" que
+ * chega depois do "lida" nao pode voltar a mensagem para entregue.
+ */
+const ADVANCES_FROM: Record<WhatsAppWebhookStatus["status"], readonly string[]> = {
+  sent: ["opened", "queued"],
+  delivered: ["opened", "queued", "sent"],
+  read: ["opened", "queued", "sent", "delivered"],
+  failed: ["opened", "queued", "sent"],
+};
+
+/**
  * Atualiza a entrega e a leitura de uma mensagem enviada. Com o espaco
  * conhecido, so a mensagem dele (o id da Meta nao se repete, mas o filtro
- * nao custa).
+ * nao custa). Lida: as anteriores para o mesmo numero, ja enviadas, tambem
+ * foram lidas (quem abre a conversa le tudo; a Meta pode avisar so a ultima).
  */
 export async function processWhatsAppStatusUpdate(
   status: WhatsAppWebhookStatus,
@@ -66,11 +79,41 @@ export async function processWhatsAppStatusUpdate(
     const updateData: Record<string, unknown> = { status: mappedStatus };
     if (mappedStatus === "read") updateData.read_at = timestampIso;
     if (errorReason) updateData.error_reason = errorReason;
-    let query = admin.from("message_logs").update(updateData).eq("id", wamid);
+    let query = admin
+      .from("message_logs")
+      .update(updateData)
+      .eq("id", wamid)
+      .in("status", [...(ADVANCES_FROM[mappedStatus] ?? [])]);
     if (organizationId) query = query.eq("organization_id", organizationId);
     const { error } = await query;
     if (error) logWarn(`[WhatsApp Webhook] Erro ao atualizar status no banco para ${wamid}:`, error);
+
+    if (mappedStatus === "read" && organizationId) await markEarlierAsRead(admin, wamid, organizationId, timestampIso);
   }
+}
+
+/** Mensagens anteriores para o mesmo numero, enviadas ou entregues: viram lidas. */
+async function markEarlierAsRead(
+  admin: SupabaseClient,
+  wamid: string,
+  organizationId: string,
+  readAt: string,
+): Promise<void> {
+  const { data: row } = await admin
+    .from("message_logs")
+    .select("recipient_phone, sent_at")
+    .eq("id", wamid)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!row) return;
+  const { error } = await admin
+    .from("message_logs")
+    .update({ status: "read", read_at: readAt })
+    .eq("organization_id", organizationId)
+    .eq("recipient_phone", row.recipient_phone)
+    .lt("sent_at", row.sent_at)
+    .in("status", ["sent", "delivered"]);
+  if (error) logWarn(`[WhatsApp Webhook] Leitura das anteriores a ${wamid} não gravada:`, error);
 }
 
 /**
