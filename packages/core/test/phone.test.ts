@@ -33,6 +33,11 @@ describe("telefone com país", () => {
     assert.equal(displayPhone("+5511977770000"), "(11) 97777-0000");
   });
 
+  it("número fora das faixas conhecidas vale o país do DDI (o +1 555 de teste da Meta)", () => {
+    assert.equal(phoneCountryOf("+15557790750"), "US");
+    assert.equal(nationalDigitsOf("+15557790750"), "5557790750");
+  });
+
   it("reconhece o DDI colado e aplica a máscara do país", () => {
     assert.deepEqual(parseInternational("+1 415 555 2671"), { country: "US", nationalDigits: "4155552671" });
     assert.equal(parseInternational("11977770000"), undefined);

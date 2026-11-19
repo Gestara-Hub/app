@@ -35,9 +35,23 @@ export function parseInternational(text: string): { country: PhoneCountry; natio
   return parsed?.country ? { country: parsed.country, nationalDigits: parsed.nationalNumber } : undefined;
 }
 
-/** Pais do telefone guardado (Brasil quando nao da para saber). */
+/** Pais principal de cada DDI dividido entre varios paises. */
+const MAIN_COUNTRY_OF_CALLING_CODE: Record<string, PhoneCountry> = { "1": "US", "7": "RU", "44": "GB", "47": "NO", "61": "AU", "39": "IT" };
+
+/** Pais pelo DDI, quando o numero nao diz o pais (ex.: o numero de teste da Meta, +1 555...). */
+function countryOfCallingCode(callingCode: string): PhoneCountry | undefined {
+  return MAIN_COUNTRY_OF_CALLING_CODE[callingCode] ?? getCountries().find((c) => getCountryCallingCode(c) === callingCode);
+}
+
+/**
+ * Pais do telefone guardado (Brasil quando nao da para saber). Numero com DDI
+ * mas fora das faixas conhecidas (19/11/2026: o +1 555 da Meta virava Brasil e
+ * a tela mostrava "(55) 5779-0750"): vale o pais do DDI.
+ */
 export function phoneCountryOf(value: string | null | undefined): PhoneCountry {
-  return parsePhone(value)?.country ?? DEFAULT_PHONE_COUNTRY;
+  const parsed = parsePhone(value);
+  if (!parsed) return DEFAULT_PHONE_COUNTRY;
+  return parsed.country ?? countryOfCallingCode(String(parsed.countryCallingCode)) ?? DEFAULT_PHONE_COUNTRY;
 }
 
 /** Digitos do numero no pais, sem o DDI (o que vai no campo depois do seletor). */
