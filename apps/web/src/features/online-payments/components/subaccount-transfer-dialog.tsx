@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatCents } from "@gestarahub/core/format";
 import { useRequestSubaccountTransfer } from "../hooks/use-online-payments";
+import { newId } from "@/lib/new-id";
 
 const schema = z.object({
   amountCents: z
@@ -52,7 +54,17 @@ export function SubaccountTransferDialog({
     },
   });
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  // Id do pedido (19/11/2026): o mesmo em clique duplo ou nova tentativa (o
+  // servidor recusa o repetido); um novo a cada abertura e depois de uma recusa.
+  const requestIdRef = useRef("");
+  const sendingRef = useRef(false);
+  useEffect(() => {
+    if (open) requestIdRef.current = newId();
+  }, [open]);
+
+  // O envio monta o handleSubmit no clique (os refs so sao lidos fora da renderizacao).
+  const submit = async (values: FormValues) => {
+    if (sendingRef.current) return;
     if (values.amountCents > availableCents) {
       toast.error(
         `O valor solicitado é maior que o saldo disponível (${formatCents(availableCents)}).`,
@@ -60,14 +72,18 @@ export function SubaccountTransferDialog({
       return;
     }
 
+    sendingRef.current = true;
     try {
       const res = await transfer.mutateAsync({
         organizationId,
         amountCents: values.amountCents,
         pixKey: values.pixKey,
+        requestId: requestIdRef.current,
       });
 
       if (!res.success) {
+        // Recusado: a proxima tentativa e outro pedido.
+        requestIdRef.current = newId();
         toast.error(res.error || "Não foi possível realizar a transferência.");
         return;
       }
@@ -75,9 +91,14 @@ export function SubaccountTransferDialog({
       toast.success("Transferência Pix solicitada com sucesso!");
       onOpenChange(false);
     } catch {
-      toast.error("Erro inesperado ao solicitar transferência.");
+      // Sem resposta (rede): o servidor pode ter sacado. Mantem o id: repetir
+      // o mesmo pedido nao saca de novo.
+      toast.error("Não deu para confirmar o saque. Confira em Saques antes de tentar de novo.");
+    } finally {
+      sendingRef.current = false;
     }
-  });
+  };
+  const onSubmit = (event?: React.BaseSyntheticEvent) => form.handleSubmit(submit)(event);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

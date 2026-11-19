@@ -106,6 +106,7 @@ export function useRequestSubaccountTransfer() {
       organizationId: string;
       amountCents: number;
       pixKey: string;
+      requestId: string;
     }) => requestSubaccountTransferAction(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });

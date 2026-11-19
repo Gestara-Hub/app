@@ -1,5 +1,6 @@
 "use server";
 
+import { resetRateLimit } from "@/lib/security/rate-limit";
 import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSubaccountBalance, createTransfer, listTransfers } from "@/lib/asaas";
@@ -111,6 +112,31 @@ export async function getSubaccountBalanceAction(
   };
 }
 
+/** Saque igual (valor e chave) de novo so depois deste prazo. */
+const SAME_TRANSFER_WINDOW_SECONDS = 30;
+
+/**
+ * Reserva uma chave uma vez no prazo (contador atomico do banco). Ao contrario
+ * do limite de pedidos, falha no banco nao libera: e dinheiro.
+ */
+async function claimOnce(key: string, windowSeconds: number): Promise<"claimed" | "taken" | "unavailable"> {
+  try {
+    const { data, error } = await createSupabaseAdminClient().rpc("check_rate_limit", {
+      p_key: key,
+      p_max_points: 1,
+      p_window_seconds: windowSeconds,
+    });
+    if (error) {
+      logError("[requestSubaccountTransferAction] Trava do saque indisponível:", error);
+      return "unavailable";
+    }
+    return data ? "claimed" : "taken";
+  } catch (err) {
+    logError("[requestSubaccountTransferAction] Trava do saque indisponível:", err);
+    return "unavailable";
+  }
+}
+
 export interface TransferActionResult {
   success: boolean;
   transferId?: string;
@@ -125,11 +151,41 @@ export async function requestSubaccountTransferAction(input: {
   organizationId: string;
   amountCents: number;
   pixKey: string;
+  /** Id do pedido, gerado pela tela: o mesmo pedido nunca vira dois saques. */
+  requestId: string;
 }): Promise<TransferActionResult> {
   // Tirar dinheiro da subconta: so o dono do espaco.
   await requireSameOrganization(input.organizationId, { profiles: ["owner"] });
   if (input.amountCents <= 0) {
     return { success: false, error: "O valor deve ser maior que zero." };
+  }
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(input.requestId ?? "")) {
+    return { success: false, error: "Pedido de saque inválido. Abra a tela de novo." };
+  }
+
+  // Saque em dobro (19/11/2026): o mesmo pedido (clique duplo, nova tentativa)
+  // so passa uma vez; e o mesmo valor para a mesma chave, de outra aba, espera
+  // alguns segundos. Sem o banco para conferir, nao saca.
+  const sameKey = `transfer_same:${input.organizationId}:${input.amountCents}:${input.pixKey.trim().toLowerCase()}`;
+  const requestClaim = await claimOnce(`transfer_request:${input.organizationId}:${input.requestId}`, 24 * 60 * 60);
+  if (requestClaim !== "claimed") {
+    return {
+      success: false,
+      error:
+        requestClaim === "taken"
+          ? "Este saque já foi pedido. Confira em Saques antes de pedir de novo."
+          : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
+    };
+  }
+  const sameClaim = await claimOnce(sameKey, SAME_TRANSFER_WINDOW_SECONDS);
+  if (sameClaim !== "claimed") {
+    return {
+      success: false,
+      error:
+        sameClaim === "taken"
+          ? "Um saque igual acabou de ser pedido. Confira em Saques antes de pedir de novo."
+          : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
+    };
   }
 
   const adminClient = createSupabaseAdminClient();
@@ -160,6 +216,8 @@ export async function requestSubaccountTransferAction(input: {
       };
     } catch (err: unknown) {
       logError("[requestSubaccountTransferAction] Erro no Asaas:", err);
+      // Recusado: libera o mesmo valor para tentar de novo (a tela gera outro id).
+      await resetRateLimit(sameKey);
       const msg =
         err instanceof Error ? err.message : "Erro ao realizar transferência.";
       return { success: false, error: msg };
