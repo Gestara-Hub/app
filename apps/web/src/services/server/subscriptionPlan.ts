@@ -32,7 +32,7 @@ import {
   type AsaasPaymentResponse,
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
-import { sendPlanNoticeEmail } from "@/lib/email/ses";
+import { notifyPlanManagers, notifyPlanPaid } from "./planEmails";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";
@@ -118,9 +118,8 @@ async function syncAsaasPlan(
 ): Promise<void> {
   const config = priceConfig(plan);
   const open = await openSubscriptionPayments(subscriptionId);
-  if (restart) {
-    for (const payment of open) await deletePayment(payment.id);
-  }
+  // Em paralelo (19/11/2026: antes uma cobranca por vez, com a tela esperando).
+  if (restart) await Promise.all(open.map((payment) => deletePayment(payment.id)));
   await updateSubscription(subscriptionId, {
     value: config.value,
     cycle: cycleOf(plan.interval),
@@ -131,14 +130,17 @@ async function syncAsaasPlan(
   });
   if (restart) return;
   // A cobranca ja gerada leva o valor novo (o PUT da assinatura nem sempre a alcanca).
-  for (const payment of open) {
-    if (payment.value === config.value) continue;
-    try {
-      await updatePayment(payment.id, { value: config.value, description: config.description });
-    } catch (error) {
-      logWarn("[subscriptionPlan] Cobrança da renovação não atualizada no Asaas:", { paymentId: payment.id, error });
-    }
-  }
+  await Promise.all(
+    open
+      .filter((payment) => payment.value !== config.value)
+      .map(async (payment) => {
+        try {
+          await updatePayment(payment.id, { value: config.value, description: config.description });
+        } catch (error) {
+          logWarn("[subscriptionPlan] Cobrança da renovação não atualizada no Asaas:", { paymentId: payment.id, error });
+        }
+      }),
+  );
 }
 
 export interface PlanChangePreview {
@@ -584,6 +586,7 @@ export async function recordSubscriptionPaymentPaid(
   };
   await writeOrganizationSubscription(admin, organizationId, next);
   if (subscription.revertedFrom || advanced) {
+    await notifyPlanPaid(admin, organizationId, subscription.revertedFrom ? "reactivated" : "renewed", next);
     await recordSubscriptionEvent(admin, organizationId, author, {
       kind: subscription.revertedFrom ? "reactivated" : "renewed",
       before: subscription,
@@ -769,7 +772,7 @@ async function runPlanDailyStep(
       step.email.kind === "closed"
         ? `${appUrl}/plans`
         : (subscription.pendingPayment?.invoiceUrl ?? `${appUrl}/settings?tab=plano`);
-    const sent = await notifyManagers(admin, organizationId, { ...copy, actionUrl });
+    const sent = await notifyPlanManagers(admin, organizationId, { ...copy, actionUrl });
     if (sent > 0) {
       result.emails += sent;
       await writeOrganizationSubscription(admin, organizationId, {
@@ -780,29 +783,3 @@ async function runPlanDailyStep(
   }
 }
 
-async function notifyManagers(
-  admin: SupabaseClient,
-  organizationId: string,
-  notice: { title: string; text: string; action: string; actionUrl: string },
-): Promise<number> {
-  const { data: users } = await admin
-    .from("users")
-    .select("name, email")
-    .eq("organization_id", organizationId)
-    .eq("status", "active")
-    .in("profile", ["owner", "manager"]);
-  let sent = 0;
-  for (const user of users ?? []) {
-    if (!user.email) continue;
-    const res = await sendPlanNoticeEmail({
-      toEmail: String(user.email),
-      toName: String(user.name ?? ""),
-      title: notice.title,
-      text: notice.text,
-      actionLabel: notice.action,
-      actionUrl: notice.actionUrl,
-    });
-    if (res.ok) sent += 1;
-  }
-  return sent;
-}

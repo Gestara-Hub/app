@@ -254,6 +254,8 @@ describe("renovação e tolerância de 5 dias", () => {
 
     await plan.recordSubscriptionPaymentPaid(admin, { id: "pay_atrasada", dueDate: inDays(-5), subscription: "sub_teste" });
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", status: "active", renewsOn: addPlanCycle(inDays(-5), "monthly") });
+    // Pagamento confirmado: o e-mail do GestaraHub (o do Asaas fica desligado).
+    expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(expect.objectContaining({ title: "Plano Profissional religado" }));
 
     // Sem pessoa: a rotina voltou ao Gratis, o parceiro religou.
     const { events, audits } = await historyInDb();

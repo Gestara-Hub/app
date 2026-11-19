@@ -27,9 +27,10 @@ import {
   writeOrganizationSubscription,
   type SubscriptionPaymentCheck,
 } from "../server/subscription";
+import { notifyPlanPaid } from "../server/planEmails";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { userActor } from "../server/systemAudit";
-import { logError } from "@/lib/log";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Pagamento do plano no Asaas: gerar o checkout, conferir e simular o pago.
@@ -136,6 +137,39 @@ export interface SubscriptionCheckoutResult {
 /**
  * Cria uma assinatura no Asaas (Master Account do GestaraHub) para a organização pagadora.
  */
+/** Esperas entre as tentativas de buscar a cobranca e o QR Code (o Asaas gera logo depois da assinatura). */
+const PIX_RETRY_DELAYS_MS = [1000, 2000];
+
+const PIX_UNAVAILABLE = "Não foi possível gerar o Pix agora. Tente de novo em instantes.";
+const CHECKOUT_UNAVAILABLE = "Não foi possível gerar a assinatura agora. Tente de novo em instantes.";
+
+/** Erro do Asaas que o cliente resolve (dado recusado, cartao negado): a mensagem dele ajuda. */
+function customerFixableMessage(err: unknown): string | null {
+  if (err instanceof AsaasApiError && err.status === 400 && err.message) return err.message;
+  return null;
+}
+
+/**
+ * Primeira cobranca da assinatura e o QR Code do Pix. O Asaas gera os dois
+ * logo depois de criar a assinatura: tenta de novo por alguns segundos.
+ */
+async function firstPixOf(subscriptionId: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= PIX_RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, PIX_RETRY_DELAYS_MS[attempt - 1]));
+    try {
+      const payments = await getSubscriptionPayments(subscriptionId);
+      const payment = payments.data?.[0];
+      if (!payment) throw new Error("Cobrança inicial não encontrada na assinatura Asaas.");
+      const qr = await getPixQrCode(payment.id);
+      return { payment, qr };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 export async function createAsaasSubscriptionCheckoutAction(
   input: CreateSubscriptionInput,
 ): Promise<SubscriptionCheckoutResult> {
@@ -267,6 +301,8 @@ export async function createAsaasSubscriptionCheckoutAction(
       complement: input.customer.address.complement?.trim() || undefined,
       province: input.customer.address.neighborhood.trim(),
       externalReference: input.organizationId,
+      // E-mails da cobranca e do pagamento sao os do GestaraHub (planEmails), nao os do Asaas.
+      notificationDisabled: true,
     });
 
     // Primeiro vencimento: hoje, no calendario do Asaas.
@@ -314,6 +350,7 @@ export async function createAsaasSubscriptionCheckoutAction(
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
       await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
+      await notifyPlanPaid(createSupabaseAdminClient(), input.organizationId, "activated", subscription);
 
       return {
         success: true,
@@ -326,15 +363,28 @@ export async function createAsaasSubscriptionCheckoutAction(
       };
     }
 
-    // Se for Pix: busca a cobrança gerada para obter o QR Code
-    const paymentsRes = await getSubscriptionPayments(asaasSub.id);
-    const firstPayment = paymentsRes.data?.[0];
-
-    if (!firstPayment) {
-      throw new Error("Cobrança inicial não encontrada na assinatura Asaas.");
+    // Se for Pix: busca a cobrança gerada para obter o QR Code. Sem o Pix, a
+    // assinatura recem-criada sai do Asaas: senao fica cobrando todo mes
+    // (19/11/2026: conta sem chave Pix virou assinatura no boleto).
+    let firstPayment: { id: string };
+    let pixQr: Awaited<ReturnType<typeof getPixQrCode>>;
+    try {
+      ({ payment: firstPayment, qr: pixQr } = await firstPixOf(asaasSub.id));
+    } catch (pixError) {
+      logError("[createAsaasSubscriptionCheckoutAction] Pix não gerado:", pixError);
+      await cancelSubscription(asaasSub.id).catch((cancelError: unknown) =>
+        logWarn(`[createAsaasSubscriptionCheckoutAction] Assinatura ${asaasSub.id} sem Pix não cancelada:`, cancelError),
+      );
+      return {
+        success: false,
+        subscriptionId: "",
+        customerId: "",
+        billingType: input.billingType,
+        status: "pending",
+        value: priceConfig.value,
+        error: PIX_UNAVAILABLE,
+      };
     }
-
-    const pixQr = await getPixQrCode(firstPayment.id);
 
     return {
       success: true,
@@ -359,12 +409,29 @@ export async function createAsaasSubscriptionCheckoutAction(
       billingType: input.billingType,
       status: "pending",
       value: priceConfig.value,
-      error:
-        err instanceof Error
-          ? err.message
-          : "Não foi possível gerar a assinatura no Asaas.",
+      // Detalhe tecnico (chave recusada, Asaas fora) so no registro de erros.
+      error: customerFixableMessage(err) ?? CHECKOUT_UNAVAILABLE,
     };
   }
+}
+
+/** QR Code da fatura do plano, por cobranca: o mesmo ate vencer (19/11/2026). */
+const PIX_QR_CACHE_MS = 30 * 60 * 1000;
+const pixQrCache = new Map<string, { qr: Awaited<ReturnType<typeof getPixQrCode>>; until: number }>();
+
+/** Abrir a fatura pendente de novo nao vai ao Asaas (cada servidor guarda por ate 30 min). */
+async function cachedPixQrCode(paymentId: string): Promise<Awaited<ReturnType<typeof getPixQrCode>>> {
+  const now = Date.now();
+  const hit = pixQrCache.get(paymentId);
+  if (hit && hit.until > now) return hit.qr;
+  const qr = await getPixQrCode(paymentId);
+  if (qr?.payload) {
+    const expires = qr.expirationDate ? Date.parse(qr.expirationDate) : NaN;
+    const until = Number.isFinite(expires) ? Math.min(expires, now + PIX_QR_CACHE_MS) : now + PIX_QR_CACHE_MS;
+    if (pixQrCache.size > 500) pixQrCache.clear();
+    pixQrCache.set(paymentId, { qr, until });
+  }
+  return qr;
 }
 
 /**
@@ -383,6 +450,13 @@ export async function checkAsaasSubscriptionPaymentAction(
 
   try {
     const admin = createSupabaseAdminClient();
+    // O webhook pode ja ter ligado o plano: o banco responde sem ir ao Asaas
+    // (19/11/2026: cada conferencia fazia duas chamadas). So o checkout chama
+    // isto, e ele so abre sem plano pago (cortesia nao conta).
+    const current = await readOrganizationSubscription(admin, ctx.organizationId);
+    if (current && current.tier !== "free" && current.status === "active" && current.asaasSubscriptionId && !current.courtesyUntil) {
+      return { status: "RECEIVED", isPaid: true, subscription: current };
+    }
     return await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
   } catch (err) {
     logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
@@ -481,7 +555,7 @@ export async function getPendingSubscriptionPixAction(): Promise<SubscriptionPen
   // Se houver cobrança ativa gerada no Asaas, busca o QR Code oficial
   if (paymentId && !paymentId.startsWith("pay_mock_")) {
     try {
-      const pixRes = await getPixQrCode(paymentId);
+      const pixRes = await cachedPixQrCode(paymentId);
       if (pixRes?.payload) {
         return {
           ok: true,
