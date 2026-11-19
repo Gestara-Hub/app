@@ -21,7 +21,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     version: "2026.11.19",
     date: "2026-11-19",
     items: [
-      { text: "E-mails do plano com a marca do GestaraHub, com pagamento confirmado." },
+      { text: "Plano no Pix com débito automático e e-mails do plano com a cara do GestaraHub." },
       { text: "Passo a passo para entrar na sua conta de recebimento no Asaas." },
       { text: "Saque via Pix protegido contra pedido em dobro." },
       { text: "Telas mais rápidas: avisos e limpezas rodam em segundo plano." },

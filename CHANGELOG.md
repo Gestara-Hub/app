@@ -6,14 +6,15 @@ Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As no
 
 Desde v2026.11.18.
 
+### Novo
+
+- subscription: Pix Automático na assinatura do plano
+- communication: avisos automáticos esperam a aprovação dos modelos na Meta
+- online-payments: passos de acesso ao Asaas depois de ativar
+
 ### Outros
 
 - reservar as portas do Supabase local fora da faixa de conexões de saída
-
-### Novo
-
-- communication: avisos automáticos esperam a aprovação dos modelos na Meta
-- online-payments: passos de acesso ao Asaas depois de ativar
 
 ### Documentação
 
