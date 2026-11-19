@@ -119,7 +119,20 @@ jobs:
       - name: Instalar dependências e navegador
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
+          # O runner do GitHub ja traz o Google Chrome: usa ele. Sem ele, baixa,
+          # com novas tentativas (19/11/2026: o download de dl.google.com caiu
+          # no meio e derrubou o e2e).
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "Chrome do runner: $(google-chrome --version)"
+          else
+            ok=0
+            for attempt in 1 2 3; do
+              if pnpm --filter @gestarahub/web exec playwright install --with-deps chrome; then ok=1; break; fi
+              echo "Download do Chrome falhou (tentativa $attempt); tentando de novo em 15 s."
+              sleep 15
+            done
+            [ "$ok" = 1 ] || exit 1
+          fi
 
       - name: Reservar as portas do Supabase local
         # As portas do Supabase (553xx) ficam na faixa que o Linux usa para
@@ -175,7 +188,20 @@ jobs:
       - name: Instalar dependências e navegador
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
+          # O runner do GitHub ja traz o Google Chrome: usa ele. Sem ele, baixa,
+          # com novas tentativas (19/11/2026: o download de dl.google.com caiu
+          # no meio e derrubou o e2e).
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "Chrome do runner: $(google-chrome --version)"
+          else
+            ok=0
+            for attempt in 1 2 3; do
+              if pnpm --filter @gestarahub/web exec playwright install --with-deps chrome; then ok=1; break; fi
+              echo "Download do Chrome falhou (tentativa $attempt); tentando de novo em 15 s."
+              sleep 15
+            done
+            [ "$ok" = 1 ] || exit 1
+          fi
 
       - name: Reservar as portas do Supabase local
         # As portas do Supabase (553xx) ficam na faixa que o Linux usa para
