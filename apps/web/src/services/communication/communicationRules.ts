@@ -233,6 +233,28 @@ export function dispatchOfficial(log: MessageLog): void {
 }
 
 /**
+ * Motivo gravado quando a Meta falhou por algo passageiro (fora do ar, limite
+ * de envio), depois das novas tentativas (`messageDelivery.ts`). O lembrete
+ * automatico com este motivo volta na proxima rodada (19/11/2026).
+ */
+export const TRANSIENT_SEND_FAILURE_REASON = "A Meta não respondeu agora (falha passageira).";
+
+/** Rodadas no mesmo dia para o mesmo lembrete, com falha passageira, antes de desistir. */
+const MAX_TRANSIENT_ATTEMPTS_PER_DAY = 3;
+
+/**
+ * O lembrete automatico ja foi tratado hoje? Enviado, ou falha definitiva:
+ * sim. Falha passageira: nao, ate o limite de rodadas do dia.
+ */
+export function reminderAlreadyHandled(sameReminderToday: readonly MessageLog[]): boolean {
+  const transient = sameReminderToday.filter(
+    (log) => log.status === "failed" && log.errorReason === TRANSIENT_SEND_FAILURE_REASON,
+  );
+  if (transient.length >= MAX_TRANSIENT_ATTEMPTS_PER_DAY) return true;
+  return sameReminderToday.length > transient.length;
+}
+
+/**
  * Parabens automatico (so no envio oficial): no dia do aniversario, a partir
  * do horario da regra, uma mensagem por aluno por dia. Roda na rotina de hora
  * em hora (`birthdayGreetingsCron.ts`), nao mais na leitura do historico: antes
@@ -253,11 +275,13 @@ export function runBirthdayGreetings(): number {
     // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
     if (!whatsappConsentGranted(client)) continue;
     if (!isBirthdayToday(client.birthDate, today)) continue;
-    const alreadySent = logs.some(
-      (log) =>
-        log.trigger === "birthday_greeting" &&
-        log.clientId === client.id &&
-        dateInSpace(log.sentAt) === today,
+    const alreadySent = reminderAlreadyHandled(
+      logs.filter(
+        (log) =>
+          log.trigger === "birthday_greeting" &&
+          log.clientId === client.id &&
+          dateInSpace(log.sentAt) === today,
+      ),
     );
     if (alreadySent) continue;
     const variables = { aluno: client.name, empresa: store.organization.name };
@@ -344,11 +368,13 @@ export function runBillingReminders(): number {
       // Sem a autorizacao do aluno, o automatico nao sai (doc product/27 M1).
       if (!whatsappConsentGranted(client)) continue;
 
-      const alreadySent = logs.some(
-        (log) =>
-          log.chargeId === charge.id &&
-          log.trigger === template.trigger &&
-          dateInSpace(log.sentAt) === today,
+      const alreadySent = reminderAlreadyHandled(
+        logs.filter(
+          (log) =>
+            log.chargeId === charge.id &&
+            log.trigger === template.trigger &&
+            dateInSpace(log.sentAt) === today,
+        ),
       );
       if (alreadySent) continue;
 

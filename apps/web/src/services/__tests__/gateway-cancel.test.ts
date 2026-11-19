@@ -130,7 +130,8 @@ describe("expiração: vencida aqui sai do Asaas", () => {
     await expect(expireDueOnlinePayments("org_1")).resolves.toBe(3);
     expect(asaas.deletePayment).toHaveBeenCalledTimes(3);
     const expired = db.updates.find((u) => u.values.status === "expired");
-    expect(expired?.ids).toEqual(["op_1", "op_3", "op_4"]);
+    // Em paralelo: a ordem nao importa.
+    expect([...(expired?.ids ?? [])].sort()).toEqual(["op_1", "op_3", "op_4"]);
     const pending = db.updates.find((u) => u.values.gateway_cancel_pending === true);
     expect(pending?.ids).toEqual(["op_3"]);
   });

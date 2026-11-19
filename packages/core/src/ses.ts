@@ -38,7 +38,21 @@ export interface SendSesEmailInput {
   text?: string;
   attachments?: SesEmailAttachment[];
   now?: Date;
+  /** Esperas entre as tentativas (falha de rede, limite ou SES fora). Padrao: 0,5 s e 1,5 s. */
+  retryDelaysMs?: number[];
+  /** Tempo maximo de cada tentativa. Padrao: 10 s. */
+  timeoutMs?: number;
 }
+
+/** Falha que vale tentar de novo: rede, tempo esgotado, limite de envio (429) ou SES fora (5xx). */
+export function isRetryableSesFailure(result: SendSesEmailResult): boolean {
+  if (result.ok) return false;
+  if (result.status === undefined) return true;
+  return result.status === 429 || result.status >= 500;
+}
+
+const SES_RETRY_DELAYS_MS = [500, 1500];
+const SES_TIMEOUT_MS = 10_000;
 
 export type SendSesEmailResult =
   | { ok: true; messageId?: string }
@@ -290,8 +304,25 @@ export async function sendSesEmail(input: SendSesEmailInput): Promise<SendSesEma
     now: input.now,
   });
 
+  const delays = input.retryDelaysMs ?? SES_RETRY_DELAYS_MS;
+  let result = await postToSes(endpoint.url, headers, body, input.timeoutMs ?? SES_TIMEOUT_MS);
+  for (const delay of delays) {
+    if (!isRetryableSesFailure(result)) break;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    result = await postToSes(endpoint.url, headers, body, input.timeoutMs ?? SES_TIMEOUT_MS);
+  }
+  return result;
+}
+
+/** Uma tentativa de envio, com tempo maximo. */
+async function postToSes(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<SendSesEmailResult> {
   try {
-    const response = await fetch(endpoint.url, { method: "POST", headers, body });
+    const response = await fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) {
       const errorType = response.headers.get("x-amzn-errortype")?.split(":")[0] || undefined;
       const rawText = await response.text().catch(() => "");

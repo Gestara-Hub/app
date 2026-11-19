@@ -1,5 +1,6 @@
 "use server";
 
+import { afterResponse } from "@/lib/after-response";
 import { headers } from "next/headers";
 import { sendPasswordResetEmail } from "@/lib/email/ses";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
@@ -45,22 +46,22 @@ export async function requestPasswordResetAction(input: {
     return { ok: false, message: "Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo." };
   }
 
-  try {
+  // Link e e-mail depois da resposta (19/11/2026): a resposta sai no mesmo
+  // tempo com ou sem conta, e o tempo nao revela se o e-mail esta cadastrado.
+  // Falha no envio descarta o link e fica no registro de erros.
+  const baseUrl = await resolveAppBaseUrl();
+  await afterResponse("Link de troca de senha", async () => {
     const admin = createSupabaseAdminClient();
     const created = await createPasswordResetToken(admin, email);
-    if (created) {
-      const resetUrl = `${await resolveAppBaseUrl()}/reset-password?token=${created.token}`;
-      const sent = await sendPasswordResetEmail({ toEmail: created.email, toName: created.name, resetUrl });
-      if (!sent.ok) {
-        await discardPasswordResetToken(admin, created.token);
-        return { ok: false, message: sent.error };
-      }
+    if (!created) return;
+    const resetUrl = `${baseUrl}/reset-password?token=${created.token}`;
+    const sent = await sendPasswordResetEmail({ toEmail: created.email, toName: created.name, resetUrl });
+    if (!sent.ok) {
+      await discardPasswordResetToken(admin, created.token);
+      logError("[password-reset] E-mail do link não saiu:", sent.error);
     }
-    return { ok: true };
-  } catch (err) {
-    logError("[password-reset] Erro ao pedir o link:", err);
-    return { ok: false, message: "Não foi possível enviar agora. Tente novamente." };
-  }
+  });
+  return { ok: true };
 }
 
 /** Troca a senha pelo link do e-mail; depois a pessoa entra com a nova senha. */

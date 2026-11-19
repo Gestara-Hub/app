@@ -61,6 +61,11 @@ export class AsaasApiError extends Error {
   }
 }
 
+/** Tempo maximo de cada chamada ao Asaas. */
+const ASAAS_TIMEOUT_MS = 20_000;
+/** Esperas entre as tentativas de uma consulta (GET). */
+export const ASAAS_GET_RETRY_DELAYS_MS: number[] = [500, 1500];
+
 /**
  * Função base para requisições à API do Asaas.
  */
@@ -89,12 +94,30 @@ async function asaasFetch<T>(
     access_token: token,
   };
 
-  const response = await fetch(url, {
-    method: options.method || "GET",
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    cache: "no-store",
-  });
+  const method = options.method || "GET";
+  const send = () =>
+    fetch(url, {
+      method,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(ASAAS_TIMEOUT_MS),
+    });
+
+  // Consulta (GET) tenta de novo em falha de rede, limite (429) ou Asaas fora
+  // (5xx). Criacao, alteracao e exclusao nao: repetir pode cobrar ou sacar em
+  // dobro; a pessoa ve o erro e decide.
+  const retries = method === "GET" ? ASAAS_GET_RETRY_DELAYS_MS : [];
+  let response: Response | undefined;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await send();
+      if (!(response.status === 429 || response.status >= 500) || attempt >= retries.length) break;
+    } catch (err) {
+      if (attempt >= retries.length) throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retries[attempt]));
+  }
 
   const data = await response.json().catch(() => null);
 
@@ -177,6 +200,23 @@ export async function createSubAccount(
   });
 }
 
+/** Campos que so comparam os digitos (o Asaas devolve sem mascara). */
+const DIGIT_FIELDS = new Set(["cpfCnpj", "postalCode", "mobilePhone", "phone"]);
+
+/** O cadastro do cliente no Asaas difere do que vai ser gravado? */
+export function customerChanged(existing: object, changes: Record<string, unknown>): boolean {
+  const current = existing as Record<string, unknown>;
+  return Object.entries(changes).some(([key, value]) => {
+    const before = current[key];
+    if (typeof value === "boolean") return Boolean(before) !== value;
+    const norm = (v: unknown) => {
+      const text = v === undefined || v === null ? "" : String(v).trim();
+      return DIGIT_FIELDS.has(key) ? text.replace(/\D/g, "") : text;
+    };
+    return norm(before) !== norm(value);
+  });
+}
+
 /**
  * Cria ou busca um cliente (Aluno) no Asaas. Primeiro pelo id do aluno
  * (`externalReference`): o mesmo aluno e sempre o mesmo cliente, e os dados
@@ -198,6 +238,9 @@ export async function createOrFindCustomer(
         // Atualiza com o cadastro atual (inclusive o CPF: o pagador pode mudar,
         // ex.: aluno que fez 18 anos deixa de pagar pelo responsavel).
         const changes = Object.fromEntries(Object.entries(customerData).filter(([, v]) => v !== undefined));
+        // Nada mudou: sem a chamada de atualizacao (19/11/2026: uma chamada a
+        // menos em cada Pix gerado).
+        if (!customerChanged(existing, changes)) return existing;
         try {
           return await asaasFetch<AsaasCustomerResponse>(`/customers/${existing.id}`, {
             method: "PUT",

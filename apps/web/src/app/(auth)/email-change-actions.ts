@@ -1,5 +1,6 @@
 "use server";
 
+import { afterResponse } from "@/lib/after-response";
 import { headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/features/auth/get-current-user";
@@ -252,12 +253,15 @@ export async function confirmAccessEmailChangeAction(input: {
         return { ok: false, message: "Não foi possível trocar o e-mail. Tente novamente." };
     }
   }
-  // Aviso ao e-mail antigo: falha no envio nao desfaz a troca (fica no registro de erros).
-  const notice = await sendEmailChangedNoticeEmail({
-    toEmail: result.oldEmail,
-    toName: result.name,
-    maskedNewEmail: maskEmail(result.newEmail),
+  // Aviso ao e-mail antigo, depois da resposta: falha no envio nao desfaz a
+  // troca (fica no registro de erros).
+  await afterResponse("Aviso ao e-mail antigo", async () => {
+    const notice = await sendEmailChangedNoticeEmail({
+      toEmail: result.oldEmail,
+      toName: result.name,
+      maskedNewEmail: maskEmail(result.newEmail),
+    });
+    if (!notice.ok) logError("[email-change] Aviso ao e-mail antigo não saiu:", notice.error);
   });
-  if (!notice.ok) logError("[email-change] Aviso ao e-mail antigo não saiu:", notice.error);
   return { ok: true, newEmail: normalizeEmail(result.newEmail) };
 }

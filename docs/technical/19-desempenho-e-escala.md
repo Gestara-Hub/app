@@ -384,3 +384,35 @@ Cada "usuário" repete, em fila como o navegador, as leituras gravadas ao abrir 
 
 - **Conflito otimista com `PT409` em vez de `40001` (16/11/2026, migração 102):** `apply_world_changes` e `world_upsert_batch` levantavam `ERRCODE = '40001'` ao detectar versão ou linha desatualizada. O PostgREST trata `40001` como falha transitória de serialização do Postgres e entra em retry automático interno repetindo a mesma RPC com o mesmo `p_expected_version` velho a cada 1 s em loop infinito (preso no backend do PostgREST, sem novas entradas no API Gateway). Trocado para `PT409`, que devolve HTTP `409 Conflict` na hora para `world/runWorld.ts` descartar o cache e `world/serviceRunner.ts` reler do banco nas tentativas; `runWorld.ts` segue aceitando `40001` e `23505` caso surjam nativamente no Postgres. Teste: `world.db.test.ts`.
 - **Log de tempo desligado por padrão (16/11/2026):** `logTiming` em `world/runWorld.ts` deixou de emitir `console.warn` automático acima de 300 ms; o registro de tempo por etapa só sai com `WORLD_TIMING=1` (`console.info`), deixando nos logs de produção apenas erros e eventuais avisos de conflito.
+
+## 15. Segundo plano, tempo limite e novas tentativas (19/11/2026)
+
+Levantamento do que a tela esperava de Asaas, SES e Meta antes de responder. Regra: o que não muda o que a tela mostra roda **depois da resposta** (`afterResponse` em `lib/after-response.ts`, ou `afterWorldCommit` dentro do mundo da requisição). Fora de uma requisição (testes, scripts), roda na hora.
+
+**Foi para depois da resposta:**
+- Expirar e tirar do Asaas os códigos Pix vencidos ao abrir "Cobrar online" e Recebimentos (a leitura já mostra "vencido" pela data; a rotina de hora em hora também faz). Os cancelamentos rodam em paralelo.
+- Situação dos modelos na Meta ao abrir a tela de modelos (`refreshTemplateStatusesInDb` grava no banco; a próxima leitura vê) e a sincronização dos modelos no "Atualizar" da conexão.
+- Tarifas, webhook e chave Pix da subconta logo depois de ativar (em paralelo).
+- Cancelar os códigos anteriores quando o pagador gera um novo na fatura pública (em paralelo).
+- E-mails: pagamento do plano confirmado (em paralelo para dono e gerente), avisos de suporte, aviso ao e-mail antigo na troca de e-mail, alerta de erro novo e o link de "esqueci a senha" (a resposta sai igual com ou sem conta, sem revelar pelo tempo se o e-mail existe).
+- Tirar anexo não usado no Storage.
+
+**Tempo limite:** Asaas 20 s por chamada, SES 10 s por tentativa.
+
+**Novas tentativas:**
+- SES: até 3 tentativas (0,5 s e 1,5 s) em falha de rede, limite (429) ou SES fora (5xx); recusa (4xx) não repete.
+- Asaas: só consultas (GET), até 3 tentativas nas mesmas falhas. Criar, alterar e excluir nunca repetem (cobrança ou saque em dobro).
+- WhatsApp (fila "Na fila"): até 3 tentativas (2 s e 5 s) em falha de rede e nos códigos passageiros da Meta (1, 2, 4, 131000, 131016, 130429). Tempo esgotado não repete (a Meta pode ter enviado). Definitivos (pagamento, janela de 24 h, modelo) ficam "Falhou".
+
+**Saque sem repetir (19/11/2026):** a tela manda um id do pedido; o servidor reserva o id por 24 h e o mesmo valor para a mesma chave por 30 s (contador atômico `check_rate_limit`, que aqui falha fechado: sem o banco, não saca). Recusa do Asaas libera o valor de novo, e a tela gera outro id. Sem resposta (rede), a tela mantém o id: repetir não saca de novo.
+
+**Lembrete automático com falha passageira (19/11/2026):** depois das novas tentativas, a falha passageira grava o motivo `TRANSIENT_SEND_FAILURE_REASON`; a rotina (`reminderAlreadyHandled`, parabéns e cobranças) não conta esse registro como enviado e tenta de novo na rodada seguinte, até 3 vezes no dia. Falha definitiva continua contando como tratada.
+
+**Grupo B (19/11/2026), a tela ainda espera, mas menos:**
+- Pix de cobrança: o cadastro do pagador no Asaas só é atualizado quando algo mudou (`customerChanged`).
+- Troca de plano: apagar e atualizar as cobranças do Asaas em paralelo (`syncAsaasPlan`).
+- "Já paguei?" do plano: se o banco já tem o plano ativo (o webhook ligou), responde sem ir ao Asaas.
+- Fatura pendente do plano: o QR Code fica guardado no servidor por até 30 min (ou até vencer).
+- PDFs: logo e arte do espaço guardados por 10 min por servidor, com um download só para pedidos ao mesmo tempo; logo e arte do certificado em paralelo.
+
+**Ficou para depois** (em `docs/pendencias.md`): o bot do suporte em segundo plano (pede mudanças na tela da conversa).

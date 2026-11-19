@@ -8,6 +8,7 @@ import {
 } from "@/lib/whatsapp/master-templates";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { logWarn } from "@/lib/log";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ensureTemplates } from "./communicationRules";
 import { metaErrorReason, whatsappClient, type SpaceWhatsAppConfig } from "./whatsappClient";
 
@@ -102,4 +103,33 @@ export async function syncMetaTemplates(
     });
   }
   return result;
+}
+
+/**
+ * Situacao dos modelos na Meta gravada no banco (fora do espaco da requisicao:
+ * roda depois da resposta). Cobre o atraso ou a perda do aviso da Meta.
+ */
+export async function refreshTemplateStatusesInDb(organizationId: string, config: SpaceWhatsAppConfig): Promise<number> {
+  const remote = (await whatsappClient.listTemplates(config)).filter((t) => !t.language || t.language === "pt_BR");
+  if (remote.length === 0) return 0;
+  const admin = createSupabaseAdminClient();
+  const { data: rows, error } = await admin
+    .from("message_templates")
+    .select("id, meta_template_name, meta_status")
+    .eq("organization_id", organizationId)
+    .not("meta_template_name", "is", null);
+  if (error) throw error;
+  let updated = 0;
+  for (const row of rows ?? []) {
+    const match = remote.find((r) => r.name === row.meta_template_name);
+    if (!match || match.status === row.meta_status) continue;
+    const { error: updateError } = await admin
+      .from("message_templates")
+      .update({ meta_status: match.status, meta_rejection_reason: match.rejectionReason ?? null })
+      .eq("id", row.id)
+      .eq("organization_id", organizationId);
+    if (updateError) logWarn(`[metaTemplatesSync] Situação do modelo ${match.name} não gravada:`, updateError);
+    else updated += 1;
+  }
+  return updated;
 }

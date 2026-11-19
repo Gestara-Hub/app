@@ -59,6 +59,26 @@ export async function loadSpaceLogo(organizationId: string): Promise<DocumentLog
  * 31/10/2026, achado S5).
  */
 export async function loadSpaceImage(organizationId: string, fileId: string): Promise<DocumentLogo | null> {
+  // O arquivo de um id nao muda (trocar a logo cria outro anexo): cada servidor
+  // guarda por um tempo, e pedidos ao mesmo tempo dividem o mesmo download
+  // (19/11/2026: o logo era baixado a cada PDF, e uma vez por certificado no lote).
+  const key = `${organizationId}:${fileId}`;
+  const hit = imageCache.get(key);
+  if (hit && hit.until > Date.now()) return hit.image;
+  const image = downloadSpaceImage(organizationId, fileId);
+  if (imageCache.size > 200) imageCache.clear();
+  imageCache.set(key, { image, until: Date.now() + IMAGE_CACHE_MS });
+  // Falha (null) nao fica guardada: a proxima tenta de novo.
+  void image.then((result) => {
+    if (!result) imageCache.delete(key);
+  });
+  return image;
+}
+
+const IMAGE_CACHE_MS = 10 * 60 * 1000;
+const imageCache = new Map<string, { image: Promise<DocumentLogo | null>; until: number }>();
+
+async function downloadSpaceImage(organizationId: string, fileId: string): Promise<DocumentLogo | null> {
   try {
     const admin = createSupabaseAdminClient();
     const { data: file } = await admin

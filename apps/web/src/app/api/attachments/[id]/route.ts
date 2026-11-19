@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { afterResponse } from "@/lib/after-response";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/session";
 import { decodeSession } from "@/lib/session-cookie";
@@ -103,12 +104,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     // Em uso: nao apaga. 200 (11/11/2026, antes 409): a limpeza do navegador
     // pede "tira se ninguem usa" de proposito e ignora a resposta; o 409 so
     // virava erro no console a cada formulario salvo com arquivo.
-    if (await attachmentIsUsed(admin, ctx.organizationId, id)) {
-      return NextResponse.json({ removed: false, inUse: true, message: "Arquivo já está em uso." });
-    }
-    await removeAttachments(admin, [
-      { id: String(row.id), organization_id: String(row.organization_id), storage_path: String(row.storage_path) },
-    ]);
+    // Conferir o uso e apagar no Storage depois da resposta (19/11/2026): o
+    // navegador ignora a resposta. Em uso, fica; a rotina diaria limpa o resto.
+    const organizationId = ctx.organizationId;
+    await afterResponse("Tirar anexo não usado", async () => {
+      if (await attachmentIsUsed(admin, organizationId, id)) return;
+      await removeAttachments(admin, [
+        { id: String(row.id), organization_id: String(row.organization_id), storage_path: String(row.storage_path) },
+      ]);
+    });
     return new Response(null, { status: 204 });
   } catch (error) {
     if (isApiError(error)) return NextResponse.json({ message: error.message }, { status: error.httpStatus ?? 403 });

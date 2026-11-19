@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { after } from "next/server";
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { APP_VERSION } from "@/config/release";
@@ -77,7 +78,15 @@ export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
   });
   // Sem logError aqui: falhar ao gravar o erro nao pode gerar outro registro.
   if (error) console.error(`[log] erro não gravado no banco (código ${entry.reference}): ${error.message}`);
-  else if (isNew === true && entry.level === "error") await alertNewError(entry, current?.organizationId);
+  else if (isNew === true && entry.level === "error") {
+    // Alerta por e-mail depois da resposta (19/11/2026: a resposta de erro
+    // esperava o envio). Fora de uma requisicao, envia na hora.
+    try {
+      after(() => alertNewError(entry, current?.organizationId));
+    } catch {
+      await alertNewError(entry, current?.organizationId);
+    }
+  }
 }
 
 /** No maximo 10 alertas na hora por hora em cada servidor: uma enxurrada de erros novos vira o resumo diario. */

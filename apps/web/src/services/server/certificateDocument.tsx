@@ -26,9 +26,10 @@ import type { TenantContext } from "./tenant";
 /** Logo e arte do modelo, em data URL, uma vez por PDF (o lote repete o mesmo modelo). */
 async function loadTemplateImages(organizationId: string, template: CertificateTemplate) {
   // A logo do proprio modelo (o de graduacao pode ter outra), sempre da pasta do espaco.
-  const logo = template.logoFileId ? await loadSpaceImage(organizationId, template.logoFileId) : null;
-  const artwork =
-    template.layout === "custom" && template.artwork ? await loadSpaceImage(organizationId, template.artwork.fileId) : null;
+  const [logo, artwork] = await Promise.all([
+    template.logoFileId ? loadSpaceImage(organizationId, template.logoFileId) : null,
+    template.layout === "custom" && template.artwork ? loadSpaceImage(organizationId, template.artwork.fileId) : null,
+  ]);
   return { logo, artwork };
 }
 
