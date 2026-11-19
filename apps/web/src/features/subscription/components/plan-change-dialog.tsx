@@ -181,7 +181,15 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
         ) : preview.isError || !quote ? (
           <p className="text-sm text-destructive">{getErrorMessage(preview.error, "Não foi possível calcular a troca.")}</p>
         ) : (
-          <QuoteLines quote={quote} target={target} currentTier={preview.data.current.tier} />
+          <>
+            <QuoteLines quote={quote} target={target} currentTier={preview.data.current.tier} />
+            {/* Regra do Asaas: mudar valor ou ciclo da assinatura cancela a autorizacao (19/11/2026). */}
+            {preview.data.pixAutomaticActive && quote.kind !== "same" ? (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
+                A troca desliga o débito automático do Pix. Você autoriza de novo no próximo pagamento.
+              </p>
+            ) : null}
+          </>
         )}
       </DialogBody>
       <DialogFooter saving={change.isPending} className="shrink-0">

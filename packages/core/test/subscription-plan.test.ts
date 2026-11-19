@@ -118,6 +118,16 @@ describe("renovação e tolerância de 5 dias", () => {
     });
   });
 
+  it("Pix Automático ativo: como o cartão, sem \"pague até o dia\"; aviso só se o débito não passar", () => {
+    const auto: Subscription = { ...pix, pixAutomatic: { authorizationId: "a1", status: "ACTIVE", updatedAt: "2026-11-01T00:00:00Z" } };
+    assert.equal(planNoticeFor(auto, "2026-11-10"), null);
+    assert.equal(planNoticeFor(auto, "2026-11-13"), null);
+    assert.deepEqual(planNoticeFor(auto, "2026-11-14"), { kind: "payment_pending", renewsOn: "2026-11-13" });
+    // Autorização ainda pendente: segue o Pix comum.
+    const offered: Subscription = { ...pix, pixAutomatic: { authorizationId: "a1", status: "CREATED", updatedAt: "2026-11-01T00:00:00Z" } };
+    assert.deepEqual(planNoticeFor(offered, "2026-11-10"), { kind: "renews_soon", renewsOn: "2026-11-13" });
+  });
+
   it("cartão: sem aviso antes nem no dia (é cobrado sozinho)", () => {
     assert.equal(planNoticeFor(card, "2026-11-10"), null);
     assert.equal(planNoticeFor(card, "2026-11-13"), null);

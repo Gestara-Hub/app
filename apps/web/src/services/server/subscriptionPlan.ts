@@ -27,9 +27,11 @@ import {
   getPixQrCode,
   getSubscription,
   getSubscriptionPayments,
+  listSubscriptionPixAutomaticAuthorizations,
   updatePayment,
   updateSubscription,
   type AsaasPaymentResponse,
+  type AsaasPixAutomaticAuthorization,
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
 import { notifyPlanManagers, notifyPlanPaid } from "./planEmails";
@@ -146,6 +148,8 @@ async function syncAsaasPlan(
 export interface PlanChangePreview {
   quote: PlanChangeQuote;
   current: CurrentPlan;
+  /** Pix Automatico ativo: trocar valor ou ciclo desliga a autorizacao (regra do Asaas). */
+  pixAutomaticActive?: boolean;
 }
 
 /** A conta da troca, para a confirmacao na tela. Nada e cobrado. */
@@ -156,7 +160,11 @@ export async function previewPlanChange(
 ): Promise<PlanChangePreview> {
   const subscription = await readOrganizationSubscription(admin, organizationId);
   const current = currentPlanOf(subscription);
-  return { current, quote: quotePlanChange(current, target, dateInSpace(), PLAN_PRICES) };
+  return {
+    current,
+    quote: quotePlanChange(current, target, dateInSpace(), PLAN_PRICES),
+    pixAutomaticActive: subscription?.pixAutomatic?.status === "ACTIVE",
+  };
 }
 
 export type PlanChangeStart =
@@ -632,6 +640,50 @@ export async function recordSubscriptionPaymentOpen(
   return true;
 }
 
+/**
+ * Pix Automatico da assinatura do plano (19/11/2026): o Asaas oferece a
+ * autorizacao no Pix da assinatura; ativa, as renovacoes sao debitadas no
+ * vencimento e os avisos deixam de pedir "pague ate o dia". Webhook e
+ * conferencia diaria gravam aqui. Devolve se mudou algo.
+ */
+export async function recordPlanPixAutomatic(
+  admin: SupabaseClient,
+  authorization: Pick<AsaasPixAutomaticAuthorization, "id" | "status" | "subscriptionId">,
+  knownOrganizationId?: string,
+): Promise<boolean> {
+  const subscriptionId = authorization.subscriptionId;
+  if (!subscriptionId) return false;
+  const organizationId =
+    knownOrganizationId ?? (await organizationOfAsaasSubscription(admin, { id: subscriptionId, externalReference: undefined }));
+  if (!organizationId) return false;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.asaasSubscriptionId !== subscriptionId) return false;
+  const current = subscription.pixAutomatic;
+  if (current?.authorizationId === authorization.id && current.status === authorization.status) return false;
+  // Autorizacao antiga (ja trocada) nao volta por cima da nova.
+  if (current && current.authorizationId !== authorization.id && current.status === "ACTIVE" && authorization.status !== "ACTIVE") {
+    return false;
+  }
+  await writeOrganizationSubscription(admin, organizationId, {
+    ...subscription,
+    pixAutomatic: { authorizationId: authorization.id, status: authorization.status, updatedAt: new Date().toISOString() },
+  });
+  return true;
+}
+
+/** Conferencia diaria do Pix Automatico (o aviso do Asaas pode nao chegar). */
+async function reconcilePlanPixAutomatic(admin: SupabaseClient, organizationId: string, subscription: Subscription): Promise<void> {
+  if (!onAsaas(subscription) || subscription.paymentMethod === "credit_card" || subscription.tier === "free") return;
+  try {
+    const authorizations = await listSubscriptionPixAutomaticAuthorizations(subscription.asaasSubscriptionId);
+    // A mais relevante: a ativa, se houver; senao a primeira da lista.
+    const chosen = authorizations.find((a) => a.status === "ACTIVE") ?? authorizations[0];
+    if (chosen) await recordPlanPixAutomatic(admin, { ...chosen, subscriptionId: subscription.asaasSubscriptionId }, organizationId);
+  } catch (err) {
+    logWarn("[subscriptionPlan] Pix Automático do plano não conferido:", err);
+  }
+}
+
 /** Assinatura encerrada direto no Asaas: o espaco volta ao Gratis. */
 export async function recordSubscriptionRemoved(
   admin: SupabaseClient,
@@ -747,7 +799,13 @@ async function runPlanDailyStep(
   const settings = org.settings as { timeZone?: string } | null;
   const units = (org.units ?? []) as { address?: { state?: string } | string | null }[];
   const today = dateInSpace(new Date(), resolveSpaceTimeZone(settings, units[0]?.address));
-  let subscription = await reconcileRenewal(admin, organizationId, org.subscription as Subscription, today);
+  await reconcilePlanPixAutomatic(admin, organizationId, org.subscription as Subscription);
+  let subscription = await reconcileRenewal(
+    admin,
+    organizationId,
+    (await readOrganizationSubscription(admin, organizationId)) ?? (org.subscription as Subscription),
+    today,
+  );
   const step = planDailyStep(subscription, today);
   if (step.applyScheduled) {
     await applyScheduledPlanChange(admin, organizationId, subscription);

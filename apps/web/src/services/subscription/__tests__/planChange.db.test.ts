@@ -22,6 +22,7 @@ const asaas = vi.hoisted(() => ({
   deletePayment: vi.fn(),
   cancelSubscription: vi.fn(),
   createSubscription: vi.fn(),
+  listSubscriptionPixAutomaticAuthorizations: vi.fn(),
 }));
 const email = vi.hoisted(() => ({ sendPlanNoticeEmail: vi.fn() }));
 
@@ -81,6 +82,7 @@ const paidPlan = (over: Partial<Subscription> = {}): Subscription => ({
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  asaas.listSubscriptionPixAutomaticAuthorizations.mockResolvedValue([]);
   tenant = await createTestTenant();
   owner = { actor: { userId: tenant.owner.id, name: "Teste owner", profile: "owner" } };
   asaas.getSubscriptionPayments.mockResolvedValue({
@@ -239,6 +241,34 @@ describe("redução: no fim do período pago", () => {
 
     expect(result.applied).toBe(1);
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", priceCents: 7990 });
+  });
+});
+
+describe("Pix Automático do plano", () => {
+  it("autorização ativada pelo aviso do Asaas fica na assinatura; a antiga não volta por cima", async () => {
+    await setSubscription(paidPlan());
+    expect(await plan.recordPlanPixAutomatic(admin, { id: "auth_1", status: "ACTIVE", subscriptionId: "sub_teste" })).toBe(true);
+    expect((await subscriptionInDb()).pixAutomatic).toMatchObject({ authorizationId: "auth_1", status: "ACTIVE" });
+
+    // Repetido: nada muda. Outra assinatura: ignora.
+    expect(await plan.recordPlanPixAutomatic(admin, { id: "auth_1", status: "ACTIVE", subscriptionId: "sub_teste" })).toBe(false);
+    expect(await plan.recordPlanPixAutomatic(admin, { id: "auth_x", status: "ACTIVE", subscriptionId: "sub_outra" })).toBe(false);
+    // Uma autorização antiga, cancelada, não derruba a ativa.
+    expect(await plan.recordPlanPixAutomatic(admin, { id: "auth_0", status: "CANCELLED", subscriptionId: "sub_teste" })).toBe(false);
+    // A própria ativa cancelada: grava.
+    expect(await plan.recordPlanPixAutomatic(admin, { id: "auth_1", status: "CANCELLED", subscriptionId: "sub_teste" })).toBe(true);
+    expect((await subscriptionInDb()).pixAutomatic?.status).toBe("CANCELLED");
+  });
+
+  it("a rotina diária confere no Asaas e grava a autorização ativa", async () => {
+    await setSubscription(paidPlan());
+    asaas.getSubscriptionPayments.mockResolvedValue({ data: [] });
+    asaas.listSubscriptionPixAutomaticAuthorizations.mockResolvedValue([
+      { id: "auth_old", status: "EXPIRED", subscriptionId: "sub_teste" },
+      { id: "auth_2", status: "ACTIVE", subscriptionId: "sub_teste" },
+    ]);
+    await plan.runPlanDailyTasks(admin, "https://app.test", { organizationIds: [tenant.organizationId] });
+    expect((await subscriptionInDb()).pixAutomatic).toMatchObject({ authorizationId: "auth_2", status: "ACTIVE" });
   });
 });
 

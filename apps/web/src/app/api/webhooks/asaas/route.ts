@@ -4,6 +4,7 @@ import { decodePlanChangeReference } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   recordPlanChangePaymentPaid,
+  recordPlanPixAutomatic,
   recordSubscriptionPaymentOpen,
   recordSubscriptionPaymentPaid,
   recordSubscriptionRemoved,
@@ -44,8 +45,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
   }
-  const { event, payment, subscription } = payload ?? {};
-  if (!event || (!payment?.id && !subscription?.id)) {
+  const { event, payment, subscription, authorization } = payload ?? {};
+  if (!event || (!payment?.id && !subscription?.id && !authorization?.id)) {
     return NextResponse.json(
       { error: "Payload inválido. 'event' e 'payment.id' são obrigatórios." },
       { status: 400 },
@@ -59,12 +60,12 @@ export async function POST(req: Request) {
     eventId: payload?.id,
     event,
     paymentId: payment?.id,
-    subscriptionId: subscription?.id ?? payment?.subscription,
+    subscriptionId: subscription?.id ?? payment?.subscription ?? authorization?.subscriptionId ?? undefined,
   });
   if (record.duplicate) return NextResponse.json({ success: true, duplicate: true });
 
   try {
-    const handled = await handleEvent(admin, event, payment, subscription);
+    const handled = await handleEvent(admin, event, payment, subscription, authorization);
     await finishWebhookEvent(admin, record.id, handled);
     return NextResponse.json({ success: true, processed: handled.status === "processed" });
   } catch (error) {
@@ -82,7 +83,15 @@ async function handleEvent(
   event: AsaasWebhookPayload["event"],
   payment: AsaasPaymentResponse | undefined,
   subscription: AsaasWebhookPayload["subscription"],
+  authorization?: AsaasWebhookPayload["authorization"],
 ): Promise<Handled> {
+  // Pix Automatico da assinatura do Plano GestaraHub (19/11/2026).
+  if (event.startsWith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_")) {
+    const changed = authorization?.id ? await recordPlanPixAutomatic(admin, authorization) : false;
+    return changed
+      ? { status: "processed", outcome: `plano: Pix Automático ${authorization?.status}` }
+      : { status: "ignored", outcome: "Pix Automático" };
+  }
   // Assinatura do Plano GestaraHub encerrada direto no Asaas (doc product/13 §6).
   if (event.startsWith("SUBSCRIPTION_")) {
     const removed =

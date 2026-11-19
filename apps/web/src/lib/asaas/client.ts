@@ -7,6 +7,7 @@ import type {
   AsaasCustomerResponse,
   AsaasPaymentRequest,
   AsaasPaymentResponse,
+  AsaasPixAutomaticAuthorization,
   AsaasPixQrCodeResponse,
   AsaasBalanceResponse,
   AsaasTransferRequest,
@@ -457,6 +458,16 @@ export async function getSubscriptionPayments(
     `/subscriptions/${subscriptionId}/payments`,
     { apiKey },
   );
+}
+
+/** Autorizacoes de Pix Automatico de uma assinatura (oferta na assinatura com Pix). */
+export async function listSubscriptionPixAutomaticAuthorizations(
+  subscriptionId: string,
+): Promise<AsaasPixAutomaticAuthorization[]> {
+  const res = await asaasFetch<{ data?: AsaasPixAutomaticAuthorization[] }>(
+    `/pix/automatic/authorizations?subscriptionId=${encodeURIComponent(subscriptionId)}`,
+  );
+  return res.data ?? [];
 }
 
 /**
