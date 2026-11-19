@@ -415,4 +415,6 @@ Levantamento do que a tela esperava de Asaas, SES e Meta antes de responder. Reg
 - Fatura pendente do plano: o QR Code fica guardado no servidor por até 30 min (ou até vencer).
 - PDFs: logo e arte do espaço guardados por 10 min por servidor, com um download só para pedidos ao mesmo tempo; logo e arte do certificado em paralelo.
 
+**Token do webhook das subcontas (19/11/2026):** `gateway_webhook_url` guarda a URL e uma impressão curta do token (`webhookFingerprint`, nunca o token). Trocar `ASAAS_WEBHOOK_SECRET` ou `ASAAS_WEBHOOK_URL` recadastra o webhook de cada subconta na próxima leitura da organização, e o cadastro religa a fila pausada.
+
 **Ficou para depois** (em `docs/pendencias.md`): o bot do suporte em segundo plano (pede mudanças na tela da conversa).

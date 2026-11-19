@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { GatewayAccountFees, LinkPaymentMethodName } from "@gestarahub/contracts";
 import {
   areGatewayFeesStale,
@@ -30,6 +31,17 @@ export const GESTARAHUB_WEBHOOK_NAME = "GestaraHub";
 
 /** Eventos de cobranca que a rota app/api/webhooks/asaas trata. */
 const WEBHOOK_EVENTS = ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_OVERDUE", "PAYMENT_DELETED"];
+
+/**
+ * O que fica gravado em `gateway_webhook_url`: a URL e uma impressao curta do
+ * token (nunca o token). Trocar a URL ou a ASAAS_WEBHOOK_SECRET muda o valor, e
+ * a subconta e recadastrada sozinha na proxima leitura (19/11/2026: com o token
+ * novo, os avisos das subcontas eram recusados e o Asaas pausava a fila).
+ */
+export function webhookFingerprint(url: string, authToken: string): string {
+  const print = createHash("sha256").update(authToken, "utf8").digest("hex").slice(0, 12);
+  return `${url}#${print}`;
+}
 
 /** Chave de subconta de verdade (as do modo de demonstracao comecam com "mock_"). */
 export function realSubaccountKey(key: unknown): string | null {
@@ -152,7 +164,7 @@ export async function ensureSubaccountWebhook(
     const existing = (await listWebhooks(key)).find((w) => w.name === GESTARAHUB_WEBHOOK_NAME);
     if (existing) await updateWebhook(existing.id, config, key);
     else await createWebhook(config, key);
-    await admin.from("organizations").update({ gateway_webhook_url: url }).eq("id", organizationId);
+    await admin.from("organizations").update({ gateway_webhook_url: webhookFingerprint(url, authToken) }).eq("id", organizationId);
     return { configured: true };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
@@ -164,8 +176,8 @@ export async function ensureSubaccountWebhook(
 /**
  * Atualizacao por idade e por troca de URL, chamada quando o app le a
  * organizacao (em `after`, sem atrasar a resposta): tarifas com mais de 24
- * horas sao buscadas de novo; URL do webhook diferente da cadastrada e
- * recadastrada.
+ * horas sao buscadas de novo; URL ou token do webhook diferentes dos
+ * cadastrados: recadastra (o cadastro tambem religa a fila pausada).
  */
 export async function refreshGatewayIfNeeded(row: {
   id: string;
@@ -179,7 +191,10 @@ export async function refreshGatewayIfNeeded(row: {
   const fees = (row.gateway_fees ?? undefined) as GatewayAccountFees | undefined;
   if (areGatewayFeesStale(fees, new Date())) await syncGatewayFees(row.id);
   const url = process.env.ASAAS_WEBHOOK_URL?.trim();
-  if (url && url !== row.gateway_webhook_url) await ensureSubaccountWebhook(row.id);
+  const authToken = process.env.ASAAS_WEBHOOK_SECRET?.trim();
+  if (url && authToken && webhookFingerprint(url, authToken) !== row.gateway_webhook_url) {
+    await ensureSubaccountWebhook(row.id);
+  }
 }
 
 /**
