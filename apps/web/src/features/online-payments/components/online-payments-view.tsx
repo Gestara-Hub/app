@@ -29,6 +29,7 @@ import { useOrganization } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import { SubaccountPanel } from "./subaccount-panel";
 import { OnlinePaymentsOnboarding } from "./online-payments-onboarding";
+import { AsaasAccessAfterActivation } from "./asaas-access-guide";
 import { OnlinePaymentsSettingsTab } from "./online-payments-settings-tab";
 import { ProductTour, type TourStep } from "@/components/shared/product-tour";
 import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
@@ -241,6 +242,8 @@ export function OnlinePaymentsView() {
         ) : null}
       </PageHeader>
       ) : null}
+
+      <AsaasAccessAfterActivation />
 
       {!isSubaccountActive ? (
         <OnlinePaymentsOnboarding

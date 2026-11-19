@@ -50,7 +50,7 @@ async function template(t: TestTenant, trigger: string) {
   return id;
 }
 
-async function log(t: TestTenant, id: string) {
+async function log(t: TestTenant, id: string, sentAt = new Date().toISOString(), status = "sent") {
   await admin
     .from("message_logs")
     .insert({
@@ -61,8 +61,8 @@ async function log(t: TestTenant, id: string) {
       trigger: "billing_before_due",
       category: "billing",
       content: "Oi",
-      status: "sent",
-      sent_at: new Date().toISOString(),
+      status,
+      sent_at: sentAt,
     })
     .throwOnError();
 }
@@ -80,6 +80,27 @@ afterEach(async () => {
   await tenant.remove();
   await other.remove();
 });
+
+function statuses(list: { id: string; status: "sent" | "delivered" | "read" | "failed" }[]) {
+  return {
+    object: "whatsapp_business_account" as const,
+    entry: [
+      {
+        id: wabaId,
+        changes: [
+          {
+            field: "messages" as const,
+            value: {
+              messaging_product: "whatsapp",
+              metadata: { display_phone_number: "5592988887777", phone_number_id: phoneNumberId },
+              statuses: list.map((s) => ({ ...s, timestamp: "1763370000", recipient_id: "5511977770000" })),
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
 
 describe("avisos da Meta por espaco", () => {
   it("situacao do modelo vai para o banco so nos espacos daquela conta", async () => {
@@ -134,6 +155,33 @@ describe("avisos da Meta por espaco", () => {
     const { data } = await admin.from("message_logs").select("status, read_at").eq("id", wamid).single();
     expect(data?.status).toBe("read");
     expect(data?.read_at).toBeTruthy();
+  });
+
+  it("entregue que chega depois do lida nao volta a mensagem", async () => {
+    const wamid = `wamid.${randomUUID()}`;
+    await log(tenant, wamid);
+
+    await handleWhatsAppWebhookPayload(statuses([{ id: wamid, status: "read" }]));
+    await handleWhatsAppWebhookPayload(statuses([{ id: wamid, status: "delivered" }]));
+
+    const { data } = await admin.from("message_logs").select("status").eq("id", wamid).single();
+    expect(data?.status).toBe("read");
+  });
+
+  it("lida marca tambem as anteriores para o mesmo numero", async () => {
+    const first = `wamid.${randomUUID()}`;
+    const second = `wamid.${randomUUID()}`;
+    const failed = `wamid.${randomUUID()}`;
+    await log(tenant, first, "2026-11-18T10:00:00Z", "delivered");
+    await log(tenant, failed, "2026-11-18T10:01:00Z", "failed");
+    await log(tenant, second, "2026-11-18T10:02:00Z", "delivered");
+
+    await handleWhatsAppWebhookPayload(statuses([{ id: second, status: "read" }]));
+
+    const { data } = await admin.from("message_logs").select("id, status").in("id", [first, second, failed]);
+    expect(data?.find((r) => r.id === first)?.status).toBe("read");
+    expect(data?.find((r) => r.id === second)?.status).toBe("read");
+    expect(data?.find((r) => r.id === failed)?.status).toBe("failed");
   });
 
   it("SAIR pelo numero do espaco revoga so naquele espaco", async () => {

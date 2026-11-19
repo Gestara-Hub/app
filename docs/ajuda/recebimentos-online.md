@@ -12,6 +12,17 @@ Guia: /online-payments
 + botão "Ativar recebimentos": Quando terminar, clique aqui para enviar.
 Em Recebimentos online, clique em "Ativar conta de recebimento" e preencha os dados da conta (CPF ou CNPJ, nascimento ou tipo de empresa, renda ou faturamento e endereço). Com CPF, a fatura do cartão mostra ao aluno seu CPF, e-mail e telefone; se você tem CNPJ ou MEI, use ele. Depois de aprovada, a conta fica ativa.
 
+O GestaraHub abre uma conta nova no Asaas, só para os recebimentos do espaço. Uma conta que você já tenha no Asaas não serve aqui. No "E-mail financeiro", use um e-mail que ainda não tenha conta no Asaas.
+
+## Entrar na sua conta no Asaas
+Resumo: A conta de recebimento é sua, no Asaas. Entre com o e-mail financeiro para aprovar a conta e ver o extrato completo.
+Guia: /online-payments
++ aba "Configurações": Os passos de acesso ficam no card "Acesso à sua conta no Asaas".
+1. Logo depois de ativar, o Asaas manda um e-mail para o e-mail financeiro. Veja também o spam.
+2. Pelo link do e-mail, crie sua senha. Se o e-mail não chegou, use "Esqueci minha senha" na entrada do Asaas, com o e-mail financeiro.
+3. Entre em asaas.com ou no app Asaas com o e-mail financeiro e a senha.
+4. Envie os documentos que o Asaas pedir. Ele aprova a conta e libera os saques.
+
 ## Cobrar um aluno
 Guia: /classes/billing
 + botão "Ver cobranças": Abra as cobranças do aluno.

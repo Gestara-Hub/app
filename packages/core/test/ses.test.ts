@@ -236,4 +236,66 @@ describe("sendSesEmail", () => {
       error: "MessageRejectedException: Email address is not verified.",
     });
   });
+
+  it("tenta de novo quando o SES está fora (5xx) e para no sucesso", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response("Service Unavailable", { status: 503 })
+        : new Response(JSON.stringify({ MessageId: "m-1" }), { status: 200 });
+    }) as typeof fetch;
+
+    const result = await sendSesEmail({
+      credentials: { accessKeyId: "AKIA1", secretAccessKey: "SEC1", region: "us-east-2" },
+      from: { email: "naoresponda@gestarahub.com.br" },
+      to: [{ email: "ana@exemplo.com" }],
+      subject: "Teste",
+      text: "Oi",
+      retryDelaysMs: [0, 0],
+    });
+
+    assert.deepEqual(result, { ok: true, messageId: "m-1" });
+    assert.equal(calls, 2);
+  });
+
+  it("não tenta de novo quando o SES recusa o e-mail (4xx)", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ message: "Email address is not verified." }), { status: 400 });
+    }) as typeof fetch;
+
+    const result = await sendSesEmail({
+      credentials: { accessKeyId: "AKIA1", secretAccessKey: "SEC1", region: "us-east-2" },
+      from: { email: "naoresponda@gestarahub.com.br" },
+      to: [{ email: "ana@exemplo.com" }],
+      subject: "Teste",
+      text: "Oi",
+      retryDelaysMs: [0, 0],
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
+  });
+
+  it("falha de rede em todas as tentativas: três tentativas e o erro", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+
+    const result = await sendSesEmail({
+      credentials: { accessKeyId: "AKIA1", secretAccessKey: "SEC1", region: "us-east-2" },
+      from: { email: "naoresponda@gestarahub.com.br" },
+      to: [{ email: "ana@exemplo.com" }],
+      subject: "Teste",
+      text: "Oi",
+      retryDelaysMs: [0, 0],
+    });
+
+    assert.deepEqual(result, { ok: false, error: "fetch failed" });
+    assert.equal(calls, 3);
+  });
 });

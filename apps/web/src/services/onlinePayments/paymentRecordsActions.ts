@@ -1,5 +1,6 @@
 "use server";
 
+import { afterResponse } from "@/lib/after-response";
 import type { Id, MessageLogStatus, MessageTrigger, OnlinePayment } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { forbiddenError, notFoundError } from "@gestarahub/core/api-error";
@@ -73,10 +74,10 @@ export async function listOnlinePaymentsForChargeFromDb(
 ): Promise<OnlinePayment[]> {
   // O espaco do pedido precisa ser o da sessao: a expiracao abaixo grava pelo servidor.
   const { client } = await requireSameOrganization(organizationId);
-  // A modal Cobrar online mostra o codigo em aberto: o vencido expira antes (e sai do Asaas).
-  await expireDueOnlinePayments(organizationId).catch((err) =>
-    logError("[listOnlinePaymentsForChargeFromDb] Erro ao expirar cobranças vencidas:", err),
-  );
+  // Vencido ja aparece como vencido na leitura (mapRowToOnlinePayment); gravar e
+  // tirar do Asaas fica para depois da resposta (19/11/2026: a tela esperava o
+  // Asaas, um codigo por vez). A rotina de hora em hora tambem faz.
+  await afterResponse("Expirar códigos vencidos", () => expireDueOnlinePayments(organizationId));
   const { data, error } = await client
     .from("online_payments")
     .select("*")

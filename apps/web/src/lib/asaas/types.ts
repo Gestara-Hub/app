@@ -198,11 +198,27 @@ export interface AsaasWebhookPayload {
     | "SUBSCRIPTION_CREATED"
     | "SUBSCRIPTION_UPDATED"
     | "SUBSCRIPTION_INACTIVATED"
-    | "SUBSCRIPTION_DELETED";
+    | "SUBSCRIPTION_DELETED"
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED"
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED"
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED"
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED";
   /** Eventos de cobranca (PAYMENT_*). */
   payment?: AsaasPaymentResponse;
   /** Eventos de assinatura (SUBSCRIPTION_*). */
   subscription?: AsaasSubscriptionResponse;
+  /** Eventos de autorizacao do Pix Automatico (PIX_AUTOMATIC_RECURRING_AUTHORIZATION_*). */
+  authorization?: AsaasPixAutomaticAuthorization;
+}
+
+/** Autorizacao de Pix Automatico (oferta na assinatura com Pix, Jornada 4). */
+export interface AsaasPixAutomaticAuthorization {
+  id: string;
+  status: "CREATED" | "ACTIVE" | "CANCELLED" | "EXPIRED" | "REFUSED";
+  customerId?: string;
+  subscriptionId?: string | null;
+  cancellationReason?: string | null;
 }
 
 /** Atualizacao da assinatura (PUT /subscriptions/{id}). */

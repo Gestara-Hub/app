@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { afterResponse } from "@/lib/after-response";
 import type { Address, OnlinePaymentMethod, OnlinePaymentSettings, StudentGuardian } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
 import { cpfDigits, isValidCpf, resolveOnlinePayer, type OnlinePayer } from "@gestarahub/core/payer";
@@ -107,16 +108,18 @@ async function cancelOpenPayments(
   if (error) throw error;
   const toCancel: string[] = [];
   const pendingAtGateway: string[] = [];
-  for (const row of rows ?? []) {
-    if (String(row.id) === keepId) continue;
-    if (row.gateway_provider === "asaas" && row.gateway_payment_id && subaccountKey) {
-      const result = await cancelGatewayPayment(String(row.gateway_payment_id), subaccountKey);
-      // Ja paga no Asaas: o webhook da a baixa; nao cancela aqui.
-      if (result === "paid") continue;
-      if (result === "failed") pendingAtGateway.push(String(row.id));
-    }
-    toCancel.push(String(row.id));
-  }
+  await Promise.all(
+    (rows ?? []).map(async (row) => {
+      if (String(row.id) === keepId) return;
+      if (row.gateway_provider === "asaas" && row.gateway_payment_id && subaccountKey) {
+        const result = await cancelGatewayPayment(String(row.gateway_payment_id), subaccountKey);
+        // Ja paga no Asaas: o webhook da a baixa; nao cancela aqui.
+        if (result === "paid") return;
+        if (result === "failed") pendingAtGateway.push(String(row.id));
+      }
+      toCancel.push(String(row.id));
+    }),
+  );
   if (toCancel.length === 0) return;
   const { error: cancelError } = await admin
     .from("online_payments")
@@ -282,12 +285,12 @@ export async function createPublicChargePaymentAction(input: {
     return { ok: false, error: "Não foi possível gerar o pagamento agora. Tente de novo em instantes." };
   }
 
-  // Um codigo valido por vez: os anteriores saem (no Asaas e aqui).
-  try {
-    await cancelOpenPayments(admin, chargeId, subaccountKey, paymentId);
-  } catch (cancelErr) {
-    logWarn("[chargeInvoiceActions] Códigos anteriores não cancelados:", cancelErr);
-  }
+  // Um codigo valido por vez: os anteriores saem (no Asaas e aqui) depois da
+  // resposta (19/11/2026: o pagador esperava o Asaas, um codigo por vez). Pago
+  // no meio do caminho, o webhook da a baixa; falha fica para a rotina.
+  await afterResponse("Cancelar códigos anteriores da fatura", () =>
+    cancelOpenPayments(admin, chargeId, subaccountKey, paymentId),
+  );
 
   return {
     ok: true,

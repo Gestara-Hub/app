@@ -2,6 +2,37 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.19 (2026-11-19)
+
+Desde v2026.11.18.
+
+### Correções
+
+- online-payments: recadastrar o webhook das subcontas quando o token muda
+- communication: telefone com DDI fora das faixas conhecidas e modelos ao atualizar em segundo plano
+- settings: fuso do espaço novo pelo aparelho de quem cria a conta
+- online-payments: saque via Pix sem repetir
+- subscription: checkout do plano sem assinatura órfã e com e-mails próprios
+- communication: status do WhatsApp só avança e leitura marca as anteriores
+
+### Novo
+
+- subscription: Pix Automático na assinatura do plano
+- communication: avisos automáticos esperam a aprovação dos modelos na Meta
+- online-payments: passos de acesso ao Asaas depois de ativar
+
+### Outros
+
+- reservar as portas do Supabase local fora da faixa de conexões de saída
+
+### Documentação
+
+- lgpd: permissão do Asaas para encerrar subcontas
+
+### Desempenho
+
+- chamadas externas em segundo plano, com tempo limite e novas tentativas
+
 ## 2026.11.18 (2026-11-18)
 
 Desde v2026.11.16-2.

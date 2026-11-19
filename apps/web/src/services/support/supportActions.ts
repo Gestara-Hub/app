@@ -1,5 +1,6 @@
 "use server";
 
+import { afterResponse } from "@/lib/after-response";
 import { headers } from "next/headers";
 import { forbiddenError, validationError } from "@gestarahub/core/api-error";
 import { isDemoSpace } from "@/lib/demo";
@@ -260,11 +261,14 @@ export async function sendSupportMessageAction(input: {
       ({ needsHuman } = await answerWithBot(c, threadId, message));
     } else {
       // Conversa que ja esta com o suporte: avisa que a pessoa respondeu.
-      const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
-      await sendSupportNotice(
-        { kind: "reply", number, urgent: false, subject: subjectFrom(message), spaceName: c.spaceName, userName: c.userName, userEmail: c.userEmail, preview: message.slice(0, 600) },
-        notifyTo,
-      );
+      // Aviso a equipe depois da resposta (19/11/2026): a pessoa nao espera o e-mail.
+      await afterResponse("Aviso de resposta no suporte", async () => {
+        const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
+        await sendSupportNotice(
+          { kind: "reply", number, urgent: false, subject: subjectFrom(message), spaceName: c.spaceName, userName: c.userName, userEmail: c.userEmail, preview: message.slice(0, 600) },
+          notifyTo,
+        );
+      });
     }
     return threadView(c, threadId, { needsHuman });
   }, "support.send");
@@ -283,11 +287,13 @@ async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string)
   );
   const sent = rows[0];
   if (sent) {
+    await afterResponse("Aviso de chamado novo no suporte", async () => {
     const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
     await sendSupportNotice(
       { kind: "new", number: sent.number, topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, originScreen: sent.origin_screen ?? undefined, errorReference: sent.error_reference ?? undefined, preview: summary },
       notifyTo,
     );
+    });
   }
 }
 

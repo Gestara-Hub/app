@@ -27,12 +27,14 @@ import {
   getPixQrCode,
   getSubscription,
   getSubscriptionPayments,
+  listSubscriptionPixAutomaticAuthorizations,
   updatePayment,
   updateSubscription,
   type AsaasPaymentResponse,
+  type AsaasPixAutomaticAuthorization,
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
-import { sendPlanNoticeEmail } from "@/lib/email/ses";
+import { notifyPlanManagers, notifyPlanPaid } from "./planEmails";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";
@@ -118,9 +120,8 @@ async function syncAsaasPlan(
 ): Promise<void> {
   const config = priceConfig(plan);
   const open = await openSubscriptionPayments(subscriptionId);
-  if (restart) {
-    for (const payment of open) await deletePayment(payment.id);
-  }
+  // Em paralelo (19/11/2026: antes uma cobranca por vez, com a tela esperando).
+  if (restart) await Promise.all(open.map((payment) => deletePayment(payment.id)));
   await updateSubscription(subscriptionId, {
     value: config.value,
     cycle: cycleOf(plan.interval),
@@ -131,19 +132,24 @@ async function syncAsaasPlan(
   });
   if (restart) return;
   // A cobranca ja gerada leva o valor novo (o PUT da assinatura nem sempre a alcanca).
-  for (const payment of open) {
-    if (payment.value === config.value) continue;
-    try {
-      await updatePayment(payment.id, { value: config.value, description: config.description });
-    } catch (error) {
-      logWarn("[subscriptionPlan] Cobrança da renovação não atualizada no Asaas:", { paymentId: payment.id, error });
-    }
-  }
+  await Promise.all(
+    open
+      .filter((payment) => payment.value !== config.value)
+      .map(async (payment) => {
+        try {
+          await updatePayment(payment.id, { value: config.value, description: config.description });
+        } catch (error) {
+          logWarn("[subscriptionPlan] Cobrança da renovação não atualizada no Asaas:", { paymentId: payment.id, error });
+        }
+      }),
+  );
 }
 
 export interface PlanChangePreview {
   quote: PlanChangeQuote;
   current: CurrentPlan;
+  /** Pix Automatico ativo: trocar valor ou ciclo desliga a autorizacao (regra do Asaas). */
+  pixAutomaticActive?: boolean;
 }
 
 /** A conta da troca, para a confirmacao na tela. Nada e cobrado. */
@@ -154,7 +160,11 @@ export async function previewPlanChange(
 ): Promise<PlanChangePreview> {
   const subscription = await readOrganizationSubscription(admin, organizationId);
   const current = currentPlanOf(subscription);
-  return { current, quote: quotePlanChange(current, target, dateInSpace(), PLAN_PRICES) };
+  return {
+    current,
+    quote: quotePlanChange(current, target, dateInSpace(), PLAN_PRICES),
+    pixAutomaticActive: subscription?.pixAutomatic?.status === "ACTIVE",
+  };
 }
 
 export type PlanChangeStart =
@@ -584,6 +594,7 @@ export async function recordSubscriptionPaymentPaid(
   };
   await writeOrganizationSubscription(admin, organizationId, next);
   if (subscription.revertedFrom || advanced) {
+    await notifyPlanPaid(admin, organizationId, subscription.revertedFrom ? "reactivated" : "renewed", next);
     await recordSubscriptionEvent(admin, organizationId, author, {
       kind: subscription.revertedFrom ? "reactivated" : "renewed",
       before: subscription,
@@ -627,6 +638,50 @@ export async function recordSubscriptionPaymentOpen(
     });
   }
   return true;
+}
+
+/**
+ * Pix Automatico da assinatura do plano (19/11/2026): o Asaas oferece a
+ * autorizacao no Pix da assinatura; ativa, as renovacoes sao debitadas no
+ * vencimento e os avisos deixam de pedir "pague ate o dia". Webhook e
+ * conferencia diaria gravam aqui. Devolve se mudou algo.
+ */
+export async function recordPlanPixAutomatic(
+  admin: SupabaseClient,
+  authorization: Pick<AsaasPixAutomaticAuthorization, "id" | "status" | "subscriptionId">,
+  knownOrganizationId?: string,
+): Promise<boolean> {
+  const subscriptionId = authorization.subscriptionId;
+  if (!subscriptionId) return false;
+  const organizationId =
+    knownOrganizationId ?? (await organizationOfAsaasSubscription(admin, { id: subscriptionId, externalReference: undefined }));
+  if (!organizationId) return false;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.asaasSubscriptionId !== subscriptionId) return false;
+  const current = subscription.pixAutomatic;
+  if (current?.authorizationId === authorization.id && current.status === authorization.status) return false;
+  // Autorizacao antiga (ja trocada) nao volta por cima da nova.
+  if (current && current.authorizationId !== authorization.id && current.status === "ACTIVE" && authorization.status !== "ACTIVE") {
+    return false;
+  }
+  await writeOrganizationSubscription(admin, organizationId, {
+    ...subscription,
+    pixAutomatic: { authorizationId: authorization.id, status: authorization.status, updatedAt: new Date().toISOString() },
+  });
+  return true;
+}
+
+/** Conferencia diaria do Pix Automatico (o aviso do Asaas pode nao chegar). */
+async function reconcilePlanPixAutomatic(admin: SupabaseClient, organizationId: string, subscription: Subscription): Promise<void> {
+  if (!onAsaas(subscription) || subscription.paymentMethod === "credit_card" || subscription.tier === "free") return;
+  try {
+    const authorizations = await listSubscriptionPixAutomaticAuthorizations(subscription.asaasSubscriptionId);
+    // A mais relevante: a ativa, se houver; senao a primeira da lista.
+    const chosen = authorizations.find((a) => a.status === "ACTIVE") ?? authorizations[0];
+    if (chosen) await recordPlanPixAutomatic(admin, { ...chosen, subscriptionId: subscription.asaasSubscriptionId }, organizationId);
+  } catch (err) {
+    logWarn("[subscriptionPlan] Pix Automático do plano não conferido:", err);
+  }
 }
 
 /** Assinatura encerrada direto no Asaas: o espaco volta ao Gratis. */
@@ -744,7 +799,13 @@ async function runPlanDailyStep(
   const settings = org.settings as { timeZone?: string } | null;
   const units = (org.units ?? []) as { address?: { state?: string } | string | null }[];
   const today = dateInSpace(new Date(), resolveSpaceTimeZone(settings, units[0]?.address));
-  let subscription = await reconcileRenewal(admin, organizationId, org.subscription as Subscription, today);
+  await reconcilePlanPixAutomatic(admin, organizationId, org.subscription as Subscription);
+  let subscription = await reconcileRenewal(
+    admin,
+    organizationId,
+    (await readOrganizationSubscription(admin, organizationId)) ?? (org.subscription as Subscription),
+    today,
+  );
   const step = planDailyStep(subscription, today);
   if (step.applyScheduled) {
     await applyScheduledPlanChange(admin, organizationId, subscription);
@@ -769,7 +830,7 @@ async function runPlanDailyStep(
       step.email.kind === "closed"
         ? `${appUrl}/plans`
         : (subscription.pendingPayment?.invoiceUrl ?? `${appUrl}/settings?tab=plano`);
-    const sent = await notifyManagers(admin, organizationId, { ...copy, actionUrl });
+    const sent = await notifyPlanManagers(admin, organizationId, { ...copy, actionUrl });
     if (sent > 0) {
       result.emails += sent;
       await writeOrganizationSubscription(admin, organizationId, {
@@ -780,29 +841,3 @@ async function runPlanDailyStep(
   }
 }
 
-async function notifyManagers(
-  admin: SupabaseClient,
-  organizationId: string,
-  notice: { title: string; text: string; action: string; actionUrl: string },
-): Promise<number> {
-  const { data: users } = await admin
-    .from("users")
-    .select("name, email")
-    .eq("organization_id", organizationId)
-    .eq("status", "active")
-    .in("profile", ["owner", "manager"]);
-  let sent = 0;
-  for (const user of users ?? []) {
-    if (!user.email) continue;
-    const res = await sendPlanNoticeEmail({
-      toEmail: String(user.email),
-      toName: String(user.name ?? ""),
-      title: notice.title,
-      text: notice.text,
-      actionLabel: notice.action,
-      actionUrl: notice.actionUrl,
-    });
-    if (res.ok) sent += 1;
-  }
-  return sent;
-}

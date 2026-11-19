@@ -6,6 +6,7 @@ import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { getPayment, getSubscription } from "@/lib/asaas";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { decodeSubscriptionReference } from "@/lib/subscription";
+import { notifyPlanPaid } from "./planEmails";
 import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
 
 /**
@@ -80,6 +81,7 @@ export async function confirmSubscriptionPayment(
   };
   await writeOrganizationSubscription(admin, organizationId, subscription);
   await recordActivation(admin, organizationId, author, current, subscription, payment.id);
+  await notifyPlanPaid(admin, organizationId, "activated", subscription);
   return { status: payment.status, isPaid: true, subscription };
 }
 

@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { after } from "next/server";
+import { afterResponse } from "@/lib/after-response";
 import { isApiError, type OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -10,7 +11,7 @@ import { createSubAccount } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { CURRENT_SUBACCOUNT_TERMS_VERSION } from "@gestarahub/contracts";
-import { logError } from "@/lib/log";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Subconta do espaco no parceiro: abertura, status e configuracao de Recebimentos online.
@@ -171,11 +172,21 @@ export async function setupSubaccountAction(
     // 3. Subconta aprovada: tarifas dela e webhook de baixa automatica (doc 19, secao 4).
     //    Falha aqui nao desfaz a ativacao: as tarifas voltam a ser buscadas no uso
     //    e o webhook e recadastrado quando a URL estiver configurada.
+    //    Depois da resposta e ao mesmo tempo (19/11/2026: a tela esperava 4 a 6
+    //    chamadas ao Asaas em fila); o primeiro Pix cria a chave se faltar.
     if (process.env.ASAAS_API_KEY) {
-      await syncGatewayFees(input.organizationId);
-      await ensureSubaccountWebhook(input.organizationId);
-      // Chave Pix da subconta: sem ela o primeiro Pix falhava no QR (01/11/2026).
-      await ensureSubaccountPixKey(input.organizationId);
+      const organizationId = input.organizationId;
+      await afterResponse("Ajustes da subconta depois da ativação", async () => {
+        const results = await Promise.allSettled([
+          syncGatewayFees(organizationId),
+          ensureSubaccountWebhook(organizationId),
+          // Chave Pix da subconta: sem ela o primeiro Pix falhava no QR (01/11/2026).
+          ensureSubaccountPixKey(organizationId),
+        ]);
+        for (const r of results) {
+          if (r.status === "rejected") logWarn("[setupSubaccountAction] Ajuste da subconta depois da ativação falhou:", r.reason);
+        }
+      });
     }
 
     // 4. Registra auditoria jurídica de consentimento (LGPD, Marco Civil, Bacen)

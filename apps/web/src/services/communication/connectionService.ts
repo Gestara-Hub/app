@@ -11,8 +11,7 @@ import { assertFeature } from "../subscription/subscriptionService";
 import { ensureConnection, connectionView, officialSendingAvailable } from "./communicationRules";
 import { getWhatsAppCredentialsGateway, platformNumberFallbackAllowed } from "./whatsappCredentialsGateway";
 import { afterWorldCommit } from "@/services/world/effects";
-import { logError, logWarn } from "@/lib/log";
-import { syncMetaTemplates } from "./metaTemplatesSync";
+import { logError } from "@/lib/log";
 
 /** Conexao do WhatsApp: status, ligar e desligar a API oficial e ajustes. */
 export const connectionService = {
@@ -61,7 +60,9 @@ export const connectionService = {
           businessId: input?.businessId,
           onboarding: input?.onboarding ?? "coexistence",
         });
-        phoneFromMeta = whatsappNumber(confirmed.displayPhoneNumber);
+        // A Meta manda o numero sempre com o DDI; sem o "+", o leitor tomaria por Brasil.
+        const display = (confirmed.displayPhoneNumber ?? "").trim();
+        phoneFromMeta = display ? whatsappNumber(display.startsWith("+") ? display : `+${display}`) : null;
         if (confirmed.verifiedName) displayName = confirmed.verifiedName;
         // Modelos de cada gatilho na conta do espaco (doc technical/07 §1.4): vao
         // depois da conexao gravada, em segundo plano (17/11/2026: enviar os 16
@@ -132,15 +133,9 @@ export const connectionService = {
       }
       connection.metaHealth = health;
       // Os modelos tambem (doc technical/07 §1.7): cria os que faltam e traz a
-      // situacao de cada um. Falha aqui nao impede a situacao de aparecer.
-      const config = await gateway.configFor(store.organization.id);
-      if (config) {
-        try {
-          await syncMetaTemplates(config);
-        } catch (err) {
-          logWarn("[connectionService] Modelos não sincronizados ao atualizar:", err);
-        }
-      }
+      // situacao de cada um, depois da resposta, como ao conectar (19/11/2026).
+      const organizationId = store.organization.id;
+      afterWorldCommit(() => gateway.syncTemplates(organizationId));
       return connectionView();
     });
   },

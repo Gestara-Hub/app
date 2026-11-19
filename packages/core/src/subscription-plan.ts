@@ -203,6 +203,11 @@ function afterRevertNotice(renewsOn: DateISO, today: DateISO): PlanNotice {
   return { kind, renewsOn, daysLeft, closesOn };
 }
 
+/** A renovacao sai sozinha: cartao, ou Pix com o Pix Automatico autorizado. */
+export function isPlanDebitedAutomatically(subscription: Pick<Subscription, "paymentMethod" | "pixAutomatic">): boolean {
+  return subscription.paymentMethod === "credit_card" || subscription.pixAutomatic?.status === "ACTIVE";
+}
+
 /**
  * Aviso do plano para hoje (aviso fixo no topo e e-mail), ou nenhum:
  * 3 dias antes da renovacao (so Pix), no vencimento sem pagamento, 3 dias
@@ -224,13 +229,15 @@ export function planNoticeFor(subscription: Subscription | undefined, today: Dat
   // Gratis marcado: nao renova, nao ha o que cobrar.
   if (!renewsOn || subscription.scheduledChange?.tier === "free") return null;
   const late = differenceInCalendarDays(parseISO(today), parseISO(renewsOn));
-  const card = subscription.paymentMethod === "credit_card";
+  // Cartao e Pix Automatico ativo sao cobrados sozinhos no vencimento: sem
+  // "pague ate o dia"; o aviso de pendente so sai se o debito nao passar.
+  const debited = isPlanDebitedAutomatically(subscription);
   if (late < 0) {
-    return !card && -late <= PLAN_RENEWAL_NOTICE_DAYS ? { kind: "renews_soon", renewsOn } : null;
+    return !debited && -late <= PLAN_RENEWAL_NOTICE_DAYS ? { kind: "renews_soon", renewsOn } : null;
   }
   if (late >= PLAN_GRACE_DAYS) return afterRevertNotice(renewsOn, today);
   if (late >= 3) return { kind: "grace_ending", renewsOn, daysLeft: PLAN_GRACE_DAYS - late };
-  if (card && late === 0) return null;
+  if (debited && late === 0) return null;
   return { kind: "payment_pending", renewsOn };
 }
 

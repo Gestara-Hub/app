@@ -55,7 +55,8 @@ import { formatCents } from "@gestarahub/core/format";
 import { isValidCpfOrCnpj } from "@gestarahub/core/payer";
 import { PERSON_ACCOUNT_NOTICE, showsPersonAccountNotice } from "../account-notice";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
-import { requestSecurityPrompt, useSubscriptionTier } from "@/features/auth";
+import { useSubscriptionTier } from "@/features/auth";
+import { FINANCE_EMAIL_HINT, NEW_ASAAS_ACCOUNT_NOTICE, announceAsaasAccess } from "./asaas-access-guide";
 import { todayISO } from "@gestarahub/core/date";
 
 function maskCpfCnpj(value: string): string {
@@ -225,9 +226,9 @@ export function ActivateSubaccountDialog({
       }
 
       toast.success("Conta de recebimentos ativada com sucesso!");
-      // A conta passa a receber dinheiro: momento de proteger o acesso (doc product/25).
-      requestSecurityPrompt("online_payments");
       onOpenChange(false);
+      // Passos de acesso ao Asaas (o pedido de proteger o acesso vem ao fechar).
+      announceAsaasAccess(values.email.trim());
     } catch {
       toast.error("Erro inesperado ao ativar a conta de recebimentos.");
     }
@@ -261,6 +262,10 @@ export function ActivateSubaccountDialog({
           <FormProvider {...form}>
             <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <DialogBody className="space-y-4">
+                <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-foreground">
+                  <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span>{NEW_ASAAS_ACCOUNT_NOTICE}</span>
+                </p>
                 <InputText<FormValues>
                   name="name"
                   label="Razão Social ou Nome do Titular"
@@ -333,6 +338,7 @@ export function ActivateSubaccountDialog({
                     name="email"
                     type="email"
                     label="E-mail financeiro"
+                    hint={FINANCE_EMAIL_HINT}
                     required
                     disabled={setup.isPending}
                   />

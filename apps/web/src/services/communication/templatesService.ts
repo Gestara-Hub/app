@@ -1,13 +1,13 @@
 import type { MessageTemplate, UpdateTemplatePayload } from "@gestarahub/contracts";
-import { TRIGGER_TO_META_TEMPLATE, isManualTrigger } from "@/lib/whatsapp";
+import { isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
 import { store } from "@/services/world/store";
 import { ensureTemplates } from "./communicationRules";
 import { whatsappClient } from "./whatsappClient";
-import { syncMetaTemplates, type MetaTemplatesSyncResult } from "./metaTemplatesSync";
-import { logWarn } from "@/lib/log";
+import { refreshTemplateStatusesInDb, syncMetaTemplates, type MetaTemplatesSyncResult } from "./metaTemplatesSync";
+import { afterWorldCommit } from "@/services/world/effects";
 
 /** Faixas validas de prazo por gatilho configuravel. */
 const DAYS_OFFSET_LIMITS: Partial<Record<MessageTemplate["trigger"], { min: number; max: number; message: string }>> = {
@@ -24,23 +24,14 @@ export const templatesService = {
   listTemplates(): Promise<MessageTemplate[]> {
     return readOp(async () => {
       const templates = ensureTemplates();
-      const metaConfig = await whatsappClient.configFor(store.organization.id);
-      if (metaConfig) {
-        try {
-          const metaList = await whatsappClient.listTemplates(metaConfig);
-          for (const t of templates) {
-            // Situacao na hora (o aviso da Meta grava no banco; isto cobre o atraso).
-            const name = t.metaTemplateName ?? TRIGGER_TO_META_TEMPLATE[t.trigger]?.templateName;
-            const match = name ? metaList.find((m) => m.name === name) : undefined;
-            if (match) {
-              t.metaStatus = match.status;
-              t.metaTemplateName = match.name;
-            }
-          }
-        } catch (err) {
-          logWarn("[templatesService] Não foi possível carregar status da Meta:", err);
-        }
-      }
+      // Situacao na Meta: a tela mostra a do banco (o aviso da Meta grava) e a
+      // conferencia na Meta roda depois da resposta (19/11/2026: antes a tela
+      // esperava a Meta a cada abertura). A proxima leitura ja ve.
+      const organizationId = store.organization.id;
+      afterWorldCommit(async () => {
+        const metaConfig = await whatsappClient.configFor(organizationId);
+        if (metaConfig) await refreshTemplateStatusesInDb(organizationId, metaConfig);
+      });
       return [...templates].sort((a, b) => a.daysOffset - b.daysOffset);
     });
   },

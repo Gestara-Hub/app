@@ -13,9 +13,10 @@ describe("situação do modelo no WhatsApp", () => {
     expect(metaStatusNotice("PENDING")).toMatchObject({ text: "Em análise no WhatsApp", tone: "warning", needsEdit: false });
   });
 
-  it("recusado e pausado levam à edição do texto", () => {
-    expect(metaStatusNotice("REJECTED")).toMatchObject({ tone: "danger", needsEdit: true });
-    expect(metaStatusNotice("PAUSED")).toMatchObject({ tone: "warning", needsEdit: true });
+  it("recusado e pausado levam ao suporte (o texto é o padrão do GestaraHub e não muda na tela)", () => {
+    expect(metaStatusNotice("REJECTED")).toMatchObject({ tone: "danger", needsEdit: false });
+    expect(metaStatusNotice("PAUSED")).toMatchObject({ tone: "warning", needsEdit: false });
+    expect(metaStatusNotice("REJECTED")?.hint).toContain("suporte");
   });
 
   it("o texto fala em WhatsApp, não em Meta", () => {

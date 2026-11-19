@@ -1,5 +1,6 @@
 "use server";
 
+import { afterResponse } from "@/lib/after-response";
 import { selectAllRows } from "@/lib/supabase/select-all";
 import type { OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
@@ -95,10 +96,9 @@ export async function listSubaccountReceiptsAction(
   // O espaco vem da sessao, nao do pedido (revisao geral de 31/10/2026, achado S9).
   const { requireTenant } = await import("../server/tenant");
   const organizationId = (await requireTenant()).organizationId;
-  // Vencidas pela validade: expira aqui e exclui no Asaas antes de listar.
-  await expireDueOnlinePayments(organizationId).catch((err) =>
-    logError("[listSubaccountReceiptsAction] Erro ao expirar cobranças vencidas:", err),
-  );
+  // Vencidas pela validade: ja aparecem como vencidas na leitura; gravar e tirar
+  // do Asaas fica para depois da resposta (a rotina de hora em hora tambem faz).
+  await afterResponse("Expirar códigos vencidos", () => expireDueOnlinePayments(organizationId));
   const statuses = STATUS_FILTER_VALUES[query.status];
 
   // Mesmo filtro para a pagina e para os totais.

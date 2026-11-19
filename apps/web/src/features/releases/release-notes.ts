@@ -18,6 +18,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.19",
+    date: "2026-11-19",
+    items: [
+      { text: "Plano no Pix com débito automático e e-mails do plano com a cara do GestaraHub." },
+      { text: "Passo a passo para entrar na sua conta de recebimento no Asaas." },
+      { text: "Saque via Pix protegido contra pedido em dobro." },
+      { text: "Telas mais rápidas: avisos e limpezas rodam em segundo plano." },
+      { text: "Lembretes do WhatsApp esperam a aprovação e tentam de novo se a Meta falhar." },
+      { text: "Espaço novo já vem no fuso horário de onde você está." },
+    ],
+  },
+  {
     version: "2026.11.18",
     date: "2026-11-18",
     items: [

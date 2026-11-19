@@ -18,6 +18,9 @@ export type PaidFeature =
   | "event_signup" // Inscricao em evento por link e ingresso com QR code (doc product/29)
   | "bi"; // Inteligencia e analytics preditivos (nivel Scale)
 
+/** Situacao da autorizacao de Pix Automatico no Asaas (oferta na assinatura com Pix). */
+export type PixAutomaticStatus = "CREATED" | "ACTIVE" | "CANCELLED" | "EXPIRED" | "REFUSED";
+
 export interface Subscription {
   tier: SubscriptionTier;
   interval?: SubscriptionInterval;
@@ -57,6 +60,11 @@ export interface Subscription {
   closedFrom?: { tier: SubscriptionTier; renewsOn: DateISO; on: DateISO };
   /** Avisos ja enviados por e-mail ("<renovacao>:<tipo>"), para nao repetir. */
   noticesSent?: string[];
+  /**
+   * Pix Automatico da assinatura (19/11/2026): o Asaas oferece no Pix e, com a
+   * autorizacao ativa (`ACTIVE`), as renovacoes sao debitadas no vencimento.
+   */
+  pixAutomatic?: { authorizationId: string; status: PixAutomaticStatus; updatedAt: DateTimeISO };
 }
 
 /** Tipo do evento no historico do plano (`subscription_events`, doc technical/23). */

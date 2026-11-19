@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Check, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { PaidFeature } from "@gestarahub/contracts";
+import type { PaidFeature, Subscription } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, formatDateTime } from "@gestarahub/core/format";
 import { platformSplitCents } from "@gestarahub/core/payment-fees";
@@ -149,6 +149,7 @@ export function SubscriptionPlanCard() {
         </CardHeader>
         <CardContent className="space-y-5">
           <ScheduledPlanChangeNotice subscription={data} />
+          {isPro && data.paymentMethod === "pix" && !data.courtesyUntil ? <PixAutomaticLine subscription={data} /> : null}
           <PendingSubscriptionInvoiceCard subscription={data} />
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-medium">
@@ -230,5 +231,30 @@ export function SubscriptionPlanCard() {
         onOpenChange={(open) => setLeaving(open)}
       />
     </>
+  );
+}
+
+/**
+ * Renovacao do plano no Pix (19/11/2026): com o Pix Automatico autorizado, o
+ * banco debita no vencimento; sem ele, o banco oferece a autorizacao ao pagar
+ * o proximo Pix do plano.
+ */
+function PixAutomaticLine({ subscription }: { subscription: Subscription }) {
+  const status = subscription.pixAutomatic?.status;
+  if (status === "ACTIVE") {
+    return (
+      <p className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-foreground">
+        <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        <span>Pix Automático ligado: o banco debita a renovação no vencimento.</span>
+      </p>
+    );
+  }
+  const off = status === "CANCELLED" || status === "EXPIRED" || status === "REFUSED";
+  return (
+    <p className="rounded-lg border p-3 text-xs text-muted-foreground">
+      {off
+        ? "Pix Automático desligado. A renovação é paga pelo Pix, com aviso antes do vencimento."
+        : "Ao pagar o Pix do plano, o app do seu banco oferece o débito automático. Autorize para não pagar à mão todo mês."}
+    </p>
   );
 }

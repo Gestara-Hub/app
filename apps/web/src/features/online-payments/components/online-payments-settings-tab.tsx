@@ -29,6 +29,7 @@ import {
 import { handleFormApiError } from "@/lib/form-errors";
 import { useUpdateOnlinePaymentSettings } from "../hooks/use-online-payments";
 import { ActivateSubaccountDialog } from "./activate-subaccount-dialog";
+import { AsaasAccessGuide } from "./asaas-access-guide";
 
 const DEFAULT_EXPIRES = 1440;
 
@@ -342,6 +343,18 @@ export function OnlinePaymentsSettingsTab({
               </Button>
             ) : null}
           </CardFooter>
+        </Card>
+
+        <Card className="border-border/70 shadow-xs">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-semibold">Acesso à sua conta no Asaas</CardTitle>
+            <CardDescription className="mt-0.5 text-xs text-muted-foreground">
+              Para aprovar a conta, ver o extrato completo e falar com o Asaas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <AsaasAccessGuide />
+          </CardContent>
         </Card>
 
         <ActivateSubaccountDialog

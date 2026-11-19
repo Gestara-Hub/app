@@ -151,14 +151,15 @@ export async function expireDueOnlinePayments(organizationId: string): Promise<n
   const key = rows.some((r) => r.gateway_provider === "asaas") ? await subaccountKeyOf(organizationId) : null;
   const toExpire: string[] = [];
   const pendingAtGateway: string[] = [];
-  for (const row of rows) {
+  // Asaas em paralelo, com limite (antes um codigo por vez).
+  await mapWithConcurrency(rows, GATEWAY_CONCURRENCY, async (row) => {
     if (row.gateway_provider === "asaas" && row.gateway_payment_id && key) {
       const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
-      if (result === "paid") continue;
+      if (result === "paid") return;
       if (result === "failed") pendingAtGateway.push(String(row.id));
     }
     toExpire.push(String(row.id));
-  }
+  });
   if (toExpire.length > 0) {
     await admin.from("online_payments").update({ status: "expired" }).in("id", toExpire).eq("status", "awaiting");
   }

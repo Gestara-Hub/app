@@ -38,7 +38,7 @@ const OFFICIAL_STEPS = [
   "Entre com a conta da Meta do seu negócio (a mesma do Facebook ou Instagram da empresa).",
   "Escolha o número de WhatsApp do espaço.",
   "Cadastre um cartão na sua conta do WhatsApp na Meta: é ele que paga as mensagens.",
-  "Depois da aprovação da Meta, as mensagens ligadas passam a sair sozinhas.",
+  "A Meta analisa os modelos de mensagem do seu número, em geral em minutos ou poucas horas, e avisa por e-mail. Aprovados, os avisos ligados saem sozinhos.",
 ];
 
 function Steps({ items }: { items: string[] }) {
