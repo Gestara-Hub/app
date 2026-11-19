@@ -6,6 +6,15 @@ Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As no
 
 Desde v2026.11.18.
 
+### Outros
+
+- reservar as portas do Supabase local fora da faixa de conexões de saída
+
+### Novo
+
+- communication: avisos automáticos esperam a aprovação dos modelos na Meta
+- online-payments: passos de acesso ao Asaas depois de ativar
+
 ### Documentação
 
 - lgpd: permissão do Asaas para encerrar subcontas
@@ -21,10 +30,6 @@ Desde v2026.11.18.
 ### Desempenho
 
 - chamadas externas em segundo plano, com tempo limite e novas tentativas
-
-### Novo
-
-- online-payments: passos de acesso ao Asaas depois de ativar
 
 ## 2026.11.18 (2026-11-18)
 

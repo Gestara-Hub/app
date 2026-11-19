@@ -25,7 +25,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       { text: "Passo a passo para entrar na sua conta de recebimento no Asaas." },
       { text: "Saque via Pix protegido contra pedido em dobro." },
       { text: "Telas mais rápidas: avisos e limpezas rodam em segundo plano." },
-      { text: "Lembretes do WhatsApp tentam de novo quando a Meta falha." },
+      { text: "Lembretes do WhatsApp esperam a aprovação e tentam de novo se a Meta falhar." },
       { text: "Espaço novo já vem no fuso horário de onde você está." },
     ],
   },
