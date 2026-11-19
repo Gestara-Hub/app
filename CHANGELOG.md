@@ -6,6 +6,15 @@ Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As no
 
 Desde v2026.11.18.
 
+### Correções
+
+- online-payments: recadastrar o webhook das subcontas quando o token muda
+- communication: telefone com DDI fora das faixas conhecidas e modelos ao atualizar em segundo plano
+- settings: fuso do espaço novo pelo aparelho de quem cria a conta
+- online-payments: saque via Pix sem repetir
+- subscription: checkout do plano sem assinatura órfã e com e-mails próprios
+- communication: status do WhatsApp só avança e leitura marca as anteriores
+
 ### Novo
 
 - subscription: Pix Automático na assinatura do plano
@@ -19,14 +28,6 @@ Desde v2026.11.18.
 ### Documentação
 
 - lgpd: permissão do Asaas para encerrar subcontas
-
-### Correções
-
-- communication: telefone com DDI fora das faixas conhecidas e modelos ao atualizar em segundo plano
-- settings: fuso do espaço novo pelo aparelho de quem cria a conta
-- online-payments: saque via Pix sem repetir
-- subscription: checkout do plano sem assinatura órfã e com e-mails próprios
-- communication: status do WhatsApp só avança e leitura marca as anteriores
 
 ### Desempenho
 
