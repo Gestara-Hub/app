@@ -76,6 +76,12 @@ jobs:
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
+      - name: Reservar as portas do Supabase local
+        # As portas do Supabase (553xx) ficam na faixa que o Linux usa para
+        # conexoes de saida (32768-60999): uma conexao do runner pegava a 55324
+        # antes do Supabase subir ("address already in use", 19/11/2026).
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="60100 65000"
+
       - name: Subir Supabase local e migrações
         run: |
           pnpm setup:local -- --no-demo
@@ -114,6 +120,12 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
+
+      - name: Reservar as portas do Supabase local
+        # As portas do Supabase (553xx) ficam na faixa que o Linux usa para
+        # conexoes de saida (32768-60999): uma conexao do runner pegava a 55324
+        # antes do Supabase subir ("address already in use", 19/11/2026).
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="60100 65000"
 
       - name: Subir Supabase local e espaço de demonstração
         run: pnpm setup:local
@@ -164,6 +176,12 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @gestarahub/web exec playwright install --with-deps chrome
+
+      - name: Reservar as portas do Supabase local
+        # As portas do Supabase (553xx) ficam na faixa que o Linux usa para
+        # conexoes de saida (32768-60999): uma conexao do runner pegava a 55324
+        # antes do Supabase subir ("address already in use", 19/11/2026).
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="60100 65000"
 
       - name: Subir Supabase local e espaço de demonstração
         run: pnpm setup:local
