@@ -8,7 +8,7 @@ No plano Grátis, o envio é assistido: o sistema monta a mensagem e abre o What
 Resumo: Você, direto à Meta, na sua conta do WhatsApp.
 Guia: /communication?tab=connection
 + aba "Conexão": Aqui ficam o número conectado e o aviso de pagamento.
-A conta do WhatsApp conectada no Profissional é sua, na Meta. A Meta cobra cada mensagem automática no cartão dessa conta; o GestaraHub não cobra pelas mensagens, só automatiza o envio. Mensagem automática usa um modelo aprovado pela Meta: é o único jeito de escrever para quem não falou com você antes. Responder quem escreveu para você nas últimas 24 horas é grátis, até 1.000 respostas por mês. Sem cartão na Meta, as mensagens automáticas não saem. O envio assistido (o botão que abre o WhatsApp do aparelho) não tem custo.
+A conta do WhatsApp conectada no Profissional é sua, na Meta. A Meta cobra cada mensagem automática no cartão dessa conta; o GestaraHub não cobra pelas mensagens, só automatiza o envio. Mensagem automática usa um modelo aprovado pela Meta: é o único jeito de escrever para quem não falou com você antes. Ao conectar, o GestaraHub envia os modelos para a sua conta e a Meta analisa cada um, em geral em minutos ou poucas horas, avisando por e-mail. Enquanto um modelo está em análise, aquele aviso automático ainda não sai; aprovado, passa a sair sozinho. Responder quem escreveu para você nas últimas 24 horas é grátis, até 1.000 respostas por mês. Sem cartão na Meta, as mensagens automáticas não saem. O envio assistido (o botão que abre o WhatsApp do aparelho) não tem custo.
 
 ## Enviar uma mensagem
 Resumo: Escolha os alunos, escreva o texto e envie pelo WhatsApp.

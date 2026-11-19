@@ -621,6 +621,18 @@ describe("parabens automatico", () => {
     expect(greetings()).toHaveLength(1);
   });
 
+  it("modelo em análise na Meta: espera (não grava tentativa) e sai depois de aprovado", async () => {
+    await birthdayStudent();
+    await connectOfficial();
+    const template = store.messageTemplates!.find((t) => t.trigger === "birthday_greeting")!;
+    template.metaStatus = "PENDING";
+    expect(greet()).toBe(0);
+    expect(greetings()).toHaveLength(0);
+
+    template.metaStatus = "APPROVED";
+    expect(greet()).toBe(1);
+  });
+
   it("sem a autorização do aluno (ou depois do SAIR) o automático não sai", async () => {
     await birthdayStudent("Sem registro", { whatsappConsentStatus: "unknown" });
     await birthdayStudent("Pediu para parar", { phone: "11977770001", whatsappConsentStatus: "revoked" });

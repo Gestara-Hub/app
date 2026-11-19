@@ -924,7 +924,7 @@
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Quem paga as mensagens automáticas",
     "route": "/communication",
-    "text": "A conta do WhatsApp conectada no Profissional é sua, na Meta. A Meta cobra cada mensagem automática no cartão dessa conta; o GestaraHub não cobra pelas mensagens, só automatiza o envio. Mensagem automática usa um modelo aprovado pela Meta: é o único jeito de escrever para quem não falou com você antes. Responder quem escreveu para você nas últimas 24 horas é grátis, até 1.000 respostas por mês. Sem cartão na Meta, as mensagens automáticas não saem. O envio assistido (o botão que abre o WhatsApp do aparelho) não tem custo.",
+    "text": "A conta do WhatsApp conectada no Profissional é sua, na Meta. A Meta cobra cada mensagem automática no cartão dessa conta; o GestaraHub não cobra pelas mensagens, só automatiza o envio. Mensagem automática usa um modelo aprovado pela Meta: é o único jeito de escrever para quem não falou com você antes. Ao conectar, o GestaraHub envia os modelos para a sua conta e a Meta analisa cada um, em geral em minutos ou poucas horas, avisando por e-mail. Enquanto um modelo está em análise, aquele aviso automático ainda não sai; aprovado, passa a sair sozinho. Responder quem escreveu para você nas últimas 24 horas é grátis, até 1.000 respostas por mês. Sem cartão na Meta, as mensagens automáticas não saem. O envio assistido (o botão que abre o WhatsApp do aparelho) não tem custo.",
     "summary": "Você, direto à Meta, na sua conta do WhatsApp.",
     "guide": {
       "route": "/communication?tab=connection",

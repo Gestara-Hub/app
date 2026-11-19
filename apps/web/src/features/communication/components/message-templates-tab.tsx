@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HeartHandshake, Megaphone, MessageSquare, SlidersHorizontal, Wallet } from "lucide-react";
+import { Clock, HeartHandshake, Megaphone, MessageSquare, SlidersHorizontal, Wallet } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -226,9 +226,30 @@ export function MessageTemplatesTab() {
     );
   }
 
+  // Modelos ainda em analise: os automaticos so saem depois que a Meta aprovar (19/11/2026).
+  const pendingCount = official ? (templates ?? []).filter((t) => t.metaStatus === "PENDING").length : 0;
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4">
+        {pendingCount > 0 ? (
+          <div
+            data-testid="templates-pending-notice"
+            className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs"
+          >
+            <Clock className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="min-w-0 space-y-0.5">
+              <p className="font-medium text-foreground">
+                {pendingCount === 1
+                  ? "1 aviso aguardando aprovação do WhatsApp"
+                  : `${pendingCount} avisos aguardando aprovação do WhatsApp`}
+              </p>
+              <p className="text-muted-foreground">
+                Saem sozinhos assim que aprovados, em geral em minutos ou poucas horas. O e-mail de aprovação vem da Meta, dona do WhatsApp.
+              </p>
+            </div>
+          </div>
+        ) : null}
         <Accordion
           type="multiple"
           defaultValue={["billing", "retention", "administrative"]}

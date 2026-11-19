@@ -233,6 +233,15 @@ export function dispatchOfficial(log: MessageLog): void {
 }
 
 /**
+ * Modelo ainda em analise na Meta: o lembrete espera (nao grava tentativa) e
+ * sai numa rodada seguinte, depois de aprovado (19/11/2026: antes a Meta
+ * recusava e o lembrete ficava "Falhou" no dia).
+ */
+export function awaitingMetaApproval(template: Pick<MessageTemplate, "metaStatus">): boolean {
+  return template.metaStatus === "PENDING";
+}
+
+/**
  * Motivo gravado quando a Meta falhou por algo passageiro (fora do ar, limite
  * de envio), depois das novas tentativas (`messageDelivery.ts`). O lembrete
  * automatico com este motivo volta na proxima rodada (19/11/2026).
@@ -264,6 +273,7 @@ export function runBirthdayGreetings(): number {
   if (!tenantHasFeature("messaging") || connectionView().mode !== "official") return 0;
   const template = ensureTemplates().find((t) => t.trigger === "birthday_greeting");
   if (!template?.enabled) return 0;
+  if (awaitingMetaApproval(template)) return 0;
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");
   if (format(now, "HH:mm") < template.sendHour) return 0;
@@ -338,6 +348,7 @@ export function runBillingReminders(): number {
 
   for (const template of templates) {
     if (currentHour < template.sendHour) continue;
+    if (awaitingMetaApproval(template)) continue;
 
     const offset =
       template.daysOffset ??

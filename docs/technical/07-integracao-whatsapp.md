@@ -107,6 +107,8 @@ Quem não quiser entrar com o Facebook continua no **envio assistido**, que não
 
 ## 3. Checklist
 
+**Aprovação por conta e espera (19/11/2026):** cada espaço conecta a própria conta, então a Meta analisa os 16 modelos de novo em cada conta (em geral minutos ou poucas horas) e manda o e-mail de aprovação ao dono da conta. Enquanto um modelo está `PENDING`, os lembretes automáticos dele esperam (`awaitingMetaApproval`, sem gravar tentativa) e saem numa rodada seguinte. A tela de modelos mostra o aviso "N avisos aguardando aprovação do WhatsApp"; recusado, pausado ou desativado levam ao suporte, porque o texto é fixo.
+
 ### 3.1 Pré-requisitos do GestaraHub
 - [ ] Conta empresarial do GestaraHub na Meta, com a empresa **verificada**.
 - [ ] Parceiro escolhido (ou app próprio aprovado, se direto).

@@ -158,30 +158,30 @@ export function metaStatusNotice(status: MetaTemplateStatus | undefined): MetaSt
     case "PENDING":
       return {
         text: "Em análise no WhatsApp",
-        hint: "Leva alguns minutos. A mensagem sai sozinha quando aprovar.",
+        hint: "A aprovação é do WhatsApp. Em geral leva minutos ou poucas horas; a mensagem sai sozinha quando aprovar.",
         tone: "warning",
         needsEdit: false,
       };
     case "REJECTED":
       return {
-        text: "Recusado pelo WhatsApp: ajuste o texto",
-        hint: "O WhatsApp não aprovou este texto. Edite e salve para ele analisar de novo.",
+        text: "Recusado pelo WhatsApp",
+        hint: "O texto é o padrão do GestaraHub e não muda aqui. Fale com o suporte: a gente ajusta e envia de novo.",
         tone: "danger",
-        needsEdit: true,
+        needsEdit: false,
       };
     case "PAUSED":
       return {
-        text: "Pausado pelo WhatsApp: revise o texto",
-        hint: "Muitos alunos bloquearam ou denunciaram esta mensagem. Revise o texto.",
+        text: "Pausado pelo WhatsApp",
+        hint: "Muitos alunos bloquearam ou denunciaram esta mensagem. Fale com o suporte.",
         tone: "warning",
-        needsEdit: true,
+        needsEdit: false,
       };
     case "DISABLED":
       return {
-        text: "Desativado pelo WhatsApp: revise o texto",
-        hint: "O WhatsApp desativou este texto depois de muitas denúncias. Edite e salve para ele analisar de novo.",
+        text: "Desativado pelo WhatsApp",
+        hint: "O WhatsApp desativou esta mensagem depois de muitas denúncias. Fale com o suporte.",
         tone: "danger",
-        needsEdit: true,
+        needsEdit: false,
       };
     default:
       return null;
