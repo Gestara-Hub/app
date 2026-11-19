@@ -6,6 +6,7 @@ import {
   isPastSlot,
   nowTime,
   relativeDateLabel,
+  brazilTimeZoneFor,
   resolveSpaceTimeZone,
   startOfDayInSpace,
   endOfDayInSpace,
@@ -271,5 +272,21 @@ describe("isIsoDate (revisão geral de 31/10/2026)", () => {
     assert.equal(isIsoDate("2026-13-01"), false);
     assert.equal(isIsoDate("2026-9-1"), false);
     assert.equal(isIsoDate(undefined), false);
+  });
+});
+
+describe("fuso do aparelho na criação do espaço", () => {
+  it("Manaus, Cuiabá e Porto Velho viram UTC−4; Fortaleza vira Brasília; Rio Branco, UTC−5", () => {
+    assert.equal(brazilTimeZoneFor("America/Manaus"), "America/Manaus");
+    assert.equal(brazilTimeZoneFor("America/Cuiaba"), "America/Manaus");
+    assert.equal(brazilTimeZoneFor("America/Porto_Velho"), "America/Manaus");
+    assert.equal(brazilTimeZoneFor("America/Fortaleza"), "America/Sao_Paulo");
+    assert.equal(brazilTimeZoneFor("America/Rio_Branco"), "America/Rio_Branco");
+    assert.equal(brazilTimeZoneFor("America/Noronha"), "America/Noronha");
+  });
+
+  it("fora do Brasil ou sem fuso: nenhum (fica Brasília até escolher)", () => {
+    assert.equal(brazilTimeZoneFor("Europe/Lisbon"), undefined);
+    assert.equal(brazilTimeZoneFor(undefined), undefined);
   });
 });

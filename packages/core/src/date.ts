@@ -28,6 +28,44 @@ export function timeZoneForState(state?: string): SpaceTimeZone | undefined {
   return "America/Sao_Paulo";
 }
 
+/** Fusos IANA do Brasil e o fuso do GestaraHub que vale para cada um. */
+const BRAZIL_IANA_ZONES: Record<string, SpaceTimeZone> = {
+  "America/Noronha": "America/Noronha",
+  "America/Sao_Paulo": "America/Sao_Paulo",
+  "America/Belem": "America/Sao_Paulo",
+  "America/Fortaleza": "America/Sao_Paulo",
+  "America/Recife": "America/Sao_Paulo",
+  "America/Araguaina": "America/Sao_Paulo",
+  "America/Maceio": "America/Sao_Paulo",
+  "America/Bahia": "America/Sao_Paulo",
+  "America/Santarem": "America/Sao_Paulo",
+  "America/Manaus": "America/Manaus",
+  "America/Campo_Grande": "America/Manaus",
+  "America/Cuiaba": "America/Manaus",
+  "America/Porto_Velho": "America/Manaus",
+  "America/Boa_Vista": "America/Manaus",
+  "America/Rio_Branco": "America/Rio_Branco",
+  "America/Eirunepe": "America/Rio_Branco",
+};
+
+/**
+ * Fuso do espaco a partir do fuso do aparelho de quem cria a conta (19/11/2026:
+ * sem endereco, todo espaco nascia em Brasilia). Fora do Brasil: nenhum (fica
+ * Brasilia ate a pessoa escolher).
+ */
+export function brazilTimeZoneFor(ianaZone: string | undefined): SpaceTimeZone | undefined {
+  return ianaZone ? BRAZIL_IANA_ZONES[ianaZone] : undefined;
+}
+
+/** Fuso do aparelho (navegador), ja como um dos fusos do Brasil. */
+export function deviceBrazilTimeZone(): SpaceTimeZone | undefined {
+  try {
+    return brazilTimeZoneFor(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Fuso do espaco: o escolhido, senao o do estado da unidade, senao Brasilia. */
 export function resolveSpaceTimeZone(
   settings?: { timeZone?: string } | null,

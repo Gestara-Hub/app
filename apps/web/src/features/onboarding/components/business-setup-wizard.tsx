@@ -30,6 +30,7 @@ import { onboardingService } from "@/services/settings/onboardingService";
 import { categoriesService } from "@/services/catalog/categoriesService";
 import { persistSetupToBackendAction } from "@/app/(auth)/signup-actions";
 import { useOrganization } from "@/features/settings";
+import { deviceBrazilTimeZone } from "@gestarahub/core/date";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import {
   CUSTOM_BILLING_OPTIONS,
@@ -330,6 +331,9 @@ export function BusinessSetupWizard() {
         settings: {
           ...organization?.settings,
           onboardingCompleted: true,
+          // Fuso de quem cria a conta (aparelho), se ainda nao escolhido: sem
+          // endereco, o espaco nascia em Brasilia (19/11/2026).
+          timeZone: organization?.settings?.timeZone ?? deviceBrazilTimeZone(),
           // Modalidades criadas aqui vem com a trilha padrao: pede revisao.
           // Area sem trilha (pilates, funcional...) nao tem niveis nem metas a revisar (ONB-18).
           modalitiesReviewed:
