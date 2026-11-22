@@ -93,6 +93,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
    | `ASAAS_WEBHOOK_URL` | Sim | `https://gestarahub.com.br/api/webhooks/asaas` |
    | `ASAAS_WEBHOOK_SECRET` | Sim | Aleatório, 32+ caracteres, diferente da chave de API |
    | `ASAAS_WEBHOOK_EMAIL` | Sim | `contato@gestarahub.com.br` (o Asaas avisa ali se o webhook falhar) |
+   | `ASAAS_NFSE_SERVICE_CODE`, `ASAAS_NFSE_SERVICE_NAME`, `ASAAS_NFSE_ISS` (e opcionais `ASAAS_NFSE_FEDERAL_CODE`, `ASAAS_NFSE_RETAIN_ISS`, `ASAAS_NFSE_NOTIFY_EMAIL`) | Para emitir NFS-e | Valores na doc `technical/24` §7.1, "Como ficou"; sem eles, a nota fica desligada |
    | `AWS_SES_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO` | Sim | Amazon SES fora do Sandbox (`us-east-2`); remetente `naoresponda@gestarahub.com.br`, respostas em `contato@` |
    | `ERROR_DIGEST_EMAIL` | Sim | Quem recebe o alerta de erro novo e o resumo diário |
    | `META_APP_SECRET` | Com WhatsApp | Assinatura do webhook; sem ela, produção recusa o webhook |
@@ -131,7 +132,7 @@ Nunca suba um segredo para o repositório, para o chat ou para um log. Valores f
 
 | Serviço | O que configurar | Doc |
 | --- | --- | --- |
-| **Asaas** | Webhook na **conta principal** (eventos de cobrança e de assinatura, mesma URL e mesmo token; hoje só as subcontas têm). As subcontas se registram sozinhas com o `ASAAS_WEBHOOK_URL` no primeiro acesso. Pedir a homologação logo após o primeiro espaço real (período de avaliação: 10 subcontas, R$ 2.000 cada, 60 dias). | `technical/25`, `product/13` §6 |
+| **Asaas** | Webhook na **conta principal** (eventos de cobrança, de assinatura e de nota fiscal `INVOICE_*`, mesma URL e mesmo token). As subcontas se registram sozinhas com o `ASAAS_WEBHOOK_URL` no primeiro acesso. Pedir a homologação logo após o primeiro espaço real (período de avaliação: 10 subcontas, R$ 2.000 cada, 60 dias). | `technical/25`, `product/13` §6 |
 | **Meta (WhatsApp)** | Webhook em `https://gestarahub.com.br/api/webhooks/whatsapp` com o `WHATSAPP_WEBHOOK_VERIFY_TOKEN`; `META_APP_SECRET`; revisão das permissões `whatsapp_business_messaging` e `whatsapp_business_management`; virar para o modo de produção (pede domínio, `/privacy` e `/terms`); cadastrar os modelos (`minor_consent` e os operacionais). | `technical/07` §3.5.1 |
 | **Amazon SES** | Domínio `gestarahub.com.br` verificado (DKIM e Custom MAIL FROM `envio.gestarahub.com.br`), saída do Sandbox aprovada e chaves IAM na Vercel (`us-east-2`). Feito em 17/11/2026: lista de supressão da conta para bounce e reclamação, tópico SNS `ses-gestarahub-feedback` (aviso por e-mail) e configuration set `gestarahub-default` (bounce, reclamação, rejeição e falha de renderização no SNS) como padrão do domínio. O app ainda não fica sabendo do bounce (o SES responde ok no envio); ver `pendencias.md`. Pedido de saída do Sandbox enviado, esperando a AWS. | `technical/21` |
 | **PostHog** | Projeto com a chave na Vercel; ligar "Web vitals autocapture". | `technical/09` |

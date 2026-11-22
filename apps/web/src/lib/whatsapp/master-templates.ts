@@ -31,6 +31,11 @@ export interface MasterTemplate {
   params: string[];
   /** Tipo de cada {{n}} (so a biblioteca confere; os proprios sao todos TEXT). */
   paramTypes?: MasterParamType[];
+  /**
+   * Formas mais curtas de cada {{n}} de texto da biblioteca, tentadas em ordem
+   * quando o valor passa de `LIBRARY_TEXT_PARAM_MAX` (a Meta recusa com #100).
+   */
+  paramFallbacks?: string[][];
   /** Botao "Pagar agora" com o endereco da pagina de pagamento do aluno (biblioteca). */
   paymentButton?: boolean;
   /** Variaveis que a tela oferece (a previa e o envio assistido). */
@@ -60,14 +65,19 @@ function own(
   return { trigger, metaName: `${trigger}_${VERSION}`, category, body, params, variables: [...new Set(params)] };
 }
 
-/** Modelo da biblioteca da Meta: texto copiado da biblioteca (pt_BR), palavra por palavra. */
+/**
+ * Modelo da biblioteca da Meta: texto copiado da biblioteca (pt_BR), palavra por
+ * palavra. Cada {{n}} e o texto principal ou a lista [principal, mais curtos...].
+ */
 function library(
   trigger: MessageTrigger,
   name: string,
   body: string,
-  params: string[],
+  options: (string | string[])[],
   paramTypes: MasterParamType[],
 ): MasterTemplate {
+  const params = options.map((o) => (Array.isArray(o) ? o[0] : o));
+  const paramFallbacks = options.map((o) => (Array.isArray(o) ? o.slice(1) : []));
   const variables = [...new Set(params.flatMap((p) => p.match(/\{\w+\}/g) ?? [])), "{link_pagamento}"];
   return {
     trigger,
@@ -77,6 +87,7 @@ function library(
     body,
     params,
     paramTypes,
+    paramFallbacks,
     paymentButton: true,
     variables,
   };
@@ -92,41 +103,51 @@ const PAYMENT_OVERDUE_2 =
   "Olá, {{1}}, você tem um pagamento atrasado:\n\nConta: {{2}}\nValor devido: {{3}}\nData prevista: {{4}}\n\nUse o botão abaixo para concluir o pagamento através do nosso site.\nPor favor ignore esta mensagem se você já pagou.";
 const PAYMENT_OVERDUE_2_TYPES: MasterParamType[] = ["TEXT", "TEXT", "AMOUNT", "DATE"];
 
+/** Limite da Meta para cada variavel de texto dos modelos da biblioteca. */
+export const LIBRARY_TEXT_PARAM_MAX = 30;
+
+/** "Conta" da mensalidade: sem o nome do espaco quando passa de 30 caracteres. */
+const CONTA_MENSALIDADE = ["Mensalidade na {empresa}", "Mensalidade"];
+/** "Conta" de uma cobranca: a referencia sozinha e, no fim, so "Cobrança". */
+const CONTA_COBRANCA = ["{referencia} na {empresa}", "{referencia}", "Cobrança"];
+/** Nome do aluno: primeiro e ultimo nome, depois so o primeiro. */
+const ALUNO = ["{aluno}", "{aluno_curto}", "{primeiro_nome}"];
+
 const LIST: MasterTemplate[] = [
   // Cobranca: biblioteca da Meta (utilidade, sem analise).
   library(
     "billing_before_due",
     "payment_reminder_3",
     PAYMENT_REMINDER_3,
-    ["Mensalidade na {empresa}", "{valor}", "{vencimento}", "pendências"],
+    [CONTA_MENSALIDADE, "{valor}", "{vencimento}", "pendências"],
     PAYMENT_REMINDER_3_TYPES,
   ),
   library(
     "billing_due_date",
     "payment_reminder_3",
     PAYMENT_REMINDER_3,
-    ["Mensalidade na {empresa}", "{valor}", "{vencimento}", "pendências"],
+    [CONTA_MENSALIDADE, "{valor}", "{vencimento}", "pendências"],
     PAYMENT_REMINDER_3_TYPES,
   ),
   library(
     "charge_reminder",
     "payment_reminder_3",
     PAYMENT_REMINDER_3,
-    ["{referencia} na {empresa}", "{valor}", "{vencimento}", "pendências"],
+    [CONTA_COBRANCA, "{valor}", "{vencimento}", "pendências"],
     PAYMENT_REMINDER_3_TYPES,
   ),
   library(
     "billing_after_due",
     "payment_overdue_2",
     PAYMENT_OVERDUE_2,
-    ["{aluno}", "Mensalidade na {empresa}", "{valor}", "{vencimento}"],
+    [ALUNO, CONTA_MENSALIDADE, "{valor}", "{vencimento}"],
     PAYMENT_OVERDUE_2_TYPES,
   ),
   library(
     "billing_critical",
     "payment_overdue_2",
     PAYMENT_OVERDUE_2,
-    ["{aluno}", "Mensalidade na {empresa}", "{valor}", "{vencimento}"],
+    [ALUNO, CONTA_MENSALIDADE, "{valor}", "{vencimento}"],
     PAYMENT_OVERDUE_2_TYPES,
   ),
 
@@ -215,20 +236,54 @@ export function masterContent(template: MasterTemplate): string {
   return `${text}${ASSISTED_LINK_LINE}`;
 }
 
-/** Valor de cada {{n}} para o envio; null se falta algum (a Meta recusa variavel vazia). */
+/** Uma variavel com os valores no lugar, sem quebra de linha nem espaco duro; null se falta valor. */
+function fillParam(param: string, values: Record<string, string | undefined>): string | null {
+  let missing = false;
+  const filled = param.replace(/\{(\w+)\}/g, (_, key: string) => {
+    const value = values[key];
+    if (value === undefined || value.trim() === "") missing = true;
+    return value ?? "";
+  });
+  // Sem quebra de linha nem espaco duro: a Meta recusa e o tipo valor nao aceita.
+  const clean = filled.replace(/[\n\t]+/g, " ").replace(/\u00a0/g, " ").replace(/ {2,}/g, " ").trim();
+  return missing || !clean ? null : clean;
+}
+
+/** Nomes curtos do aluno para as variaveis de texto da biblioteca. */
+function shortNames(name: string | undefined): Record<string, string | undefined> {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return {};
+  return {
+    aluno_curto: words.length > 1 ? `${words[0]} ${words[words.length - 1]}` : words[0],
+    primeiro_nome: words[0],
+  };
+}
+
+/**
+ * Valor de cada {{n}} para o envio; null se falta algum (a Meta recusa variavel
+ * vazia). Nos modelos da biblioteca, a variavel de texto que passa de
+ * `LIBRARY_TEXT_PARAM_MAX` usa a primeira forma curta que cabe; nenhuma cabe, null.
+ */
 export function masterParams(template: MasterTemplate, values: Record<string, string | undefined>): string[] | null {
+  const all = template.library ? { ...shortNames(values.aluno), ...values } : values;
   const params: string[] = [];
-  for (const param of template.params) {
-    let missing = false;
-    const filled = param.replace(/\{(\w+)\}/g, (_, key: string) => {
-      const value = values[key];
-      if (value === undefined || value.trim() === "") missing = true;
-      return value ?? "";
-    });
-    // Sem quebra de linha nem espaco duro: a Meta recusa e o tipo valor nao aceita.
-    const clean = filled.replace(/[\n\t]+/g, " ").replace(/ /g, " ").replace(/ {2,}/g, " ").trim();
-    if (missing || !clean) return null;
-    params.push(clean);
+  for (const [i, param] of template.params.entries()) {
+    const limited = Boolean(template.library) && (template.paramTypes?.[i] ?? "TEXT") === "TEXT";
+    const options = limited ? [param, ...(template.paramFallbacks?.[i] ?? [])] : [param];
+    let chosen: string | null = null;
+    for (const option of options) {
+      const filled = fillParam(option, all);
+      if (filled === null) {
+        if (option === param) return null;
+        continue;
+      }
+      if (!limited || [...filled].length <= LIBRARY_TEXT_PARAM_MAX) {
+        chosen = filled;
+        break;
+      }
+    }
+    if (chosen === null) return null;
+    params.push(chosen);
   }
   return params;
 }

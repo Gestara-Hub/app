@@ -4,6 +4,7 @@ import {
   type Subscription,
   type SubscriptionInterval,
   type SubscriptionTier,
+  type PlatformInvoiceView,
 } from "@gestarahub/contracts";
 import { hasFeature, isSubscriptionTier, tierOf } from "@/lib/subscription";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
@@ -18,6 +19,7 @@ import {
   cancelScheduledPlanChangeAction,
   changePlanAction,
   listPlanHistoryAction,
+  listPlatformInvoicesAction,
   checkPlanChangePaymentAction,
   previewPlanChangeAction,
   simulatePlanChangePaymentAction,
@@ -208,6 +210,11 @@ export const subscriptionService = {
   /** Historico do plano (so na conta real; o espaco so do navegador nao tem). */
   listHistory(): Promise<SubscriptionEventView[]> {
     return readOp(async () => (realAccountInBrowser() ? unwrap(listPlanHistoryAction()) : []));
+  },
+
+  /** Notas fiscais do plano (so na conta real). */
+  listInvoices(): Promise<PlatformInvoiceView[]> {
+    return readOp(async () => (realAccountInBrowser() ? unwrap(listPlatformInvoicesAction()) : []));
   },
 
   /** Desmarca a troca marcada para o fim do periodo. */

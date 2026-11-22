@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.22",
+    date: "2026-11-22",
+    items: [
+      { text: "Nota fiscal de cada pagamento do plano, em Configurações > Plano." },
+      { text: "Aviso da próxima fatura do plano só perto do vencimento." },
+      { text: "Avisos de cobrança no WhatsApp aceitos com nomes longos." },
+    ],
+  },
+  {
     version: "2026.11.19",
     date: "2026-11-19",
     items: [

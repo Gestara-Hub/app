@@ -244,6 +244,31 @@ describe("redução: no fim do período pago", () => {
   });
 });
 
+describe("estorno do pagamento do plano", () => {
+  it("estornado: volta ao Grátis na hora, cancela no Asaas, registra e avisa o dono", async () => {
+    await setSubscription(paidPlan());
+    asaas.getSubscription.mockResolvedValue({ id: "sub_teste", customer: "cus_teste" });
+    asaas.cancelSubscription.mockResolvedValue({});
+
+    const result = await plan.recordPlanPaymentRefunded(admin, { id: "pay_1", subscription: "sub_teste" }, "refund");
+
+    expect(result).toBe(true);
+    expect(await subscriptionInDb()).toMatchObject({ tier: "free" });
+    expect(asaas.cancelSubscription).toHaveBeenCalledWith("sub_teste");
+    expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(expect.objectContaining({ title: "Seu plano voltou ao Grátis" }));
+    const { events } = await historyInDb();
+    expect(events.map((e) => [e.kind, e.source])).toContainEqual(["canceled", "webhook.asaas"]);
+  });
+
+  it("estorno de cobrança que não é do plano (aluno numa subconta): não mexe e segue o fluxo dela", async () => {
+    await setSubscription(paidPlan());
+    const { AsaasApiError } = await import("@/lib/asaas");
+    asaas.getSubscription.mockRejectedValue(new AsaasApiError("não encontrada", 404));
+    expect(await plan.recordPlanPaymentRefunded(admin, { id: "pay_x", subscription: "sub_de_aluno" }, "refund")).toBeNull();
+    expect(await subscriptionInDb()).toMatchObject({ tier: "pro" });
+  });
+});
+
 describe("Pix Automático do plano", () => {
   it("autorização ativada pelo aviso do Asaas fica na assinatura; a antiga não volta por cima", async () => {
     await setSubscription(paidPlan());
@@ -282,7 +307,7 @@ describe("renovação e tolerância de 5 dias", () => {
     expect(reverted).toMatchObject({ tier: "free", revertedFrom: { tier: "pro", on: inDays(-5) } });
     expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(expect.objectContaining({ title: "Seu plano voltou ao Grátis" }));
 
-    await plan.recordSubscriptionPaymentPaid(admin, { id: "pay_atrasada", dueDate: inDays(-5), subscription: "sub_teste" });
+    await plan.recordSubscriptionPaymentPaid(admin, { id: "pay_atrasada", dueDate: inDays(-5), subscription: "sub_teste", value: 49.9 });
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", status: "active", renewsOn: addPlanCycle(inDays(-5), "monthly") });
     // Pagamento confirmado: o e-mail do GestaraHub (o do Asaas fica desligado).
     expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(expect.objectContaining({ title: "Plano Profissional religado" }));

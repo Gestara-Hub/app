@@ -4,11 +4,13 @@ import { decodePlanChangeReference } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   recordPlanChangePaymentPaid,
+  recordPlanPaymentRefunded,
   recordPlanPixAutomatic,
   recordSubscriptionPaymentOpen,
   recordSubscriptionPaymentPaid,
   recordSubscriptionRemoved,
 } from "@/services/server/subscriptionPlan";
+import { syncPlanInvoiceFromWebhook } from "@/services/server/subscriptionInvoices";
 import { settleAsaasPayment } from "@/services/onlinePayments/asaasSettlement";
 import {
   expireOnlinePaymentInDb,
@@ -45,8 +47,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
   }
-  const { event, payment, subscription, authorization } = payload ?? {};
-  if (!event || (!payment?.id && !subscription?.id && !authorization?.id)) {
+  const { event, payment, subscription, authorization, invoice } = payload ?? {};
+  if (!event || (!payment?.id && !subscription?.id && !authorization?.id && !invoice?.id)) {
     return NextResponse.json(
       { error: "Payload inválido. 'event' e 'payment.id' são obrigatórios." },
       { status: 400 },
@@ -59,13 +61,13 @@ export async function POST(req: Request) {
   const record = await beginWebhookEvent(admin, {
     eventId: payload?.id,
     event,
-    paymentId: payment?.id,
+    paymentId: payment?.id ?? invoice?.payment ?? undefined,
     subscriptionId: subscription?.id ?? payment?.subscription ?? authorization?.subscriptionId ?? undefined,
   });
   if (record.duplicate) return NextResponse.json({ success: true, duplicate: true });
 
   try {
-    const handled = await handleEvent(admin, event, payment, subscription, authorization);
+    const handled = await handleEvent(admin, event, payment, subscription, authorization, invoice);
     await finishWebhookEvent(admin, record.id, handled);
     return NextResponse.json({ success: true, processed: handled.status === "processed" });
   } catch (error) {
@@ -84,7 +86,16 @@ async function handleEvent(
   payment: AsaasPaymentResponse | undefined,
   subscription: AsaasWebhookPayload["subscription"],
   authorization?: AsaasWebhookPayload["authorization"],
+  invoice?: AsaasWebhookPayload["invoice"],
 ): Promise<Handled> {
+  // Nota fiscal do Plano GestaraHub (conta principal, doc technical/24 §7.1).
+  if (event.startsWith("INVOICE_")) {
+    if (!invoice?.id) return { status: "ignored", outcome: "nota sem id" };
+    const organizationId = await syncPlanInvoiceFromWebhook(admin, invoice);
+    return organizationId
+      ? { status: "processed", organizationId, outcome: `plano: nota fiscal ${event}` }
+      : { status: "ignored", outcome: "nota fora do plano" };
+  }
   // Pix Automatico da assinatura do Plano GestaraHub (19/11/2026).
   if (event.startsWith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_")) {
     const changed = authorization?.id ? await recordPlanPixAutomatic(admin, authorization) : false;
@@ -208,6 +219,15 @@ function disputeStatusOf(event: string): OnlinePaymentDisputeStatus | null {
 async function handlePlanPayment(event: AsaasWebhookPayload["event"], payment: AsaasPaymentResponse): Promise<boolean | null> {
   const admin = createSupabaseAdminClient();
   const paid = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+  // Estorno (total ou parcial) ou contestacao no cartao de um pagamento do
+  // plano: volta ao Gratis na hora (19/11/2026).
+  const refunded =
+    event === "PAYMENT_REFUNDED" || event === "PAYMENT_PARTIALLY_REFUNDED" || event === "PAYMENT_CHARGEBACK_REQUESTED";
+  if (refunded && (payment.subscription || decodePlanChangeReference(payment.externalReference))) {
+    const result = await recordPlanPaymentRefunded(admin, payment, event === "PAYMENT_CHARGEBACK_REQUESTED" ? "chargeback" : "refund");
+    // null: nao e do plano (cobranca de aluno), segue o fluxo da subconta.
+    if (result !== null) return result;
+  }
   if (decodePlanChangeReference(payment.externalReference)) {
     return paid ? recordPlanChangePaymentPaid(admin, payment) : false;
   }

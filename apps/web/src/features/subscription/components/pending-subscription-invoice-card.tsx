@@ -19,7 +19,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Subscription } from "@gestarahub/contracts";
 import { formatCents, formatDate } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
-import { planNoticeFor } from "@gestarahub/core/subscription-plan";
+import { differenceInCalendarDays, parseISO } from "date-fns";
+import { isPlanDebitedAutomatically, planNoticeFor } from "@gestarahub/core/subscription-plan";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,9 @@ import {
   type SubscriptionPendingPixResult,
 } from "@/services/subscription/actions";
 
+/** Dias antes do vencimento em que a fatura passa a pedir o pagamento. */
+const DUE_SOON_DAYS = 5;
+
 export function PendingSubscriptionInvoiceCard({
   subscription,
 }: {
@@ -45,9 +49,16 @@ export function PendingSubscriptionInvoiceCard({
 
   const today = todayISO();
   const notice = planNoticeFor(subscription, today);
-  const hasPendingPayment = Boolean(subscription?.pendingPayment);
   const isPastDue = subscription?.status === "past_due";
-  const hasPendingInvoice = hasPendingPayment || isPastDue || Boolean(notice);
+  // O Asaas gera a proxima cobranca logo depois do pagamento: so vira "aguardando
+  // pagamento" nos ultimos dias (19/11/2026: com 28 dias de folga o cartao laranja
+  // parecia atraso). Antes disso, so "Pagar antecipado", para quem quiser.
+  const dueDate = subscription?.pendingPayment?.dueDate ?? subscription?.renewsOn;
+  const daysToDue = dueDate ? differenceInCalendarDays(parseISO(dueDate), parseISO(today)) : null;
+  const pendingDueSoon = Boolean(subscription?.pendingPayment) && daysToDue !== null && daysToDue <= DUE_SOON_DAYS;
+  const debited = subscription ? isPlanDebitedAutomatically(subscription) : false;
+  const hasPendingInvoice = isPastDue || Boolean(notice) || (pendingDueSoon && !debited);
+  const hasPendingPayment = hasPendingInvoice;
 
   const isUrgent = isPastDue || notice?.kind === "grace_ending" || notice?.kind === "reverted";
   const isDueSoon = notice?.kind === "renews_soon" || notice?.kind === "payment_pending";
@@ -68,6 +79,21 @@ export function PendingSubscriptionInvoiceCard({
   });
 
   if (!isPro || subscription.courtesyUntil) return null;
+
+  // Cartao ou Pix Automatico em dia: cobrado sozinho, nada a pagar aqui.
+  if (debited && !hasPendingInvoice) {
+    return dueDate ? (
+      <p className="flex items-center gap-2 rounded-lg border p-3 text-xs text-muted-foreground">
+        <CalendarClock className="size-4 shrink-0" aria-hidden />
+        <span>
+          Próxima fatura em {formatDate(dueDate)}:{" "}
+          {subscription.paymentMethod === "credit_card"
+            ? "cobrada no cartão automaticamente."
+            : "debitada pelo Pix Automático."}
+        </span>
+      </p>
+    ) : null;
+  }
 
   const handleCopyPix = () => {
     if (!pixData?.pixQrCode?.payload) return;
@@ -177,12 +203,12 @@ export function PendingSubscriptionInvoiceCard({
 
         <Button
           type="button"
-          variant={isExpanded ? "outline" : "default"}
+          variant={isExpanded || !hasPendingInvoice ? "outline" : "default"}
           onClick={() => setIsExpanded(!isExpanded)}
           className="shrink-0"
         >
           <QrCode className="size-3.5" />
-          <span>{isExpanded ? "Ocultar Pix" : "Ver QR Code Pix"}</span>
+          <span>{isExpanded ? "Ocultar Pix" : hasPendingInvoice ? "Ver QR Code Pix" : "Pagar antecipado"}</span>
           {isExpanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
         </Button>
       </div>

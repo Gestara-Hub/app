@@ -20,6 +20,7 @@ import {
   PendingSubscriptionInvoiceCard,
   PlanChangeDialog,
   PlanHistory,
+  PlanInvoices,
   ScheduledPlanChangeNotice,
 } from "@/features/subscription";
 import { useState } from "react";
@@ -222,6 +223,7 @@ export function SubscriptionPlanCard() {
               Só o proprietário da conta pode trocar o plano.
             </p>
           )}
+          {canManage ? <PlanInvoices /> : null}
           {canManage ? <PlanHistory /> : null}
         </CardContent>
       </Card>
@@ -241,14 +243,8 @@ export function SubscriptionPlanCard() {
  */
 function PixAutomaticLine({ subscription }: { subscription: Subscription }) {
   const status = subscription.pixAutomatic?.status;
-  if (status === "ACTIVE") {
-    return (
-      <p className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-foreground">
-        <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-        <span>Pix Automático ligado: o banco debita a renovação no vencimento.</span>
-      </p>
-    );
-  }
+  // Ligado: a linha da proxima fatura ja diz "debitada pelo Pix Automatico" (sem repetir).
+  if (status === "ACTIVE") return null;
   const off = status === "CANCELLED" || status === "EXPIRED" || status === "REFUSED";
   return (
     <p className="rounded-lg border p-3 text-xs text-muted-foreground">
