@@ -2,6 +2,24 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.22 (2026-11-22)
+
+Desde v2026.11.19.
+
+### Correções
+
+- whatsapp: variáveis de texto da biblioteca da Meta com até 30 caracteres
+
+### Novo
+
+- subscription: nota fiscal (NFS-e) do plano pelo Asaas
+- db: tabela platform_invoices para as notas fiscais do plano
+- subscription: estorno do plano volta ao Grátis e fatura discreta até 5 dias antes
+
+### Outros
+
+- usar o Chrome do runner no e2e e tentar de novo o download
+
 ## 2026.11.19 (2026-11-19)
 
 Desde v2026.11.18.
