@@ -19,7 +19,7 @@ import { brl } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { listErrors, listWebhooks } from "@/lib/server/health";
-import { getSpace, listPlanEvents, listSpaceNotes } from "@/lib/server/spaces";
+import { getSpace, listPlanEvents, listPlatformInvoices, listSpaceNotes } from "@/lib/server/spaces";
 import { listThreads } from "@/lib/server/support";
 import { sql } from "@/lib/server/db";
 import { brasiliaDay } from "@/lib/sla";
@@ -129,8 +129,23 @@ function Summary({ space }: { space: Space }) {
   );
 }
 
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  requesting: "Pedindo",
+  scheduled: "Agendada",
+  synchronized: "Na prefeitura",
+  authorized: "Emitida",
+  processing_cancellation: "Cancelando",
+  canceled: "Cancelada",
+  cancellation_denied: "Cancelamento recusado",
+  error: "Recusada",
+};
+
 async function Subscription({ space, today, canGrant }: { space: Space; today: string; canGrant: boolean }) {
-  const [events, grants] = await Promise.all([listPlanEvents(space.id), listGrants({ organizationId: space.id, limit: 20 })]);
+  const [events, grants, invoices] = await Promise.all([
+    listPlanEvents(space.id),
+    listGrants({ organizationId: space.id, limit: 20 }),
+    listPlatformInvoices(space.id),
+  ]);
   const situation = planSituation(space.subscription, today);
   return (
     <div className="space-y-6">
@@ -172,6 +187,42 @@ async function Subscription({ space, today, canGrant }: { space: Space; today: s
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {grant.grantedByName} · <RelativeTime date={grant.createdAt} />
+                  </span>
+                </div>
+              </ListRow>
+            ))}
+          </ListContainer>
+        </section>
+      ) : null}
+
+      {invoices.length > 0 ? (
+        <section>
+          <SectionHeading title="Notas fiscais" description="Recusada: corrija o cadastro no Asaas; a rotina diária pede de novo até 5 vezes." />
+          <ListContainer>
+            {invoices.map((invoice) => (
+              <ListRow key={invoice.id}>
+                <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="min-w-0 break-words font-medium">
+                      {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status} · {brl(invoice.amountCents)}
+                      {invoice.invoiceNumber ? ` · nº ${invoice.invoiceNumber}` : ""}
+                    </p>
+                    <p className="min-w-0 break-words text-sm text-muted-foreground">{invoice.serviceDescription}</p>
+                    {invoice.statusDescription ? (
+                      <p className="min-w-0 break-words text-sm text-destructive">
+                        {invoice.statusDescription}
+                        {invoice.attempts > 0 ? ` (${invoice.attempts} tentativa${invoice.attempts > 1 ? "s" : ""})` : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {invoice.pdfUrl ? (
+                      <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                        PDF
+                      </a>
+                    ) : null}
+                    {invoice.pdfUrl ? " · " : ""}
+                    <RelativeTime date={invoice.createdAt} />
                   </span>
                 </div>
               </ListRow>

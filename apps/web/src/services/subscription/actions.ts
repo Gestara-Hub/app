@@ -15,6 +15,7 @@ export {
   cancelScheduledPlanChangeAction,
   changePlanAction,
   listPlanHistoryAction,
+  listPlatformInvoicesAction,
   checkPlanChangePaymentAction,
   previewPlanChangeAction,
   simulatePlanChangePaymentAction,

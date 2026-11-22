@@ -35,6 +35,13 @@ import {
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
 import { notifyPlanManagers, notifyPlanPaid, planEmailAppUrl } from "./planEmails";
+import {
+  cancelPlanInvoiceOfPayment,
+  queuePlanInvoice,
+  retryFailedPlanInvoices,
+  subscriptionInvoiceDescription,
+  upgradeInvoiceDescription,
+} from "./subscriptionInvoices";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";
@@ -347,6 +354,15 @@ async function applyUpgrade(
     ].join(""),
     ...(pending.requestedBy ? { details: { requestedBy: pending.requestedBy } } : {}),
   });
+  // Nota so da diferenca paga, mesmo codigo do servico (contabilidade, 22/11/2026).
+  if (pending.amountCents > 0 && pending.paymentId) {
+    await queuePlanInvoice(admin, {
+      organizationId,
+      kind: "plan_upgrade",
+      payment: { id: pending.paymentId, value: pending.amountCents / 100 },
+      serviceDescription: upgradeInvoiceDescription(next, today, renewsOn),
+    });
+  }
   return next;
 }
 
@@ -564,7 +580,7 @@ async function organizationOfAsaasSubscription(
  */
 export async function recordSubscriptionPaymentPaid(
   admin: SupabaseClient,
-  payment: Pick<AsaasPaymentResponse, "id" | "dueDate" | "subscription">,
+  payment: Pick<AsaasPaymentResponse, "id" | "dueDate" | "subscription" | "value">,
   knownOrganizationId?: string,
   author: PlanAuthor = systemAuthor("webhook.asaas"),
 ): Promise<{ organizationId: string; subscription: Subscription } | null> {
@@ -593,6 +609,13 @@ export async function recordSubscriptionPaymentPaid(
     pendingPayment: subscription.pendingPayment?.id === payment.id ? undefined : subscription.pendingPayment,
   };
   await writeOrganizationSubscription(admin, organizationId, next);
+  // Nota fiscal de cada renovacao paga (idempotente: o cartao avisa duas vezes).
+  await queuePlanInvoice(admin, {
+    organizationId,
+    kind: "subscription",
+    payment,
+    serviceDescription: subscriptionInvoiceDescription(next, payment.dueDate),
+  });
   if (subscription.revertedFrom || advanced) {
     await notifyPlanPaid(admin, organizationId, subscription.revertedFrom ? "reactivated" : "renewed", next);
     await recordSubscriptionEvent(admin, organizationId, author, {
@@ -713,6 +736,8 @@ export async function recordPlanPaymentRefunded(
   if (!change && subscription.asaasSubscriptionId !== payment.subscription) return false;
 
   if (onAsaas(subscription)) await cancelOnAsaas(subscription.asaasSubscriptionId);
+  // Estornado: a nota e cancelada (outro mes: a equipe avisa a contabilidade).
+  await cancelPlanInvoiceOfPayment(admin, organizationId, payment.id);
   const next: Subscription = { tier: "free", changedAt: new Date().toISOString() };
   await writeOrganizationSubscription(admin, organizationId, next);
   const what = reason === "chargeback" ? "contestado no cartão" : "estornado";
@@ -788,6 +813,8 @@ export interface PlanDailyResult {
   reverted: number;
   closed: number;
   emails: number;
+  /** Notas fiscais que falharam e foram pedidas de novo. */
+  invoicesRetried: number;
   failures: number;
   /** Codigos do registro de erros das falhas. */
   errorReferences: string[];
@@ -803,7 +830,7 @@ export async function runPlanDailyTasks(
   appUrl: string,
   options: { organizationIds?: string[] } = {},
 ): Promise<PlanDailyResult> {
-  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, failures: 0, errorReferences: [] };
+  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, invoicesRetried: 0, failures: 0, errorReferences: [] };
   let query = admin.from("organizations").select("id, subscription, settings, units(address)").not("subscription", "is", null);
   // So alguns espacos (testes): a rotina nao mexe nos outros.
   if (options.organizationIds) query = query.in("id", options.organizationIds);
@@ -832,6 +859,14 @@ export async function runPlanDailyTasks(
         failed: true,
         errorReference: reference,
       });
+    }
+  }
+  // Notas fiscais que falharam ao pedir (rotina de todos os espacos, nao a dos testes).
+  if (!options.organizationIds) {
+    try {
+      result.invoicesRetried = await retryFailedPlanInvoices(admin);
+    } catch (err) {
+      result.errorReferences.push(await reportError("cron.daily.nota-fiscal", err, { source: "cron" }));
     }
   }
   return result;

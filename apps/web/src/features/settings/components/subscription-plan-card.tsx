@@ -20,6 +20,7 @@ import {
   PendingSubscriptionInvoiceCard,
   PlanChangeDialog,
   PlanHistory,
+  PlanInvoices,
   ScheduledPlanChangeNotice,
 } from "@/features/subscription";
 import { useState } from "react";
@@ -222,6 +223,7 @@ export function SubscriptionPlanCard() {
               Só o proprietário da conta pode trocar o plano.
             </p>
           )}
+          {canManage ? <PlanInvoices /> : null}
           {canManage ? <PlanHistory /> : null}
         </CardContent>
       </Card>

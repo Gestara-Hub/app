@@ -9,3 +9,4 @@ export { ScheduledPlanChangeNotice } from "./components/scheduled-plan-change-no
 export { PlanNoticeBanner } from "./components/plan-notice-banner";
 export { PendingSubscriptionInvoiceCard } from "./components/pending-subscription-invoice-card";
 export { PlanHistory } from "./components/plan-history";
+export { PlanInvoices } from "./components/plan-invoices";

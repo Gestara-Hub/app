@@ -3,7 +3,9 @@ import type {
   AsaasWebhookConfig,
   AsaasWebhookResponse,
   AsaasAccountResponse,
+  AsaasCreateInvoiceRequest,
   AsaasCustomerRequest,
+  AsaasInvoiceResponse,
   AsaasCustomerResponse,
   AsaasPaymentRequest,
   AsaasPaymentResponse,
@@ -518,3 +520,22 @@ export async function cancelSubscription(
 }
 
 
+
+/** Nota fiscal (NFS-e) de uma cobranca, pela conta principal (doc technical/24 §7.1). */
+export async function createInvoice(invoice: AsaasCreateInvoiceRequest): Promise<AsaasInvoiceResponse> {
+  return asaasFetch<AsaasInvoiceResponse>("/invoices", { method: "POST", body: invoice });
+}
+
+export async function getInvoice(invoiceId: string): Promise<AsaasInvoiceResponse> {
+  return asaasFetch<AsaasInvoiceResponse>(`/invoices/${encodeURIComponent(invoiceId)}`);
+}
+
+/** Notas de uma cobranca (a nota pode ja existir: pedido anterior que voltou sem resposta). */
+export async function listPaymentInvoices(paymentId: string): Promise<AsaasInvoiceResponse[]> {
+  const res = await asaasFetch<{ data?: AsaasInvoiceResponse[] }>(`/invoices?payment=${encodeURIComponent(paymentId)}`);
+  return res.data ?? [];
+}
+
+export async function cancelInvoice(invoiceId: string): Promise<AsaasInvoiceResponse> {
+  return asaasFetch<AsaasInvoiceResponse>(`/invoices/${encodeURIComponent(invoiceId)}/cancel`, { method: "POST" });
+}

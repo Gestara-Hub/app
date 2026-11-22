@@ -106,3 +106,33 @@ export interface PendingPlanChange {
   requestedBy?: { userId: string; name: string };
   createdAt: DateTimeISO;
 }
+
+/** Situacao da nota fiscal (NFS-e) do Plano GestaraHub (doc technical/24 §7.1). */
+export type PlatformInvoiceStatus =
+  | "requesting"
+  | "scheduled"
+  | "synchronized"
+  | "authorized"
+  | "processing_cancellation"
+  | "canceled"
+  | "cancellation_denied"
+  | "error";
+
+export type PlatformInvoiceKind = "subscription" | "plan_upgrade" | "platform_fees" | "addon";
+
+/** Nota fiscal do plano, como o espaco e o painel veem. */
+export interface PlatformInvoiceView {
+  id: string;
+  kind: PlatformInvoiceKind;
+  status: PlatformInvoiceStatus;
+  amountCents: number;
+  serviceDescription: string;
+  invoiceNumber?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  /** Motivo da recusa (prefeitura ou parceiro). */
+  statusDescription?: string;
+  effectiveDate?: string;
+  issuedAt?: string;
+  createdAt: string;
+}

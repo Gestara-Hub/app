@@ -204,13 +204,23 @@ export interface AsaasWebhookPayload {
     | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED"
     | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"
     | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED"
-    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED";
+    | "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED"
+    | "INVOICE_CREATED"
+    | "INVOICE_UPDATED"
+    | "INVOICE_SYNCHRONIZED"
+    | "INVOICE_AUTHORIZED"
+    | "INVOICE_PROCESSING_CANCELLATION"
+    | "INVOICE_CANCELED"
+    | "INVOICE_CANCELLATION_DENIED"
+    | "INVOICE_ERROR";
   /** Eventos de cobranca (PAYMENT_*). */
   payment?: AsaasPaymentResponse;
   /** Eventos de assinatura (SUBSCRIPTION_*). */
   subscription?: AsaasSubscriptionResponse;
   /** Eventos de autorizacao do Pix Automatico (PIX_AUTOMATIC_RECURRING_AUTHORIZATION_*). */
   authorization?: AsaasPixAutomaticAuthorization;
+  /** Eventos de nota fiscal (INVOICE_*). */
+  invoice?: Pick<AsaasInvoiceResponse, "id" | "status" | "payment">;
 }
 
 /** Autorizacao de Pix Automatico (oferta na assinatura com Pix, Jornada 4). */
@@ -274,4 +284,62 @@ export interface AsaasWebhookConfig {
 
 export interface AsaasWebhookResponse extends Omit<AsaasWebhookConfig, "authToken"> {
   id: string;
+}
+
+/** Impostos da NFS-e. No Simples Nacional, so o ISS; os demais vao zerados. */
+export interface AsaasInvoiceTaxes {
+  retainIss: boolean;
+  iss: number;
+  pis: number;
+  cofins: number;
+  csll: number;
+  inss: number;
+  ir: number;
+  /** Codigo de Tributacao Nacional (Portal Nacional da NFS-e). */
+  federalServiceTaxCode?: string;
+  nbsCode?: string;
+}
+
+/** Servico da nota: o id do cadastro no Asaas ou o par codigo + nome. */
+export interface AsaasInvoiceService {
+  municipalServiceId?: string;
+  municipalServiceCode?: string;
+  municipalServiceName: string;
+}
+
+/** POST /v3/invoices (nota de uma cobranca). */
+export interface AsaasCreateInvoiceRequest extends AsaasInvoiceService {
+  payment: string;
+  serviceDescription: string;
+  observations: string;
+  value: number;
+  deductions: number;
+  effectiveDate: string;
+  externalReference?: string;
+  taxes: AsaasInvoiceTaxes;
+}
+
+export type AsaasInvoiceStatus =
+  | "SCHEDULED"
+  | "SYNCHRONIZED"
+  | "AUTHORIZED"
+  | "PROCESSING_CANCELLATION"
+  | "CANCELED"
+  | "CANCELLATION_DENIED"
+  | "ERROR";
+
+export interface AsaasInvoiceResponse {
+  id: string; // inv_...
+  status: AsaasInvoiceStatus;
+  customer?: string;
+  payment?: string | null;
+  value: number;
+  effectiveDate?: string;
+  serviceDescription?: string;
+  number?: string | null;
+  validationCode?: string | null;
+  pdfUrl?: string | null;
+  xmlUrl?: string | null;
+  statusDescription?: string | null;
+  externalReference?: string | null;
 }

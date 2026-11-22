@@ -14,6 +14,15 @@ export function usePlanHistory(enabled = true) {
   });
 }
 
+/** Notas fiscais do plano (doc technical/24 §7.1). */
+export function usePlatformInvoices(enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.subscription.detail, "invoices"],
+    queryFn: () => subscriptionService.listInvoices(),
+    enabled,
+  });
+}
+
 /** Conta da troca de plano (doc product/13 §6), para a confirmacao. */
 export function usePlanChangePreview(target: PlanTarget | null) {
   return useQuery({

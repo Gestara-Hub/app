@@ -77,7 +77,7 @@ Atendente continua vendo as Mensalidades (`billing:view`), como hoje. Cobrar um 
 
 ## 7. Nota fiscal (decisão de 02/11/2026; especificação executável de 16/11/2026)
 
-Três dinheiros passam pelo Asaas e cada um tem uma resposta própria. Nada disto está implementado ainda (ver [`pendencias.md`](../pendencias.md), "Decidido, falta implementar").
+Três dinheiros passam pelo Asaas e cada um tem uma resposta própria. A Fase 1 foi feita em 22/11/2026 (ver §7.1, "Como ficou"); a Fase 2 e os addons seguem em [`pendencias.md`](../pendencias.md).
 
 | Dinheiro | Quem emite para quem | Como | Etapa |
 | --- | --- | --- | --- |
@@ -93,7 +93,45 @@ Três dinheiros passam pelo Asaas e cada um tem uma resposta própria. Nada dist
 
 Escopo fechado para a primeira implementação de NFS-e: **cobrir apenas a contratação e renovação do Plano GestaraHub (mensal/anual) e a diferença proporcional paga no upgrade imediato**. Addons avulsos (ex.: pacotes extras de WhatsApp ou pacotes de X certificados sem assinar plano) e a nota mensal consolidada das taxas de split ficam fora desta fase.
 
-#### A. Pré-requisitos de ambiente e contabilidade (antes do deploy em produção)
+#### Como ficou (22/11/2026)
+
+**Respostas da contabilidade (22/11/2026):**
+- Emissão pelo **Portal Nacional da NFS-e**, item **01.03** da LC 116 (código de tributação nacional 010301 no Asaas).
+- **Simples Nacional, Anexo V com Fator R.** Só o **ISS, 2,01%**, sem retenção; PIS, COFINS, CSLL, IR e INSS não são destacados (vão 0).
+- Retenção de ISS só se o cliente empresa pedir, pelo regime dele: caso raro, tratado à mão no painel do Asaas.
+- Inscrição municipal habilitada (o CNAE está no CNPJ).
+- Descrição livre: "Assinatura do sistema GestaraHub, plano Profissional mensal, período 22/11/2026 a 21/12/2026."
+- Troca de plano: nota só com a diferença, mesmo código.
+- Estorno em até 7 dias: basta cancelar a nota. Se a nota for de um mês e o cancelamento do outro, **avisar a contabilidade** (o imposto pode estar fechado e pedir retificação).
+- NBS e reforma tributária (perguntas 10 e 11): sem resposta; ficam vazios (opcionais no Asaas).
+
+**Mudança em relação ao plano abaixo:** a nota não usa o `invoiceSettings` da assinatura. Cada pagamento confirmado pede a própria nota (`POST /v3/invoices`), porque assim cada nota leva o **período pago** na descrição, e há um caminho só para renovação e upgrade.
+
+**Código:**
+- `lib/asaas/nfse.ts`, `getAsaasNfseConfig()`: lê `ASAAS_NFSE_*`; sem ISS ou sem serviço, a emissão fica desligada.
+- `services/server/subscriptionInvoices.ts`:
+  - `ensurePlanInvoice` reserva a linha antes de chamar o Asaas (índice único por cobrança: polling e webhook juntos fazem uma nota só) e reaproveita a nota que já exista no Asaas para a cobrança.
+  - `queuePlanInvoice` roda depois da resposta; a nota nunca segura nem derruba o pagamento.
+  - Chamada em `confirmSubscriptionPayment` (assinatura), `recordSubscriptionPaymentPaid` (renovação, inclusive pela conferência diária) e `applyUpgrade` (diferença).
+  - `retryFailedPlanInvoices`: a rotina diária pede de novo, até 5 vezes, o que falhou ao criar.
+  - `syncPlanInvoiceFromWebhook`: aviso `INVOICE_*` reconsultado com `getInvoice`; emitida vai para a Auditoria, recusada para o registro de erros.
+  - `cancelPlanInvoiceOfPayment`: chamada no estorno do plano; nota de outro mês manda e-mail para `ASAAS_NFSE_NOTIFY_EMAIL` (ou `ERROR_DIGEST_EMAIL`) avisar a contabilidade.
+- Tabela `platform_invoices` (migração 108); `asaas_invoice_id` fica vazio enquanto o pedido não volta.
+- Tela: "Notas fiscais" em Configurações → Plano (com PDF e XML), só para quem gerencia o plano e só quando há nota. Recusa aparece como "Em análise". No painel admin, a aba Plano do espaço lista as notas com o motivo da recusa.
+- Teste: `services/subscription/__tests__/planInvoices.db.test.ts`.
+
+**Para ligar em produção:**
+1. Painel do Asaas da conta principal: concluir a configuração fiscal e emitir uma nota de teste à mão.
+2. Vercel (`apps/web`): `ASAAS_NFSE_SERVICE_CODE=010301` e `ASAAS_NFSE_FEDERAL_CODE=010301` (o Asaas usa o código sem pontos), `ASAAS_NFSE_SERVICE_NAME=Assinatura do sistema GestaraHub` (a descrição do serviço cadastrado no Asaas), `ASAAS_NFSE_ISS=2.01`, `ASAAS_NFSE_RETAIN_ISS=false` e `ASAAS_NFSE_NOTIFY_EMAIL`. Outra opção ao código + nome é o `ASAAS_NFSE_SERVICE_ID` do serviço cadastrado.
+3. Webhook da conta principal: marcar os eventos de nota fiscal (`INVOICE_*`).
+4. `supabase db push` (migração 108).
+
+**Falta:**
+- O endereço na troca de plano (item B.4).
+- Completar no Asaas o endereço dos assinantes atuais: sem endereço, a nota volta recusada e aparece no painel.
+- Botão de "reemitir" no painel (a rotina diária já pede de novo).
+
+ (antes do deploy em produção)
 1. **Conta principal PJ no Asaas:** habilitar certificado digital A1 / emissão de NFS-e na Prefeitura ou Portal Nacional (`GET /v3/fiscalInfo/municipalOptions`, `POST /v3/fiscalInfo`).
 2. **Parâmetros fiscais com o contador → variáveis de ambiente na Vercel (`apps/web`):**
    - `ASAAS_NFSE_SERVICE_ID` (`municipalServiceId` via `GET /v3/fiscalInfo/services`) **ou** o par `ASAAS_NFSE_SERVICE_CODE` + `ASAAS_NFSE_SERVICE_NAME` (nunca mandar os dois juntos; municípios sem listagem ou no Portal Nacional usam código + nome).

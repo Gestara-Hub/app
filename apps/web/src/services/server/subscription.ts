@@ -7,6 +7,7 @@ import { getPayment, getSubscription } from "@/lib/asaas";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { decodeSubscriptionReference } from "@/lib/subscription";
 import { notifyPlanPaid } from "./planEmails";
+import { queuePlanInvoice, subscriptionInvoiceDescription } from "./subscriptionInvoices";
 import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
 
 /**
@@ -63,7 +64,15 @@ export async function confirmSubscriptionPayment(
 
   const current = await readOrganizationSubscription(admin, organizationId);
   // O polling repete a conferencia: o plano ja ativo por esta assinatura fica como esta.
+  const invoice = {
+    organizationId,
+    payment,
+    kind: "subscription" as const,
+    serviceDescription: subscriptionInvoiceDescription(reference, payment.dueDate),
+  };
   if (current?.asaasSubscriptionId === asaasSubscription.id && current.tier === reference.tier && current.status === "active") {
+    // Nota fiscal: idempotente, pedida uma vez por pagamento.
+    await queuePlanInvoice(admin, invoice);
     return { status: payment.status, isPaid: true, subscription: current };
   }
   const subscription: Subscription = {
@@ -82,6 +91,7 @@ export async function confirmSubscriptionPayment(
   await writeOrganizationSubscription(admin, organizationId, subscription);
   await recordActivation(admin, organizationId, author, current, subscription, payment.id);
   await notifyPlanPaid(admin, organizationId, "activated", subscription);
+  await queuePlanInvoice(admin, invoice);
   return { status: payment.status, isPaid: true, subscription };
 }
 

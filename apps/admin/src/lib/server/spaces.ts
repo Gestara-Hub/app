@@ -267,6 +267,39 @@ export async function listPlanEvents(organizationId: string, limit = 50): Promis
   }));
 }
 
+export interface PlatformInvoiceRow {
+  id: string;
+  kind: string;
+  status: string;
+  amountCents: number;
+  serviceDescription: string;
+  invoiceNumber: string | null;
+  statusDescription: string | null;
+  pdfUrl: string | null;
+  attempts: number;
+  createdAt: Date;
+}
+
+/** Notas fiscais do plano do espaco (doc technical/24 §7.1). */
+export async function listPlatformInvoices(organizationId: string, limit = 30): Promise<PlatformInvoiceRow[]> {
+  const rows = await sql()<
+    { id: string; kind: string; status: string; amount_cents: number; service_description: string; invoice_number: string | null; status_description: string | null; pdf_url: string | null; attempts: number; created_at: Date }[]
+  >`select id, kind, status, amount_cents, service_description, invoice_number, status_description, pdf_url, attempts, created_at
+      from public.platform_invoices where organization_id = ${organizationId} order by created_at desc limit ${limit}`;
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    status: r.status,
+    amountCents: r.amount_cents,
+    serviceDescription: r.service_description,
+    invoiceNumber: r.invoice_number,
+    statusDescription: r.status_description,
+    pdfUrl: r.pdf_url,
+    attempts: r.attempts,
+    createdAt: r.created_at,
+  }));
+}
+
 export interface SpaceNote {
   id: string;
   adminName: string | null;

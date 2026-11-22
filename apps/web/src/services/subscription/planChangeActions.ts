@@ -1,7 +1,7 @@
 "use server";
 
 import { SCALE_PLAN_ON_SALE } from "@/config/subscription";
-import type { Subscription, SubscriptionInterval, SubscriptionTier } from "@gestarahub/contracts";
+import type { PlatformInvoiceView, Subscription, SubscriptionInterval, SubscriptionTier } from "@gestarahub/contracts";
 import { validationError } from "@gestarahub/core/api-error";
 import { dateInSpace } from "@gestarahub/core/date";
 import { notAfterAsaasToday, receiveInCash } from "@/lib/asaas";
@@ -11,6 +11,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runAction, type ActionResult } from "../server/action";
 import { readOrganizationSubscription } from "../server/subscription";
 import { listSubscriptionEvents, type SubscriptionEventView } from "../server/subscriptionEvents";
+import { listPlatformInvoices } from "../server/subscriptionInvoices";
 import {
   cancelScheduledPlanChange,
   confirmPlanChangePayment,
@@ -112,4 +113,12 @@ export async function listPlanHistoryAction(): Promise<ActionResult<Subscription
     const ctx = await manager();
     return listSubscriptionEvents(createSupabaseAdminClient(), ctx.organizationId);
   }, "listPlanHistoryAction");
+}
+
+/** Notas fiscais do plano (doc technical/24 §7.1), mais recente primeiro. So quem gerencia o plano. */
+export async function listPlatformInvoicesAction(): Promise<ActionResult<PlatformInvoiceView[]>> {
+  return runAction(async () => {
+    const ctx = await manager();
+    return listPlatformInvoices(createSupabaseAdminClient(), ctx.organizationId);
+  }, "listPlatformInvoicesAction");
 }
