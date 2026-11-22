@@ -41,6 +41,30 @@ describe("modelos mestres do WhatsApp", () => {
     expect(masterParams(before, { empresa: "Dojo", valor: "", vencimento: "21/11/2026" })).toBeNull();
   });
 
+  it("biblioteca: variável de texto acima de 30 caracteres usa a forma curta que cabe", () => {
+    const overdue = MASTER_TEMPLATES.billing_after_due!;
+    // Caso de produção (21/11/2026): "Mensalidade na Meta Demo FightClub" tem 34 e a Meta recusou com #100.
+    expect(
+      masterParams(overdue, { aluno: "John Smith", empresa: "Meta Demo FightClub", valor: "R$ 65,00", vencimento: "18/11/2026" }),
+    ).toEqual(["John Smith", "Mensalidade", "R$ 65,00", "18/11/2026"]);
+    // Nome longo: primeiro e último nome; ainda longo, só o primeiro.
+    const values = { empresa: "Dojo", valor: "R$ 1,00", vencimento: "01/12/2026" };
+    expect(masterParams(overdue, { ...values, aluno: "Maria Eduarda Albuquerque de Souza Lima" })?.[0]).toBe("Maria Lima");
+    expect(masterParams(overdue, { ...values, aluno: "Maria Eduarda Albuquerquewanderleyvasconcellos" })?.[0]).toBe("Maria");
+    // Cobrança avulsa: referência sozinha e, no fim, "Cobrança".
+    const charge = MASTER_TEMPLATES.charge_reminder!;
+    expect(masterParams(charge, { ...values, empresa: "Academia Central", referencia: "Pacote 10 aulas" })?.[0]).toBe("Pacote 10 aulas");
+    expect(
+      masterParams(charge, { ...values, empresa: "Academia", referencia: "Pacote de 20 aulas particulares de violão" })?.[0],
+    ).toBe("Cobrança");
+    // Até 30 fica como está; texto próprio não tem limite.
+    expect(masterParams(overdue, { ...values, aluno: "Ana", empresa: "Dojo Forte" })?.[1]).toBe("Mensalidade na Dojo Forte");
+    const welcome = MASTER_TEMPLATES.welcome_student!;
+    expect(masterParams(welcome, { empresa: "Academia de Artes Marciais Central do Norte", aluno: "Ana" })?.[0]).toBe(
+      "Academia de Artes Marciais Central do Norte",
+    );
+  });
+
   it("texto do espaço: o da Meta com as variáveis e, na cobrança, a linha do link (sai sem link)", () => {
     const content = masterContent(MASTER_TEMPLATES.billing_after_due!);
     expect(content.startsWith("Olá, {aluno}, você tem um pagamento atrasado:")).toBe(true);
