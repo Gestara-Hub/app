@@ -4,6 +4,7 @@ import { decodePlanChangeReference } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   recordPlanChangePaymentPaid,
+  recordPlanPaymentRefunded,
   recordPlanPixAutomatic,
   recordSubscriptionPaymentOpen,
   recordSubscriptionPaymentPaid,
@@ -208,6 +209,15 @@ function disputeStatusOf(event: string): OnlinePaymentDisputeStatus | null {
 async function handlePlanPayment(event: AsaasWebhookPayload["event"], payment: AsaasPaymentResponse): Promise<boolean | null> {
   const admin = createSupabaseAdminClient();
   const paid = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+  // Estorno (total ou parcial) ou contestacao no cartao de um pagamento do
+  // plano: volta ao Gratis na hora (19/11/2026).
+  const refunded =
+    event === "PAYMENT_REFUNDED" || event === "PAYMENT_PARTIALLY_REFUNDED" || event === "PAYMENT_CHARGEBACK_REQUESTED";
+  if (refunded && (payment.subscription || decodePlanChangeReference(payment.externalReference))) {
+    const result = await recordPlanPaymentRefunded(admin, payment, event === "PAYMENT_CHARGEBACK_REQUESTED" ? "chargeback" : "refund");
+    // null: nao e do plano (cobranca de aluno), segue o fluxo da subconta.
+    if (result !== null) return result;
+  }
   if (decodePlanChangeReference(payment.externalReference)) {
     return paid ? recordPlanChangePaymentPaid(admin, payment) : false;
   }

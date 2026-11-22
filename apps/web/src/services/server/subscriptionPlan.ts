@@ -34,7 +34,7 @@ import {
   type AsaasPixAutomaticAuthorization,
   type AsaasSubscriptionResponse,
 } from "@/lib/asaas";
-import { notifyPlanManagers, notifyPlanPaid } from "./planEmails";
+import { notifyPlanManagers, notifyPlanPaid, planEmailAppUrl } from "./planEmails";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";
@@ -682,6 +682,54 @@ async function reconcilePlanPixAutomatic(admin: SupabaseClient, organizationId: 
   } catch (err) {
     logWarn("[subscriptionPlan] Pix Automático do plano não conferido:", err);
   }
+}
+
+/**
+ * Pagamento do plano estornado (total ou parcial) ou contestado no cartao
+ * (19/11/2026): o espaco volta ao Gratis na hora e a assinatura sai do Asaas.
+ * Estorno e decisao do GestaraHub (regra: integral ate 7 dias do pagamento,
+ * depois nenhum; doc product/13 §6). Devolve se mudou algo, ou null quando
+ * o pagamento nao e do plano (cobranca de aluno numa subconta segue o fluxo dela).
+ */
+export async function recordPlanPaymentRefunded(
+  admin: SupabaseClient,
+  payment: Pick<AsaasPaymentResponse, "id" | "subscription" | "externalReference">,
+  reason: "refund" | "chargeback",
+): Promise<boolean | null> {
+  const change = decodePlanChangeReference(payment.externalReference);
+  let organizationId = change?.organizationId;
+  if (!organizationId && payment.subscription) {
+    try {
+      organizationId = await organizationOfAsaasSubscription(admin, await getSubscription(payment.subscription));
+    } catch (error) {
+      // Assinatura ja removida no Asaas: procura pelo id guardado no espaco.
+      if (!(error instanceof AsaasApiError && error.status === 404)) throw error;
+      organizationId = await organizationOfAsaasSubscription(admin, { id: payment.subscription, externalReference: undefined });
+    }
+  }
+  if (!organizationId) return null;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.tier === "free") return false;
+  if (!change && subscription.asaasSubscriptionId !== payment.subscription) return false;
+
+  if (onAsaas(subscription)) await cancelOnAsaas(subscription.asaasSubscriptionId);
+  const next: Subscription = { tier: "free", changedAt: new Date().toISOString() };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  const what = reason === "chargeback" ? "contestado no cartão" : "estornado";
+  await recordSubscriptionEvent(admin, organizationId, systemAuthor("webhook.asaas"), {
+    kind: "canceled",
+    before: subscription,
+    after: next,
+    paymentId: payment.id,
+    predicate: `avisou que o pagamento do Plano ${planName(subscription)} foi ${what}: o espaço voltou ao Grátis`,
+  });
+  await notifyPlanManagers(admin, organizationId, {
+    title: "Seu plano voltou ao Grátis",
+    text: `O pagamento do Plano ${planName(subscription)} foi ${what}. Os dados continuam guardados; assine de novo quando quiser.`,
+    action: "Ver os planos",
+    actionUrl: `${planEmailAppUrl()}/plans`,
+  }).catch((err) => logWarn("[subscriptionPlan] Aviso do estorno não enviado:", err));
+  return true;
 }
 
 /** Assinatura encerrada direto no Asaas: o espaco volta ao Gratis. */
