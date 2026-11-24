@@ -115,3 +115,17 @@ Conferência do texto contra o que o sistema faz depois de 02/11. Versão `v1.2-
 - **Testes:** `whatsapp-consent.test.ts` (carimbo e palavras), `communication.test.ts` (parabéns e envio pela tela), `whatsappOptOut.db.test.ts` (o "SAIR" no banco, responsável, outro espaço, número conectado).
 
 **Falta:** voltar o "responda SAIR" à Privacidade (R2), na próxima versão dos textos, junto com as outras mudanças (regra de 10/11/2026: textos jurídicos mudam em lote). Na lista de lembretes e no envio em sequência, o aluno sem autorização ainda aparece e só recusa ao enviar; vale um selo antes, se incomodar no uso.
+
+## 10. Versão 1.3 (24/11/2026): revisão do app na Meta
+
+A revisão do app na Meta (permissões `whatsapp_business_management` e `whatsapp_business_messaging`, enviada em 18/11/2026) pediu os links dos Termos e da Privacidade. Versão `v1.3-2026-11` (todo usuário aceita de novo ao entrar), data em `LEGAL_UPDATED_AT`. Entraram também os dois itens jurídicos que esperavam a próxima versão.
+
+| Onde | O que entrou |
+| --- | --- |
+| Privacidade §6 (nova) "Dados Recebidos da Meta (WhatsApp)" | O que o app recebe ao conectar pelo cadastro guiado: identificadores da conta e do número, número e nome exibido, token guardado criptografado (Vault), situação das mensagens, dos modelos e da conta. Respostas lidas só para o "SAIR", sem guardar o conteúdo (`whatsappWebhook.ts`). Uso só para as mensagens do espaço, sem venda, publicidade ou perfil. Desconectar apaga o token e cancela os avisos (`whatsappCredentials.disconnect`). As seções seguintes passaram a 7 a 13. |
+| Privacidade §11 (exclusão, âncora `#exclusao`) | Item "WhatsApp conectado pela Meta": desconectar em Comunicação → Conexão, remover o app nas integrações da Meta, ou e-mail com o assunto "Exclusão de dados da Meta". |
+| Privacidade, "Summary in English" | Resumo em inglês dos dados da Meta e da exclusão, para o revisor. |
+| Termos §5 | WhatsApp oficial: conta do próprio espaço, aceite dos termos do WhatsApp Business, Política de Mensagens do WhatsApp Business, suspensão se descumprir. Custo: a Meta cobra na conta do espaço; o GestaraHub não cobra nem revende mensagens; sem pagamento na Meta o automático não sai (`technical/07` §1.5). |
+| Termos §3 | Estorno integral até 7 dias do pagamento, sem estorno depois; estorno ou contestação volta o espaço ao Gratuito na hora (`product/13` §6, decisão de 21/11/2026). |
+
+**Falta (você, depois do deploy):** no painel do app da Meta, em Configurações → Básico, conferir as URLs `https://gestarahub.com.br/privacy` e `/terms` e preencher "Exclusão de dados do usuário" com a URL de instruções `https://gestarahub.com.br/privacy#exclusao`. Se a Meta pediu os links por mensagem na revisão, responder com os mesmos endereços.

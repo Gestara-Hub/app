@@ -19,7 +19,14 @@ function LegalChangelog() {
     <LegalSection title="Histórico de versões">
       <ul>
         <li>
-          <strong>v1.2 ({LEGAL_UPDATED_AT}):</strong> dados de saúde e documentos
+          <strong>v1.3 ({LEGAL_UPDATED_AT}):</strong> dados recebidos da Meta
+          ao conectar o WhatsApp e como apagá-los, resumo da Privacidade em
+          inglês, regras do WhatsApp oficial e custo das mensagens na Meta,
+          estorno do plano até 7 dias do pagamento e volta ao Gratuito em caso de
+          estorno ou contestação.
+        </li>
+        <li>
+          <strong>v1.2 (10/11/2026):</strong> dados de saúde e documentos
           dos alunos, testes e medidas, inscrições em eventos e verificação pública
           de certificados, ferramenta da Meta para conectar o
           WhatsApp, cobrança da assinatura do GestaraHub, prazos de guarda dos
@@ -114,9 +121,10 @@ export function TermsOfUse() {
           <li>
             <strong>Direito de Arrependimento:</strong> Nos termos do artigo 49
             do Código de Defesa do Consumidor, Você pode desistir da contratação
-            de um plano pago em até 7 (sete) dias corridos a partir do primeiro
+            de um plano pago em até 7 (sete) dias corridos a partir do
             pagamento, com devolução integral do valor pago, bastando solicitar
-            pelo canal de atendimento ou pela própria plataforma.
+            pelo canal de atendimento ou pela própria plataforma. Depois desse
+            prazo não há estorno.
           </li>
           <li>
             <strong>Cancelamento depois dos 7 dias:</strong> O plano mensal pode
@@ -124,6 +132,11 @@ export function TermsOfUse() {
             permanecem disponíveis até o fim do período já pago, sem devolução
             proporcional. O plano anual permanece ativo até o fim do ano pago e
             não é devolvido proporcionalmente; ao fim do período, não é renovado.
+          </li>
+          <li>
+            <strong>Estorno ou Contestação:</strong> Se o pagamento do plano for
+            estornado ou contestado no cartão, o espaço volta ao plano Gratuito
+            na hora, sem perder os dados cadastrados.
           </li>
           <li>
             <strong>Atualizações de Recursos:</strong> A GestaraHub poderá
@@ -237,6 +250,22 @@ export function TermsOfUse() {
           alunos e responsáveis pelo WhatsApp depende de autorização prévia deles
           ao Contratante, que responde pela coleta e pela guarda dessa autorização
           e por interromper o envio quando o destinatário pedir.
+        </p>
+        <p>
+          <strong>WhatsApp Oficial (Meta):</strong> O envio automático usa a
+          conta do WhatsApp Business do próprio espaço, conectada pela ferramenta
+          de cadastro guiado da Meta. Ao conectar, o Contratante aceita os termos
+          do WhatsApp Business da Meta e se obriga a seguir a Política de
+          Mensagens do WhatsApp Business. A GestaraHub pode suspender o envio
+          automático se essas regras forem descumpridas ou se a Meta pedir.
+        </p>
+        <p>
+          <strong>Custo das Mensagens:</strong> As mensagens automáticas são
+          cobradas pela Meta diretamente na conta do WhatsApp do espaço, na forma
+          de pagamento cadastrada nela. A GestaraHub não cobra nem revende
+          mensagens; sem forma de pagamento ativa na Meta, o envio automático não
+          sai. Disponibilidade, bloqueios e limites de envio do WhatsApp são
+          definidos pela Meta, sem garantia da GestaraHub.
         </p>
       </LegalSection>
 
@@ -515,7 +544,7 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Análise de uso:</strong> PostHog, somente quando autorizado
-            no aviso de cookies (seção 6).
+            no aviso de cookies (seção 7).
           </li>
           <li>
             <strong>Determinação Judicial ou Fiscal:</strong> Em caso de ordem
@@ -532,7 +561,45 @@ export function PrivacyPolicy() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Análise de Uso e Telemetria">
+      <LegalSection title="6. Dados Recebidos da Meta (WhatsApp)">
+        <p>
+          Quando o gestor conecta o número de WhatsApp do espaço pela ferramenta
+          de cadastro guiado da Meta, recebemos da Meta somente o necessário
+          para enviar as mensagens desse espaço:
+        </p>
+        <ul>
+          <li>
+            <strong>Dados da conta:</strong> identificadores da conta do WhatsApp
+            Business e do número, o número e o nome exibido, a situação dos
+            modelos de mensagem e a situação da conta (qualidade e limite de
+            envio).
+          </li>
+          <li>
+            <strong>Chave de acesso:</strong> o token que a Meta entrega para o
+            envio em nome do espaço, guardado criptografado e usado apenas pelo
+            servidor.
+          </li>
+          <li>
+            <strong>Situação das mensagens:</strong> se cada mensagem enviada foi
+            entregue, lida ou falhou, para o histórico do espaço.
+          </li>
+          <li>
+            <strong>Respostas recebidas:</strong> lidas apenas para reconhecer o
+            pedido de parar os envios (SAIR, PARAR ou CANCELAR). O conteúdo das
+            conversas não é guardado.
+          </li>
+        </ul>
+        <p>
+          Esses dados servem só para enviar e acompanhar as mensagens do próprio
+          espaço. Não os vendemos, não os usamos em publicidade nem em perfis e
+          não os compartilhamos com terceiros. Ao desconectar o WhatsApp, apagamos
+          a chave de acesso e cancelamos o recebimento de avisos da Meta; o
+          histórico de envios segue os prazos da seção 12. Para apagar esses
+          dados, veja a seção 11.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="7. Análise de Uso e Telemetria">
         <p>
           Quando autorizado pelo usuário no banner de cookies, utilizamos a
           plataforma PostHog para aferir métricas de desempenho e entender como as
@@ -547,7 +614,7 @@ export function PrivacyPolicy() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Uso de Cookies">
+      <LegalSection title="8. Uso de Cookies">
         <p>A plataforma utiliza as seguintes categorias de cookies:</p>
         <ul>
           <li>
@@ -583,7 +650,7 @@ export function PrivacyPolicy() {
         ) : null}
       </LegalSection>
 
-      <LegalSection title="8. Segurança da Informação e Incidentes">
+      <LegalSection title="9. Segurança da Informação e Incidentes">
         <p>
           Adotamos medidas técnicas, administrativas e organizacionais para
           proteger seus dados contra acessos não autorizados, perda, destruição
@@ -606,7 +673,7 @@ export function PrivacyPolicy() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Direitos dos Titulares de Dados (Artigo 18 da LGPD)">
+      <LegalSection title="10. Direitos dos Titulares de Dados (Artigo 18 da LGPD)">
         <p>
           Na condição de titular de dados pessoais, Você ou seus alunos podem a
           qualquer momento solicitar:
@@ -631,7 +698,7 @@ export function PrivacyPolicy() {
       </LegalSection>
 
       <section id="exclusao" className="space-y-3 scroll-mt-24">
-        <h2 className="text-lg font-bold text-foreground">10. Como pedir a exclusão dos seus dados</h2>
+        <h2 className="text-lg font-bold text-foreground">11. Como pedir a exclusão dos seus dados</h2>
         <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5">
           <ul>
             <li>
@@ -639,7 +706,7 @@ export function PrivacyPolicy() {
               {SUPPORT_EMAIL} a partir do e-mail cadastrado, com o assunto
               &ldquo;Exclusão de conta&rdquo;. Confirmamos em até 15 dias úteis e
               excluímos ou anonimizamos os dados, ressalvadas as guardas legais da
-              seção 11. O mesmo vale para quem entrou com Google: a exclusão da
+              seção 12. O mesmo vale para quem entrou com Google: a exclusão da
               conta no GestaraHub apaga os dados recebidos do Google.
             </li>
             <li>
@@ -647,6 +714,14 @@ export function PrivacyPolicy() {
               matriculado (o Controlador), que usa as ferramentas da plataforma
               para inativar ou excluir o cadastro. Se não conseguir contato com o
               espaço, escreva para {SUPPORT_EMAIL} e encaminhamos o pedido.
+            </li>
+            <li>
+              <strong>WhatsApp conectado pela Meta:</strong> o gestor desconecta
+              o número em Comunicação → Conexão, o que apaga na hora a chave de
+              acesso, ou remove o GestaraHub das integrações da conta empresarial
+              na Meta. Para apagar também o restante dos dados recebidos da Meta,
+              escreva para {SUPPORT_EMAIL} com o assunto &ldquo;Exclusão de dados
+              da Meta&rdquo;; confirmamos em até 15 dias úteis.
             </li>
             <li>
               <strong>Mensagens de WhatsApp:</strong> responda{" "}
@@ -660,7 +735,7 @@ export function PrivacyPolicy() {
         </div>
       </section>
 
-      <LegalSection title="11. Prazos de Retenção e Descarte">
+      <LegalSection title="12. Prazos de Retenção e Descarte">
         <p>
           Os dados permanecem armazenados enquanto durar a sua conta na
           plataforma. Após o encerramento da conta, os dados serão excluídos ou
@@ -685,7 +760,7 @@ export function PrivacyPolicy() {
         </ul>
       </LegalSection>
 
-      <LegalSection title="12. Encarregado pelo Tratamento de Dados (DPO)">
+      <LegalSection title="13. Encarregado pelo Tratamento de Dados (DPO)">
         <p>
           A {COMPANY_NAME} é a encarregada pelo tratamento de dados pessoais da
           plataforma. Para exercer seus direitos, tirar dúvidas ou apresentar
@@ -697,6 +772,29 @@ export function PrivacyPolicy() {
             {SUPPORT_EMAIL}
           </a>{" "}
           ou para o endereço {COMPANY_ADDRESS}.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Summary in English">
+        <p lang="en">
+          GestaraHub is a management platform for schools, studios and academies
+          in Brazil. When a space connects its own WhatsApp number through
+          Meta&rsquo;s Embedded Signup, we receive from Meta only the WhatsApp
+          Business Account and phone number IDs, the phone number and display
+          name, an access token (stored encrypted, used only by our server),
+          message delivery and read statuses, template statuses and account
+          health. Incoming replies are read only to detect opt-out words (SAIR,
+          PARAR, CANCELAR) and their content is not stored. This data is used only
+          to send and track that space&rsquo;s own messages; it is never sold,
+          used for advertising or profiling, or shared with third parties.
+        </p>
+        <p lang="en">
+          <strong>Data deletion:</strong> disconnecting WhatsApp in
+          Comunicação → Conexão immediately deletes the access token and cancels
+          Meta webhooks. To delete all data received from Meta, or your account,
+          email {SUPPORT_EMAIL} with the subject &ldquo;Data deletion&rdquo;; we
+          confirm within 15 business days. Students should contact the space
+          they are enrolled in, which controls their data.
         </p>
       </LegalSection>
 
