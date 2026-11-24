@@ -2,6 +2,14 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.24 (2026-11-24)
+
+Desde v2026.11.22.
+
+### Novo
+
+- legal: versão 1.3 dos termos e da privacidade para a revisão da Meta
+
 ## 2026.11.22 (2026-11-22)
 
 Desde v2026.11.19.

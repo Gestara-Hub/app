@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.24",
+    date: "2026-11-24",
+    items: [
+      { text: "Termos de uso e privacidade atualizados, versão 1.3." },
+      { text: "Privacidade explica os dados do WhatsApp e como apagá-los." },
+      { text: "Termos com o custo das mensagens e o estorno do plano." },
+    ],
+  },
+  {
     version: "2026.11.22",
     date: "2026-11-22",
     items: [
