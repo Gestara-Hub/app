@@ -77,6 +77,7 @@ const PREFERENCE_KEYS: ReadonlySet<string> = new Set<keyof UserPreferences>([
   "lastUnitId",
   "defaultCalendarView",
   "themeStyling",
+  "seen",
 ]);
 const MAX_PREFERENCES_BYTES = 64 * 1024;
 

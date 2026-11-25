@@ -82,7 +82,8 @@ export function Onboarding() {
 
   if (user.profile !== "owner" && user.profile !== "manager") return discovery;
 
-  const welcomeOpen = !state.seen && !isComplete;
+  // So depois de a conta responder: em outro aparelho a marca vem de la (sem piscar).
+  const welcomeOpen = state.ready && !state.seen && !isComplete;
   const showChecklist = !isComplete;
 
   return (

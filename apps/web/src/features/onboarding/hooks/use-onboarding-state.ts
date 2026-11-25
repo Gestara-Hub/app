@@ -1,71 +1,54 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useCurrentUser } from "@/features/auth";
+import { hasSeenMark, setSeenMark, useSeenMark, useSeenMarksReady } from "@/lib/seen-marks";
 
-// Estado do onboarding, persistido no navegador por organização (isolado por tenant).
-const STORAGE_PREFIX = "gestarahub:onboarding";
+/**
+ * Estado do onboarding por pessoa e por espaco. Desde 25/11/2026 fica na conta
+ * (`lib/seen-marks`): as boas-vindas nao voltam em outro navegador, no celular
+ * ou no app instalado. Antes era um JSON no navegador por espaco
+ * (`gestarahub:onboarding:<espaco>`), que sobe para a conta na primeira visita.
+ */
+const LEGACY_PREFIX = "gestarahub:onboarding";
 
 export interface OnboardingState {
   /** Modal de boas-vindas ja respondido: nao reabrir sozinho. */
   seen: boolean;
   /** Usuario ocultou o checklist de Primeiros passos. */
   dismissed: boolean;
-  /** Tours por tela ja vistos (id -> true), para nao reabrir no proximo acesso. */
-  tours: Record<string, boolean>;
+  /** A conta ja respondeu: so entao decidir abrir as boas-vindas (senao ela pisca). */
+  ready: boolean;
 }
 
-const DEFAULT_STATE: OnboardingState = {
-  seen: false,
-  dismissed: false,
-  tours: {},
-};
+function keys(orgId: string) {
+  const base = `${LEGACY_PREFIX}:${orgId || "sem-espaco"}`;
+  return { legacy: base, seen: `${base}:welcome-seen`, dismissed: `${base}:dismissed` };
+}
 
-const cache = new Map<string, { raw: string | null; value: OnboardingState }>();
-const listeners = new Set<() => void>();
-
-function read(key: string): OnboardingState {
-  if (typeof window === "undefined") return DEFAULT_STATE;
-  let raw: string | null = null;
+/** JSON antigo do navegador (vale na leitura ate subir para a conta, sem piscar). */
+function readLegacy(key: string): { seen: boolean; dismissed: boolean } {
   try {
-    raw = window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? (JSON.parse(raw) as { seen?: boolean; dismissed?: boolean }) : {};
+    return { seen: Boolean(parsed.seen), dismissed: Boolean(parsed.dismissed) };
   } catch {
-    return DEFAULT_STATE;
-  }
-  const entry = cache.get(key);
-  if (entry && entry.raw === raw) return entry.value;
-
-  if (raw === null) {
-    const next = DEFAULT_STATE;
-    cache.set(key, { raw: null, value: next });
-    return next;
-  }
-  try {
-    const parsed = JSON.parse(raw) as Partial<OnboardingState>;
-    const next: OnboardingState = {
-      seen: Boolean(parsed.seen),
-      dismissed: Boolean(parsed.dismissed),
-      tours:
-        parsed.tours && typeof parsed.tours === "object"
-          ? (parsed.tours as Record<string, boolean>)
-          : {},
-    };
-    cache.set(key, { raw, value: next });
-    return next;
-  } catch {
-    cache.set(key, { raw, value: DEFAULT_STATE });
-    return DEFAULT_STATE;
+    return { seen: false, dismissed: false };
   }
 }
 
-function write(key: string, next: OnboardingState): void {
+/** Marcas do JSON antigo do navegador que ainda nao estao na conta: sobem uma vez. */
+function migrateLegacy(k: ReturnType<typeof keys>) {
   try {
-    window.localStorage.setItem(key, JSON.stringify(next));
+    const raw = window.localStorage.getItem(k.legacy);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { seen?: boolean; dismissed?: boolean };
+    if (parsed.seen && !hasSeenMark(k.seen)) setSeenMark(k.seen);
+    if (parsed.dismissed && !hasSeenMark(k.dismissed)) setSeenMark(k.dismissed);
+    window.localStorage.removeItem(k.legacy);
   } catch {
-    // ignora falha de escrita (modo privado, quota, etc.).
+    // JSON velho invalido ou sem storage: nada a subir.
   }
-  cache.set(key, { raw: JSON.stringify(next), value: next });
-  listeners.forEach((notify) => notify());
 }
 
 export function useOnboardingState() {
@@ -76,32 +59,23 @@ export function useOnboardingState() {
   } catch {
     // fora de SessionProvider
   }
-  const storageKey = orgId ? `${STORAGE_PREFIX}:${orgId}` : STORAGE_PREFIX;
+  const k = useMemo(() => keys(orgId), [orgId]);
+  const ready = useSeenMarksReady();
+  const seen = useSeenMark(k.seen);
+  const dismissed = useSeenMark(k.dismissed);
 
-  const subscribe = useCallback(
-    (onChange: () => void) => {
-      listeners.add(onChange);
-      const onStorage = (event: StorageEvent) => {
-        if (event.key === storageKey) onChange();
-      };
-      window.addEventListener("storage", onStorage);
-      return () => {
-        listeners.delete(onChange);
-        window.removeEventListener("storage", onStorage);
-      };
-    },
-    [storageKey],
-  );
+  useEffect(() => {
+    if (ready) migrateLegacy(k);
+  }, [ready, k]);
 
-  const state = useSyncExternalStore(
-    subscribe,
-    () => read(storageKey),
-    () => DEFAULT_STATE,
-  );
+  const legacy = useMemo(() => (typeof window === "undefined" ? { seen: false, dismissed: false } : readLegacy(k.legacy)), [k]);
+  const state: OnboardingState = { seen: seen || legacy.seen, dismissed: dismissed || legacy.dismissed, ready };
   const update = useCallback(
-    (patch: Partial<OnboardingState>) =>
-      write(storageKey, { ...read(storageKey), ...patch }),
-    [storageKey],
+    (patch: Partial<Pick<OnboardingState, "seen" | "dismissed">>) => {
+      if (patch.seen !== undefined) setSeenMark(k.seen, patch.seen);
+      if (patch.dismissed !== undefined) setSeenMark(k.dismissed, patch.dismissed);
+    },
+    [k],
   );
   return [state, update] as const;
 }
