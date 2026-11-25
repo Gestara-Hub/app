@@ -10,3 +10,4 @@ export { PlanNoticeBanner } from "./components/plan-notice-banner";
 export { PendingSubscriptionInvoiceCard } from "./components/pending-subscription-invoice-card";
 export { PlanHistory } from "./components/plan-history";
 export { PlanInvoices } from "./components/plan-invoices";
+export { requestPlanRefund } from "./plan-refund";
