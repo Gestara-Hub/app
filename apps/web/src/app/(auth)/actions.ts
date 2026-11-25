@@ -15,7 +15,7 @@ import { forgetCurrentSessionVerification } from "@/lib/security/second-factor";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { discardUnstartedOwnerAccount, loadSessionPayload } from "@/services/server/accountSetup";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 
 /**
  * Regrava as claims do cookie sem redirecionar, quando o proprio registro do
@@ -30,24 +30,26 @@ import { logError } from "@/lib/log";
  * prototipo sem uso, sairam pelo mesmo motivo.
  */
 export async function refreshSession(user: UserView): Promise<void> {
-  const current = await getCurrentUser();
-  if (!current) return;
-  let next: UserView | null = null;
-  if (isSupabaseOrganization(current.organizationId)) {
-    const admin = createSupabaseAdminClient();
-    const { data: dbUser } = await admin
-      .from("users")
-      .select("*")
-      .eq("id", current.id)
-      .eq("organization_id", current.organizationId)
-      .maybeSingle();
-    if (!dbUser || dbUser.status !== "active") return;
-    next = (await loadSessionPayload(admin, dbUser)).user;
-  } else if (user.id === current.id && user.organizationId === current.organizationId) {
-    next = user;
-  }
-  if (!next) return;
-  (await cookies()).set(SESSION_COOKIE, encodeSession(next), sessionCookieOptions());
+  return withErrorScope(async () => {
+    const current = await getCurrentUser();
+    if (!current) return;
+    let next: UserView | null = null;
+    if (isSupabaseOrganization(current.organizationId)) {
+      const admin = createSupabaseAdminClient();
+      const { data: dbUser } = await admin
+        .from("users")
+        .select("*")
+        .eq("id", current.id)
+        .eq("organization_id", current.organizationId)
+        .maybeSingle();
+      if (!dbUser || dbUser.status !== "active") return;
+      next = (await loadSessionPayload(admin, dbUser)).user;
+    } else if (user.id === current.id && user.organizationId === current.organizationId) {
+      next = user;
+    }
+    if (!next) return;
+    (await cookies()).set(SESSION_COOKIE, encodeSession(next), sessionCookieOptions());
+  });
 }
 
 /**
@@ -60,15 +62,17 @@ export async function syncSubscriptionTier(
   organizationId: Id,
   tier: SubscriptionTier,
 ): Promise<void> {
-  const session = await getCurrentUser();
-  const cookieStore = await cookies();
-  if (!session || session.organizationId !== organizationId) return;
-  if (!isSubscriptionTier(tier)) return;
-  cookieStore.set(SUBSCRIPTION_COOKIE, encodeTierCookie(organizationId, tier), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
+  return withErrorScope(async () => {
+    const session = await getCurrentUser();
+    const cookieStore = await cookies();
+    if (!session || session.organizationId !== organizationId) return;
+    if (!isSubscriptionTier(tier)) return;
+    cookieStore.set(SUBSCRIPTION_COOKIE, encodeTierCookie(organizationId, tier), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE,
+    });
   });
 }
 
@@ -77,17 +81,19 @@ export async function syncSubscriptionTier(
  * que recusa antes da configuracao inicial e apagada; as demais so saem.
  */
 export async function declineTermsAndSignOut(): Promise<void> {
-  try {
-    const supabase = await createSupabaseServerClient();
-    // Identidade conferida no Supabase Auth, nao no cookie do app.
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      await discardUnstartedOwnerAccount(createSupabaseAdminClient(), data.user.id);
+  return withErrorScope(async () => {
+    try {
+      const supabase = await createSupabaseServerClient();
+      // Identidade conferida no Supabase Auth, nao no cookie do app.
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        await discardUnstartedOwnerAccount(createSupabaseAdminClient(), data.user.id);
+      }
+    } catch (err) {
+      logError("[auth] Erro ao descartar conta recusada:", err);
     }
-  } catch (err) {
-    logError("[auth] Erro ao descartar conta recusada:", err);
-  }
-  await signOut();
+    await signOut();
+  });
 }
 
 /**
@@ -96,15 +102,17 @@ export async function declineTermsAndSignOut(): Promise<void> {
  * dispositivo lembrado continua (doc 17).
  */
 export async function signOut(): Promise<void> {
-  try {
-    const supabase = await createSupabaseServerClient();
-    await forgetCurrentSessionVerification(supabase);
-    await supabase.auth.signOut();
-  } catch {
-    // Segue limpando os cookies locais
-  }
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
-  cookieStore.delete(SUBSCRIPTION_COOKIE);
-  redirect("/login");
+  return withErrorScope(async () => {
+    try {
+      const supabase = await createSupabaseServerClient();
+      await forgetCurrentSessionVerification(supabase);
+      await supabase.auth.signOut();
+    } catch {
+      // Segue limpando os cookies locais
+    }
+    const cookieStore = await cookies();
+    cookieStore.delete(SESSION_COOKIE);
+    cookieStore.delete(SUBSCRIPTION_COOKIE);
+    redirect("/login");
+  });
 }

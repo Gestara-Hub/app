@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { isDemoOrganization } from "@/lib/demo";
 import { sendEmailChangeConfirmEmail, sendEmailChangedNoticeEmail, sendTwoFactorCodeEmail } from "@/lib/email/ses";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { secondFactorState } from "@/lib/security/second-factor";
 import { isGoogleOnlyAccount, maskEmail } from "@/lib/security/two-factor-rules";
@@ -90,11 +90,13 @@ export type AccessEmailStatus =
   | { ok: false; message: string };
 
 export async function getAccessEmailStatusAction(): Promise<AccessEmailStatus> {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  const email = session.user.email ?? "";
-  if (isDemoOrganization(session.current.organizationId)) return { ok: true, email, canChange: false };
-  return { ok: true, email, canChange: true, proof: isGoogleOnlyUser(session.user) ? "code" : "password" };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    const email = session.user.email ?? "";
+    if (isDemoOrganization(session.current.organizationId)) return { ok: true, email, canChange: false };
+    return { ok: true, email, canChange: true, proof: isGoogleOnlyUser(session.user) ? "code" : "password" };
+  });
 }
 
 export type SendAccessEmailCodeResult =
@@ -103,35 +105,37 @@ export type SendAccessEmailCodeResult =
 
 /** Quem entra pelo Google: codigo de 6 numeros no e-mail atual (vale 10 minutos). */
 export async function sendAccessEmailCodeAction(): Promise<SendAccessEmailCodeResult> {
-  const session = await sessionForCurrentUser();
-  if (!session || isDemoOrganization(session.current.organizationId)) return { ok: false, message: SESSION_EXPIRED };
-  const { user, current } = session;
-  if (!isGoogleOnlyUser(user)) return { ok: false, message: "Confirme com a sua senha." };
-  const email = user.email ?? "";
-  try {
-    const admin = createSupabaseAdminClient();
-    const issued = await issueEmailCode(admin, user.id, "email_change");
-    if (!issued.ok) {
-      if (issued.reason === "wait") {
-        return {
-          ok: false,
-          message: `Enviamos um código há pouco. Aguarde ${issued.resendInSeconds} s para pedir outro.`,
-          resendInSeconds: issued.resendInSeconds,
-        };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session || isDemoOrganization(session.current.organizationId)) return { ok: false, message: SESSION_EXPIRED };
+    const { user, current } = session;
+    if (!isGoogleOnlyUser(user)) return { ok: false, message: "Confirme com a sua senha." };
+    const email = user.email ?? "";
+    try {
+      const admin = createSupabaseAdminClient();
+      const issued = await issueEmailCode(admin, user.id, "email_change");
+      if (!issued.ok) {
+        if (issued.reason === "wait") {
+          return {
+            ok: false,
+            message: `Enviamos um código há pouco. Aguarde ${issued.resendInSeconds} s para pedir outro.`,
+            resendInSeconds: issued.resendInSeconds,
+          };
+        }
+        if (issued.reason === "limit") return { ok: false, message: "Muitos envios. Aguarde 15 minutos e tente de novo." };
+        return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
       }
-      if (issued.reason === "limit") return { ok: false, message: "Muitos envios. Aguarde 15 minutos e tente de novo." };
+      const sent = await sendTwoFactorCodeEmail({ toEmail: email, toName: current.name || email, code: issued.code });
+      if (!sent.ok) {
+        await discardEmailCode(admin, user.id, "email_change");
+        return { ok: false, message: sent.error };
+      }
+      return { ok: true, maskedEmail: maskEmail(email), resendInSeconds: issued.resendInSeconds };
+    } catch (err) {
+      logError("[email-change] Erro ao enviar o código:", err);
       return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
     }
-    const sent = await sendTwoFactorCodeEmail({ toEmail: email, toName: current.name || email, code: issued.code });
-    if (!sent.ok) {
-      await discardEmailCode(admin, user.id, "email_change");
-      return { ok: false, message: sent.error };
-    }
-    return { ok: true, maskedEmail: maskEmail(email), resendInSeconds: issued.resendInSeconds };
-  } catch (err) {
-    logError("[email-change] Erro ao enviar o código:", err);
-    return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
-  }
+  });
 }
 
 export type RequestEmailChangeResult =
@@ -144,80 +148,82 @@ export async function requestAccessEmailChangeAction(input: {
   password?: string;
   code?: string;
 }): Promise<RequestEmailChangeResult> {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  const { user, current, supabase } = session;
-  if (isDemoOrganization(current.organizationId)) {
-    return { ok: false, message: "Na demonstração o e-mail de acesso não muda." };
-  }
-  // Com a verificacao ligada, so a sessao que ja passou pelo segundo fator.
-  if ((await secondFactorState(supabase, user)) === "missing") return { ok: false, message: SESSION_EXPIRED };
-  if (!(await checkRateLimit({ key: `email_change:${user.id}`, maxRequests: 5, windowSeconds: 900 }))) {
-    return { ok: false, message: TOO_MANY };
-  }
-
-  const currentEmail = user.email ?? "";
-  // Formato do e-mail antes da senha: "asdasd" respondia "Senha incorreta" (10/11/2026).
-  if (!isValidEmail(normalizeEmail(input.newEmail))) {
-    return { ok: false, message: "Informe um e-mail válido.", field: "newEmail" };
-  }
-  if (isGoogleOnlyUser(user)) {
-    const code = (input.code ?? "").replace(/\s/g, "");
-    if (!/^\d{6}$/.test(code)) return { ok: false, message: "Digite os 6 números do e-mail.", field: "code" };
-    const check = await verifyEmailCode(createSupabaseAdminClient(), user.id, "email_change", code);
-    if (check !== "ok") {
-      const message =
-        check === "locked"
-          ? "Muitas tentativas com este código. Peça um código novo."
-          : check === "expired"
-            ? "Este código venceu. Peça um código novo."
-            : "Código inválido. Confira o e-mail e tente de novo.";
-      return { ok: false, message, field: "code" };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    const { user, current, supabase } = session;
+    if (isDemoOrganization(current.organizationId)) {
+      return { ok: false, message: "Na demonstração o e-mail de acesso não muda." };
     }
-  } else if (!input.password || !(await passwordMatches(currentEmail, input.password))) {
-    return { ok: false, message: "Senha incorreta.", field: "password" };
-  }
+    // Com a verificacao ligada, so a sessao que ja passou pelo segundo fator.
+    if ((await secondFactorState(supabase, user)) === "missing") return { ok: false, message: SESSION_EXPIRED };
+    if (!(await checkRateLimit({ key: `email_change:${user.id}`, maxRequests: 5, windowSeconds: 900 }))) {
+      return { ok: false, message: TOO_MANY };
+    }
 
-  try {
-    const admin = createSupabaseAdminClient();
-    const created = await createEmailChangeToken(admin, {
-      authUserId: user.id,
-      currentEmail,
-      newEmail: input.newEmail,
-    });
-    if (!created.ok) {
-      switch (created.code) {
-        case "invalid":
-          return { ok: false, message: "Informe um e-mail válido.", field: "newEmail" };
-        case "same":
-          return { ok: false, message: "Este já é o seu e-mail de acesso.", field: "newEmail" };
-        case "in_use":
-          return { ok: false, message: "Este e-mail já é usado por outra conta.", field: "newEmail" };
-        default:
-          return { ok: false, message: "Não foi possível pedir a troca. Tente novamente." };
+    const currentEmail = user.email ?? "";
+    // Formato do e-mail antes da senha: "asdasd" respondia "Senha incorreta" (10/11/2026).
+    if (!isValidEmail(normalizeEmail(input.newEmail))) {
+      return { ok: false, message: "Informe um e-mail válido.", field: "newEmail" };
+    }
+    if (isGoogleOnlyUser(user)) {
+      const code = (input.code ?? "").replace(/\s/g, "");
+      if (!/^\d{6}$/.test(code)) return { ok: false, message: "Digite os 6 números do e-mail.", field: "code" };
+      const check = await verifyEmailCode(createSupabaseAdminClient(), user.id, "email_change", code);
+      if (check !== "ok") {
+        const message =
+          check === "locked"
+            ? "Muitas tentativas com este código. Peça um código novo."
+            : check === "expired"
+              ? "Este código venceu. Peça um código novo."
+              : "Código inválido. Confira o e-mail e tente de novo.";
+        return { ok: false, message, field: "code" };
       }
+    } else if (!input.password || !(await passwordMatches(currentEmail, input.password))) {
+      return { ok: false, message: "Senha incorreta.", field: "password" };
     }
-    const confirmUrl = `${await resolveAppBaseUrl()}/confirm-email?token=${created.token}`;
-    const sent = await sendEmailChangeConfirmEmail({
-      toEmail: created.newEmail,
-      toName: current.name,
-      confirmUrl,
-    });
-    if (!sent.ok) {
-      await discardEmailChangeToken(admin, created.token);
-      return { ok: false, message: sent.error };
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const created = await createEmailChangeToken(admin, {
+        authUserId: user.id,
+        currentEmail,
+        newEmail: input.newEmail,
+      });
+      if (!created.ok) {
+        switch (created.code) {
+          case "invalid":
+            return { ok: false, message: "Informe um e-mail válido.", field: "newEmail" };
+          case "same":
+            return { ok: false, message: "Este já é o seu e-mail de acesso.", field: "newEmail" };
+          case "in_use":
+            return { ok: false, message: "Este e-mail já é usado por outra conta.", field: "newEmail" };
+          default:
+            return { ok: false, message: "Não foi possível pedir a troca. Tente novamente." };
+        }
+      }
+      const confirmUrl = `${await resolveAppBaseUrl()}/confirm-email?token=${created.token}`;
+      const sent = await sendEmailChangeConfirmEmail({
+        toEmail: created.newEmail,
+        toName: current.name,
+        confirmUrl,
+      });
+      if (!sent.ok) {
+        await discardEmailChangeToken(admin, created.token);
+        return { ok: false, message: sent.error };
+      }
+      await recordAuditLogInDb({
+        action: "updated",
+        target: { type: "user", id: current.id, label: current.name, profile: current.profile },
+        predicate: "pediu para trocar o e-mail de acesso",
+        security: true,
+      });
+      return { ok: true, newEmail: created.newEmail };
+    } catch (err) {
+      logError("[email-change] Erro ao pedir a troca:", err);
+      return { ok: false, message: "Não foi possível pedir a troca. Tente novamente." };
     }
-    await recordAuditLogInDb({
-      action: "updated",
-      target: { type: "user", id: current.id, label: current.name, profile: current.profile },
-      predicate: "pediu para trocar o e-mail de acesso",
-      security: true,
-    });
-    return { ok: true, newEmail: created.newEmail };
-  } catch (err) {
-    logError("[email-change] Erro ao pedir a troca:", err);
-    return { ok: false, message: "Não foi possível pedir a troca. Tente novamente." };
-  }
+  });
 }
 
 export type ConfirmEmailChangeResult =
@@ -234,34 +240,36 @@ export async function confirmAccessEmailChangeAction(input: {
   /** So para quem entrava pelo Google: a senha nova. */
   password?: string;
 }): Promise<ConfirmEmailChangeResult> {
-  const ip = await getClientIp();
-  if (!(await checkRateLimit({ key: `email_change_confirm:${ip}`, maxRequests: 10, windowSeconds: 600 }))) {
-    return { ok: false, message: TOO_MANY };
-  }
-  const admin = createSupabaseAdminClient();
-  const result = await confirmEmailChange(admin, input.token, new Date(), { password: input.password });
-  if (!result.ok) {
-    switch (result.code) {
-      case "expired":
-      case "invalid":
-        return { ok: false, message: "Este link venceu ou já foi usado. Peça a troca de novo.", expired: true };
-      case "in_use":
-        return { ok: false, message: "Este e-mail passou a ser usado por outra conta. Peça a troca com outro e-mail." };
-      case "needs_password":
-        return { ok: false, message: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
-      default:
-        return { ok: false, message: "Não foi possível trocar o e-mail. Tente novamente." };
+  return withErrorScope(async () => {
+    const ip = await getClientIp();
+    if (!(await checkRateLimit({ key: `email_change_confirm:${ip}`, maxRequests: 10, windowSeconds: 600 }))) {
+      return { ok: false, message: TOO_MANY };
     }
-  }
-  // Aviso ao e-mail antigo, depois da resposta: falha no envio nao desfaz a
-  // troca (fica no registro de erros).
-  await afterResponse("Aviso ao e-mail antigo", async () => {
-    const notice = await sendEmailChangedNoticeEmail({
-      toEmail: result.oldEmail,
-      toName: result.name,
-      maskedNewEmail: maskEmail(result.newEmail),
+    const admin = createSupabaseAdminClient();
+    const result = await confirmEmailChange(admin, input.token, new Date(), { password: input.password });
+    if (!result.ok) {
+      switch (result.code) {
+        case "expired":
+        case "invalid":
+          return { ok: false, message: "Este link venceu ou já foi usado. Peça a troca de novo.", expired: true };
+        case "in_use":
+          return { ok: false, message: "Este e-mail passou a ser usado por outra conta. Peça a troca com outro e-mail." };
+        case "needs_password":
+          return { ok: false, message: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
+        default:
+          return { ok: false, message: "Não foi possível trocar o e-mail. Tente novamente." };
+      }
+    }
+    // Aviso ao e-mail antigo, depois da resposta: falha no envio nao desfaz a
+    // troca (fica no registro de erros).
+    await afterResponse("Aviso ao e-mail antigo", async () => {
+      const notice = await sendEmailChangedNoticeEmail({
+        toEmail: result.oldEmail,
+        toName: result.name,
+        maskedNewEmail: maskEmail(result.newEmail),
+      });
+      if (!notice.ok) logError("[email-change] Aviso ao e-mail antigo não saiu:", notice.error);
     });
-    if (!notice.ok) logError("[email-change] Aviso ao e-mail antigo não saiu:", notice.error);
+    return { ok: true, newEmail: normalizeEmail(result.newEmail) };
   });
-  return { ok: true, newEmail: normalizeEmail(result.newEmail) };
 }

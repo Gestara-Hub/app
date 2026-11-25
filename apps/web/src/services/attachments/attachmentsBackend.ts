@@ -3,7 +3,7 @@
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 import { MAX_UPLOAD_BYTES } from "@/lib/files";
 import { apiError } from "@gestarahub/core/api-error";
 import { requireSameOrganization } from "../server/tenant";
@@ -30,82 +30,86 @@ export async function saveAttachmentInStorage(
   },
   organizationId: string,
 ): Promise<FileAttachment> {
-  // Espaco e perfil da sessao no banco; a linha do anexo e gravada pelo servidor,
-  // porque o banco nao aceita escrita direta do usuario (migracao 78).
-  const ctx = await requireSameOrganization(organizationId, { profiles: [...UPLOADERS] });
-  if (file.size > MAX_UPLOAD_BYTES || file.buffer.length > MAX_UPLOAD_BYTES) {
-    throw apiError("VALIDATION", "Arquivo maior que 4 MB.", { httpStatus: 413 });
-  }
-  const client = ctx.client;
-  const id = crypto.randomUUID();
-  const safeFilename = encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g, "_"));
-  const storagePath = `${ctx.organizationId}/${id}/${safeFilename}`;
-  const uploadedAt = new Date().toISOString();
+  return withErrorScope(async () => {
+    // Espaco e perfil da sessao no banco; a linha do anexo e gravada pelo servidor,
+    // porque o banco nao aceita escrita direta do usuario (migracao 78).
+    const ctx = await requireSameOrganization(organizationId, { profiles: [...UPLOADERS] });
+    if (file.size > MAX_UPLOAD_BYTES || file.buffer.length > MAX_UPLOAD_BYTES) {
+      throw apiError("VALIDATION", "Arquivo maior que 4 MB.", { httpStatus: 413 });
+    }
+    const client = ctx.client;
+    const id = crypto.randomUUID();
+    const safeFilename = encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    const storagePath = `${ctx.organizationId}/${id}/${safeFilename}`;
+    const uploadedAt = new Date().toISOString();
 
-  // 1. Upload to Supabase Storage bucket 'attachments'
-  const { error: uploadError } = await client.storage
-    .from("attachments")
-    .upload(storagePath, file.buffer, {
-      contentType: file.type || "application/octet-stream",
-      upsert: true,
+    // 1. Upload to Supabase Storage bucket 'attachments'
+    const { error: uploadError } = await client.storage
+      .from("attachments")
+      .upload(storagePath, file.buffer, {
+        contentType: file.type || "application/octet-stream",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      logError("[attachmentsBackend] Erro ao fazer upload no Supabase Storage:", uploadError);
+      throw new Error(`Falha no upload do arquivo para o storage: ${uploadError.message}`);
+    }
+
+    // 2. Persist metadata in public.attachments
+    const { error: dbError } = await createSupabaseAdminClient().from("attachments").insert({
+      id,
+      organization_id: ctx.organizationId,
+      name: file.name,
+      content_type: file.type || "application/octet-stream",
+      size_bytes: file.size,
+      storage_path: storagePath,
+      uploaded_at: uploadedAt,
+      // Quem enviou: so ele apaga o anexo antes de salvar o formulario (migracao 86).
+      uploaded_by: ctx.userId,
     });
 
-  if (uploadError) {
-    logError("[attachmentsBackend] Erro ao fazer upload no Supabase Storage:", uploadError);
-    throw new Error(`Falha no upload do arquivo para o storage: ${uploadError.message}`);
-  }
+    if (dbError) {
+      logError("[attachmentsBackend] Erro ao salvar metadados do anexo:", dbError);
+      // Cleanup orphaned storage object
+      await client.storage.from("attachments").remove([storagePath]);
+      throw new Error("Falha ao registrar metadados do anexo no banco de dados.");
+    }
 
-  // 2. Persist metadata in public.attachments
-  const { error: dbError } = await createSupabaseAdminClient().from("attachments").insert({
-    id,
-    organization_id: ctx.organizationId,
-    name: file.name,
-    content_type: file.type || "application/octet-stream",
-    size_bytes: file.size,
-    storage_path: storagePath,
-    uploaded_at: uploadedAt,
-    // Quem enviou: so ele apaga o anexo antes de salvar o formulario (migracao 86).
-    uploaded_by: ctx.userId,
+    return {
+      id,
+      name: file.name,
+      contentType: file.type || "application/octet-stream",
+      sizeBytes: file.size,
+      uploadedAt,
+    };
   });
-
-  if (dbError) {
-    logError("[attachmentsBackend] Erro ao salvar metadados do anexo:", dbError);
-    // Cleanup orphaned storage object
-    await client.storage.from("attachments").remove([storagePath]);
-    throw new Error("Falha ao registrar metadados do anexo no banco de dados.");
-  }
-
-  return {
-    id,
-    name: file.name,
-    contentType: file.type || "application/octet-stream",
-    sizeBytes: file.size,
-    uploadedAt,
-  };
 }
 
 export async function getAttachmentRecord(
   id: Id,
   organizationId?: string,
 ): Promise<AttachmentRecord | null> {
-  const client = await getClientForTenant();
-  let query = client.from("attachments").select("*").eq("id", id);
-  if (organizationId) {
-    query = query.eq("organization_id", organizationId);
-  }
+  return withErrorScope(async () => {
+    const client = await getClientForTenant();
+    let query = client.from("attachments").select("*").eq("id", id);
+    if (organizationId) {
+      query = query.eq("organization_id", organizationId);
+    }
 
-  const { data, error } = await query.maybeSingle();
-  if (error || !data) {
-    return null;
-  }
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) {
+      return null;
+    }
 
-  return {
-    id: String(data.id),
-    organizationId: String(data.organization_id),
-    name: String(data.name),
-    contentType: String(data.content_type),
-    sizeBytes: Number(data.size_bytes),
-    storagePath: String(data.storage_path),
-    uploadedAt: new Date(String(data.uploaded_at)).toISOString(),
-  };
+    return {
+      id: String(data.id),
+      organizationId: String(data.organization_id),
+      name: String(data.name),
+      contentType: String(data.content_type),
+      sizeBytes: Number(data.size_bytes),
+      storagePath: String(data.storage_path),
+      uploadedAt: new Date(String(data.uploaded_at)).toISOString(),
+    };
+  });
 }

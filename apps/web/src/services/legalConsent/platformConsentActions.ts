@@ -14,7 +14,7 @@ import {
   type UserView,
 } from "@gestarahub/contracts";
 import { computeTermsDocumentHash, resolveAppBaseUrl, sendWelcomeOnFirstAcceptance } from "./consentShared";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, withErrorScope } from "@/lib/log";
 
 /**
  * Aceite dos termos da plataforma: registrar e conferir.
@@ -28,124 +28,126 @@ import { logError, logWarn } from "@/lib/log";
 export async function recordLegalConsentAction(
   input: RecordLegalConsentInput,
 ): Promise<LegalConsentResult> {
-  const headerList = await headers();
-  const rawIp =
-    headerList.get("x-forwarded-for") ||
-    headerList.get("x-real-ip") ||
-    "127.0.0.1";
-  const ipAddress = rawIp.split(",")[0].trim();
-  const userAgent = headerList.get("user-agent") || "unknown";
+  return withErrorScope(async () => {
+    const headerList = await headers();
+    const rawIp =
+      headerList.get("x-forwarded-for") ||
+      headerList.get("x-real-ip") ||
+      "127.0.0.1";
+    const ipAddress = rawIp.split(",")[0].trim();
+    const userAgent = headerList.get("user-agent") || "unknown";
 
-  // Quem aceita e sempre o usuario da sessao (cookie assinado pelo servidor).
-  // Antes o navegador mandava `userId` e `organizationId` de qualquer pessoa e
-  // forjava a prova do aceite (auditoria de 30/10/2026).
-  const currentUser = await getCurrentUser();
-  const userId = currentUser?.id;
-  const organizationId = currentUser?.organizationId;
+    // Quem aceita e sempre o usuario da sessao (cookie assinado pelo servidor).
+    // Antes o navegador mandava `userId` e `organizationId` de qualquer pessoa e
+    // forjava a prova do aceite (auditoria de 30/10/2026).
+    const currentUser = await getCurrentUser();
+    const userId = currentUser?.id;
+    const organizationId = currentUser?.organizationId;
 
-  if (!userId || !organizationId) {
-    return {
-      success: false,
-      error:
-        "Usuário ou organização não autenticados para registro de consentimento.",
-    };
-  }
-
-  // Revisao geral de 31/10/2026 (achado S8): o navegador escolhia o tipo, a
-  // versao, o hash e sobrescrevia e-mail, nome e perfil nos metadados. Aqui so
-  // valem os termos da plataforma na versao em vigor; o hash e calculado no
-  // servidor e os dados da prova vem da sessao. Do navegador, so a origem.
-  if (input.consentType !== "platform_terms" && input.consentType !== "privacy_policy") {
-    return { success: false, error: "Tipo de aceite inválido." };
-  }
-  if (input.termsVersion !== CURRENT_PLATFORM_TERMS_VERSION) {
-    return { success: false, error: "Versão dos termos inválida." };
-  }
-  const documentHash = computeTermsDocumentHash(input.termsVersion);
-  const source = typeof input.metadata?.source === "string" ? input.metadata.source.slice(0, 40) : "first_login_modal";
-
-  const enrichedMetadata = {
-    source,
-    email: currentUser?.email,
-    userName: currentUser?.name,
-    userProfile: currentUser?.profile,
-    recordedAtUtc: new Date().toISOString(),
-  };
-
-  const adminClient = createSupabaseAdminClient();
-
-  const { data, error } = await adminClient
-    .from("legal_consents")
-    .insert({
-      organization_id: organizationId,
-      user_id: userId,
-      consent_type: input.consentType,
-      terms_version: input.termsVersion,
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      document_hash: documentHash,
-      metadata: enrichedMetadata,
-    })
-    .select("id, accepted_at")
-    .single();
-
-  if (error || !data) {
-    logError(
-      "[recordLegalConsentAction] Erro ao gravar consentimento:",
-      error,
-    );
-    return {
-      success: false,
-      error: "Erro ao gravar consentimento no banco de dados.",
-    };
-  }
-
-  // Se for o aceite geral da plataforma, atualiza na tabela users para acesso rápido
-  if (input.consentType === "platform_terms") {
-    try {
-      await adminClient
-        .from("users")
-        .update({
-          terms_accepted_at: data.accepted_at,
-          terms_version: input.termsVersion,
-        })
-        .eq("id", userId);
-    } catch (updateErr) {
-      logWarn(
-        "[recordLegalConsentAction] Aviso ao atualizar public.users:",
-        updateErr,
-      );
+    if (!userId || !organizationId) {
+      return {
+        success: false,
+        error:
+          "Usuário ou organização não autenticados para registro de consentimento.",
+      };
     }
 
-    // Atualiza imediatamente as claims da sessão ativa no cookie para refletir no server e client sem logout
-    if (currentUser && currentUser.id === userId) {
+    // Revisao geral de 31/10/2026 (achado S8): o navegador escolhia o tipo, a
+    // versao, o hash e sobrescrevia e-mail, nome e perfil nos metadados. Aqui so
+    // valem os termos da plataforma na versao em vigor; o hash e calculado no
+    // servidor e os dados da prova vem da sessao. Do navegador, so a origem.
+    if (input.consentType !== "platform_terms" && input.consentType !== "privacy_policy") {
+      return { success: false, error: "Tipo de aceite inválido." };
+    }
+    if (input.termsVersion !== CURRENT_PLATFORM_TERMS_VERSION) {
+      return { success: false, error: "Versão dos termos inválida." };
+    }
+    const documentHash = computeTermsDocumentHash(input.termsVersion);
+    const source = typeof input.metadata?.source === "string" ? input.metadata.source.slice(0, 40) : "first_login_modal";
+
+    const enrichedMetadata = {
+      source,
+      email: currentUser?.email,
+      userName: currentUser?.name,
+      userProfile: currentUser?.profile,
+      recordedAtUtc: new Date().toISOString(),
+    };
+
+    const adminClient = createSupabaseAdminClient();
+
+    const { data, error } = await adminClient
+      .from("legal_consents")
+      .insert({
+        organization_id: organizationId,
+        user_id: userId,
+        consent_type: input.consentType,
+        terms_version: input.termsVersion,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        document_hash: documentHash,
+        metadata: enrichedMetadata,
+      })
+      .select("id, accepted_at")
+      .single();
+
+    if (error || !data) {
+      logError(
+        "[recordLegalConsentAction] Erro ao gravar consentimento:",
+        error,
+      );
+      return {
+        success: false,
+        error: "Erro ao gravar consentimento no banco de dados.",
+      };
+    }
+
+    // Se for o aceite geral da plataforma, atualiza na tabela users para acesso rápido
+    if (input.consentType === "platform_terms") {
       try {
-        const updatedUser: UserView = {
-          ...currentUser,
-          termsAcceptedAt: data.accepted_at,
-          termsVersion: input.termsVersion,
-        };
-        const cookieStore = await cookies();
-        cookieStore.set(SESSION_COOKIE, encodeSession(updatedUser), sessionCookieOptions());
-      } catch (cookieErr) {
+        await adminClient
+          .from("users")
+          .update({
+            terms_accepted_at: data.accepted_at,
+            terms_version: input.termsVersion,
+          })
+          .eq("id", userId);
+      } catch (updateErr) {
         logWarn(
-          "[recordLegalConsentAction] Aviso ao atualizar cookie de sessão:",
-          cookieErr,
+          "[recordLegalConsentAction] Aviso ao atualizar public.users:",
+          updateErr,
         );
       }
+
+      // Atualiza imediatamente as claims da sessão ativa no cookie para refletir no server e client sem logout
+      if (currentUser && currentUser.id === userId) {
+        try {
+          const updatedUser: UserView = {
+            ...currentUser,
+            termsAcceptedAt: data.accepted_at,
+            termsVersion: input.termsVersion,
+          };
+          const cookieStore = await cookies();
+          cookieStore.set(SESSION_COOKIE, encodeSession(updatedUser), sessionCookieOptions());
+        } catch (cookieErr) {
+          logWarn(
+            "[recordLegalConsentAction] Aviso ao atualizar cookie de sessão:",
+            cookieErr,
+          );
+        }
+      }
+
+      // Primeiro aceite do dono: boas-vindas depois da resposta (nao atrasa nem
+      // trava a entrada). Versao nova dos termos e convidados nao recebem.
+      const appUrl = await resolveAppBaseUrl();
+      after(() => sendWelcomeOnFirstAcceptance(userId, appUrl));
     }
 
-    // Primeiro aceite do dono: boas-vindas depois da resposta (nao atrasa nem
-    // trava a entrada). Versao nova dos termos e convidados nao recebem.
-    const appUrl = await resolveAppBaseUrl();
-    after(() => sendWelcomeOnFirstAcceptance(userId, appUrl));
-  }
-
-  return {
-    success: true,
-    consentId: data.id,
-    acceptedAt: data.accepted_at,
-  };
+    return {
+      success: true,
+      consentId: data.id,
+      acceptedAt: data.accepted_at,
+    };
+  });
 }
 
 /**
@@ -156,38 +158,40 @@ export async function checkUserLegalConsentAction(
   consentType: ConsentType = "platform_terms",
   requiredVersion = CURRENT_PLATFORM_TERMS_VERSION,
 ): Promise<{ accepted: boolean; acceptedAt?: string }> {
-  // So o aceite do proprio usuario da sessao (antes, o de qualquer id).
-  const currentUser = await getCurrentUser();
-  const targetUserId = currentUser?.id;
-  if (userId && userId !== targetUserId) return { accepted: false };
+  return withErrorScope(async () => {
+    // So o aceite do proprio usuario da sessao (antes, o de qualquer id).
+    const currentUser = await getCurrentUser();
+    const targetUserId = currentUser?.id;
+    if (userId && userId !== targetUserId) return { accepted: false };
 
-  if (!targetUserId) {
-    return { accepted: false };
-  }
+    if (!targetUserId) {
+      return { accepted: false };
+    }
 
-  // Fast check: se o snapshot da sessão do usuário logado já tiver o aceite vigente
-  if (
-    consentType === "platform_terms" &&
-    currentUser?.id === targetUserId &&
-    currentUser.termsAcceptedAt &&
-    currentUser.termsVersion === requiredVersion
-  ) {
-    return { accepted: true, acceptedAt: currentUser.termsAcceptedAt };
-  }
+    // Fast check: se o snapshot da sessão do usuário logado já tiver o aceite vigente
+    if (
+      consentType === "platform_terms" &&
+      currentUser?.id === targetUserId &&
+      currentUser.termsAcceptedAt &&
+      currentUser.termsVersion === requiredVersion
+    ) {
+      return { accepted: true, acceptedAt: currentUser.termsAcceptedAt };
+    }
 
-  const adminClient = createSupabaseAdminClient();
-  const { data } = await adminClient
-    .from("legal_consents")
-    .select("accepted_at")
-    .eq("user_id", targetUserId)
-    .eq("consent_type", consentType)
-    .eq("terms_version", requiredVersion)
-    .order("accepted_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    const adminClient = createSupabaseAdminClient();
+    const { data } = await adminClient
+      .from("legal_consents")
+      .select("accepted_at")
+      .eq("user_id", targetUserId)
+      .eq("consent_type", consentType)
+      .eq("terms_version", requiredVersion)
+      .order("accepted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  return {
-    accepted: Boolean(data),
-    acceptedAt: data?.accepted_at,
-  };
+    return {
+      accepted: Boolean(data),
+      acceptedAt: data?.accepted_at,
+    };
+  });
 }

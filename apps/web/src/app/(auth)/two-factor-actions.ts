@@ -36,7 +36,7 @@ import {
   rememberThisDevice,
   type SignInSessionResult,
 } from "./sign-in-session";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 
 /**
  * Verificacao em duas etapas (doc 17): aplicativo autenticador (MFA do Supabase,
@@ -143,15 +143,17 @@ async function pendingSignIn() {
 
 /** Manda o codigo do login por e-mail (ao abrir a tela e no "Reenviar codigo"). */
 export async function sendSignInEmailCodeAction(): Promise<SendEmailCodeResult> {
-  try {
-    const pending = await pendingSignIn();
-    if (!pending || !pending.info.email) return { ok: false, message: SESSION_EXPIRED };
-    const name = String(pending.user.user_metadata?.full_name ?? pending.user.user_metadata?.name ?? "");
-    return await sendEmailCode(pending.user, name, "login");
-  } catch (err) {
-    logError("[two-factor] Erro ao enviar o codigo do login:", err);
-    return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
-  }
+  return withErrorScope(async () => {
+    try {
+      const pending = await pendingSignIn();
+      if (!pending || !pending.info.email) return { ok: false, message: SESSION_EXPIRED };
+      const name = String(pending.user.user_metadata?.full_name ?? pending.user.user_metadata?.name ?? "");
+      return await sendEmailCode(pending.user, name, "login");
+    } catch (err) {
+      logError("[two-factor] Erro ao enviar o codigo do login:", err);
+      return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
+    }
+  });
 }
 
 /** Confere o codigo (app ou e-mail) e so entao cria a sessao do app. */
@@ -161,53 +163,57 @@ export async function verifyTwoFactorSignInAction(input: {
   remember?: boolean;
   from?: string;
 }): Promise<SignInSessionResult> {
-  const code = input.code.replace(/\s/g, "");
-  if (input.method === "recovery") {
-    if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
-  } else if (!CODE_RE.test(code)) {
-    return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
-  }
-
-  try {
-    const pending = await pendingSignIn();
-    if (!pending) return { ok: false, message: SESSION_EXPIRED };
-    const { supabase, user, info } = pending;
-    if (!(await allowCodeAttempt(user.id))) return { ok: false, message: TOO_MANY };
-    const admin = createSupabaseAdminClient();
-
-    if (input.method === "app") {
-      const { verified } = await totpFactors(supabase);
-      if (!info.app || !verified) return { ok: false, message: SESSION_EXPIRED };
-      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
-      if (error) return { ok: false, message: INVALID_APP_CODE };
-    } else if (input.method === "recovery") {
-      if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
-      const sessionId = await currentSessionId(supabase);
-      if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "recovery"))) {
-        return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
-      }
-    } else {
-      if (!info.email) return { ok: false, message: SESSION_EXPIRED };
-      const check = await verifyEmailCode(admin, user.id, "login", code);
-      if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
-      const sessionId = await currentSessionId(supabase);
-      if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "email"))) {
-        return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
-      }
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    if (input.method === "recovery") {
+      if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
+    } else if (!CODE_RE.test(code)) {
+      return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
     }
 
-    if (input.remember) await rememberThisDevice(user.id, await userAgent());
-    return await finishSignIn(admin, user.id, input.from);
-  } catch (err) {
-    logError("[two-factor] Erro ao conferir o codigo do login:", err);
-    return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
-  }
+    try {
+      const pending = await pendingSignIn();
+      if (!pending) return { ok: false, message: SESSION_EXPIRED };
+      const { supabase, user, info } = pending;
+      if (!(await allowCodeAttempt(user.id))) return { ok: false, message: TOO_MANY };
+      const admin = createSupabaseAdminClient();
+
+      if (input.method === "app") {
+        const { verified } = await totpFactors(supabase);
+        if (!info.app || !verified) return { ok: false, message: SESSION_EXPIRED };
+        const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+        if (error) return { ok: false, message: INVALID_APP_CODE };
+      } else if (input.method === "recovery") {
+        if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
+        const sessionId = await currentSessionId(supabase);
+        if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "recovery"))) {
+          return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+        }
+      } else {
+        if (!info.email) return { ok: false, message: SESSION_EXPIRED };
+        const check = await verifyEmailCode(admin, user.id, "login", code);
+        if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+        const sessionId = await currentSessionId(supabase);
+        if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "email"))) {
+          return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+        }
+      }
+
+      if (input.remember) await rememberThisDevice(user.id, await userAgent());
+      return await finishSignIn(admin, user.id, input.from);
+    } catch (err) {
+      logError("[two-factor] Erro ao conferir o codigo do login:", err);
+      return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+    }
+  });
 }
 
 /** "Usar outra conta": descarta a sessao que esperava o codigo. */
 export async function cancelTwoFactorSignInAction(): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
+  return withErrorScope(async () => {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -270,19 +276,21 @@ function isGoogleOnly(user: User): boolean {
 }
 
 export async function getTwoFactorStatusAction(): Promise<TwoFactorStatus> {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  const info = await secondFactorInfo(session.supabase, session.user);
-  return {
-    ok: true,
-    googleOnly: isGoogleOnly(session.user),
-    demo: isDemoOrganization(session.current.organizationId),
-    enabled: info.app || info.email,
-    app: info.app,
-    email: info.email,
-    maskedEmail: maskEmail(session.user.email ?? ""),
-    recoveryLeft: info.app || info.email ? await recoveryCodesLeft(createSupabaseAdminClient(), session.user.id) : 0,
-  };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    const info = await secondFactorInfo(session.supabase, session.user);
+    return {
+      ok: true,
+      googleOnly: isGoogleOnly(session.user),
+      demo: isDemoOrganization(session.current.organizationId),
+      enabled: info.app || info.email,
+      app: info.app,
+      email: info.email,
+      maskedEmail: maskEmail(session.user.email ?? ""),
+      recoveryLeft: info.app || info.email ? await recoveryCodesLeft(createSupabaseAdminClient(), session.user.id) : 0,
+    };
+  });
 }
 
 export type TotpEnrollment =
@@ -291,75 +299,83 @@ export type TotpEnrollment =
 
 /** Comeca o cadastro do app: QR code e chave. */
 export async function startTotpEnrollmentAction(): Promise<TotpEnrollment> {
-  const session = await sessionToChange();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  const { supabase } = session;
+  return withErrorScope(async () => {
+    const session = await sessionToChange();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    const { supabase } = session;
 
-  const { verified, pending } = await totpFactors(supabase);
-  if (verified) return { ok: false, message: "O aplicativo já está ligado." };
-  // Cadastro anterior que ficou pela metade (QR lido e codigo nunca digitado).
-  for (const factor of pending) await supabase.auth.mfa.unenroll({ factorId: factor.id });
+    const { verified, pending } = await totpFactors(supabase);
+    if (verified) return { ok: false, message: "O aplicativo já está ligado." };
+    // Cadastro anterior que ficou pela metade (QR lido e codigo nunca digitado).
+    for (const factor of pending) await supabase.auth.mfa.unenroll({ factorId: factor.id });
 
-  const { data, error } = await supabase.auth.mfa.enroll({
-    factorType: "totp",
-    friendlyName: `Aplicativo ${Date.now()}`,
-    issuer: "GestaraHub",
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: "totp",
+      friendlyName: `Aplicativo ${Date.now()}`,
+      issuer: "GestaraHub",
+    });
+    if (error || !data) {
+      logError("[two-factor] Erro ao comecar o cadastro:", error);
+      return { ok: false, message: "Não foi possível começar agora. Tente novamente." };
+    }
+    return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
   });
-  if (error || !data) {
-    logError("[two-factor] Erro ao comecar o cadastro:", error);
-    return { ok: false, message: "Não foi possível começar agora. Tente novamente." };
-  }
-  return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
 }
 
 /** Confirma o cadastro com o primeiro codigo do app: a partir dai o login pede o codigo. */
 export async function confirmTotpEnrollmentAction(input: { factorId: string; code: string }): Promise<EnableResult> {
-  const code = input.code.replace(/\s/g, "");
-  if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do aplicativo." };
-  const session = await sessionToChange();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do aplicativo." };
+    const session = await sessionToChange();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
 
-  const { error } = await session.supabase.auth.mfa.challengeAndVerify({ factorId: input.factorId, code });
-  if (error) return { ok: false, message: INVALID_APP_CODE };
-  await auditSecurity(session.current, "ligou a verificação em duas etapas com aplicativo");
-  return { ok: true, recoveryCodes: await ensureRecoveryCodes(createSupabaseAdminClient(), session.user.id) };
+    const { error } = await session.supabase.auth.mfa.challengeAndVerify({ factorId: input.factorId, code });
+    if (error) return { ok: false, message: INVALID_APP_CODE };
+    await auditSecurity(session.current, "ligou a verificação em duas etapas com aplicativo");
+    return { ok: true, recoveryCodes: await ensureRecoveryCodes(createSupabaseAdminClient(), session.user.id) };
+  });
 }
 
 /** Manda o codigo para ligar ou desligar pelo e-mail. */
 export async function sendSecurityEmailCodeAction(input: { purpose: "enable" | "disable" | "recovery" }): Promise<SendEmailCodeResult> {
-  try {
-    const session = await sessionToChange();
-    if (!session || isGoogleOnly(session.user)) return { ok: false, message: SESSION_EXPIRED };
-    return await sendEmailCode(session.user, session.current.name, input.purpose);
-  } catch (err) {
-    logError("[two-factor] Erro ao enviar o codigo de seguranca:", err);
-    return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
-  }
+  return withErrorScope(async () => {
+    try {
+      const session = await sessionToChange();
+      if (!session || isGoogleOnly(session.user)) return { ok: false, message: SESSION_EXPIRED };
+      return await sendEmailCode(session.user, session.current.name, input.purpose);
+    } catch (err) {
+      logError("[two-factor] Erro ao enviar o codigo de seguranca:", err);
+      return { ok: false, message: "Não foi possível enviar o código. Tente novamente." };
+    }
+  });
 }
 
 /** Liga o codigo por e-mail com o codigo recebido. Esta sessao ja conta como verificada. */
 export async function enableEmailTwoFactorAction(input: { code: string }): Promise<EnableResult> {
-  const code = input.code.replace(/\s/g, "");
-  if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do e-mail." };
-  const session = await sessionToChange();
-  if (!session || isGoogleOnly(session.user)) return { ok: false, message: SESSION_EXPIRED };
-  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do e-mail." };
+    const session = await sessionToChange();
+    if (!session || isGoogleOnly(session.user)) return { ok: false, message: SESSION_EXPIRED };
+    if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
 
-  const admin = createSupabaseAdminClient();
-  const check = await verifyEmailCode(admin, session.user.id, "enable", code);
-  if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+    const admin = createSupabaseAdminClient();
+    const check = await verifyEmailCode(admin, session.user.id, "enable", code);
+    if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
 
-  // Antes de ligar: sem a prova desta sessao, a barreira trancaria quem acabou de ligar.
-  const sessionId = await currentSessionId(session.supabase);
-  if (!sessionId || !(await markSessionVerified(admin, session.user.id, sessionId, "email"))) {
-    return { ok: false, message: "Não foi possível ligar agora. Tente novamente." };
-  }
-  if (!(await setEmailTwoFactor(admin, session.user.id, true))) {
-    return { ok: false, message: "Não foi possível ligar agora. Tente novamente." };
-  }
-  await auditSecurity(session.current, "ligou a verificação em duas etapas por e-mail");
-  return { ok: true, recoveryCodes: await ensureRecoveryCodes(admin, session.user.id) };
+    // Antes de ligar: sem a prova desta sessao, a barreira trancaria quem acabou de ligar.
+    const sessionId = await currentSessionId(session.supabase);
+    if (!sessionId || !(await markSessionVerified(admin, session.user.id, sessionId, "email"))) {
+      return { ok: false, message: "Não foi possível ligar agora. Tente novamente." };
+    }
+    if (!(await setEmailTwoFactor(admin, session.user.id, true))) {
+      return { ok: false, message: "Não foi possível ligar agora. Tente novamente." };
+    }
+    await auditSecurity(session.current, "ligou a verificação em duas etapas por e-mail");
+    return { ok: true, recoveryCodes: await ensureRecoveryCodes(admin, session.user.id) };
+  });
 }
 
 /**
@@ -367,41 +383,43 @@ export async function enableEmailTwoFactorAction(input: { code: string }): Promi
  * remove o app, o e-mail, os dispositivos lembrados e as sessoes verificadas.
  */
 export async function disableTwoFactorAction(input: { code: string; method: "app" | "email" | "recovery" }): Promise<ActionResult> {
-  const code = input.code.replace(/\s/g, "");
-  if (input.method === "recovery") {
-    if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
-  } else if (!CODE_RE.test(code)) {
-    return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
-  }
-  const session = await sessionToChange();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    if (input.method === "recovery") {
+      if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
+    } else if (!CODE_RE.test(code)) {
+      return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
+    }
+    const session = await sessionToChange();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
 
-  const { supabase, user } = session;
-  const admin = createSupabaseAdminClient();
-  const info = await secondFactorInfo(supabase, user);
-  if (!info.app && !info.email) return { ok: true };
+    const { supabase, user } = session;
+    const admin = createSupabaseAdminClient();
+    const info = await secondFactorInfo(supabase, user);
+    if (!info.app && !info.email) return { ok: true };
 
-  if (input.method === "app") {
-    const { verified } = await totpFactors(supabase);
-    if (!verified) return { ok: false, message: INVALID_APP_CODE };
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
-    if (error) return { ok: false, message: INVALID_APP_CODE };
-  } else if (input.method === "recovery") {
-    // Quem perdeu o aplicativo desliga com um codigo de recuperacao e liga de novo com o aparelho novo.
-    if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
-  } else {
-    if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
-    const check = await verifyEmailCode(admin, user.id, "disable", code);
-    if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
-  }
+    if (input.method === "app") {
+      const { verified } = await totpFactors(supabase);
+      if (!verified) return { ok: false, message: INVALID_APP_CODE };
+      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+      if (error) return { ok: false, message: INVALID_APP_CODE };
+    } else if (input.method === "recovery") {
+      // Quem perdeu o aplicativo desliga com um codigo de recuperacao e liga de novo com o aparelho novo.
+      if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
+    } else {
+      if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
+      const check = await verifyEmailCode(admin, user.id, "disable", code);
+      if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+    }
 
-  if (!(await disableTwoFactor(admin, user.id))) {
-    return { ok: false, message: "Não foi possível desligar agora. Tente novamente." };
-  }
-  await clearTrustedDeviceCookie();
-  await auditSecurity(session.current, "desligou a verificação em duas etapas");
-  return { ok: true };
+    if (!(await disableTwoFactor(admin, user.id))) {
+      return { ok: false, message: "Não foi possível desligar agora. Tente novamente." };
+    }
+    await clearTrustedDeviceCookie();
+    await auditSecurity(session.current, "desligou a verificação em duas etapas");
+    return { ok: true };
+  });
 }
 
 /**
@@ -412,37 +430,39 @@ export async function disableTwoFactorAction(input: { code: string; method: "app
  * "Desligar".
  */
 export async function removeTwoFactorMethodAction(input: { method: "app" | "email"; code: string }): Promise<ActionResult> {
-  const code = input.code.replace(/\s/g, "");
-  const keepsApp = input.method === "email";
-  if (!CODE_RE.test(code)) return { ok: false, message: keepsApp ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
-  const session = await sessionToChange();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    const keepsApp = input.method === "email";
+    if (!CODE_RE.test(code)) return { ok: false, message: keepsApp ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
+    const session = await sessionToChange();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
 
-  const { supabase, user } = session;
-  const admin = createSupabaseAdminClient();
-  const info = await secondFactorInfo(supabase, user);
-  if (!info.app || !info.email) return { ok: false, message: "Com um método só, use Desligar." };
-  const failed = { ok: false as const, message: "Não foi possível remover agora. Tente novamente." };
+    const { supabase, user } = session;
+    const admin = createSupabaseAdminClient();
+    const info = await secondFactorInfo(supabase, user);
+    if (!info.app || !info.email) return { ok: false, message: "Com um método só, use Desligar." };
+    const failed = { ok: false as const, message: "Não foi possível remover agora. Tente novamente." };
 
-  if (keepsApp) {
-    const { verified } = await totpFactors(supabase);
-    if (!verified) return { ok: false, message: INVALID_APP_CODE };
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
-    if (error) return { ok: false, message: INVALID_APP_CODE };
-    if (!(await removeEmailTwoFactor(admin, user.id))) return failed;
-    await auditSecurity(session.current, "removeu o código por e-mail da verificação em duas etapas");
+    if (keepsApp) {
+      const { verified } = await totpFactors(supabase);
+      if (!verified) return { ok: false, message: INVALID_APP_CODE };
+      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+      if (error) return { ok: false, message: INVALID_APP_CODE };
+      if (!(await removeEmailTwoFactor(admin, user.id))) return failed;
+      await auditSecurity(session.current, "removeu o código por e-mail da verificação em duas etapas");
+      return { ok: true };
+    }
+
+    const check = await verifyEmailCode(admin, user.id, "disable", code);
+    if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+    // Antes de remover o app: a prova desta sessao passa a ser o e-mail.
+    const sessionId = await currentSessionId(supabase);
+    if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "email"))) return failed;
+    if (!(await removeAppTwoFactor(admin, user.id))) return failed;
+    await auditSecurity(session.current, "removeu o aplicativo da verificação em duas etapas");
     return { ok: true };
-  }
-
-  const check = await verifyEmailCode(admin, user.id, "disable", code);
-  if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
-  // Antes de remover o app: a prova desta sessao passa a ser o e-mail.
-  const sessionId = await currentSessionId(supabase);
-  if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "email"))) return failed;
-  if (!(await removeAppTwoFactor(admin, user.id))) return failed;
-  await auditSecurity(session.current, "removeu o aplicativo da verificação em duas etapas");
-  return { ok: true };
+  });
 }
 
 /**
@@ -453,34 +473,36 @@ export async function regenerateRecoveryCodesAction(input: {
   code: string;
   method: "app" | "email";
 }): Promise<{ ok: true; recoveryCodes: string[] } | { ok: false; message: string }> {
-  const code = input.code.replace(/\s/g, "");
-  if (!CODE_RE.test(code)) {
-    return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
-  }
-  const session = await sessionToChange();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+  return withErrorScope(async () => {
+    const code = input.code.replace(/\s/g, "");
+    if (!CODE_RE.test(code)) {
+      return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
+    }
+    const session = await sessionToChange();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
 
-  const { supabase, user } = session;
-  const admin = createSupabaseAdminClient();
-  const info = await secondFactorInfo(supabase, user);
-  if (!info.app && !info.email) return { ok: false, message: "Ligue a verificação em duas etapas primeiro." };
+    const { supabase, user } = session;
+    const admin = createSupabaseAdminClient();
+    const info = await secondFactorInfo(supabase, user);
+    if (!info.app && !info.email) return { ok: false, message: "Ligue a verificação em duas etapas primeiro." };
 
-  if (input.method === "app") {
-    const { verified } = await totpFactors(supabase);
-    if (!verified) return { ok: false, message: INVALID_APP_CODE };
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
-    if (error) return { ok: false, message: INVALID_APP_CODE };
-  } else {
-    if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
-    const check = await verifyEmailCode(admin, user.id, "recovery", code);
-    if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
-  }
+    if (input.method === "app") {
+      const { verified } = await totpFactors(supabase);
+      if (!verified) return { ok: false, message: INVALID_APP_CODE };
+      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+      if (error) return { ok: false, message: INVALID_APP_CODE };
+    } else {
+      if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
+      const check = await verifyEmailCode(admin, user.id, "recovery", code);
+      if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+    }
 
-  const recoveryCodes = await issueRecoveryCodes(admin, user.id);
-  if (!recoveryCodes) return { ok: false, message: "Não foi possível gerar agora. Tente novamente." };
-  await auditSecurity(session.current, "gerou novos códigos de recuperação da verificação em duas etapas");
-  return { ok: true, recoveryCodes };
+    const recoveryCodes = await issueRecoveryCodes(admin, user.id);
+    if (!recoveryCodes) return { ok: false, message: "Não foi possível gerar agora. Tente novamente." };
+    await auditSecurity(session.current, "gerou novos códigos de recuperação da verificação em duas etapas");
+    return { ok: true, recoveryCodes };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -492,39 +514,45 @@ export type TrustedDeviceItem = { id: string; label: string; lastUsed: string; c
 export async function listTrustedDevicesAction(): Promise<
   { ok: true; devices: TrustedDeviceItem[] } | { ok: false; message: string }
 > {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  const now = new Date();
-  const devices = await listTrustedDevices(
-    createSupabaseAdminClient(),
-    session.user.id,
-    await readTrustedDeviceToken(),
-    now,
-  );
-  return {
-    ok: true,
-    devices: devices.map((device) => ({
-      id: device.id,
-      label: device.label,
-      lastUsed: lastUsedLabel(new Date(device.lastUsedAt), now),
-      current: device.current,
-    })),
-  };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    const now = new Date();
+    const devices = await listTrustedDevices(
+      createSupabaseAdminClient(),
+      session.user.id,
+      await readTrustedDeviceToken(),
+      now,
+    );
+    return {
+      ok: true,
+      devices: devices.map((device) => ({
+        id: device.id,
+        label: device.label,
+        lastUsed: lastUsedLabel(new Date(device.lastUsedAt), now),
+        current: device.current,
+      })),
+    };
+  });
 }
 
 /** "Esquecer": o proximo login nesse navegador volta a pedir o codigo. */
 export async function forgetTrustedDeviceAction(input: { id: string; current: boolean }): Promise<ActionResult> {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  await forgetTrustedDevice(createSupabaseAdminClient(), session.user.id, input.id);
-  if (input.current) await clearTrustedDeviceCookie();
-  return { ok: true };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    await forgetTrustedDevice(createSupabaseAdminClient(), session.user.id, input.id);
+    if (input.current) await clearTrustedDeviceCookie();
+    return { ok: true };
+  });
 }
 
 export async function forgetAllTrustedDevicesAction(): Promise<ActionResult> {
-  const session = await sessionForCurrentUser();
-  if (!session) return { ok: false, message: SESSION_EXPIRED };
-  await forgetAllTrustedDevices(createSupabaseAdminClient(), session.user.id);
-  await clearTrustedDeviceCookie();
-  return { ok: true };
+  return withErrorScope(async () => {
+    const session = await sessionForCurrentUser();
+    if (!session) return { ok: false, message: SESSION_EXPIRED };
+    await forgetAllTrustedDevices(createSupabaseAdminClient(), session.user.id);
+    await clearTrustedDeviceCookie();
+    return { ok: true };
+  });
 }

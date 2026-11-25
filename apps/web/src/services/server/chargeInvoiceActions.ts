@@ -15,7 +15,7 @@ import {
 } from "@gestarahub/core/payment-fees";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, withErrorScope } from "@/lib/log";
 import { getPaymentGateway } from "@/services/payments/registry";
 import { effectivePlatformSplitCents } from "@/services/payments/platformSplit";
 import { cancelGatewayPayment } from "@/services/onlinePayments/gatewayCleanup";
@@ -145,179 +145,183 @@ export async function createPublicChargePaymentAction(input: {
   method: "pix" | "link" | "boleto";
   cpf?: string;
 }): Promise<CreatePublicPaymentResult> {
-  const chargeId = String(input?.chargeId ?? "");
-  const method = input?.method;
-  if (!chargeId || !method) return { ok: false, error: "Dados inválidos." };
+  return withErrorScope(async () => {
+    const chargeId = String(input?.chargeId ?? "");
+    const method = input?.method;
+    if (!chargeId || !method) return { ok: false, error: "Dados inválidos." };
 
-  // Pagina publica (auditoria de 30/10/2026): cada pedido cria um pagamento no
-  // parceiro e cancela o anterior. Sem limite, alternar a forma gerava e
-  // cancelava sem parar (e podia cancelar o Pix que o aluno estava pagando).
-  const ip = await getClientIp().catch(() => "desconhecido");
-  const allowed =
-    (await checkRateLimit({ key: `public_invoice:${ip}:${chargeId}`, maxRequests: 6, windowSeconds: 600 })) &&
-    (await checkRateLimit({ key: `public_invoice_charge:${chargeId}`, maxRequests: 15, windowSeconds: 3600 }));
-  if (!allowed) return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+    // Pagina publica (auditoria de 30/10/2026): cada pedido cria um pagamento no
+    // parceiro e cancela o anterior. Sem limite, alternar a forma gerava e
+    // cancelava sem parar (e podia cancelar o Pix que o aluno estava pagando).
+    const ip = await getClientIp().catch(() => "desconhecido");
+    const allowed =
+      (await checkRateLimit({ key: `public_invoice:${ip}:${chargeId}`, maxRequests: 6, windowSeconds: 600 })) &&
+      (await checkRateLimit({ key: `public_invoice_charge:${chargeId}`, maxRequests: 15, windowSeconds: 3600 }));
+    if (!allowed) return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
 
-  const admin = createSupabaseAdminClient();
-  const now = new Date();
+    const admin = createSupabaseAdminClient();
+    const now = new Date();
 
-  let loaded: Awaited<ReturnType<typeof loadCharge>>;
-  try {
-    loaded = await loadCharge(admin, chargeId);
-  } catch (err) {
-    logError("[chargeInvoiceActions] Erro ao ler a cobrança:", err);
-    return { ok: false, error: "Não foi possível abrir a cobrança. Tente de novo em instantes." };
-  }
-  if (!loaded) return { ok: false, error: "Cobrança não encontrada." };
-  const { charge, org, client } = loaded;
+    let loaded: Awaited<ReturnType<typeof loadCharge>>;
+    try {
+      loaded = await loadCharge(admin, chargeId);
+    } catch (err) {
+      logError("[chargeInvoiceActions] Erro ao ler a cobrança:", err);
+      return { ok: false, error: "Não foi possível abrir a cobrança. Tente de novo em instantes." };
+    }
+    if (!loaded) return { ok: false, error: "Cobrança não encontrada." };
+    const { charge, org, client } = loaded;
 
-  if (charge.status === "paid") return { ok: false, error: "Esta cobrança já foi paga." };
-  if (charge.status === "canceled") return { ok: false, error: "Esta cobrança foi cancelada." };
+    if (charge.status === "paid") return { ok: false, error: "Esta cobrança já foi paga." };
+    if (charge.status === "canceled") return { ok: false, error: "Esta cobrança foi cancelada." };
 
-  const orgSettings = (org?.settings as Row | null) ?? {};
-  const onlineSettings = (orgSettings.onlinePayments as OnlinePaymentSettings | null) ?? undefined;
-  if (!onlineSettings?.enabled) return { ok: false, error: "O pagamento online não está disponível para esta cobrança." };
-  // So as formas ligadas em Recebimentos online.
-  if (!availableOnlineMethods(onlineSettings).includes(method)) {
-    return { ok: false, error: "Esta forma de pagamento não está disponível. Escolha outra." };
-  }
+    const orgSettings = (org?.settings as Row | null) ?? {};
+    const onlineSettings = (orgSettings.onlinePayments as OnlinePaymentSettings | null) ?? undefined;
+    if (!onlineSettings?.enabled) return { ok: false, error: "O pagamento online não está disponível para esta cobrança." };
+    // So as formas ligadas em Recebimentos online.
+    if (!availableOnlineMethods(onlineSettings).includes(method)) {
+      return { ok: false, error: "Esta forma de pagamento não está disponível. Escolha outra." };
+    }
 
-  const { payer, error: payerError } = payerFor(client, input.cpf);
-  if (!payer) return { ok: false, error: payerError ?? "Não foi possível validar os dados do pagador." };
+    const { payer, error: payerError } = payerFor(client, input.cpf);
+    if (!payer) return { ok: false, error: payerError ?? "Não foi possível validar os dados do pagador." };
 
-  // Ja existe um codigo valido na mesma forma: devolve o mesmo.
-  const { data: existing, error: existingError } = await admin
-    .from("online_payments")
-    .select("id, method, pix_copy_paste, link_url, public_code, expires_at, amount_cents")
-    .eq("charge_id", chargeId)
-    .eq("method", method)
-    .eq("status", "awaiting")
-    .gt("expires_at", now.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) logWarn("[chargeInvoiceActions] Falha ao procurar o código em aberto:", existingError);
-  if (existing?.public_code) {
+    // Ja existe um codigo valido na mesma forma: devolve o mesmo.
+    const { data: existing, error: existingError } = await admin
+      .from("online_payments")
+      .select("id, method, pix_copy_paste, link_url, public_code, expires_at, amount_cents")
+      .eq("charge_id", chargeId)
+      .eq("method", method)
+      .eq("status", "awaiting")
+      .gt("expires_at", now.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingError) logWarn("[chargeInvoiceActions] Falha ao procurar o código em aberto:", existingError);
+    if (existing?.public_code) {
+      return {
+        ok: true,
+        method,
+        publicCode: String(existing.public_code),
+        pixCopyPaste: existing.pix_copy_paste ? String(existing.pix_copy_paste) : undefined,
+        linkUrl: existing.link_url ? String(existing.link_url) : undefined,
+        expiresAt: new Date(String(existing.expires_at)).toISOString(),
+        amountCents: Number(existing.amount_cents) || undefined,
+      };
+    }
+
+    // Valores e tarifas (mesma conta do "Cobrar online").
+    const tier = ((org?.subscription as Row | null)?.tier as PlatformTier | undefined) ?? "free";
+    const splitAmountCents = effectivePlatformSplitCents(tier);
+    const passFee = defaultPassFeeFor(onlineSettings, method);
+    const { chargedAmountCents, gatewayFeeCents, netAmountCents } = calculateOnlineChargeAmounts({
+      amountCents: Number(charge.amount_cents) || 0,
+      method,
+      splitAmountCents,
+      passFee,
+      fees: effectiveGatewayFees(onlineSettings.gatewayFees, todayISO()),
+    });
+
+    const subaccountKey = realSubaccountKey(org?.gateway_api_key as string | null | undefined);
+    const gateway = getPaymentGateway(undefined);
+    const expiresInMinutes = onlineSettings.defaultExpiresInMinutes || 1440;
+    const common = {
+      chargeId,
+      amountCents: chargedAmountCents,
+      splitAmountCents,
+      expiresInMinutes,
+      studentId: String(charge.student_id),
+      studentName: payer.name,
+      studentCpf: payer.cpf,
+      studentPhone: payer.phone,
+      studentEmail: payer.email,
+      studentAddress: (client?.address as Address | undefined) ?? undefined,
+      chargeDueDate: String(charge.due_date),
+      competence: charge.competence ? String(charge.competence) : undefined,
+      description: charge.description ? String(charge.description) : undefined,
+      subaccountApiKey: subaccountKey ?? undefined,
+    };
+
+    let provided: { provider?: string; providerId?: string; pixCopyPaste?: string; linkUrl?: string; expiresAt: string };
+    try {
+      provided =
+        method === "pix"
+          ? await gateway.createPix({ ...common, pixKey: onlineSettings.pixKey, merchantName: String(org?.name ?? "GestaraHub") })
+          : await gateway.createLink({
+              ...common,
+              billingType: (ASAAS_BILLING_TYPE[method] || "CREDIT_CARD") as "CREDIT_CARD" | "BOLETO" | "UNDEFINED",
+            });
+    } catch (gatewayErr) {
+      logError("[chargeInvoiceActions] Erro no parceiro ao gerar o pagamento:", gatewayErr);
+      return { ok: false, error: "Não foi possível gerar o pagamento agora. Tente de novo em instantes." };
+    }
+
+    const paymentId = randomUUID();
+    const publicCode = newPublicCode();
+    const { error: insertError } = await admin.from("online_payments").insert({
+      id: paymentId,
+      organization_id: charge.organization_id,
+      charge_id: chargeId,
+      client_id: charge.student_id,
+      method,
+      status: "awaiting",
+      amount_cents: chargedAmountCents,
+      split_amount_cents: splitAmountCents,
+      gateway_fee_cents: gatewayFeeCents,
+      net_amount_cents: netAmountCents,
+      gateway_provider: provided.provider ?? "asaas",
+      gateway_payment_id: provided.providerId ?? null,
+      pix_copy_paste: provided.pixCopyPaste ?? null,
+      link_url: provided.linkUrl ?? null,
+      public_code: publicCode,
+      fee_passed_to_customer: passFee,
+      expires_at: provided.expiresAt,
+    });
+    if (insertError) {
+      logError("[chargeInvoiceActions] Código gerado no parceiro não foi gravado:", insertError);
+      // Sem registro aqui, o webhook nao acharia o pagamento: cancela no Asaas.
+      if (provided.provider === "asaas" && provided.providerId && subaccountKey) {
+        await cancelGatewayPayment(provided.providerId, subaccountKey);
+      }
+      return { ok: false, error: "Não foi possível gerar o pagamento agora. Tente de novo em instantes." };
+    }
+
+    // Um codigo valido por vez: os anteriores saem (no Asaas e aqui) depois da
+    // resposta (19/11/2026: o pagador esperava o Asaas, um codigo por vez). Pago
+    // no meio do caminho, o webhook da a baixa; falha fica para a rotina.
+    await afterResponse("Cancelar códigos anteriores da fatura", () =>
+      cancelOpenPayments(admin, chargeId, subaccountKey, paymentId),
+    );
+
     return {
       ok: true,
       method,
-      publicCode: String(existing.public_code),
-      pixCopyPaste: existing.pix_copy_paste ? String(existing.pix_copy_paste) : undefined,
-      linkUrl: existing.link_url ? String(existing.link_url) : undefined,
-      expiresAt: new Date(String(existing.expires_at)).toISOString(),
-      amountCents: Number(existing.amount_cents) || undefined,
+      publicCode,
+      pixCopyPaste: provided.pixCopyPaste,
+      linkUrl: provided.linkUrl,
+      expiresAt: provided.expiresAt,
+      amountCents: chargedAmountCents,
     };
-  }
-
-  // Valores e tarifas (mesma conta do "Cobrar online").
-  const tier = ((org?.subscription as Row | null)?.tier as PlatformTier | undefined) ?? "free";
-  const splitAmountCents = effectivePlatformSplitCents(tier);
-  const passFee = defaultPassFeeFor(onlineSettings, method);
-  const { chargedAmountCents, gatewayFeeCents, netAmountCents } = calculateOnlineChargeAmounts({
-    amountCents: Number(charge.amount_cents) || 0,
-    method,
-    splitAmountCents,
-    passFee,
-    fees: effectiveGatewayFees(onlineSettings.gatewayFees, todayISO()),
   });
-
-  const subaccountKey = realSubaccountKey(org?.gateway_api_key as string | null | undefined);
-  const gateway = getPaymentGateway(undefined);
-  const expiresInMinutes = onlineSettings.defaultExpiresInMinutes || 1440;
-  const common = {
-    chargeId,
-    amountCents: chargedAmountCents,
-    splitAmountCents,
-    expiresInMinutes,
-    studentId: String(charge.student_id),
-    studentName: payer.name,
-    studentCpf: payer.cpf,
-    studentPhone: payer.phone,
-    studentEmail: payer.email,
-    studentAddress: (client?.address as Address | undefined) ?? undefined,
-    chargeDueDate: String(charge.due_date),
-    competence: charge.competence ? String(charge.competence) : undefined,
-    description: charge.description ? String(charge.description) : undefined,
-    subaccountApiKey: subaccountKey ?? undefined,
-  };
-
-  let provided: { provider?: string; providerId?: string; pixCopyPaste?: string; linkUrl?: string; expiresAt: string };
-  try {
-    provided =
-      method === "pix"
-        ? await gateway.createPix({ ...common, pixKey: onlineSettings.pixKey, merchantName: String(org?.name ?? "GestaraHub") })
-        : await gateway.createLink({
-            ...common,
-            billingType: (ASAAS_BILLING_TYPE[method] || "CREDIT_CARD") as "CREDIT_CARD" | "BOLETO" | "UNDEFINED",
-          });
-  } catch (gatewayErr) {
-    logError("[chargeInvoiceActions] Erro no parceiro ao gerar o pagamento:", gatewayErr);
-    return { ok: false, error: "Não foi possível gerar o pagamento agora. Tente de novo em instantes." };
-  }
-
-  const paymentId = randomUUID();
-  const publicCode = newPublicCode();
-  const { error: insertError } = await admin.from("online_payments").insert({
-    id: paymentId,
-    organization_id: charge.organization_id,
-    charge_id: chargeId,
-    client_id: charge.student_id,
-    method,
-    status: "awaiting",
-    amount_cents: chargedAmountCents,
-    split_amount_cents: splitAmountCents,
-    gateway_fee_cents: gatewayFeeCents,
-    net_amount_cents: netAmountCents,
-    gateway_provider: provided.provider ?? "asaas",
-    gateway_payment_id: provided.providerId ?? null,
-    pix_copy_paste: provided.pixCopyPaste ?? null,
-    link_url: provided.linkUrl ?? null,
-    public_code: publicCode,
-    fee_passed_to_customer: passFee,
-    expires_at: provided.expiresAt,
-  });
-  if (insertError) {
-    logError("[chargeInvoiceActions] Código gerado no parceiro não foi gravado:", insertError);
-    // Sem registro aqui, o webhook nao acharia o pagamento: cancela no Asaas.
-    if (provided.provider === "asaas" && provided.providerId && subaccountKey) {
-      await cancelGatewayPayment(provided.providerId, subaccountKey);
-    }
-    return { ok: false, error: "Não foi possível gerar o pagamento agora. Tente de novo em instantes." };
-  }
-
-  // Um codigo valido por vez: os anteriores saem (no Asaas e aqui) depois da
-  // resposta (19/11/2026: o pagador esperava o Asaas, um codigo por vez). Pago
-  // no meio do caminho, o webhook da a baixa; falha fica para a rotina.
-  await afterResponse("Cancelar códigos anteriores da fatura", () =>
-    cancelOpenPayments(admin, chargeId, subaccountKey, paymentId),
-  );
-
-  return {
-    ok: true,
-    method,
-    publicCode,
-    pixCopyPaste: provided.pixCopyPaste,
-    linkUrl: provided.linkUrl,
-    expiresAt: provided.expiresAt,
-    amountCents: chargedAmountCents,
-  };
 }
 
 /** Situacao da cobranca para a tela da fatura conferir o pagamento. */
 export async function checkPublicChargeStatusAction(
   chargeId: string,
 ): Promise<{ status: "pending" | "paid" | "canceled" }> {
-  if (!chargeId) return { status: "pending" };
-  const { data: charge, error } = await createSupabaseAdminClient()
-    .from("charges")
-    .select("status")
-    .eq("id", String(chargeId))
-    .maybeSingle();
-  if (error) {
-    logWarn("[chargeInvoiceActions] Falha ao conferir a cobrança:", error);
+  return withErrorScope(async () => {
+    if (!chargeId) return { status: "pending" };
+    const { data: charge, error } = await createSupabaseAdminClient()
+      .from("charges")
+      .select("status")
+      .eq("id", String(chargeId))
+      .maybeSingle();
+    if (error) {
+      logWarn("[chargeInvoiceActions] Falha ao conferir a cobrança:", error);
+      return { status: "pending" };
+    }
+    if (charge?.status === "paid") return { status: "paid" };
+    if (charge?.status === "canceled") return { status: "canceled" };
     return { status: "pending" };
-  }
-  if (charge?.status === "paid") return { status: "paid" };
-  if (charge?.status === "canceled") return { status: "canceled" };
-  return { status: "pending" };
+  });
 }

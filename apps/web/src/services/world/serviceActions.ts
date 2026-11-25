@@ -1,5 +1,7 @@
 "use server";
 
+import { withErrorScope } from "@/lib/log";
+
 import type { ActionResult } from "../server/action";
 import { runServiceMethod } from "./serviceRunner";
 
@@ -10,5 +12,7 @@ import { runServiceMethod } from "./serviceRunner";
  * vao pela rota `/api/svc` (em paralelo); as gravacoes, por aqui.
  */
 export async function serviceAction(method: string, args: unknown[]): Promise<ActionResult<unknown>> {
-  return runServiceMethod(method, args);
+  return withErrorScope(async () => {
+    return runServiceMethod(method, args);
+  });
 }
