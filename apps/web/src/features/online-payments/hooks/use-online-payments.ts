@@ -12,6 +12,7 @@ import {
   requestSubaccountTransferAction,
   listSubaccountTransfersAction,
   listSubaccountReceiptsAction,
+  getSubaccountOnboardingAction,
   type SetupSubaccountInput,
   type SubaccountReceiptsQuery,
 } from "@/services/onlinePayments/actions";
@@ -58,6 +59,25 @@ export function useSetupGatewaySubaccount() {
       qc.invalidateQueries({ queryKey: queryKeys.organization.detail });
       qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
     },
+  });
+}
+
+/**
+ * Analise da conta no Asaas e os documentos que faltam (cartao "Deixe sua conta
+ * pronta", 25/11/2026). Le de novo ao voltar para a aba (a pessoa foi ao Asaas
+ * enviar os documentos) e a cada 1 minuto no maximo.
+ */
+export function useSubaccountOnboarding(enabled: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.onlinePayments.all, "onboarding"],
+    queryFn: async () => {
+      const res = await getSubaccountOnboardingAction();
+      if (!res.ok) throw res.error;
+      return res.data;
+    },
+    enabled,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 

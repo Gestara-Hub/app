@@ -18,6 +18,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-5",
+    date: "2026-11-25",
+    items: [
+      { text: "Situação da sua conta de recebimento no Asaas, com o que falta." },
+      { text: "Botões para criar a senha e enviar os documentos no Asaas." },
+      { text: "Aviso por e-mail quando o Asaas aprovar a conta." },
+      { text: "Pix com aviso claro enquanto o Asaas analisa a conta." },
+      { text: "Estornos e contestações de alunos avisados no app." },
+    ],
+  },
+  {
     version: "2026.11.25-4",
     date: "2026-11-25",
     items: [

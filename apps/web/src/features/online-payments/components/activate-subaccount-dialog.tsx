@@ -397,11 +397,17 @@ export function ActivateSubaccountDialog({
                       render={({ field }) => (
                         <Checkbox
                           id="termsAccepted"
+                          // ref do formulario (25/11/2026): faltando o aceite, "Ativar" leva o
+                          // foco e a rolagem ate aqui, como nos outros campos. A margem deixa o
+                          // cartao inteiro a vista, acima do rodape fixo.
+                          ref={field.ref}
+                          onBlur={field.onBlur}
                           checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                           disabled={setup.isPending}
                           aria-invalid={termsError}
-                          className={cn("mt-0.5", termsError && "border-destructive")}
+                          aria-describedby={termsError ? "termsAccepted-error" : undefined}
+                          className={cn("mt-0.5 scroll-my-32", termsError && "border-destructive")}
                         />
                       )}
                     />
@@ -424,7 +430,7 @@ export function ActivateSubaccountDialog({
                         Ler cláusulas contratuais completas (10 cláusulas)
                       </button>
                       {form.formState.errors.termsAccepted ? (
-                        <p className="pt-1 text-[11px] font-medium text-destructive">
+                        <p id="termsAccepted-error" role="alert" className="pt-1 text-[11px] font-medium text-destructive">
                           {form.formState.errors.termsAccepted.message}
                         </p>
                       ) : null}

@@ -40,7 +40,10 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
           {SOURCE_LABEL[error.source] ?? error.source}
         </Badge>
         {error.level === "warn" ? (
-          <Badge variant="outline" className="font-normal">
+          <Badge
+            variant="outline"
+            className="border-amber-500/30 bg-amber-500/10 font-normal text-amber-700 dark:text-amber-300"
+          >
             Aviso
           </Badge>
         ) : null}

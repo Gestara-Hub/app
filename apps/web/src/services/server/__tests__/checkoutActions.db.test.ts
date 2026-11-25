@@ -41,6 +41,25 @@ describe("Pix da cobrança conferido no servidor", () => {
     expect(result).not.toHaveProperty("error");
   });
 
+  it("conta ainda em análise no Asaas: o Pix nem chega ao parceiro e a mensagem diz o que falta", async () => {
+    await admin
+      .from("organizations")
+      .update({
+        gateway_api_key: "chave-da-subconta",
+        settings: { onlinePayments: { enabled: true, asaasStatus: { general: "PENDING", checkedAt: new Date().toISOString() } } },
+      })
+      .eq("id", tenant.organizationId)
+      .throwOnError();
+    const result = await createOnlinePixPaymentAction(
+      { chargeId: await charge(), amountCents: 15000, expiresInMinutes: 60, studentName: "Aluno" },
+      "asaas",
+    );
+    expect(result).toEqual({
+      error: "O Pix libera quando o Asaas aprovar a sua conta de recebimento. Veja o que falta em Recebimentos online.",
+      reason: "pix_not_ready",
+    });
+  });
+
   it("valor abaixo do da cobrança é recusado", async () => {
     expect(await pix(await charge(), 100)).toEqual({ error: "O valor não pode ser menor que o da cobrança." });
   });

@@ -173,6 +173,7 @@ export interface AsaasPixQrCodeResponse {
 
 export interface AsaasWebhookPayload {
   event:
+    | `ACCOUNT_STATUS_${string}`
     | "PAYMENT_CREATED"
     | "PAYMENT_AWAITING_RISK_ANALYSIS"
     | "PAYMENT_APPROVED_BY_RISK_ANALYSIS"
@@ -221,6 +222,14 @@ export interface AsaasWebhookPayload {
   authorization?: AsaasPixAutomaticAuthorization;
   /** Eventos de nota fiscal (INVOICE_*). */
   invoice?: Pick<AsaasInvoiceResponse, "id" | "status" | "payment">;
+  /** Avisos ACCOUNT_STATUS_* da subconta: a conta e a situacao cadastral atual. */
+  account?: { id: string; ownerId?: string | null };
+  accountStatus?: {
+    general?: string;
+    documentation?: string;
+    commercialInfo?: string;
+    bankAccountInfo?: string;
+  };
 }
 
 /** Autorizacao de Pix Automatico (oferta na assinatura com Pix, Jornada 4). */

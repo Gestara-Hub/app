@@ -18,7 +18,7 @@ import type {
   CreatePixInput,
   CreateLinkInput,
 } from "../types";
-import { PixNotReadyError } from "../types";
+import { PIX_ACCOUNT_PENDING_MESSAGE, PixNotReadyError } from "../types";
 import { newId } from "@/services/world/ops";
 import { logWarn } from "@/lib/log";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
@@ -34,7 +34,13 @@ async function getPixQrCodeCreatingKey(paymentId: string, apiKey?: string): Retu
     return await getPixQrCode(paymentId, apiKey);
   } catch (error) {
     if (!isPixKeyMissing(error)) throw error;
-    await createPixAddressKey(apiKey);
+    try {
+      await createPixAddressKey(apiKey);
+    } catch (keyError) {
+      // Conta ainda em analise no Asaas: o Pix so libera com a aprovacao.
+      if (isAccountNotApproved(keyError)) throw new PixNotReadyError(PIX_ACCOUNT_PENDING_MESSAGE);
+      throw keyError;
+    }
     return getPixQrCode(paymentId, apiKey);
   }
 }
@@ -43,6 +49,13 @@ function isPixKeyMissing(error: unknown): boolean {
   if (!(error instanceof AsaasApiError)) return false;
   const texts = [error.message, ...(error.errors ?? []).map((e) => e.description)];
   return texts.some((t) => /chave pix/i.test(t ?? ""));
+}
+
+/** "A sua conta ainda não está totalmente aprovada para utilizar o Pix." */
+function isAccountNotApproved(error: unknown): boolean {
+  if (!(error instanceof AsaasApiError)) return false;
+  const texts = [error.message, ...(error.errors ?? []).map((e) => e.description)];
+  return texts.some((t) => /n[aã]o est[aá] totalmente aprovada/i.test(t ?? ""));
 }
 
 function addMinutes(minutes: number): DateTimeISO {

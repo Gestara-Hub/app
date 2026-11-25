@@ -29,8 +29,77 @@ import { logError, logWarn } from "@/lib/log";
 /** Nome do webhook do GestaraHub em cada subconta (para achar e atualizar, nao duplicar). */
 export const GESTARAHUB_WEBHOOK_NAME = "GestaraHub";
 
-/** Eventos de cobranca que a rota app/api/webhooks/asaas trata. */
-const WEBHOOK_EVENTS = ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_OVERDUE", "PAYMENT_DELETED"];
+/**
+ * Avisos que cada subconta manda para app/api/webhooks/asaas (25/11/2026: os
+ * que vamos usar, marcados de uma vez). A rota reconhece qualquer aviso e guarda
+ * o que ainda nao trata: recusar pausava a fila da subconta. Nomes conferidos
+ * na lista do Asaas (POST /v3/webhooks, campo `events`): nome errado faz o
+ * cadastro do webhook falhar.
+ */
+export const WEBHOOK_EVENTS = [
+  // Cobrancas de aluno: baixa, vencimento, cancelamento e volta.
+  "PAYMENT_RECEIVED",
+  "PAYMENT_CONFIRMED",
+  "PAYMENT_OVERDUE",
+  "PAYMENT_DELETED",
+  "PAYMENT_RESTORED",
+  "PAYMENT_UPDATED",
+  "PAYMENT_RECEIVED_IN_CASH_UNDONE",
+  "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED",
+  // Estorno e contestacao (ja tratados: avisam o dono; antes nao eram marcados).
+  "PAYMENT_REFUNDED",
+  "PAYMENT_PARTIALLY_REFUNDED",
+  "PAYMENT_REFUND_IN_PROGRESS",
+  "PAYMENT_REFUND_DENIED",
+  "PAYMENT_CHARGEBACK_REQUESTED",
+  "PAYMENT_CHARGEBACK_DISPUTE",
+  "PAYMENT_AWAITING_CHARGEBACK_REVERSAL",
+  // Saques via Pix (para depois: situacao do saque sem precisar atualizar).
+  "TRANSFER_PENDING",
+  "TRANSFER_BLOCKED",
+  "TRANSFER_DONE",
+  "TRANSFER_FAILED",
+  "TRANSFER_CANCELLED",
+  // Saldo bloqueado pelo parceiro (para depois).
+  "BALANCE_VALUE_BLOCKED",
+  "BALANCE_VALUE_UNBLOCKED",
+  // Analise da conta (tratados: cartao "Deixe sua conta pronta").
+  "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+  "ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL",
+  "ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING",
+  "ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED",
+  "ACCOUNT_STATUS_DOCUMENT_APPROVED",
+  "ACCOUNT_STATUS_DOCUMENT_AWAITING_APPROVAL",
+  "ACCOUNT_STATUS_DOCUMENT_PENDING",
+  "ACCOUNT_STATUS_DOCUMENT_REJECTED",
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_APPROVED",
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_AWAITING_APPROVAL",
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_PENDING",
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_REJECTED",
+  // Confirmacao anual dos dados comerciais e conta bancaria (para depois).
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRING_SOON",
+  "ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRED",
+  "ACCOUNT_STATUS_BANK_ACCOUNT_INFO_APPROVED",
+  "ACCOUNT_STATUS_BANK_ACCOUNT_INFO_AWAITING_APPROVAL",
+  "ACCOUNT_STATUS_BANK_ACCOUNT_INFO_PENDING",
+  "ACCOUNT_STATUS_BANK_ACCOUNT_INFO_REJECTED",
+  // Chave de API da subconta: expira sem uso e o espaco para de cobrar (para depois).
+  "ACCESS_TOKEN_CREATED",
+  "ACCESS_TOKEN_ENABLED",
+  "ACCESS_TOKEN_DISABLED",
+  "ACCESS_TOKEN_DELETED",
+  "ACCESS_TOKEN_EXPIRING_SOON",
+  "ACCESS_TOKEN_EXPIRED",
+  // Pix Automatico das mensalidades dos alunos (para depois).
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED",
+];
+
+/** Muda quando a lista de eventos muda: entra na impressao e recadastra as subcontas. */
+const WEBHOOK_EVENTS_VERSION = "3";
 
 /**
  * O que fica gravado em `gateway_webhook_url`: a URL e uma impressao curta do
@@ -40,7 +109,8 @@ const WEBHOOK_EVENTS = ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_OVERDU
  */
 export function webhookFingerprint(url: string, authToken: string): string {
   const print = createHash("sha256").update(authToken, "utf8").digest("hex").slice(0, 12);
-  return `${url}#${print}`;
+  // Versao dos eventos (25/11/2026): as subcontas ja cadastradas ganham os avisos novos.
+  return `${url}#${print}#e${WEBHOOK_EVENTS_VERSION}`;
 }
 
 /** Chave de subconta de verdade (as do modo de demonstracao comecam com "mock_"). */

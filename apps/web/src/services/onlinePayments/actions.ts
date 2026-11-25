@@ -33,6 +33,7 @@ export type {
 export {
   listSubaccountReceiptsAction,
 } from "./receiptsActions";
+export { getSubaccountOnboardingAction } from "./onboardingActions";
 export type {
   ReceiptStatusFilter,
   SubaccountReceiptItem,

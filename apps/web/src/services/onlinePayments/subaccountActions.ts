@@ -6,7 +6,7 @@ import { afterResponse } from "@/lib/after-response";
 import { isApiError, type OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { ensureSubaccountPixKey, ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
+import { ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
 import { createSubAccount, findSubAccountsByEmail } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
@@ -181,8 +181,9 @@ export async function setupSubaccountAction(
           const results = await Promise.allSettled([
             syncGatewayFees(organizationId),
             ensureSubaccountWebhook(organizationId),
-            // Chave Pix da subconta: sem ela o primeiro Pix falhava no QR (01/11/2026).
-            ensureSubaccountPixKey(organizationId),
+            // Sem a chave Pix aqui (25/11/2026): conta recem-criada esta pendente no
+            // Asaas, que recusa a chave ("ainda nao esta totalmente aprovada"). Ela e
+            // criada quando chega a aprovacao (accountStatus.saveAccountStatus).
           ]);
           for (const r of results) {
             if (r.status === "rejected") logWarn("[setupSubaccountAction] Ajuste da subconta depois da ativação falhou:", r.reason);
