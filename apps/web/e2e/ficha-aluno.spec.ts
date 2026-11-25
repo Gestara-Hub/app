@@ -910,14 +910,12 @@ test.describe("comunicação", () => {
     const ending = card("Pacote acabando");
     await expect(ending).toContainText("Oi, Ana Souza! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula.");
 
-    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre so a
-    // prévia com as variaveis preenchidas, sem campo de texto nem chips de variavel.
-    await ending.getByRole("button", { name: "Configurar modelo" }).click();
-    const dialog = page.getByRole("dialog", { name: "Pacote acabando" });
-    await expect(dialog).toContainText("Oi, Ana Souza! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula.");
-    await expect(dialog).not.toContainText("{");
-    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
-    await expect(dialog.getByRole("button", { name: "+ Nome do pacote" })).toHaveCount(0);
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Ver exemplo" mostra a prévia
+    // com as variaveis preenchidas; sem o WhatsApp oficial nao ha "Prazo e horário" (25/11/2026).
+    await ending.getByRole("button", { name: "Ver exemplo" }).click();
+    await expect(ending).toContainText("Oi, Ana Souza! Passando para avisar sobre o seu pacote 10 aulas na Academia X: resta 1 aula.");
+    await expect(ending).not.toContainText("{");
+    await expect(ending.getByRole("button", { name: "Prazo e horário" })).toHaveCount(0);
   });
 
   test("'Lembrar no WhatsApp' de uma avulsa pela ficha usa o 'Lembrete de cobrança' e entra em Mensagens", async ({

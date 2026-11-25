@@ -154,16 +154,12 @@ test.describe("envio assistido (grátis)", () => {
   test("modelo com texto fixo: prévia preenchida e o mesmo texto no lembrete", async ({ page }) => {
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/communication");
-    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre a
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Ver exemplo" mostra a
     // prévia com as variaveis preenchidas, sem campo de texto.
     const card = page.getByRole("group", { name: "Em atraso", exact: true });
-    await card.getByRole("button", { name: "Configurar modelo" }).click();
-    const dialog = page.getByRole("dialog", { name: "Em atraso" });
-    await expect(dialog).toContainText("Ana Souza");
-    await expect(dialog).not.toContainText("{");
-    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    await card.getByRole("button", { name: "Ver exemplo" }).click();
+    await expect(card).toContainText("Ana Souza");
+    await expect(card).not.toContainText("{");
 
     // O lembrete da cobranca atrasada sai com o mesmo modelo, com os dados do aluno.
     await page.goto("/classes/billing?status=all");

@@ -189,23 +189,17 @@ test.describe("envio assistido de vários lugares", () => {
 });
 
 test.describe("modelos de mensagem", () => {
-  test("configurar o aniversário mostra a prévia preenchida, sem editar o texto", async ({ page }) => {
+  test("aniversário mostra a prévia preenchida, sem editar o texto nem prazo no envio assistido", async ({ page }) => {
     await seedComm(page);
     await page.goto("/communication");
-    // Texto fixo desde 09/11/2026 (doc frontend/06 §16): "Configurar modelo" abre a
-    // previa com as variaveis preenchidas, sem campo de texto; no envio assistido so "Fechar".
+    // Texto fixo desde 09/11/2026 (doc frontend/06 §16). Sem o WhatsApp oficial, so
+    // "Ver exemplo": "Prazo e horário" aparece com o envio automatico (25/11/2026).
     const card = page.getByRole("group", { name: "Aniversário", exact: true });
-    await card.getByRole("button", { name: "Configurar modelo" }).click();
-    const dialog = page.getByRole("dialog", { name: "Aniversário" });
-    await expect(dialog).toContainText("Como o aluno recebe");
-    await expect(dialog).toContainText("Ana Souza");
-    await expect(dialog).toContainText("Academia X");
-    await expect(dialog).not.toContainText("{");
-    await expect(dialog.getByLabel("Texto")).toHaveCount(0);
-    await expect(dialog.getByRole("button", { name: "Salvar" })).toHaveCount(0);
-    // O "Fechar" do rodape (o X do canto tem o mesmo nome).
-    await dialog.getByRole("button", { name: "Fechar", exact: true }).first().click();
-    await expect(dialog).toBeHidden();
+    await expect(card.getByRole("button", { name: "Prazo e horário" })).toHaveCount(0);
+    await card.getByRole("button", { name: "Ver exemplo" }).click();
+    await expect(card).toContainText("Ana Souza");
+    await expect(card).toContainText("Academia X");
+    await expect(card).not.toContainText("{");
   });
 
   test("atendente vê os modelos e o histórico sem editar nem enviar", async ({ page }) => {
@@ -217,7 +211,7 @@ test.describe("modelos de mensagem", () => {
     await page.goto("/communication");
     await expect(page.getByText("Em atraso", { exact: true })).toBeVisible();
     // Configurar os modelos e de quem gerencia a comunicacao; enviar, nao.
-    await expect(page.getByRole("button", { name: "Configurar modelo" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Prazo e horário" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Nova mensagem" })).toBeVisible();
     await openTab(page, "Histórico");
     await expect(page.getByRole("button", { name: /^Mensagem para / })).toHaveCount(3);

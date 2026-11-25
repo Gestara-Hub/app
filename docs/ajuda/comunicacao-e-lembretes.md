@@ -23,18 +23,16 @@ Em Comunicação, "Nova mensagem". Escolha um ou vários alunos (há "Selecionar
 Resumo: Veja a prévia de cada aviso e ligue o envio automático.
 Guia: /communication
 + aba "Mensagens": Aqui ficam os modelos de aviso.
-+ botão "Configurar modelo": Abra o modelo para ver a prévia e as opções.
-+ campo "Envio automático": Ligue ou desligue o envio sozinho deste aviso.
-+ botão "Salvar": Clique aqui para guardar.
-Na aba Mensagens, cada aviso (atraso, vence hoje, aniversário, pacote acabando...) tem um texto padrão aprovado pelo WhatsApp, que não muda. Abra o modelo para ver como o aluno recebe: o nome, os valores e os links entram sozinhos no envio.
++ botão "Ver exemplo": Veja como o aluno recebe este aviso.
+Na aba Mensagens, cada aviso (atraso, vence hoje, aniversário, pacote acabando...) tem um texto padrão aprovado pelo WhatsApp, que não muda. Toque em "Ver exemplo" para ver como o aluno recebe: o nome, os valores e os links entram sozinhos no envio.
 
 ## Envio automático de um aviso
 Resumo: Com o WhatsApp oficial, ligue o aviso para sair sozinho.
 Guia: /communication
 + aba "Mensagens": Abra a lista de modelos.
-+ botão "Configurar modelo": Abra o aviso que deve sair sozinho.
-+ campo "Envio automático": Ligue aqui. Só funciona com o WhatsApp oficial conectado.
-+ campo "Horário de envio": Escolha a hora em que o aviso sai.
++ botão "Prazo e horário": Abra o aviso que deve sair sozinho. Aparece com o WhatsApp oficial conectado.
++ campo "Envio automático": Ligue aqui.
++ campo "Horário de envio": Escolha a hora em que o aviso sai. O prazo, em dias, fica logo acima.
 + botão "Salvar": Clique aqui para guardar.
 
 ## Horário do envio automático

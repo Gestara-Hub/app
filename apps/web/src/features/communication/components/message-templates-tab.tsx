@@ -1,7 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, HeartHandshake, Megaphone, MessageSquare, SlidersHorizontal, Wallet } from "lucide-react";
+import {
+  AlarmClock,
+  AlertTriangle,
+  Ban,
+  BellRing,
+  CalendarClock,
+  CalendarX,
+  Cake,
+  CircleCheck,
+  Clock,
+  HandHeart,
+  type LucideIcon,
+  MessageSquare,
+  Package,
+  PartyPopper,
+  Receipt,
+  Repeat,
+  Siren,
+  Ticket,
+  TrendingUp,
+} from "lucide-react";
+import type { MessageTrigger } from "@gestarahub/contracts";
 import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -14,12 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { ListContainer } from "@/components/shared/list";
 import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
@@ -32,6 +48,29 @@ const NOTICE_TONE = {
   danger: "text-destructive",
 } as const;
 import { EditTemplateDialog } from "./edit-template-dialog";
+
+/**
+ * Icone de cada mensagem (25/11/2026, lista no padrao de Relatorios): cor so no
+ * icone, como nas outras listas. Mensagem nova sem icone cai no balao.
+ */
+const TRIGGER_ICON: Partial<Record<MessageTrigger, { icon: LucideIcon; color: string }>> = {
+  billing_before_due: { icon: CalendarClock, color: "text-sky-500" },
+  billing_due_date: { icon: AlarmClock, color: "text-amber-500" },
+  billing_after_due: { icon: AlertTriangle, color: "text-orange-500" },
+  billing_critical: { icon: Siren, color: "text-rose-500" },
+  charge_reminder: { icon: Receipt, color: "text-indigo-500" },
+  payment_received: { icon: CircleCheck, color: "text-emerald-500" },
+  welcome_student: { icon: PartyPopper, color: "text-violet-500" },
+  absence_alert: { icon: HandHeart, color: "text-pink-500" },
+  birthday_greeting: { icon: Cake, color: "text-amber-500" },
+  package_ending: { icon: Package, color: "text-orange-500" },
+  level_up: { icon: TrendingUp, color: "text-teal-500" },
+  trial_follow_up: { icon: Repeat, color: "text-sky-500" },
+  event_reminder: { icon: Ticket, color: "text-orange-500" },
+  class_canceled: { icon: Ban, color: "text-rose-500" },
+  schedule_change: { icon: CalendarX, color: "text-indigo-500" },
+  holiday_notice: { icon: BellRing, color: "text-amber-500" },
+};
 import { MessageBubble } from "./message-bubble";
 
 function TemplateCard({
@@ -53,6 +92,7 @@ function TemplateCard({
   const [showPreview, setShowPreview] = useState(false);
   const updateMut = useUpdateTemplate();
   const meta = TRIGGER_META[template.trigger];
+  const { icon: Icon, color: iconColor } = TRIGGER_ICON[template.trigger] ?? { icon: MessageSquare, color: "text-primary" };
   const preview = templatePreview(template.trigger, fillMessage(template.content, sampleValues(orgName, withPaymentLink)));
   // Modelo so de envio manual: sem interruptor nem prazo, nem no oficial.
   const manual = isManualTrigger(template.trigger);
@@ -70,15 +110,12 @@ function TemplateCard({
   }
 
   return (
-    // Um grupo com o nome do modelo: leitor de tela anuncia o cartao, e os testes
-    // acham o cartao certo dentro da sanfona (que tambem e um cartao arredondado).
+    // Uma linha da lista (padrao de Relatorios, 25/11/2026), com o nome do modelo
+    // como grupo: o leitor de tela anuncia a linha, e os testes acham a linha certa.
     <div
       role="group"
       aria-label={meta.label}
-      className={cn(
-        "rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 transition-colors",
-        automatic && !template.enabled && "opacity-75",
-      )}
+      className={cn("px-4 py-3.5 sm:px-5 transition-colors", automatic && !template.enabled && "opacity-75")}
     >
       {/* Celular: os dois icones cabem ao lado do nome; o automatico (com a chave) desce. */}
       <div
@@ -87,8 +124,12 @@ function TemplateCard({
           automatic ? "flex-col sm:flex-row sm:items-center sm:justify-between" : "items-start justify-between sm:items-center",
         )}
       >
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground">{meta.label}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background shadow-2xs" aria-hidden>
+            <Icon className={cn("size-5", iconColor)} />
+          </span>
+          <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">{meta.label}</p>
           <p className="text-xs text-muted-foreground break-words">
             {templateSubtitle(template, official)}
             {notice ? (
@@ -112,6 +153,7 @@ function TemplateCard({
               </>
             ) : null}
           </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -125,6 +167,28 @@ function TemplateCard({
                 aria-label={`Envio automático: ${meta.label}`}
               />
             </label>
+          ) : null}
+
+          {/* Antes do "Ver exemplo" (que fica sempre na ponta, alinhado entre as linhas).
+              So com o WhatsApp oficial (25/11/2026): o painel ajusta prazo e horario do
+              envio automatico; o texto e fixo, e sem o oficial ele so repetia a previa. */}
+          {canManage && automatic ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={onEdit}
+                  aria-label="Prazo e horário"
+                >
+                  <Clock className="size-4" />
+                  <span className="sr-only">Prazo e horário</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Prazo e horário</TooltipContent>
+            </Tooltip>
           ) : null}
 
           <Tooltip>
@@ -147,30 +211,12 @@ function TemplateCard({
             </TooltipTrigger>
             <TooltipContent>{showPreview ? "Ocultar exemplo" : "Ver exemplo"}</TooltipContent>
           </Tooltip>
-
-          {canManage && !manual ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={onEdit}
-                  aria-label="Configurar modelo"
-                >
-                  <SlidersHorizontal className="size-4" />
-                  <span className="sr-only">Configurar modelo</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Configurar modelo</TooltipContent>
-            </Tooltip>
-          ) : null}
         </div>
       </div>
 
       {showPreview ? (
-        <div className="mt-2.5 pt-1 border-t border-border/40">
+        // Alinhado com o texto, depois do icone.
+        <div className="mt-2.5 pt-1 sm:ml-12">
           <MessageBubble text={preview} />
         </div>
       ) : (
@@ -184,19 +230,16 @@ const GROUPS = [
   {
     category: "billing" as const,
     title: "Cobrança",
-    icon: Wallet,
     hint: "Lembretes das cobranças e pagamento recebido.",
   },
   {
     category: "retention" as const,
     title: "Relacionamento",
-    icon: HeartHandshake,
     hint: "Boas-vindas, faltas, pacote, aniversário e avanço.",
   },
   {
     category: "administrative" as const,
     title: "Avisos",
-    icon: Megaphone,
     hint: "Aula cancelada, mudança de horário e feriado.",
   },
 ];
@@ -250,44 +293,24 @@ export function MessageTemplatesTab() {
             </div>
           </div>
         ) : null}
-        <Accordion
-          type="multiple"
-          defaultValue={["billing", "retention", "administrative"]}
-          className="space-y-4"
-        >
+        {/* Secoes abertas, uma moldura por secao (padrao de Relatorios, 25/11/2026). */}
+        <div className="space-y-6">
           {GROUPS.map((group) => {
             const items = (templates ?? [])
               .filter((t) => t.category === group.category)
               .sort((a, b) => TRIGGER_ORDER.indexOf(a.trigger) - TRIGGER_ORDER.indexOf(b.trigger));
             if (items.length === 0) return null;
+            const headingId = `templates-group-${group.category}`;
 
             return (
-              <AccordionItem
-                key={group.category}
-                value={group.category}
-                className="rounded-xl border border-border/70 bg-card px-4 sm:px-5 shadow-xs transition-colors overflow-hidden"
-              >
-                <AccordionTrigger headingLevel={2} className="py-3.5 hover:no-underline cursor-pointer">
-                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <group.icon className="size-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground text-sm leading-tight">
-                          {group.title}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-normal tabular-nums">
-                          ({items.length})
-                        </span>
-                      </div>
-                      <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
-                        {group.hint}
-                      </p>
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4 border-t border-border/40 mt-1 space-y-2.5">
+              <section key={group.category} className="space-y-2" aria-labelledby={headingId}>
+                <div>
+                  <h2 id={headingId} className="text-sm font-medium text-muted-foreground">
+                    {group.title} <span className="tabular-nums">· {items.length}</span>
+                  </h2>
+                  <p className="min-w-0 break-words text-xs text-muted-foreground">{group.hint}</p>
+                </div>
+                <ListContainer>
                   {items.map((template) => (
                     <TemplateCard
                       key={template.id}
@@ -299,11 +322,11 @@ export function MessageTemplatesTab() {
                       onEdit={() => setEditing(template)}
                     />
                   ))}
-                </AccordionContent>
-              </AccordionItem>
+                </ListContainer>
+              </section>
             );
           })}
-        </Accordion>
+        </div>
 
         <EditTemplateDialog
           template={editing}
