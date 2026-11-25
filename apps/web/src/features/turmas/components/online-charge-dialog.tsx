@@ -185,12 +185,19 @@ export function OnlineChargeDialog({
   // null = a primeira forma aceita pelo espaco.
   const [chosenMethod, setMethod] = useState<OnlinePaymentMethod | null>(null);
   const [passFee, setPassFee] = useState<boolean | null>(null);
+  // Gerando: do pedido ate o codigo novo chegar na janela (25/11/2026: o "Pix gerado"
+  // aparecia antes e o QR Code so surgia segundos depois, na releitura).
+  const [generating, setGenerating] = useState(false);
+  // Codigo gerado agora: vale ele, mesmo que o anterior ainda apareca em aberto na
+  // lista (o cancelamento do anterior no banco termina em segundo plano, 25/11/2026).
+  const [created, setCreated] = useState<OnlinePayment | null>(null);
 
   // Metodo e repasse voltam ao padrao depois da animacao de saida, nao no clique.
   useAfterDialogClose(open, () => {
     setChoosing(false);
     setMethod(null);
     setPassFee(null);
+    setCreated(null);
   });
   const close = (next: boolean) => onOpenChange(next);
 
@@ -216,7 +223,15 @@ export function OnlineChargeDialog({
   });
 
   const payments = checkout.data?.payments ?? [];
-  const awaiting = payments.find((p) => p.status === "awaiting");
+  // O recem-gerado vence; sem ele, o mais novo em aberto (nunca um substituido que
+  // ainda nao saiu da lista).
+  const listedCreated = created ? payments.find((p) => p.id === created.id) : undefined;
+  const awaiting =
+    created && (!listedCreated || listedCreated.status === "awaiting")
+      ? (listedCreated ?? created)
+      : payments
+          .filter((p) => p.status === "awaiting")
+          .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
   // Pix do parceiro (nao a demonstracao): o QR desenhado e lido pelo banco.
   const realPix = Boolean(awaiting?.pixCopyPaste) && awaiting?.gatewayProvider !== "mock";
   // Link mostrado e copiado: o endereco do GestaraHub (/p/<codigo>), como na
@@ -229,23 +244,23 @@ export function OnlineChargeDialog({
   // Sem o CPF de quem paga o parceiro recusa: o aviso fica na janela, antes de gerar.
   const payerIssue = checkout.data?.payerIssue;
 
-  const generate = () => {
-    if (!charge) return;
-    createMut.mutate(
-      { chargeId: charge.id, method, passFeeToCustomer: activePassFee },
-      {
-        onSuccess: () => {
-          setChoosing(false);
-          toast.success(
-            method === "pix" ? "Pix gerado." : method === "boleto" ? "Boleto gerado." : "Link de pagamento gerado.",
-          );
-        },
-        onError: (err) =>
-          toast.error(
-            getErrorMessage(err, "Não foi possível gerar a cobrança online."),
-          ),
-      },
-    );
+  const generate = async () => {
+    if (!charge || generating) return;
+    setGenerating(true);
+    try {
+      const payment = await createMut.mutateAsync({ chargeId: charge.id, method, passFeeToCustomer: activePassFee });
+      setCreated(payment);
+      // So mostra o codigo (e o aviso) quando ele ja esta na janela.
+      await checkout.refetch();
+      setChoosing(false);
+      toast.success(
+        method === "pix" ? "Pix gerado." : method === "boleto" ? "Boleto gerado." : "Link de pagamento gerado.",
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível gerar a cobrança online."));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const simulatePaid = (payment: OnlinePayment) => {
@@ -666,12 +681,12 @@ export function OnlineChargeDialog({
                   onClick={() =>
                     awaiting && choosing ? setChoosing(false) : close(false)
                   }
-                  disabled={createMut.isPending}
+                  disabled={generating}
                 >
                   Voltar
                 </Button>
-                <Button onClick={generate} disabled={createMut.isPending || Boolean(payerIssue)}>
-                  {createMut.isPending
+                <Button onClick={() => void generate()} disabled={generating || Boolean(payerIssue)}>
+                  {generating
                     ? "Gerando..."
                     : method === "pix"
                       ? "Gerar Pix"
