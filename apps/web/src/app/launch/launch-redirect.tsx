@@ -1,25 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { LaunchSplashContent, markLaunchSplash } from "@/components/layout/launch-splash";
+import { Button } from "@/components/ui/button";
+import { markRestoredOwner, restorableRoute } from "@/lib/last-route";
 
 const HOME = "/dashboard";
 
 /**
- * Pede o Painel assim que a abertura aparece: a logo fica na tela enquanto os
- * dados chegam (sem sessao, o proxy leva a entrada). Rede lenta: depois de
- * alguns segundos, um link para tentar de novo.
+ * Pede a primeira tela assim que a abertura aparece: a ultima tela vista nesta
+ * conta (ate 7 dias, `lib/last-route`) ou o Painel. A logo fica na tela
+ * enquanto os dados chegam (sem sessao, o proxy leva a entrada). Rede lenta:
+ * depois de alguns segundos, um botao para tentar de novo.
  */
 export function LaunchRedirect() {
   const router = useRouter();
   const [slow, setSlow] = useState(false);
+  const targetRef = useRef(HOME);
 
   useEffect(() => {
-    // O painel segue com a logo ate a primeira tela ter os dados.
+    const last = restorableRoute();
+    if (last) {
+      targetRef.current = last.path;
+      // O app confere se a conta da sessao e a mesma que viu a tela.
+      markRestoredOwner(last.owner);
+    }
+    // A primeira tela segue com a logo ate ter os dados.
     markLaunchSplash();
-    router.replace(HOME);
+    router.replace(targetRef.current);
     const timer = setTimeout(() => setSlow(true), 8_000);
     return () => clearTimeout(timer);
   }, [router]);
@@ -27,9 +36,14 @@ export function LaunchRedirect() {
   return (
     <LaunchSplashContent>
       {slow ? (
-        <Link href={HOME} replace className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        <Button
+          type="button"
+          variant="link"
+          className="text-sm font-normal text-muted-foreground"
+          onClick={() => router.replace(targetRef.current)}
+        >
           Demorando? Toque para abrir
-        </Link>
+        </Button>
       ) : null}
     </LaunchSplashContent>
   );

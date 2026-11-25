@@ -90,7 +90,9 @@ export default async function AppLayout({
         <ViewModeProvider initialModes={initialViewModes}>
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
             <AppSidebar />
-            <NavigationTracker />
+            <Suspense fallback={null}>
+              <NavigationTracker owner={`${user.id}:${user.organizationId}`} />
+            </Suspense>
             <WhatsAppConfirmHost />
             <SupportHost />
             <CrumbTracker />
