@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-6",
+    date: "2026-11-25",
+    items: [
+      { text: "Boas-vindas e tours não voltam em outro aparelho." },
+      { text: "Recebimentos online abre com a situação do Asaas já carregada." },
+      { text: "Botão Já criei a senha na conta de recebimento." },
+    ],
+  },
+  {
     version: "2026.11.25-5",
     date: "2026-11-25",
     items: [

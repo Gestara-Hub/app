@@ -2,6 +2,19 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-6 (2026-11-25)
+
+Desde v2026.11.25-5.
+
+### Novo
+
+- online-payments: tela espera a situação do Asaas, tour na conta e Já criei a senha
+- preferences: boas-vindas, tours e dicas vistos ficam na conta, valem em qualquer aparelho
+
+### Correções
+
+- onboarding: Entendi visível na faixa Comece por aqui no tema escuro
+
 ## 2026.11.25-5 (2026-11-25)
 
 Desde v2026.11.25-4.
