@@ -24,6 +24,9 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       { text: "Boas-vindas e tours não voltam em outro aparelho." },
       { text: "Recebimentos online abre com a situação do Asaas já carregada." },
       { text: "Botão Já criei a senha na conta de recebimento." },
+      { text: "Cobrança da turma travada depois da primeira matrícula." },
+      { text: "Duplicar turma para criar outra com os mesmos dados." },
+      { text: "Turma com alunos ativos não pode ser inativada." },
     ],
   },
   {

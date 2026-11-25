@@ -8,11 +8,13 @@ Desde v2026.11.25-5.
 
 ### Novo
 
+- classes: cobrança travada na 1ª matrícula, inativar bloqueado com alunos ativos e duplicar turma
 - online-payments: tela espera a situação do Asaas, tour na conta e Já criei a senha
 - preferences: boas-vindas, tours e dicas vistos ficam na conta, valem em qualquer aparelho
 
 ### Correções
 
+- online-payments: Cobrar online mostra o código gerado na hora, com o aviso junto
 - online-payments: webhook das subcontas sem os avisos de Pix Automático, lista essencial se o Asaas recusar e nova tentativa só depois de 6 horas
 - onboarding: Entendi visível na faixa Comece por aqui no tema escuro
 
