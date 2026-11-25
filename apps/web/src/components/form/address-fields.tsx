@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useFormContext,
@@ -29,6 +30,12 @@ interface AddressFieldsProps<T extends FieldValues = FieldValues> {
   required?: boolean;
   /** Cidade e UF obrigatorias (padrao: igual a `required`). Falso quando o CEP basta. */
   cityStateRequired?: boolean;
+}
+
+/** "69041010" -> "69041-010" (o que veio salvo sem o traco). */
+function formatPostalCode(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
 }
 
 export function AddressFields<T extends FieldValues = FieldValues>({
@@ -138,10 +145,16 @@ export function AddressFields<T extends FieldValues = FieldValues>({
     void executeLookup(postalCodeValue, true);
   };
 
+  // Grade pela largura do proprio bloco, nao da tela (25/11/2026): no drawer
+  // estreito (ativar recebimentos, checkout) as 3 colunas espremiam CEP, numero
+  // e UF. Estreito: 1 coluna; medio: 2 colunas (CEP e Numero lado a lado,
+  // Cidade e UF lado a lado); largo: a grade de 3 colunas de sempre.
+  const half = "@sm:col-span-1 @xl:col-span-2";
+  const wide = "@sm:col-span-2 @xl:col-span-4";
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="sm:col-span-1">
+    <div className="@container">
+      <div className="grid grid-cols-1 gap-4 @sm:grid-cols-2 @xl:grid-cols-6">
+        <div className={cn(half, "@sm:order-1 @xl:order-none")}>
           <FieldShell
             id={postalCodeField}
             label="CEP"
@@ -152,19 +165,24 @@ export function AddressFields<T extends FieldValues = FieldValues>({
               <Input
                 id={postalCodeField}
                 placeholder="00000-000"
+                inputMode="numeric"
                 disabled={disabled || loading}
-                value={postalCodeValue}
+                // CEP salvo so com digitos tambem aparece com o traco.
+                value={formatPostalCode(postalCodeValue)}
                 onChange={handlePostalCodeChange}
                 maxLength={9}
+                className="min-w-0"
                 {...fieldAria(postalCodeField, postalCodeState.error?.message)}
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
+                className="shrink-0"
                 disabled={disabled || loading}
                 onClick={handleManualSearch}
                 title="Buscar CEP"
+                aria-label="Buscar CEP"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -175,7 +193,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
             </div>
           </FieldShell>
         </div>
-        <div className="sm:col-span-2">
+        <div className={cn(wide, "@sm:order-3 @xl:order-none")}>
           <InputText<T>
             name={getFieldName("street")}
             label="Logradouro / Rua"
@@ -184,17 +202,16 @@ export function AddressFields<T extends FieldValues = FieldValues>({
             disabled={disabled || loading}
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <InputText<T>
-          name={getFieldName("number")}
-          label="Número"
-          placeholder="Número ou S/N"
-          required={required}
-          disabled={disabled || loading}
-        />
-        <div className="sm:col-span-2">
+        <div className={cn(half, "@sm:order-2 @xl:order-none")}>
+          <InputText<T>
+            name={getFieldName("number")}
+            label="Número"
+            placeholder="Número ou S/N"
+            required={required}
+            disabled={disabled || loading}
+          />
+        </div>
+        <div className={cn(wide, "@sm:order-4 @xl:order-none")}>
           <InputText<T>
             name={getFieldName("complement")}
             label="Complemento"
@@ -202,31 +219,36 @@ export function AddressFields<T extends FieldValues = FieldValues>({
             disabled={disabled || loading}
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <InputText<T>
-          name={getFieldName("neighborhood")}
-          label="Bairro"
-          placeholder="Informe o bairro"
-          required={required}
-          disabled={disabled || loading}
-        />
-        <InputText<T>
-          name={getFieldName("city")}
-          label="Cidade"
-          placeholder="Informe a cidade"
-          required={cityStateRequired}
-          disabled={disabled || loading}
-        />
-        <SelectField<T>
-          name={stateField}
-          label="Estado (UF)"
-          placeholder="Selecione"
-          options={STATE_OPTIONS}
-          required={cityStateRequired}
-          disabled={disabled || loading}
-        />
+        <div className="@sm:order-5 @sm:col-span-2 @xl:order-none @xl:col-span-2">
+          <InputText<T>
+            name={getFieldName("neighborhood")}
+            label="Bairro"
+            placeholder="Informe o bairro"
+            required={required}
+            disabled={disabled || loading}
+          />
+        </div>
+        <div className={cn(half, "@sm:order-6 @xl:order-none")}>
+          <InputText<T>
+            name={getFieldName("city")}
+            label="Cidade"
+            placeholder="Informe a cidade"
+            required={cityStateRequired}
+            disabled={disabled || loading}
+          />
+        </div>
+        <div className={cn(half, "@sm:order-7 @xl:order-none")}>
+          <SelectField<T>
+            name={stateField}
+            label="Estado (UF)"
+            placeholder="Selecione"
+            options={STATE_OPTIONS}
+            // Sem o "×" (25/11/2026): os outros campos de escolha do endereco nao tem.
+            clearable={false}
+            required={cityStateRequired}
+            disabled={disabled || loading}
+          />
+        </div>
       </div>
     </div>
   );

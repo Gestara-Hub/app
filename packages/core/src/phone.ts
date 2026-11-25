@@ -105,9 +105,21 @@ function isUsable(parsed: PhoneNumber | undefined): parsed is PhoneNumber {
   return parsed.country !== DEFAULT_PHONE_COUNTRY || parsed.nationalNumber.length >= 10;
 }
 
-/** Telefone que existe (tamanho certo para o pais; no Brasil, com DDD). */
+/** Celular brasileiro sem o 9 da frente: DDD + 8 digitos comecando em 6 a 9. */
+function isBrazilMobileWithoutNine(parsed: PhoneNumber): boolean {
+  const national = parsed.nationalNumber;
+  return parsed.country === DEFAULT_PHONE_COUNTRY && national.length === 10 && /[6-9]/.test(national.charAt(2));
+}
+
+/**
+ * Telefone que existe (tamanho certo para o pais; no Brasil, com DDD). Para o
+ * que a pessoa digita (25/11/2026): celular sem o 9 da frente nao passa. O
+ * WhatsApp (`whatsappDigits`) segue aceitando, porque a Meta manda o numero
+ * brasileiro sem o 9.
+ */
 export function isPossiblePhone(value: string | null | undefined): boolean {
-  return isUsable(parsePhone(value));
+  const parsed = parsePhone(value);
+  return isUsable(parsed) && !isBrazilMobileWithoutNine(parsed);
 }
 
 /**

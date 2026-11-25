@@ -2,6 +2,25 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-2 (2026-11-25)
+
+Desde v2026.11.25.
+
+### Documentação
+
+- pendencias: telas para conferir depois dos ajustes de 25/11
+
+### Novo
+
+- communication: mensagens em lista como Relatórios e prazo e horário só com o WhatsApp oficial
+- core: celular sem o 9 recusado nos formulários
+- layout: termos de uso e privacidade no menu da conta
+
+### Correções
+
+- settings: configurações em largura inteira, nome e área lado a lado e fuso com nomes curtos
+- forms: endereço pela largura do bloco, CEP com traço e celular sem aperto ao ativar recebimentos
+
 ## 2026.11.25 (2026-11-25)
 
 Desde v2026.11.24.

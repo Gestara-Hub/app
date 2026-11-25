@@ -333,7 +333,8 @@ export function ActivateSubaccountDialog({
                   </p>
                 ) : null}
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Um por linha (25/11/2026): no drawer, o celular com o seletor de pais ficava espremido. */}
+                <div className="space-y-4">
                   <InputText<FormValues>
                     name="email"
                     type="email"

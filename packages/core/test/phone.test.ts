@@ -51,6 +51,14 @@ describe("telefone com país", () => {
     assert.equal(isPossiblePhone("123"), false);
   });
 
+  it("celular sem o 9 da frente não passa; fixo de 8 dígitos passa", () => {
+    assert.equal(isPossiblePhone("+559286224953"), false);
+    // A Meta manda o numero sem o 9: o WhatsApp segue aceitando.
+    assert.equal(whatsappDigits("+559286224953"), "559286224953");
+    assert.equal(isPossiblePhone("+5592986224953"), true);
+    assert.equal(isPossiblePhone("+551132300606"), true);
+  });
+
   it("celular para o gateway: só DDD + número, sem o 55", () => {
     assert.equal(brazilNationalDigits("+5511987654321"), "11987654321");
     assert.equal(brazilNationalDigits("+551132300606"), "1132300606");

@@ -132,7 +132,8 @@ export function SettingsTabs() {
   };
 
   return (
-    <div className="max-w-5xl">
+    // Largura inteira como as outras telas (25/11/2026; antes max-w-5xl deixava a direita vazia).
+    <div>
       <PageTabs
         tabs={visibleTabs.map((t) => ({
           ...t,

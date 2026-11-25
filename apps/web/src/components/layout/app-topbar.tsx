@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
-import { AtSign, Building2, Check, CircleHelp, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { AtSign, Building2, Check, CircleHelp, FileText, Lock, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -175,6 +175,19 @@ export function AppTopbar() {
               <Sparkles className="size-4" />
               <span>Novidades</span>
               {unseenRelease ? <span className="ml-auto size-2 rounded-full bg-primary" aria-label="Novas" /> : null}
+            </DropdownMenuItem>
+            {/* Termos e privacidade sempre a mao (LGPD e revisao da Meta): as paginas publicas, em outra aba. */}
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a href="/terms" target="_blank" rel="noopener noreferrer">
+                <FileText className="size-4" />
+                <span>Termos de uso</span>
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                <Lock className="size-4" />
+                <span>Privacidade</span>
+              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
 

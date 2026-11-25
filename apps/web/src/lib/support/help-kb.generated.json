@@ -975,7 +975,7 @@
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Modelos",
     "route": "/communication",
-    "text": "Na aba Mensagens, cada aviso (atraso, vence hoje, aniversário, pacote acabando...) tem um texto padrão aprovado pelo WhatsApp, que não muda. Abra o modelo para ver como o aluno recebe: o nome, os valores e os links entram sozinhos no envio.",
+    "text": "Na aba Mensagens, cada aviso (atraso, vence hoje, aniversário, pacote acabando...) tem um texto padrão aprovado pelo WhatsApp, que não muda. Toque em \"Ver exemplo\" para ver como o aluno recebe: o nome, os valores e os links entram sozinhos no envio.",
     "summary": "Veja a prévia de cada aviso e ligue o envio automático.",
     "guide": {
       "route": "/communication",
@@ -987,18 +987,8 @@
         },
         {
           "kind": "botão",
-          "label": "Configurar modelo",
-          "text": "Abra o modelo para ver a prévia e as opções."
-        },
-        {
-          "kind": "campo",
-          "label": "Envio automático",
-          "text": "Ligue ou desligue o envio sozinho deste aviso."
-        },
-        {
-          "kind": "botão",
-          "label": "Salvar",
-          "text": "Clique aqui para guardar."
+          "label": "Ver exemplo",
+          "text": "Veja como o aluno recebe este aviso."
         }
       ]
     }

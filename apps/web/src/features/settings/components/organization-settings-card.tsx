@@ -74,7 +74,18 @@ const schema = z
   });
 type GeneralValues = z.infer<typeof schema>;
 
-const TIME_ZONE_OPTIONS: SelectOption[] = BRAZIL_TIME_ZONES.map((z) => ({ value: z.id, label: z.label }));
+// Opcoes curtas (25/11/2026): a lista de estados longa quebrava o campo em duas
+// linhas; os estados do fuso escolhido vao na dica.
+const TIME_ZONE_SHORT: Record<string, { label: string; states: string }> = {
+  "America/Noronha": { label: "Fernando de Noronha (UTC−2)", states: "Vale para Fernando de Noronha." },
+  "America/Sao_Paulo": { label: "Brasília (UTC−3)", states: "Vale para a maior parte do Brasil." },
+  "America/Manaus": { label: "Manaus (UTC−4)", states: "Vale para AM, MT, MS, RO e RR." },
+  "America/Rio_Branco": { label: "Rio Branco (UTC−5)", states: "Vale para o Acre e o oeste do Amazonas." },
+};
+const TIME_ZONE_OPTIONS: SelectOption[] = BRAZIL_TIME_ZONES.map((z) => ({
+  value: z.id,
+  label: TIME_ZONE_SHORT[z.id]?.label ?? z.label,
+}));
 
 const CLASS_SEGMENT_OPTIONS: SelectOption[] = Object.values(CLASSES_SEGMENT_PRESETS).map((p) => ({
   value: p.id,
@@ -143,6 +154,7 @@ function GeneralForm({
   const isClasses = organization.model === "classes";
   const classSegment = useWatch({ control: form.control, name: "classSegment" });
   const state = useWatch({ control: form.control, name: "address.state" });
+  const timeZone = useWatch({ control: form.control, name: "timeZone" });
 
   // Sem fuso escolhido, segue o estado do endereco (pode trocar, ex.: Noronha).
   // Acompanha enquanto o campo mostra a ultima sugestao (doc 07 §2.8: o
@@ -243,19 +255,13 @@ function GeneralForm({
           title="Dados do espaço"
           description="Nome, contato e área."
         >
-          <InputText<GeneralValues>
-            name="organizationName"
-            label="Nome do espaço"
-            placeholder="Informe o nome do espaço"
-            required
-            disabled={pending}
-          />
+          {/* Nome e area lado a lado; o telefone embaixo, na mesma grade (25/11/2026). */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputPhone<GeneralValues>
-              id="phone"
-              name="phone"
-              label="Telefone / WhatsApp"
-              placeholder="(11) 99999-9999"
+            <InputText<GeneralValues>
+              name="organizationName"
+              label="Nome do espaço"
+              placeholder="Informe o nome do espaço"
+              required
               disabled={pending}
             />
             {isClasses ? (
@@ -268,6 +274,13 @@ function GeneralForm({
                 disabled={pending}
               />
             ) : null}
+            <InputPhone<GeneralValues>
+              id="phone"
+              name="phone"
+              label="Telefone / WhatsApp"
+              placeholder="(11) 99999-9999"
+              disabled={pending}
+            />
           </div>
           {isClasses && classSegment === "custom" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -300,11 +313,12 @@ function GeneralForm({
 
         <SettingsSection icon={<MapPin className="size-4" />} title="Endereço" description="Endereço e fuso horário.">
           <AddressFields<GeneralValues> prefix="address" disabled={pending} />
-          <div className="sm:max-w-sm">
+          {/* Largura inteira, alinhado com a grade do endereco (antes 2/3 de uma linha). */}
+          <div>
             <SelectField<GeneralValues>
               name="timeZone"
               label="Fuso horário"
-              hint="Define o dia e a hora de cobranças e aulas."
+              hint={`${TIME_ZONE_SHORT[timeZone]?.states ?? ""} Define o dia e a hora de cobranças e aulas.`.trim()}
               options={TIME_ZONE_OPTIONS}
               clearable={false}
               disabled={pending}
