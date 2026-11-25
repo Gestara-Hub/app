@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { isAuthApiError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { DEFAULT_SPACE_TIME_ZONE, resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { SESSION_COOKIE, isSupabaseOrganization } from "@/lib/session";
@@ -73,6 +74,25 @@ export async function getSessionGoogleOnly(user: Pick<UserView, "organizationId"
     return Array.isArray(providers) && isGoogleOnlyAccount(providers.map(String));
   } catch {
     return false;
+  }
+}
+
+/**
+ * A sessao do banco (Supabase) ainda vale? O cookie do app dura 7 dias e a casca
+ * abre so com ele; sem a sessao do banco toda leitura volta "Sua sessão
+ * expirou" (25/11/2026). Le o cookie ja renovado pelo `proxy.ts`, sem ida ao
+ * Auth. Falha passageira do Auth conta como viva (a acao confere de novo).
+ */
+export async function hasDatabaseSession(): Promise<boolean> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (error && (isAuthRetryableFetchError(error) || (isAuthApiError(error) && (error.status === 429 || error.status >= 500)))) {
+      return true;
+    }
+    return Boolean(data.session?.access_token);
+  } catch {
+    return true;
   }
 }
 

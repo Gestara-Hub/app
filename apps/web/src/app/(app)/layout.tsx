@@ -8,7 +8,8 @@ import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
 import { NewVersionNotice } from "@/features/releases";
 import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploader-provider";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
-import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
+import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone, hasDatabaseSession } from "@/features/auth/get-current-user";
+import { isSupabaseOrganization } from "@/lib/session";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { SecurityPromptHost } from "@/features/auth/components/security-prompt-host";
 import { ScheduleNoticeHost } from "@/features/turmas/components/schedule-notice-host";
@@ -53,6 +54,10 @@ export default async function AppLayout({
   // a ficha dos alunos dele sem ter "ver alunos", que e a permissao do menu).
   // `/appointments` e so o endereco antigo da Agenda (`/schedule`).
   const pathname = (await headers()).get(PATHNAME_HEADER)?.replace(/^\/appointments(?=\/|$)/, "/schedule");
+  // Conta real sem a sessao do banco: login com o aviso, nao a casca vazia.
+  if (isSupabaseOrganization(user.organizationId) && !(await hasDatabaseSession())) {
+    redirect(`/session-expired${pathname ? `?from=${encodeURIComponent(pathname)}` : ""}`);
+  }
   if (pathname && !isRouteInModel(pathname, model)) redirect(firstAllowedRoute(user, model));
   // Tier do plano GestaraHub: o do banco na conta real (achado 80); demonstracao, o cookie espelho.
   const tier = await getOrganizationTier(user);

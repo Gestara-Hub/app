@@ -21,6 +21,7 @@ export function AuthPanel({
   demoAvailable = false,
   googleError,
   passwordReset = false,
+  sessionExpired = false,
   showTitle = true,
 }: {
   from?: string;
@@ -30,6 +31,8 @@ export function AuthPanel({
   demoAvailable?: boolean;
   googleError?: string;
   passwordReset?: boolean;
+  /** Veio da saida automatica: a sessao venceu (25/11/2026). */
+  sessionExpired?: boolean;
   /** Titulo e subtitulo dentro do painel (a variacao pode mostrar fora). */
   showTitle?: boolean;
 }) {
@@ -91,6 +94,7 @@ export function AuthPanel({
           demoAvailable={demoAvailable}
           googleError={googleError}
           passwordReset={passwordReset}
+          sessionExpired={sessionExpired}
           onCreateAccount={() => switchTo("signup")}
         />
       ) : (

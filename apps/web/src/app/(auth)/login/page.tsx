@@ -18,6 +18,7 @@ export default async function LoginPage({
     google_error?: string;
     reset?: string;
     modo?: string;
+    expired?: string;
   }>;
 }) {
   const {
@@ -27,6 +28,7 @@ export default async function LoginPage({
     google_error: googleError,
     reset,
     modo,
+    expired,
   } = await searchParams;
 
   // Se o usuario clicou num link de cadastro (?signup_token=...), valida o token
@@ -87,6 +89,7 @@ export default async function LoginPage({
         demoAvailable={Boolean(process.env.DEMO_PASSWORD)}
         googleError={googleError}
         passwordReset={reset === "ok"}
+        sessionExpired={expired === "1"}
       />
     </PublicAuthShell>
   );

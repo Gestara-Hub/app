@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Eye,
   EyeOff,
   Loader2,
@@ -42,6 +43,7 @@ interface LoginFormProps {
   googleError?: string;
   /** Voltou da troca de senha (`?reset=ok`). */
   passwordReset?: boolean;
+  sessionExpired?: boolean;
   /** Com o cadastro na mesma tela: "Criar conta grátis" troca a aba em vez de ir para a landing. */
   onCreateAccount?: () => void;
 }
@@ -64,6 +66,7 @@ export function LoginForm({
   demoAvailable = false,
   googleError,
   passwordReset = false,
+  sessionExpired = false,
   onCreateAccount,
 }: LoginFormProps) {
   const router = useRouter();
@@ -525,6 +528,17 @@ export function LoginForm({
           <Link href="/#cadastro" className="font-semibold underline underline-offset-4">
             Solicitar novo link na página inicial
           </Link>
+        </div>
+      ) : null}
+
+      {sessionExpired && !passwordReset ? (
+        <div
+          role="status"
+          data-testid="session-expired"
+          className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs leading-relaxed text-foreground"
+        >
+          <Clock className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+          Sua sessão expirou. Entre de novo para continuar.
         </div>
       ) : null}
 

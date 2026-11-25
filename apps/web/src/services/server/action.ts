@@ -3,6 +3,7 @@ import { networkError } from "@gestarahub/core/api-error";
 import { noteActionResult } from "@/lib/breadcrumbs";
 import { referenceOf } from "@/lib/error-reference";
 import { reportError, withErrorScope } from "@/lib/log";
+import { isSessionExpiredError, leaveExpiredSession } from "@/lib/session-expired";
 
 /**
  * Resultado de server action (doc 15, fatia 2). Erro lancado numa action chega
@@ -46,6 +47,10 @@ export async function unwrap<T>(result: Promise<ActionResult<T>>): Promise<T> {
   const settled = await result;
   // Rastro de passos (doc technical/21): anota a ação e, se foi erro com código, manda os passos.
   noteActionResult(settled, settled.ok ? undefined : referenceOf(settled.error.message));
-  if (!settled.ok) throw settled.error;
+  if (!settled.ok) {
+    // Sessao do banco vencida: login com o aviso (antes a tela ficava vazia).
+    if (isSessionExpiredError(settled.error)) leaveExpiredSession();
+    throw settled.error;
+  }
   return settled.data;
 }

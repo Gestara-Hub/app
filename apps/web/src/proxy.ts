@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { getSupabaseEnv } from "@/lib/supabase/client";
 import { SESSION_COOKIE } from "@/lib/session";
 import { PATHNAME_HEADER } from "@/lib/request-path";
 
@@ -48,7 +50,46 @@ function isAppPath(pathname: string): boolean {
   return APP_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-export function proxy(request: NextRequest): NextResponse {
+type CookieToSet = { name: string; value: string; options?: Parameters<NextResponse["cookies"]["set"]>[2] };
+
+/** Cookie da sessao do Supabase (`sb-<projeto>-auth-token`, as vezes em partes). */
+function hasSupabaseSession(request: NextRequest): boolean {
+  return request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+}
+
+/**
+ * Renova a sessao do Supabase antes da tela (25/11/2026). Antes ninguem renovava
+ * aqui: o token de 1 hora vencia e quem renovava era o layout do servidor, que
+ * nao pode gravar cookie. O Supabase trocava o token de renovacao, o navegador
+ * ficava com o antigo e, passado o prazo de reuso (10 s), a sessao inteira caia.
+ * Depois de dias sem usar, a tela abria vazia ate sair e entrar de novo.
+ * Aqui os cookies novos vao para a requisicao (o layout ja le os novos) e para
+ * a resposta (o navegador guarda). Token valido: so le o cookie, sem ida ao Auth.
+ */
+async function refreshSupabaseSession(request: NextRequest): Promise<CookieToSet[]> {
+  const written: CookieToSet[] = [];
+  try {
+    const { url, anonKey } = getSupabaseEnv();
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll(cookiesToSet) {
+          for (const cookie of cookiesToSet) {
+            if (cookie.value) request.cookies.set(cookie.name, cookie.value);
+            else request.cookies.delete(cookie.name);
+            written.push(cookie);
+          }
+        },
+      },
+    });
+    await supabase.auth.getSession();
+  } catch {
+    // Sem o Auth agora: segue; a acao confere a sessao de novo.
+  }
+  return written;
+}
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
   const publicPath = isPublic(pathname);
@@ -67,9 +108,12 @@ export function proxy(request: NextRequest): NextResponse {
   // o cookie e stale/invalido — o proxy so garante presenca do cookie.
   // O caminho vai para o layout do app (11/11/2026): a guarda de modelo e
   // permissao roda la, antes do `loading.tsx` (ver `app/(app)/layout.tsx`).
+  const refreshed = hasSession && hasSupabaseSession(request) ? await refreshSupabaseSession(request) : [];
   const headers = new Headers(request.headers);
   headers.set(PATHNAME_HEADER, pathname);
-  return NextResponse.next({ request: { headers } });
+  const response = NextResponse.next({ request: { headers } });
+  for (const { name, value, options } of refreshed) response.cookies.set(name, value, options);
+  return response;
 }
 
 export const config = {
