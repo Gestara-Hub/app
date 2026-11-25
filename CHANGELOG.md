@@ -2,6 +2,19 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-9 (2026-11-25)
+
+Desde v2026.11.25-8.
+
+### Novo
+
+- pwa: logo pulsando na abertura no lugar da barrinha
+- pwa: app instalado reabre na última tela vista da conta
+
+### Correções
+
+- audio: som da chamada e do sino no app instalado do iPhone depois de voltar ao app
+
 ## 2026.11.25-8 (2026-11-25)
 
 Desde v2026.11.25-7.
