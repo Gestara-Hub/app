@@ -31,7 +31,7 @@ Data: 2026-10-19.
 
 ## Como ficou a instalação (04/11/2026)
 
-- **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/dashboard`, tela cheia (`standalone`), fundo e barra no quase preto da marca (#18181B, o fundo do ícone desde 05/11/2026).
+- **Manifest:** `apps/web/src/app/manifest.ts` (servido em `/manifest.webmanifest`). Abre em `/launch` desde 25/11/2026 (antes `/dashboard`), tela cheia (`standalone`), fundo e barra no quase preto da marca (#18181B, o fundo do ícone desde 05/11/2026).
 - **Ícones** em `apps/web/public/icons`, gerados de `src/assets/icon.svg` por `pnpm --filter @gestarahub/web icons:build` (`scripts/gen-app-icons.mjs`, usa o `sharp` do Next). Margens no padrão de cada sistema desde 10/11/2026 (antes o G ocupava 72% a 80% e ficava colado na borda, e no Android parecia cortado):
   - `icon-192/512` (computador e Android sem recorte): quadrado com cantos arredondados (22%) e G em 60% do lado.
   - `icon-maskable-192/512` (Android recorta em círculo, gota ou quadrado): fundo cheio e G em 56%, dentro da área segura de 80% com folga.
@@ -52,6 +52,13 @@ Quem usa pelo navegador, no celular ou no computador, vê o cartão "Instale o G
 - **Quando:** uns segundos depois de abrir, com a tela livre, no máximo uma interrupção por acesso (a mesma regra da dica do menu da conta). Nunca na configuração inicial nem na demonstração.
 - **"Agora não":** volta em 14 dias, e na terceira recusa para de sugerir. Fica guardado por aparelho, porque instalar é de cada celular ou computador.
 - **Uso medido:** eventos `install_prompt_shown`, `install_prompt_dismissed`, `install_prompt_answered` e `app_installed`.
+
+### Abertura e versão nova (25/11/2026)
+
+- **Tela de abertura (`app/launch`):** o app instalado abria direto no Painel e ficava vazio enquanto o servidor montava a tela com os dados (o `loading.tsx` saiu em 11/11 pelos erros #418 e #310). Agora o manifesto abre em `/launch`, uma página estática servida na hora pelo CDN, com a logo no fundo do tema e uma barrinha. Ela pede o Painel (`router.replace`) e a logo fica até ele chegar; sem sessão, o proxy leva à entrada. Depois de 8 s, "Demorando? Toque para abrir". `/launch` é rota pública no `proxy.ts`.
+- **Quem já instalou:** o iPhone grava o endereço de abertura na instalação e continua abrindo no Painel até remover e instalar de novo. No Android, o Chrome atualiza o manifesto sozinho em alguns dias.
+- **Aviso de versão nova (`features/releases/components/new-version-notice.tsx`):** o app fica dias suspenso no celular e volta com o código velho (e uma ação do servidor que mudou pode falhar). Ao voltar para o app depois de 1 minuto fora, ou a cada 30 minutos com a tela aberta, ele lê `/api/version` (versão e commit da publicação, sem cache) e, se mudou, mostra "Nova versão do GestaraHub" com "Atualizar". Nunca recarrega sozinho. Desligado sem versão de build (desenvolvimento e testes).
+- **iPhone, imagem de abertura (`apple-touch-startup-image`):** não feito. Se o primeiro instante liso incomodar, gerar as imagens pelos tamanhos dos iPhones a partir da logo.
 
 ## Recursos do PWA para depois (anotado em 04/11/2026)
 

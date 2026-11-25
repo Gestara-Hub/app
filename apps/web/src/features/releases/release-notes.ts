@@ -18,6 +18,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-4",
+    date: "2026-11-25",
+    items: [
+      { text: "App instalado abre com a logo enquanto o Painel carrega." },
+      { text: "Aviso de nova versão ao voltar para o app, com botão Atualizar." },
+    ],
+  },
+  {
     version: "2026.11.25-3",
     date: "2026-11-25",
     items: [

@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
+import { NewVersionNotice } from "@/features/releases";
 import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploader-provider";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
@@ -90,6 +91,7 @@ export default async function AppLayout({
             <HelpHost />
             <SecurityPromptHost />
             <InstallAppPrompt />
+            <NewVersionNotice />
             <ScheduleNoticeHost />
             {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
             <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
