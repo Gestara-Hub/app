@@ -7,6 +7,7 @@ import {
   NAVIGATION_CANCELLED_EVENT,
   NAVIGATION_STARTED_EVENT,
 } from "@/lib/unsaved-changes";
+import { useLaunchSplashVisible } from "./launch-splash";
 
 const subscribe = () => () => {};
 /** Troca rapida nao mostra nada (mesma espera da barra da lista ao atualizar). */
@@ -62,6 +63,8 @@ export function NavigationProgress() {
   const route = `${pathname}?${search}`;
   const isClient = useSyncExternalStore(subscribe, () => true, () => false);
   const routeLoading = useSyncExternalStore(subscribeDataLoads, getDataLoadSnapshot, () => false);
+  // Abertura do app instalado na tela: so a barrinha dela, sem a do topo.
+  const splashVisible = useLaunchSplashVisible();
   const [prevRoute, setPrevRoute] = useState(route);
   const [startedOn, setStartedOn] = useState<string | null>(null);
   const routeRef = useRef(route);
@@ -136,7 +139,7 @@ export function NavigationProgress() {
   }, []);
 
   const navVisible = startedOn !== null && startedOn === route;
-  if (!isClient || (!navVisible && !routeLoading)) return null;
+  if (!isClient || splashVisible || (!navVisible && !routeLoading)) return null;
   return createPortal(
     <div role="status" aria-label="Carregando" className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden">
       <div className="dialog-saving-bar h-full w-1/4 rounded-full bg-primary" />
