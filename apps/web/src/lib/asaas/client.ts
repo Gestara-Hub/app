@@ -211,6 +211,31 @@ export async function createSubAccount(
 /** Espera da abertura da subconta: ate 2 minutos (a rota de Recebimentos online aguenta 150 s). */
 export const SUBACCOUNT_TIMEOUT_MS = 120_000;
 
+/** Situacao cadastral da conta dona da chave (subconta): a aprovacao geral e as partes. */
+export async function getAccountStatus(apiKey: string): Promise<{
+  general?: string;
+  documentation?: string;
+  commercialInfo?: string;
+  bankAccountInfo?: string;
+}> {
+  return asaasFetch("/myAccount/status/", { apiKey });
+}
+
+/** Documentos que o Asaas pede para aprovar a conta dona da chave (grupos, com o link de envio quando houver). */
+export async function getAccountDocuments(apiKey: string): Promise<{
+  rejectReasons?: string | null;
+  data?: {
+    id: string;
+    status?: string;
+    type?: string;
+    title?: string;
+    description?: string;
+    onboardingUrl?: string | null;
+  }[];
+}> {
+  return asaasFetch("/myAccount/documents", { apiKey });
+}
+
 /** Subcontas da conta principal com este e-mail (a chave nao vem: so id e carteira). */
 export async function findSubAccountsByEmail(email: string): Promise<Pick<AsaasAccountResponse, "id" | "walletId" | "email" | "cpfCnpj">[]> {
   const res = await asaasFetch<{ data?: Pick<AsaasAccountResponse, "id" | "walletId" | "email" | "cpfCnpj">[] }>(

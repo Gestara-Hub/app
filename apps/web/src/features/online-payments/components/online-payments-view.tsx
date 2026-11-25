@@ -34,7 +34,8 @@ import { OnlinePaymentsSettingsTab } from "./online-payments-settings-tab";
 import { ProductTour, type TourStep } from "@/components/shared/product-tour";
 import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
 import { OnlinePaymentsRefresh } from "./online-payments-refresh";
-import { useSubaccountBalance } from "../hooks/use-online-payments";
+import { useSubaccountBalance, useSubaccountOnboarding } from "../hooks/use-online-payments";
+import { AccountReadinessCard } from "./account-readiness-card";
 
 const BENEFITS = [
   "Pix copia e cola e QR Code dinâmico com baixa automática",
@@ -148,6 +149,8 @@ export function OnlinePaymentsView() {
   const org = orgQuery.data;
   const balanceQuery = useSubaccountBalance(org?.id);
   const availableCents = balanceQuery.data?.availableForTransferCents ?? 0;
+  // Analise da conta no Asaas (25/11/2026): so com a conta criada.
+  const onboardingQuery = useSubaccountOnboarding(org?.settings?.onlinePayments?.gatewayStatus === "approved");
 
   if (!hasFeature("online_payments")) {
     return (
@@ -199,6 +202,11 @@ export function OnlinePaymentsView() {
 
   const onlineSettings = org.settings?.onlinePayments;
   const isSubaccountActive = onlineSettings?.gatewayStatus === "approved";
+  // Situacao no Asaas: a lida agora vale mais que a gravada. Sem nenhuma (conta
+  // de antes de 25/11/2026 ou demonstracao), fica "Conta ativa" como antes.
+  const onboarding = onboardingQuery.data ?? null;
+  const asaasGeneral = onboarding?.status.general ?? onlineSettings?.asaasStatus?.general;
+  const asaasApproved = !asaasGeneral || asaasGeneral === "APPROVED";
 
   return (
     <>
@@ -210,13 +218,29 @@ export function OnlinePaymentsView() {
       >
         {isSubaccountActive ? (
           <>
-            <Badge
-              variant="outline"
-              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-            >
-              <CheckCircle2 className="size-3.5" />
-              Conta ativa
-            </Badge>
+            {asaasApproved ? (
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              >
+                <CheckCircle2 className="size-3.5" />
+                Conta ativa
+              </Badge>
+            ) : asaasGeneral === "REJECTED" ? (
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive"
+              >
+                Conta recusada no Asaas
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+              >
+                Em análise no Asaas
+              </Badge>
+            )}
 
             {can("finance:view") ? <StatementMenu /> : null}
 
@@ -252,6 +276,13 @@ export function OnlinePaymentsView() {
         />
       ) : (
         <div className="space-y-5">
+          {onboarding && onboarding.status.general !== "APPROVED" ? (
+            <AccountReadinessCard
+              onboarding={onboarding}
+              refreshing={onboardingQuery.isFetching}
+              onRefresh={() => void onboardingQuery.refetch()}
+            />
+          ) : null}
           {/* Abas e, na Carteira, "Atualizado ha X · Atualizar" na mesma linha */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div

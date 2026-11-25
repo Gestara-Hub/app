@@ -369,6 +369,43 @@ export interface OnlinePaymentSettings {
   passFeeChoice?: boolean; // repassar taxa quando o aluno escolhe
   acceptedMethods?: AcceptedOnlineMethods; // formas que o espaco aceita
   gatewayFees?: GatewayAccountFees; // tarifas da subconta (lidas da coluna gateway_fees, nunca gravadas em settings)
+  /** Analise da conta no Asaas (25/11/2026): so `general` APPROVED e conta pronta de verdade. */
+  asaasStatus?: AsaasAccountStatus;
+}
+
+/** Situacao de cada parte da analise da conta no Asaas. */
+export type AsaasApprovalStatus = "PENDING" | "AWAITING_APPROVAL" | "APPROVED" | "REJECTED";
+
+/** Situacao cadastral da subconta no Asaas (GET /myAccount/status e avisos ACCOUNT_STATUS_*). */
+export interface AsaasAccountStatus {
+  general: AsaasApprovalStatus;
+  documentation?: AsaasApprovalStatus;
+  commercialInfo?: AsaasApprovalStatus;
+  bankAccountInfo?: AsaasApprovalStatus;
+  /** Quando foi lida ou avisada pela ultima vez (ISO). */
+  checkedAt: string;
+}
+
+/** Situacao de um grupo de documentos pedido pelo Asaas. */
+export type AsaasDocumentStatus = "NOT_SENT" | "PENDING" | "APPROVED" | "REJECTED" | "IGNORED";
+
+/** Documento (grupo) que o Asaas pede para aprovar a conta. */
+export interface SubaccountDocumentView {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  status: AsaasDocumentStatus;
+  /** Link de envio do Asaas (modelo BaaS); sem ele, o envio e pelo site do Asaas. */
+  onboardingUrl?: string;
+}
+
+/** O que falta para a conta de recebimento ficar pronta (cartao "Deixe sua conta pronta"). */
+export interface SubaccountOnboardingView {
+  status: AsaasAccountStatus;
+  documents: SubaccountDocumentView[];
+  /** Motivo da recusa, quando o Asaas informa. */
+  rejectReasons?: string;
 }
 
 /** Como a cobranca do aluno foi paga. */

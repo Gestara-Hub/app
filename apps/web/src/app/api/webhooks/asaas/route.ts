@@ -24,6 +24,7 @@ import { logError, logWarn, reportError } from "@/lib/log";
 import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgroundRuns";
 import { auditOnlinePaymentConflict, auditOnlinePaymentDispute, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
 import { safeEqual } from "@/lib/security/webhook-signature";
+import { recordAccountStatusFromWebhook } from "@/services/onlinePayments/accountStatus";
 
 export async function POST(req: Request) {
   // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
@@ -47,13 +48,15 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
   }
-  const { event, payment, subscription, authorization, invoice } = payload ?? {};
-  if (!event || (!payment?.id && !subscription?.id && !authorization?.id && !invoice?.id)) {
-    return NextResponse.json(
-      { error: "Payload inválido. 'event' e 'payment.id' são obrigatórios." },
-      { status: 400 },
-    );
+  const { event, payment, subscription, authorization, invoice, account, accountStatus } = payload ?? {};
+  // So o nome do evento e obrigatorio (25/11/2026). Aviso de um tipo que a rota
+  // ainda nao trata (saque, chave de API...) e reconhecido e guardado: recusar
+  // fazia o Asaas tentar de novo e pausar a fila inteira da subconta, com os
+  // avisos de pagamento junto.
+  if (!event || typeof event !== "string") {
+    return NextResponse.json({ error: "Payload inválido. 'event' é obrigatório." }, { status: 400 });
   }
+  const known = Boolean(payment?.id || subscription?.id || authorization?.id || invoice?.id || account?.id);
 
   // 2. Cada aviso vira uma linha (doc technical/23); o mesmo aviso repetido,
   //    ja tratado, so e reconhecido (o Asaas manda "pelo menos uma vez").
@@ -67,7 +70,12 @@ export async function POST(req: Request) {
   if (record.duplicate) return NextResponse.json({ success: true, duplicate: true });
 
   try {
-    const handled = await handleEvent(admin, event, payment, subscription, authorization, invoice);
+    // Analise da subconta no Asaas (25/11/2026): situacao cadastral nova do espaco.
+    const handled: Handled = !known
+      ? { status: "ignored", outcome: `${event}: ainda não tratado` }
+      : event.startsWith("ACCOUNT_STATUS_") && account?.id
+        ? await handleAccountStatus(admin, account.id, accountStatus ?? {})
+        : await handleEvent(admin, event, payment, subscription, authorization, invoice);
     await finishWebhookEvent(admin, record.id, handled);
     return NextResponse.json({ success: true, processed: handled.status === "processed" });
   } catch (error) {
@@ -79,6 +87,17 @@ export async function POST(req: Request) {
 }
 
 type Handled = { status: "processed" | "ignored"; organizationId?: string; outcome: string };
+
+async function handleAccountStatus(
+  admin: SupabaseClient,
+  accountId: string,
+  status: NonNullable<AsaasWebhookPayload["accountStatus"]>,
+): Promise<Handled> {
+  const organizationId = await recordAccountStatusFromWebhook(admin, accountId, status);
+  return organizationId
+    ? { status: "processed", organizationId, outcome: `conta de recebimento: ${status.general ?? "situação"}` }
+    : { status: "ignored", outcome: "conta de recebimento não encontrada" };
+}
 
 async function handleEvent(
   admin: SupabaseClient,

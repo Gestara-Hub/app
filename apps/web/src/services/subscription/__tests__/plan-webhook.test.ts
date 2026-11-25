@@ -32,6 +32,8 @@ vi.mock("next/server", async (importOriginal) => ({
   after: (fn: () => unknown) => void fn(),
 }));
 vi.mock("@/services/onlinePayments/onlinePaymentAudit", () => audit);
+const accountStatus = vi.hoisted(() => ({ recordAccountStatusFromWebhook: vi.fn() }));
+vi.mock("@/services/onlinePayments/accountStatus", () => accountStatus);
 vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),
   reportError: vi.fn(async () => "CODIGO01"),
@@ -141,5 +143,38 @@ describe("webhook do Asaas e o Plano GestaraHub", () => {
       "linha-1",
       expect.objectContaining({ status: "ignored" }),
     );
+  });
+
+  it("aviso que a rota ainda não trata (saque, chave de API): 200 e registrado como ignorado, sem pausar a fila", async () => {
+    const res = await post({ id: "evt_1", event: "TRANSFER_DONE", transfer: { id: "tra_1", status: "DONE" } });
+    expect(res.status).toBe(200);
+    expect(runs.finishWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      "linha-1",
+      expect.objectContaining({ status: "ignored", outcome: "TRANSFER_DONE: ainda não tratado" }),
+    );
+    const token = await post({ id: "evt_2", event: "ACCESS_TOKEN_EXPIRING_SOON", account: { id: "acc_1" }, accessToken: { id: "tok_1" } });
+    expect(token.status).toBe(200);
+    expect(accountStatus.recordAccountStatusFromWebhook).not.toHaveBeenCalled();
+  });
+
+  it("sem o nome do evento: recusa", async () => {
+    const res = await post({ payment: { id: "pay_x" } });
+    expect(res.status).toBe(400);
+  });
+
+  it("análise da conta: vai para a situação do espaço", async () => {
+    accountStatus.recordAccountStatusFromWebhook.mockResolvedValue("org_1");
+    const res = await post({
+      id: "evt_3",
+      event: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+      account: { id: "acc_1", ownerId: null },
+      accountStatus: { general: "APPROVED", documentation: "APPROVED" },
+    });
+    expect(await res.json()).toMatchObject({ processed: true });
+    expect(accountStatus.recordAccountStatusFromWebhook).toHaveBeenCalledWith(expect.anything(), "acc_1", {
+      general: "APPROVED",
+      documentation: "APPROVED",
+    });
   });
 });

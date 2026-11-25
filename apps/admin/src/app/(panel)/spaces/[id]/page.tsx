@@ -317,6 +317,33 @@ async function Health({ spaceId, page, href }: { spaceId: string; page: number; 
 
 const GATEWAY_LABEL: Record<string, string> = { not_configured: "Não configurado", pending: "Em análise no parceiro", approved: "Aprovado", rejected: "Recusado" };
 
+const ASAAS_LABEL: Record<string, string> = {
+  PENDING: "Pendente (senha ou documentos)",
+  AWAITING_APPROVAL: "Em análise",
+  APPROVED: "Aprovada",
+  REJECTED: "Recusada",
+};
+
+/** Analise da conta no Asaas (25/11/2026; lida pelo app e pelos avisos ACCOUNT_STATUS_*). */
+function asaasLabel(settings: Record<string, unknown> | null): React.ReactNode {
+  const status = (settings?.onlinePayments as { asaasStatus?: { general?: string; documentation?: string; checkedAt?: string } } | undefined)
+    ?.asaasStatus;
+  if (!status?.general) return "Sem leitura ainda";
+  const docs = status.documentation ? ` · documentos: ${ASAAS_LABEL[status.documentation]?.toLowerCase() ?? status.documentation}` : "";
+  return (
+    <span>
+      {ASAAS_LABEL[status.general] ?? status.general}
+      {docs}
+      {status.checkedAt ? (
+        <>
+          {" · "}
+          <RelativeTime date={new Date(status.checkedAt)} />
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 function Online({ space }: { space: Space }) {
   return (
     <div className="space-y-4">
@@ -329,6 +356,7 @@ function Online({ space }: { space: Space }) {
       </StatGrid>
       <FactCard title="Conta de recebimento">
         <Fact label="Situação" value={GATEWAY_LABEL[space.gatewayStatus ?? "not_configured"] ?? space.gatewayStatus} />
+        <Fact label="Análise no Asaas" value={asaasLabel(space.settings)} />
         <Fact label="Parceiro" value={space.gatewayProvider ?? "—"} />
         <Fact label="Tarifas sincronizadas" value={<RelativeTime date={space.gatewayFeesSyncedAt} empty="Nunca" />} />
       </FactCard>
