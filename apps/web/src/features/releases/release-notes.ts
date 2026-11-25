@@ -18,6 +18,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-2",
+    date: "2026-11-25",
+    items: [
+      { text: "Termos de uso e privacidade no menu da sua conta." },
+      { text: "Mensagens da Comunicação em lista, com ícone para cada aviso." },
+      { text: "Prazo e horário dos avisos só com o WhatsApp oficial." },
+      { text: "Configurações mais organizadas, com fuso horário mais claro." },
+      { text: "Celular sem o 9 é recusado no cadastro." },
+    ],
+  },
+  {
     version: "2026.11.25",
     date: "2026-11-25",
     items: [
