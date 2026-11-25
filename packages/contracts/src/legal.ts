@@ -1,7 +1,8 @@
 import type { DateTimeISO, Id } from "./common";
 
 /** v1.1 (02/11/2026): identificacao da empresa, arrependimento, incidentes, Google, suboperadores, exclusao. Mudar aqui pede o aceite de novo no app. */
-export const CURRENT_PLATFORM_TERMS_VERSION = "v1.2-2026-11";
+// v1.3 (24/11/2026): dados recebidos da Meta, resumo em ingles, WhatsApp oficial e custo, estorno do plano.
+export const CURRENT_PLATFORM_TERMS_VERSION = "v1.3-2026-11";
 // v1.1 (22/10/2026): tarifa do parceiro separada da taxa do GestaraHub,
 // repasse ao aluno e dados enviados para abrir a conta.
 export const CURRENT_SUBACCOUNT_TERMS_VERSION = "subaccount-v1.1";
