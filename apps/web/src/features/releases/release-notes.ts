@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25",
+    date: "2026-11-25",
+    items: [
+      { text: "Nota fiscal do plano chega por e-mail, com o PDF." },
+      { text: "Cancelamento com devolução em até 7 dias, pelo suporte." },
+      { text: "Voltar ao Grátis explica que o período pago continua." },
+    ],
+  },
+  {
     version: "2026.11.24",
     date: "2026-11-24",
     items: [

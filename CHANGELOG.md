@@ -2,6 +2,20 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25 (2026-11-25)
+
+Desde v2026.11.24.
+
+### Documentação
+
+- subscription: respostas da contabilidade, e-mail da nota e trabalho à mão no Asaas
+
+### Novo
+
+- subscription: cancelamento com devolução pelo suporte e texto claro no Voltar ao Grátis
+- subscription: e-mail da nota emitida, uma nota por pagamento e conferência diária
+- support: pedido direto para a equipe, sem o assistente
+
 ## 2026.11.24 (2026-11-24)
 
 Desde v2026.11.22.
