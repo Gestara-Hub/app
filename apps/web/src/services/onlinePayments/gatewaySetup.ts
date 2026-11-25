@@ -6,7 +6,7 @@ import {
   isGatewayFeeDivergent,
   parseAsaasAccountFees,
 } from "@gestarahub/core/payment-fees";
-import { asaasToday, createPixAddressKey, createWebhook, getAccountFees, getAccountInfo, listPixAddressKeys, listWebhooks, updateWebhook } from "@/lib/asaas";
+import { AsaasApiError, asaasToday, createPixAddressKey, createWebhook, getAccountFees, getAccountInfo, listPixAddressKeys, listWebhooks, updateWebhook } from "@/lib/asaas";
 import type { AsaasWebhookConfig } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
@@ -90,16 +90,35 @@ export const WEBHOOK_EVENTS = [
   "ACCESS_TOKEN_DELETED",
   "ACCESS_TOKEN_EXPIRING_SOON",
   "ACCESS_TOKEN_EXPIRED",
-  // Pix Automatico das mensalidades dos alunos (para depois).
-  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED",
-  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",
-  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED",
-  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED",
-  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED",
+  // Sem os de Pix Automatico (25/11/2026): subconta sem o recurso liberado faz o
+  // Asaas recusar o webhook inteiro ("O Pix Automático não está disponível").
 ];
 
+/**
+ * Lista essencial: se o Asaas recusar a completa (recurso nao liberado na
+ * subconta), o webhook sai com esta, para a baixa e a analise nao pararem.
+ */
+const ESSENTIAL_WEBHOOK_EVENTS = WEBHOOK_EVENTS.filter(
+  (event) =>
+    event.startsWith("PAYMENT_") ||
+    event.startsWith("ACCOUNT_STATUS_GENERAL_APPROVAL_") ||
+    event.startsWith("ACCOUNT_STATUS_DOCUMENT_") ||
+    (event.startsWith("ACCOUNT_STATUS_COMMERCIAL_INFO_") && !event.includes("EXPIR")),
+);
+
 /** Muda quando a lista de eventos muda: entra na impressao e recadastra as subcontas. */
-const WEBHOOK_EVENTS_VERSION = "3";
+const WEBHOOK_EVENTS_VERSION = "4";
+
+/** Cadastro que falhou nao tenta de novo a cada tela: espera 6 horas (25/11/2026). */
+const WEBHOOK_RETRY_AFTER_MS = 6 * 60 * 60 * 1000;
+const FAILED_MARK = "#falhou@";
+
+/** O cadastro desta impressao falhou ha menos de 6 horas? */
+export function webhookRecentlyFailed(saved: unknown, fingerprint: string, now = Date.now()): boolean {
+  if (typeof saved !== "string" || !saved.startsWith(`${fingerprint}${FAILED_MARK}`)) return false;
+  const at = Date.parse(saved.slice(fingerprint.length + FAILED_MARK.length));
+  return Number.isFinite(at) && now - at < WEBHOOK_RETRY_AFTER_MS;
+}
 
 /**
  * O que fica gravado em `gateway_webhook_url`: a URL e uma impressao curta do
@@ -230,15 +249,29 @@ export async function ensureSubaccountWebhook(
     events: WEBHOOK_EVENTS,
   };
 
+  const fingerprint = webhookFingerprint(url, authToken);
   try {
     const existing = (await listWebhooks(key)).find((w) => w.name === GESTARAHUB_WEBHOOK_NAME);
-    if (existing) await updateWebhook(existing.id, config, key);
-    else await createWebhook(config, key);
-    await admin.from("organizations").update({ gateway_webhook_url: webhookFingerprint(url, authToken) }).eq("id", organizationId);
+    const save = (events: string[]) =>
+      existing ? updateWebhook(existing.id, { ...config, events }, key) : createWebhook({ ...config, events }, key);
+    try {
+      await save(WEBHOOK_EVENTS);
+    } catch (err) {
+      // Recurso nao liberado na subconta (400): vai com a lista essencial.
+      if (!(err instanceof AsaasApiError) || err.status !== 400) throw err;
+      logWarn("[gatewayAccount] Webhook completo recusado pela subconta; cadastrado com os avisos essenciais:", err.message);
+      await save(ESSENTIAL_WEBHOOK_EVENTS);
+    }
+    await admin.from("organizations").update({ gateway_webhook_url: fingerprint }).eq("id", organizationId);
     return { configured: true };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     logError("[gatewayAccount] Não foi possível cadastrar o webhook da subconta:", err);
+    // Marca a falha: a proxima tentativa so depois de 6 horas, nao a cada tela.
+    await admin
+      .from("organizations")
+      .update({ gateway_webhook_url: `${fingerprint}${FAILED_MARK}${new Date().toISOString()}` })
+      .eq("id", organizationId);
     return { configured: false, reason };
   }
 }
@@ -262,7 +295,8 @@ export async function refreshGatewayIfNeeded(row: {
   if (areGatewayFeesStale(fees, new Date())) await syncGatewayFees(row.id);
   const url = process.env.ASAAS_WEBHOOK_URL?.trim();
   const authToken = process.env.ASAAS_WEBHOOK_SECRET?.trim();
-  if (url && authToken && webhookFingerprint(url, authToken) !== row.gateway_webhook_url) {
+  const fingerprint = url && authToken ? webhookFingerprint(url, authToken) : null;
+  if (fingerprint && fingerprint !== row.gateway_webhook_url && !webhookRecentlyFailed(row.gateway_webhook_url, fingerprint)) {
     await ensureSubaccountWebhook(row.id);
   }
 }

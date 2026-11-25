@@ -83,4 +83,30 @@ describe("token do webhook das subcontas", () => {
     await refreshGatewayIfNeeded(await row());
     expect(asaas.updateWebhook).toHaveBeenCalledTimes(1);
   });
+
+  it("subconta sem um recurso (Pix Automático): o Asaas recusa a lista completa e o webhook sai com a essencial", async () => {
+    const { AsaasApiError } = await import("@/lib/asaas");
+    await admin.from("organizations").update({ gateway_webhook_url: URL }).eq("id", tenant.organizationId).throwOnError();
+    asaas.updateWebhook
+      .mockRejectedValueOnce(new AsaasApiError("O Pix Automático não está disponível para sua conta no momento.", 400))
+      .mockResolvedValueOnce({ id: "wh_1" });
+    await refreshGatewayIfNeeded(await row());
+
+    expect(asaas.updateWebhook).toHaveBeenCalledTimes(2);
+    const essential = asaas.updateWebhook.mock.calls[1][1].events as string[];
+    expect(essential).toContain("PAYMENT_RECEIVED");
+    expect(essential).toContain("ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED");
+    expect(essential.some((e) => e.startsWith("TRANSFER_") || e.startsWith("ACCESS_TOKEN_"))).toBe(false);
+    expect(String((await row()).gateway_webhook_url)).toBe(webhookFingerprint(URL, "token-antigo"));
+  });
+
+  it("cadastro que falha não repete a cada tela: espera 6 horas", async () => {
+    await admin.from("organizations").update({ gateway_webhook_url: URL }).eq("id", tenant.organizationId).throwOnError();
+    asaas.updateWebhook.mockRejectedValue(new Error("Asaas fora"));
+    await refreshGatewayIfNeeded(await row());
+    await refreshGatewayIfNeeded(await row());
+    await refreshGatewayIfNeeded(await row());
+    expect(asaas.updateWebhook).toHaveBeenCalledTimes(1);
+    expect(String((await row()).gateway_webhook_url)).toContain("#falhou@");
+  });
 });

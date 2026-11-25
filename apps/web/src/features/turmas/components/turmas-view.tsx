@@ -25,6 +25,7 @@ import {
   Calendar,
   CalendarRange,
   Clock,
+  Copy,
   ExternalLink,
   GraduationCap,
   Pencil,
@@ -49,7 +50,7 @@ import {
 } from "@/components/shared/list";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, plural } from "@gestarahub/core/format";
 import { classBillingMode } from "@gestarahub/core/billing";
 import type {
   ClassBillingMode,
@@ -289,6 +290,7 @@ function buildTurmaActions({
   onEnroll,
   onCalendar,
   onEdit,
+  onDuplicate,
   onDeactivate,
   onReactivate,
 }: {
@@ -298,6 +300,7 @@ function buildTurmaActions({
   onEnroll: () => void;
   onCalendar: () => void;
   onEdit: () => void;
+  onDuplicate: () => void;
   onDeactivate: () => void;
   onReactivate: () => void;
 }): ListItemAction[] {
@@ -336,6 +339,13 @@ function buildTurmaActions({
         // Edita aqui mesmo (sem abrir o detalhe da turma).
         onSelect: onEdit,
       },
+      {
+        key: "duplicate",
+        label: "Duplicar turma",
+        icon: <Copy className="size-4" />,
+        // Nova turma com os dados desta (ativa ou inativa), sem alunos nem aulas.
+        onSelect: onDuplicate,
+      },
       isActive
         ? {
             key: "inactivate",
@@ -361,6 +371,7 @@ function TurmaRow({
   color,
   canManage,
   onEdit,
+  onDuplicate,
   onDeactivate,
   onReactivate,
 }: {
@@ -368,6 +379,7 @@ function TurmaRow({
   color: ModalityColor;
   canManage: boolean;
   onEdit: (turma: ClassGroupView) => void;
+  onDuplicate: (turma: ClassGroupView) => void;
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
@@ -388,6 +400,7 @@ function TurmaRow({
     onEnroll: () => router.push(`/classes/${turma.id}?enroll=true`),
     onCalendar: () => router.push(`/classes/calendar?classGroupId=${turma.id}`),
     onEdit: () => onEdit(turma),
+    onDuplicate: () => onDuplicate(turma),
     onDeactivate: () => onDeactivate(turma),
     onReactivate: () => onReactivate(turma),
   });
@@ -458,6 +471,7 @@ function TurmaCard({
   color,
   canManage,
   onEdit,
+  onDuplicate,
   onDeactivate,
   onReactivate,
 }: {
@@ -465,6 +479,7 @@ function TurmaCard({
   color: ModalityColor;
   canManage: boolean;
   onEdit: (turma: ClassGroupView) => void;
+  onDuplicate: (turma: ClassGroupView) => void;
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
@@ -485,6 +500,7 @@ function TurmaCard({
     onEnroll: () => router.push(`/classes/${turma.id}?enroll=true`),
     onCalendar: () => router.push(`/classes/calendar?classGroupId=${turma.id}`),
     onEdit: () => onEdit(turma),
+    onDuplicate: () => onDuplicate(turma),
     onDeactivate: () => onDeactivate(turma),
     onReactivate: () => onReactivate(turma),
   });
@@ -661,6 +677,8 @@ export function TurmasView({
   const [celebrate, setCelebrate] = useState(false);
   const [deactivatingTurma, setDeactivatingTurma] = useState<ClassGroupView | null>(null);
   const [editingTurma, setEditingTurma] = useState<ClassGroupView | null>(null);
+  const [duplicatingTurma, setDuplicatingTurma] = useState<ClassGroupView | null>(null);
+  const shownDuplicatingTurma = useRetainedValue(duplicatingTurma);
   // Mantem a turma durante a animacao de saida (o titulo nao vira "Nova turma").
   const shownEditingTurma = useRetainedValue(editingTurma);
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
@@ -733,6 +751,23 @@ export function TurmasView({
   };
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+  // Com alunos ativos, inativar fica bloqueado (25/11/2026; o servidor tambem recusa):
+  // a turma em andamento so sai depois de mudar os alunos de turma ou encerrar as
+  // matriculas. Curso que ja terminou inativa livre.
+  const requestDeactivate = async (turma: ClassGroupView) => {
+    if (turma.enrolledCount > 0 && !turma.isEnded) {
+      const open = await confirmAction({
+        title: "Ainda não dá para inativar",
+        description: `“${turma.name}” tem ${plural(turma.enrolledCount, "aluno ativo", "alunos ativos")}. Mude os alunos de turma ou encerre a matrícula de cada um. Depois, inative a turma.`,
+        confirmLabel: "Abrir turma",
+        cancelLabel: "Fechar",
+        variant: "default",
+      });
+      if (open) router.push(`/classes/${turma.id}`);
+      return;
+    }
+    setDeactivatingTurma(turma);
+  };
   const handleReactivate = async (turma: ClassGroupView) => {
     if (
       !(await confirmAction({
@@ -802,6 +837,26 @@ export function TurmasView({
           if (!open) setEditingTurma(null);
         }}
         turma={shownEditingTurma ?? undefined}
+        onDuplicate={(turma) => {
+          setEditingTurma(null);
+          setDuplicatingTurma(turma);
+        }}
+      />
+
+      <TurmaFormDrawer
+        open={duplicatingTurma !== null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicatingTurma(null);
+        }}
+        template={shownDuplicatingTurma ?? undefined}
+        onCreated={(created) => {
+          toast.success(`Turma "${created.name}" criada.`, {
+            action: {
+              label: "Matricular alunos",
+              onClick: () => router.push(`/classes/${created.id}?enroll=true`),
+            },
+          });
+        }}
       />
 
       <SetupCompleteDialog
@@ -944,7 +999,8 @@ export function TurmasView({
                 }
                 canManage={canManage}
                 onEdit={setEditingTurma}
-                onDeactivate={setDeactivatingTurma}
+                onDuplicate={setDuplicatingTurma}
+                onDeactivate={requestDeactivate}
                 onReactivate={handleReactivate}
               />
             ))}
@@ -979,7 +1035,8 @@ export function TurmasView({
                 }
                 canManage={canManage}
                 onEdit={setEditingTurma}
-                onDeactivate={setDeactivatingTurma}
+                onDuplicate={setDuplicatingTurma}
+                onDeactivate={requestDeactivate}
                 onReactivate={handleReactivate}
               />
             ))}

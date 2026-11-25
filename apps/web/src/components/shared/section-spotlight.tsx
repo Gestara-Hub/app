@@ -168,7 +168,8 @@ export function SectionSpotlight({
               e.stopPropagation();
               onDismiss();
             }}
-            className="rounded-full bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 text-[10px] font-bold transition-colors cursor-pointer"
+            // Cores do tema (25/11/2026): branco fixo sumia na faixa clara do tema escuro.
+            className="rounded-full bg-primary-foreground/15 hover:bg-primary-foreground/25 text-primary-foreground px-2 py-0.5 text-[10px] font-bold transition-colors cursor-pointer"
           >
             Entendi
           </button>

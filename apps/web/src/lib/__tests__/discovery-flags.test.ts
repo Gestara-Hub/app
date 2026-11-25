@@ -34,7 +34,7 @@ describe("discovery-flags", () => {
     expect(readStorageFlag(discoveryVisitedKey({ ...scope, id: "usr-2" }, "course_billing"))).toBe(false);
   });
 
-  it("sem storage (bloqueado ou no server) não quebra e lê falso", () => {
+  it("sem storage (bloqueado) não quebra, e a marca vale pela conta (25/11/2026)", () => {
     expect(readStorageFlag("x")).toBe(false);
     vi.stubGlobal("window", {
       localStorage: {
@@ -47,6 +47,7 @@ describe("discovery-flags", () => {
       },
     });
     expect(() => setStorageFlag("x")).not.toThrow();
-    expect(readStorageFlag("x")).toBe(false);
+    // A marca fica na copia da conta (lib/seen-marks), mesmo sem o navegador guardar.
+    expect(readStorageFlag("x")).toBe(true);
   });
 });

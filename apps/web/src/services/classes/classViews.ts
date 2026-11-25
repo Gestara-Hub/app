@@ -64,6 +64,8 @@ export function toGroupView(g: ClassGroup): ClassGroupView {
       ? store.plans.find((p) => p.id === g.planId)?.name
       : undefined,
     enrolledCount,
+    // Ja teve matricula (de qualquer situacao): a cobranca da turma trava (25/11/2026).
+    hasEnrollments: enrolledCount > 0 || store.enrollments.some((e) => e.classGroupId === g.id),
     availableSpots: g.capacity - enrolledCount,
     isEnded: hasEnded(g, todayISO()),
   };

@@ -8,6 +8,7 @@ import type {
 } from "@gestarahub/contracts";
 import { teamWords } from "@/services/world/nouns";
 import { plural } from "@gestarahub/core/format";
+import { hasEnded } from "@gestarahub/core/billing";
 import { findInstructorConflicts, instructorConflictMessage } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
 import {
@@ -24,8 +25,8 @@ import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { actorTeacherId, teacherSeesClass } from "./teacherScope";
-import { clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
-import { normalizeBilling, validateGroup, sameSlots } from "./classValidation";
+import { activeEnrollments, clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
+import { BILLING_LOCKED_MESSAGE, lockedBillingChanges, normalizeBilling, validateGroup, sameSlots } from "./classValidation";
 import { toGroupView } from "./classViews";
 
 export const classGroupsService = {
@@ -92,8 +93,15 @@ export const classGroupsService = {
     return writeOp(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
-      // Mudar a forma ou o valor nao mexe nas parcelas das matriculas ja feitas.
       const current = store.classGroups[idx];
+      // Com matricula (de qualquer situacao), a cobranca trava (25/11/2026): mudar
+      // nao mexia nas parcelas ja geradas e ninguem percebia. Para mudar, duplicar.
+      if (store.enrollments.some((e) => e.classGroupId === id)) {
+        const changed = lockedBillingChanges(current, payload);
+        if (changed.length > 0) {
+          throw validationError(changed.map((field) => ({ field, message: BILLING_LOCKED_MESSAGE })));
+        }
+      }
       const next = normalizeBilling({ ...current, ...payload });
       validateGroup(next, id);
       // Novo horario vale daqui para frente: a grade antiga fica para as aulas
@@ -133,6 +141,24 @@ export const classGroupsService = {
         throw validationError([
           { field: "status", message: "Turma já foi inativada." },
         ]);
+      }
+      // Com alunos ativos, nao inativa (25/11/2026): as matriculas e as cobrancas
+      // ficavam em aberto numa turma parada. O caminho e mudar os alunos de turma
+      // ou encerrar a matricula de cada um (cada um decide a cobranca). Curso que
+      // ja terminou inativa livre: os alunos fizeram o curso.
+      const students = activeEnrollments(id).length;
+      if (students > 0 && !hasEnded(g, todayISO())) {
+        const held = new Set(
+          store.attendances.filter((a) => a.sessionId.startsWith(`${id}${SEP}`)).map((a) => a.sessionId),
+        ).size;
+        const who = plural(students, "aluno ativo", "alunos ativos");
+        throw apiError(
+          "VALIDATION",
+          held > 0
+            ? `A turma já teve ${plural(held, "aula", "aulas")} e tem ${who}. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar.`
+            : `A turma tem ${who}. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar.`,
+          { httpStatus: 422 },
+        );
       }
 
       store.classGroups[idx] = {

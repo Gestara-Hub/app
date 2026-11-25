@@ -1,5 +1,6 @@
 "use client";
 
+import { hasSeenMark, setSeenMark } from "@/lib/seen-marks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -107,20 +108,13 @@ const METHOD_OPTIONS = PAYMENT_METHODS.map((m) => ({ value: m, label: paymentMet
 /** Depois do primeiro clique em "+ Gerenciar categorias", o botao para de pulsar. */
 const MANAGE_CATEGORIES_SEEN_KEY = "gestarahub_hint_manage_categories_seen";
 
+// Na conta da pessoa desde 25/11/2026 (lib/seen-marks), com copia no navegador.
 function manageCategoriesSeen(): boolean {
-  try {
-    return window.localStorage.getItem(MANAGE_CATEGORIES_SEEN_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return hasSeenMark(MANAGE_CATEGORIES_SEEN_KEY);
 }
 
 function markManageCategoriesSeen(): void {
-  try {
-    window.localStorage.setItem(MANAGE_CATEGORIES_SEEN_KEY, "1");
-  } catch {
-    // Navegador sem armazenamento: so volta a pulsar.
-  }
+  setSeenMark(MANAGE_CATEGORIES_SEEN_KEY);
 }
 
 /** Pergunta o escopo da edicao de um lancamento de serie (promessa). */

@@ -58,6 +58,37 @@ export interface UserPreferences {
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
   themeStyling?: ThemeStylingPreferences;
+  /**
+   * Marcas de "ja vi" da pessoa (25/11/2026): boas-vindas, tours, dicas e o
+   * cartao "Descobrir", em qualquer aparelho. Chave -> dia da marca (ISO) ou
+   * "off" (desfeita, ex.: "Rever o tour"). Somadas a cada gravacao.
+   */
+  seen?: Record<string, string>;
+}
+
+/** Limites das marcas de "ja vi": quantas, tamanho da chave e do valor. */
+export const SEEN_MARKS_MAX = 400;
+const SEEN_KEY_MAX = 160;
+const SEEN_VALUE_MAX = 40;
+
+/** Junta as marcas (a do patch vale mais) e descarta o que foge do formato. */
+export function mergeSeenMarks(
+  base: Record<string, unknown> | undefined,
+  patch: Record<string, unknown> | undefined,
+): Record<string, string> {
+  const merged: Record<string, string> = {};
+  for (const source of [base, patch]) {
+    if (!source || typeof source !== "object") continue;
+    for (const [key, value] of Object.entries(source)) {
+      if (typeof value !== "string" || key.length === 0 || key.length > SEEN_KEY_MAX || value.length > SEEN_VALUE_MAX) continue;
+      merged[key] = value;
+    }
+  }
+  const entries = Object.entries(merged);
+  // Teto: as mais novas ficam (as datas ISO ordenam; "off" vai para o fim da fila).
+  return entries.length <= SEEN_MARKS_MAX
+    ? merged
+    : Object.fromEntries(entries.sort((a, b) => (a[1] < b[1] ? 1 : -1)).slice(0, SEEN_MARKS_MAX));
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -118,5 +149,6 @@ export function mergeUserPreferences(
         ...(patch.dismissedAlertKeys ?? []),
       ]),
     ),
+    seen: mergeSeenMarks(base.seen, patch.seen),
   };
 }

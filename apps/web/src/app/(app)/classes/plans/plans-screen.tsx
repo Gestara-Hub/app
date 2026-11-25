@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
+import { setSeenMark, useSeenMark, useSeenMarksReady } from "@/lib/seen-marks";
 import { ProductTour, useOnboardingSteps, type TourStep } from "@/features/onboarding";
 import { PlansView } from "@/features/turmas";
 
@@ -19,16 +20,6 @@ const STEPS: TourStep[] = [
   },
 ];
 
-const noopSubscribe = () => () => {};
-
-function readSeen(): boolean {
-  try {
-    return window.localStorage.getItem(SEEN_KEY) === "1";
-  } catch {
-    return true;
-  }
-}
-
 /**
  * Compoe Planos com o onboarding (sem uma feature importar a outra): no
  * primeiro acesso pela configuracao inicial (passo "Criar planos ou pacotes"
@@ -36,18 +27,14 @@ function readSeen(): boolean {
  */
 export function PlansScreen() {
   const { nextStep, isReady } = useOnboardingSteps();
-  // Le o localStorage so no navegador (no servidor conta como visto: sem
-  // diferenca de hidratacao).
-  const storedSeen = useSyncExternalStore(noopSubscribe, readSeen, () => true);
+  // Marca na conta (lib/seen-marks, 25/11/2026), lida depois de a conta responder.
+  const marked = useSeenMark(SEEN_KEY);
+  const storedSeen = !useSeenMarksReady() || marked;
   const [closed, setClosed] = useState(false);
 
   const show = isReady && !storedSeen && !closed && nextStep?.id === "plans";
   const close = () => {
-    try {
-      window.localStorage.setItem(SEEN_KEY, "1");
-    } catch {
-      // sem localStorage: o tour pode voltar, sem prejuizo
-    }
+    setSeenMark(SEEN_KEY);
     setClosed(true);
   };
 

@@ -190,6 +190,33 @@ export function normalizeBilling<T extends Partial<CreateClassGroup>>(payload: T
   };
 }
 
+/** Mensagem dos campos de cobranca travados (turma com matricula). */
+export const BILLING_LOCKED_MESSAGE = "Já há alunos matriculados. Para mudar a cobrança, duplique a turma.";
+
+/**
+ * Campos de cobranca que travam depois da primeira matricula (25/11/2026): a
+ * forma de cobranca, o plano, o valor e as parcelas do curso e, no curso, as
+ * datas (as parcelas seguem o periodo). Mudar depois deixava as cobrancas ja
+ * geradas com o valor antigo sem ninguem perceber. Devolve os campos mudados.
+ */
+export function lockedBillingChanges(
+  current: ClassGroup,
+  next: Partial<Pick<ClassGroup, "billingMode" | "planId" | "coursePriceCents" | "courseMaxInstallments" | "startDate" | "endDate">>,
+): string[] {
+  const before = normalizeBilling(current);
+  const after = normalizeBilling({ ...current, ...next });
+  const changed: string[] = [];
+  if (classBillingMode(before) !== classBillingMode(after)) changed.push("billingMode");
+  if ((before.planId ?? "") !== (after.planId ?? "")) changed.push("planId");
+  if ((before.coursePriceCents ?? 0) !== (after.coursePriceCents ?? 0)) changed.push("coursePriceCents");
+  if ((before.courseMaxInstallments ?? 0) !== (after.courseMaxInstallments ?? 0)) changed.push("courseMaxInstallments");
+  if (classBillingMode(before) === "course") {
+    if (before.startDate !== after.startDate) changed.push("startDate");
+    if ((before.endDate ?? "") !== (after.endDate ?? "")) changed.push("endDate");
+  }
+  return changed;
+}
+
 /**
  * Valida o pagamento do curso escolhido na matricula. Turma que nao e curso
  * ignora; curso sem escolha, terminado, valor zero, parcelas fora de 1..maximo

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
+import { setSeenMark, useSeenMark, useSeenMarksReady } from "@/lib/seen-marks";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   ArrowUpRight,
@@ -51,16 +52,8 @@ function showPendingBadge(status: string | undefined): boolean {
   return status === "pending";
 }
 
-/** Tour da tela logo depois de ativar a conta (01/11/2026): uma vez por navegador. */
+/** Tour da tela logo depois de ativar a conta (01/11/2026): uma vez por pessoa, na conta desde 25/11/2026. */
 const TOUR_SEEN_KEY = "gestarahub_tour_online_payments";
-const noopSubscribe = () => () => {};
-function readTourSeen(): boolean {
-  try {
-    return window.localStorage.getItem(TOUR_SEEN_KEY) === "1";
-  } catch {
-    return true;
-  }
-}
 
 /** Um passo por aba e por funcao da tela, uma frase cada. */
 function tourSteps(options: { canWithdraw: boolean; canStatement: boolean }): TourStep[] {
@@ -134,15 +127,14 @@ export function OnlinePaymentsView() {
   const isOwner = user.profile === "owner";
   const orgQuery = useOrganization();
   const [quickTransferOpen, setQuickTransferOpen] = useState(false);
-  // Tour: lido so no navegador (no servidor conta como visto, sem diferenca de hidratacao).
-  const tourSeen = useSyncExternalStore(noopSubscribe, readTourSeen, () => true);
+  // Tour: marca na conta (lib/seen-marks); so depois de a conta responder, para nao
+  // abrir de novo num aparelho onde a pessoa ainda nao entrou.
+  const tourMarked = useSeenMark(TOUR_SEEN_KEY);
+  const marksReady = useSeenMarksReady();
+  const tourSeen = !marksReady || tourMarked;
   const [tourClosed, setTourClosed] = useState(false);
   const closeTour = () => {
-    try {
-      window.localStorage.setItem(TOUR_SEEN_KEY, "1");
-    } catch {
-      // sem localStorage: o tour pode voltar, sem prejuizo
-    }
+    setSeenMark(TOUR_SEEN_KEY);
     setTourClosed(true);
   };
 
@@ -164,7 +156,15 @@ export function OnlinePaymentsView() {
     );
   }
 
-  if (orgQuery.isLoading) {
+  // Conta criada e ainda sem aprovacao conhecida: espera a situacao do Asaas antes
+  // de mostrar a tela (25/11/2026: a carteira aparecia e o cartao "Deixe sua conta
+  // pronta" surgia depois, empurrando tudo para baixo). Ja aprovada: nao espera.
+  const awaitingAsaasStatus =
+    org?.settings?.onlinePayments?.gatewayStatus === "approved" &&
+    org.settings.onlinePayments.asaasStatus?.general !== "APPROVED" &&
+    onboardingQuery.isPending;
+
+  if (orgQuery.isLoading || awaitingAsaasStatus) {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -278,6 +278,7 @@ export function OnlinePaymentsView() {
         <div className="space-y-5">
           {onboarding && onboarding.status.general !== "APPROVED" ? (
             <AccountReadinessCard
+              organizationId={org.id}
               onboarding={onboarding}
               refreshing={onboardingQuery.isFetching}
               onRefresh={() => void onboardingQuery.refetch()}

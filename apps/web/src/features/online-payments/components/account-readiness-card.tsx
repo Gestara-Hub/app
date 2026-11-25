@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { openSupport } from "@/features/support";
+import { setSeenMark, useSeenMark } from "@/lib/seen-marks";
 
 /** Entrada do Asaas: senha, documentos e dados da conta (sem link de envio). */
 export const ASAAS_LOGIN_URL = "https://www.asaas.com/login";
@@ -47,14 +48,20 @@ function Step({ state, title, children }: { state: StepState; title: string; chi
  * a aprovacao geral.
  */
 export function AccountReadinessCard({
+  organizationId,
   onboarding,
   refreshing,
   onRefresh,
 }: {
+  organizationId: string;
   onboarding: SubaccountOnboardingView;
   refreshing: boolean;
   onRefresh: () => void;
 }) {
+  // O Asaas nao informa se a senha ja foi criada (25/11/2026): a pessoa marca, e a
+  // marca fica na conta. Documento enviado tambem conta como senha criada.
+  const passwordKey = `gestarahub:asaas-password-created:${organizationId}`;
+  const passwordMarked = useSeenMark(passwordKey);
   const { status, documents, rejectReasons } = onboarding;
   const rejected = status.general === "REJECTED";
   const inReview = status.general === "AWAITING_APPROVAL";
@@ -84,17 +91,25 @@ export function AccountReadinessCard({
       <CardContent className="space-y-4">
         <ol className="space-y-4">
           <Step state="done" title="Conta criada" />
-          <Step state={anySent ? "done" : "now"} title="Crie a senha no Asaas">
-            <p className="text-xs text-muted-foreground">
-              No e-mail &quot;Bem-vindo ao Asaas&quot;. O link vale 10 minutos; depois, use &quot;Esqueci minha senha&quot;.
-            </p>
-            {!anySent ? (
-              <Button asChild variant="outline">
-                <a href={ASAAS_LOGIN_URL} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="size-4" />
-                  Abrir o Asaas
-                </a>
-              </Button>
+          <Step state={anySent || passwordMarked ? "done" : "now"} title="Crie a senha no Asaas">
+            {!anySent && !passwordMarked ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  No e-mail &quot;Bem-vindo ao Asaas&quot;. O link vale 10 minutos; depois, use &quot;Esqueci minha senha&quot;.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline">
+                    <a href={ASAAS_LOGIN_URL} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="size-4" />
+                      Abrir o Asaas
+                    </a>
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setSeenMark(passwordKey)}>
+                    <CheckCircle2 className="size-4" />
+                    Já criei a senha
+                  </Button>
+                </div>
+              </>
             ) : null}
           </Step>
           <Step state={docsState} title="Envie os documentos">

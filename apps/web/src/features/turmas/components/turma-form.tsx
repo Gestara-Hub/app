@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Copy, Lock, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -638,12 +638,18 @@ const BILLING_CHANGE_TEXT: Record<ClassBillingMode, string> = {
 
 export function TurmaForm({
   turma,
+  template,
+  onDuplicate,
   formId,
   onSuccess,
   onCancel,
   isPage = false,
 }: {
   turma?: ClassGroupView;
+  /** Duplicar turma (25/11/2026): nova turma ja preenchida com esta, sem alunos nem aulas. */
+  template?: ClassGroupView;
+  /** Cobranca travada: o botao "Duplicar turma" do aviso. */
+  onDuplicate?: () => void;
   formId: string;
   onSuccess?: (created?: ClassGroupView) => void;
   onCancel?: () => void;
@@ -654,6 +660,10 @@ export function TurmaForm({
   const updateMut = useUpdateClassGroup();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const isEdit = Boolean(turma);
+  // Editando ou duplicando: os valores vieram de uma turma, as sugestoes da area nao mexem neles.
+  const prefilled = isEdit || Boolean(template);
+  // Turma que ja teve matricula: a cobranca trava (25/11/2026; o servidor tambem recusa).
+  const billingLocked = isEdit && Boolean(turma?.hasEnrollments);
   const pending = createMut.isPending || updateMut.isPending;
   const { data: unit } = useUnit();
   const { classDefaults, defaultBillingMode } = useBusinessSegment();
@@ -696,7 +706,24 @@ export function TurmaForm({
           endDate: turma.endDate ?? "",
           meetingSlots: turma.meetingSlots,
         }
-      : {
+      : template
+        ? {
+            name: `${template.name} (cópia)`,
+            modalityId: template.modalityId ?? "",
+            planId: template.planId ?? "",
+            instructorId: template.instructorId,
+            allowDropin: template.allowDropin ?? true,
+            sessionPriceCents: template.sessionPriceCents ?? 0,
+            capacity: template.capacity,
+            // Datas novas: a turma copiada pode ser de meses atras.
+            startDate: openStartDate,
+            billingMode: classBillingMode(template),
+            coursePriceCents: template.coursePriceCents ?? 0,
+            courseMaxInstallments: String(template.courseMaxInstallments ?? 1),
+            endDate: "",
+            meetingSlots: template.meetingSlots,
+          }
+        : {
           name: "",
           modalityId: "",
           planId: "",
@@ -769,7 +796,7 @@ export function TurmaForm({
 
   // Ao alterar a data de início da turma, atualiza os horários para refletir a configuração da unidade no novo dia da semana
   useEffect(() => {
-    if (isEdit || !startDate || prevStartDateRef.current === startDate) return;
+    if (prefilled || !startDate || prevStartDateRef.current === startDate) return;
     const oldStartDate = prevStartDateRef.current;
     prevStartDateRef.current = startDate;
 
@@ -798,7 +825,7 @@ export function TurmaForm({
           : [],
       });
     }
-  }, [startDate, unit, isEdit, form, classDefaults.durationMinutes]);
+  }, [startDate, unit, prefilled, form, classDefaults.durationMinutes]);
 
   const startDateWeekday = startDate ? weekdayOf(startDate) : null;
   const isStartDateClosed = useMemo(() => {
@@ -828,16 +855,16 @@ export function TurmaForm({
   // A area chega depois do 1o render (organizacao carregando): a forma
   // sugerida acompanha enquanto o usuario nao escolheu outra.
   useEffect(() => {
-    if (isEdit || form.getFieldState("billingMode").isDirty) return;
+    if (prefilled || form.getFieldState("billingMode").isDirty) return;
     if (form.getValues("billingMode") === defaultBillingMode) return;
     form.resetField("billingMode", { defaultValue: defaultBillingMode });
-  }, [defaultBillingMode, isEdit, form]);
+  }, [defaultBillingMode, prefilled, form]);
   // Idem para as vagas e a duracao do encontro padrao (ex.: pilates 6 vagas e
   // 50 min): sem isso, abrir a nova turma antes da organizacao carregar deixava
   // os padroes de lutas (20 vagas, 1h).
   const prevDurationRef = useRef(classDefaults.durationMinutes);
   useEffect(() => {
-    if (isEdit) return;
+    if (prefilled) return;
     if (!form.getFieldState("capacity").isDirty && form.getValues("capacity") !== classDefaults.capacity) {
       form.resetField("capacity", { defaultValue: classDefaults.capacity });
     }
@@ -852,7 +879,7 @@ export function TurmaForm({
     if (before.start !== slot.start || before.end !== slot.end) return;
     const after = getUnitTimesForWeekday(slot.weekday, unit, classDefaults.durationMinutes);
     form.resetField("meetingSlots", { defaultValue: [{ ...slot, end: after.end }] });
-  }, [classDefaults.capacity, classDefaults.durationMinutes, isEdit, form, unit]);
+  }, [classDefaults.capacity, classDefaults.durationMinutes, prefilled, form, unit]);
   const isCourse = billingMode === "course";
 
   const modalityId = useWatch({
@@ -1076,9 +1103,9 @@ export function TurmaForm({
               <DateField<TurmaFormValues>
                 name="startDate"
                 label="Data de início da turma"
-                hint={startDateHint}
+                hint={billingLocked && isCourse ? "As parcelas do curso seguem o período: não muda depois da 1ª matrícula." : startDateHint}
                 required
-                disabled={pending}
+                disabled={pending || (billingLocked && isCourse)}
               />
             </div>
             <Controller
@@ -1116,12 +1143,29 @@ export function TurmaForm({
             {/* A dica de cada forma fica no proprio cartao (sem repetir abaixo). */}
             <FieldShell label="Cobrança">
               <div className="space-y-3">
+                {billingLocked ? (
+                  <div
+                    data-testid="billing-locked"
+                    className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <p className="flex items-start gap-2 text-muted-foreground">
+                      <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      <span>Já há alunos matriculados. Para mudar a cobrança, duplique a turma.</span>
+                    </p>
+                    {onDuplicate ? (
+                      <Button type="button" variant="outline" className="shrink-0" onClick={onDuplicate} disabled={pending}>
+                        <Copy className="size-4" />
+                        Duplicar turma
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
                 <SegmentedChoiceField<TurmaFormValues>
                   name="billingMode"
                   ariaLabel="Cobrança"
                   options={BILLING_MODE_OPTIONS}
                   variant="cards"
-                  disabled={pending}
+                  disabled={pending || billingLocked}
                 />
                 {isCourse ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1129,21 +1173,21 @@ export function TurmaForm({
                       name="coursePriceCents"
                       label="Valor do curso"
                       required
-                      disabled={pending}
+                      disabled={pending || billingLocked}
                     />
                     <SelectField<TurmaFormValues>
                       name="courseMaxInstallments"
                       label="Parcelas até"
                       options={MAX_INSTALLMENT_OPTIONS}
                       clearable={false}
-                      disabled={pending}
+                      disabled={pending || billingLocked}
                     />
                     <DateField<TurmaFormValues>
                       name="endDate"
                       label="Termina em"
                       hint="Curso tem data para acabar."
                       required
-                      disabled={pending}
+                      disabled={pending || billingLocked}
                     />
                   </div>
                 ) : null}

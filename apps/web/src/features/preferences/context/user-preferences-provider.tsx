@@ -1,5 +1,6 @@
 "use client";
 
+import { setSeenMarksFromAccount, setSeenMarksPersister } from "@/lib/seen-marks";
 import {
   createContext,
   useCallback,
@@ -160,6 +161,19 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     appliedThemeRef.current = preferences.theme;
     if (preferences.theme !== activeTheme) setTheme(preferences.theme);
   }, [preferences.theme, activeTheme, setTheme]);
+
+  // Marcas de "ja vi" (25/11/2026; lib/seen-marks): a conta e a verdade. Cada
+  // marca grava na hora (sem a espera de 1 minuto), para valer no outro aparelho.
+  useEffect(() => {
+    setSeenMarksPersister((patch) => {
+      updatePreferences({ seen: patch });
+      void flushToServer();
+    });
+    return () => setSeenMarksPersister(null);
+  }, [updatePreferences, flushToServer]);
+  useEffect(() => {
+    setSeenMarksFromAccount(preferences.seen, remoteLoaded);
+  }, [preferences.seen, remoteLoaded]);
 
   // Carga inicial remota (hidratação silenciosa)
   useEffect(() => {
