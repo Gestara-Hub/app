@@ -48,6 +48,7 @@ export function SupportHost() {
       origin={origin}
       draft={detail.draft}
       kind={detail.kind}
+      direct={detail.direct}
       errorReference={detail.errorReference}
     />
   );

@@ -8,6 +8,8 @@ export interface OpenSupportDetail {
   kind?: SupportKind;
   /** Primeira mensagem ja escrita (ex.: dúvida sobre planos). */
   draft?: string;
+  /** Vai direto para a equipe, sem o assistente (ex.: pedido de cancelamento do plano). */
+  direct?: boolean;
   /** Codigo do erro que a pessoa viu (liga a conversa ao registro de erros). */
   errorReference?: string;
 }

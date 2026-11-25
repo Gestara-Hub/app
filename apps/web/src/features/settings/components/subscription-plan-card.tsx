@@ -22,6 +22,7 @@ import {
   PlanHistory,
   PlanInvoices,
   ScheduledPlanChangeNotice,
+  requestPlanRefund,
 } from "@/features/subscription";
 import { useState } from "react";
 import { formatDate } from "@gestarahub/core/format";
@@ -223,6 +224,14 @@ export function SubscriptionPlanCard() {
               Só o proprietário da conta pode trocar o plano.
             </p>
           )}
+          {canManage && isPro && !onCourtesy && !demo ? (
+            <p className="text-xs text-muted-foreground">
+              Pagou há até 7 dias?{" "}
+              <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => requestPlanRefund(data.tier)}>
+                Pedir cancelamento com devolução
+              </Button>
+            </p>
+          ) : null}
           {canManage ? <PlanInvoices /> : null}
           {canManage ? <PlanHistory /> : null}
         </CardContent>

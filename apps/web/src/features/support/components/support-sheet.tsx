@@ -45,6 +45,7 @@ export function SupportSheet({
   origin,
   draft,
   kind,
+  direct,
   errorReference,
 }: {
   open: boolean;
@@ -52,6 +53,7 @@ export function SupportSheet({
   origin: string;
   draft?: string;
   kind?: SupportKind;
+  direct?: boolean;
   errorReference?: string;
 }) {
   const threads = useSupportThreads(open);
@@ -101,7 +103,9 @@ export function SupportSheet({
             open={open}
             origin={origin}
             supportKind={view.kind === "new" ? view.supportKind : "question"}
-            botAvailable={botAvailable}
+            // Pedido direto (cancelamento do plano): a conversa nova nao passa pelo assistente.
+            botAvailable={botAvailable && !(view.kind === "new" && direct)}
+            direct={view.kind === "new" && direct}
             draft={view.kind === "new" ? draft : undefined}
             errorReference={errorReference}
             onBack={() => setView({ kind: "list" })}
@@ -223,6 +227,7 @@ function Chat({
   supportKind,
   botAvailable,
   draft,
+  direct,
   errorReference,
   onBack,
   onCreated,
@@ -232,6 +237,7 @@ function Chat({
   origin: string;
   supportKind: SupportKind;
   botAvailable: boolean;
+  direct?: boolean;
   draft?: string;
   errorReference?: string;
   onBack: () => void;
@@ -259,7 +265,7 @@ function Chat({
     const message = text.trim();
     if (!message || pending) return;
     send.mutate(
-      { threadId: threadId ?? undefined, message, origin, errorReference, kind: threadId ? undefined : supportKind, breadcrumbs: !threadId && supportKind === "bug" ? snapshotCrumbs() : undefined },
+      { threadId: threadId ?? undefined, message, origin, errorReference, kind: threadId ? undefined : supportKind, direct: threadId ? undefined : direct || undefined, breadcrumbs: !threadId && supportKind === "bug" ? snapshotCrumbs() : undefined },
       {
         onSuccess: (result) => {
           setText("");

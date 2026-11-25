@@ -25,6 +25,7 @@ import type { PlanChangeStart } from "@/services/server/subscriptionPlan";
 import type { PlanTarget } from "@/services/subscription/actions";
 import { usePlanChange, usePlanChangePreview } from "../hooks/use-plan-change";
 import { usePaymentPolling } from "@/hooks/use-payment-polling";
+import { requestPlanRefund } from "../plan-refund";
 
 const per = (interval: SubscriptionInterval) => (interval === "yearly" ? "/ano" : "/mês");
 const planName = (tier: SubscriptionTier) => (tier === "free" ? "Grátis" : `Plano ${subscriptionTierLabel(tier)}`);
@@ -44,7 +45,7 @@ export function PlanChangeDialog({
   const open = target !== null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
         {target ? <PlanChangeBody key={`${target.tier}-${target.interval}`} target={target} onClose={() => onOpenChange(false)} /> : null}
       </DialogContent>
     </Dialog>
@@ -71,7 +72,7 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
   if (awaiting) {
     return (
       <>
-        <DialogHeader className="shrink-0">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
           <DialogTitle>Pague a diferença</DialogTitle>
           <DialogDescription>
             {formatCents(awaiting.amountCents)} para mudar para o {planName(target.tier)}. Libera assim que o pagamento cair.
@@ -139,7 +140,7 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
             </Button>
           ) : null}
         </DialogBody>
-        <DialogFooter className="shrink-0">
+        <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
           <Button type="button" variant="outline" onClick={onClose}>
             Fechar
           </Button>
@@ -168,7 +169,7 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
 
   return (
     <>
-      <DialogHeader className="shrink-0">
+      <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>Confira os valores antes de confirmar.</DialogDescription>
       </DialogHeader>
@@ -183,6 +184,22 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
         ) : (
           <>
             <QuoteLines quote={quote} target={target} currentTier={preview.data.current.tier} />
+            {target.tier === "free" && quote.kind === "scheduled" ? (
+              <div className="space-y-1 rounded-lg border p-3 text-sm">
+                <p className="text-muted-foreground">Pagou há até 7 dias? Dá para cancelar agora, com devolução.</p>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0"
+                  onClick={() => {
+                    onClose();
+                    requestPlanRefund(preview.data.current.tier);
+                  }}
+                >
+                  Pedir cancelamento com devolução
+                </Button>
+              </div>
+            ) : null}
             {/* Regra do Asaas: mudar valor ou ciclo da assinatura cancela a autorizacao (19/11/2026). */}
             {preview.data.pixAutomaticActive && quote.kind !== "same" ? (
               <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
@@ -192,7 +209,7 @@ function PlanChangeBody({ target, onClose }: { target: PlanTarget; onClose: () =
           </>
         )}
       </DialogBody>
-      <DialogFooter saving={change.isPending} className="shrink-0">
+      <DialogFooter saving={change.isPending} className="shrink-0 border-t border-border/40 px-6 py-4">
         <Button type="button" variant="outline" onClick={onClose} disabled={change.isPending}>
           Cancelar
         </Button>
@@ -231,7 +248,8 @@ function QuoteLines({
       <>
         <Line label="Volta ao Grátis em" value={formatDate(quote.effectiveOn)} />
         <p className="text-sm text-muted-foreground">
-          Até lá, o {planName(currentTier)} segue funcionando. Os dados ficam guardados.
+          O período atual já está pago, então nada é cancelado hoje. O {planName(currentTier)} segue até lá e
+          não renova, sem nova cobrança. Os dados ficam guardados.
         </p>
       </>
     ) : (
