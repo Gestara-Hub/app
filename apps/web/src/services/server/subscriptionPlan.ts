@@ -39,6 +39,7 @@ import {
   cancelPlanInvoiceOfPayment,
   queuePlanInvoice,
   retryFailedPlanInvoices,
+  syncStalePlanInvoices,
   subscriptionInvoiceDescription,
   upgradeInvoiceDescription,
 } from "./subscriptionInvoices";
@@ -815,6 +816,8 @@ export interface PlanDailyResult {
   emails: number;
   /** Notas fiscais que falharam e foram pedidas de novo. */
   invoicesRetried: number;
+  /** Notas paradas em emissao conferidas no Asaas (aviso perdido). */
+  invoicesSynced: number;
   failures: number;
   /** Codigos do registro de erros das falhas. */
   errorReferences: string[];
@@ -830,7 +833,7 @@ export async function runPlanDailyTasks(
   appUrl: string,
   options: { organizationIds?: string[] } = {},
 ): Promise<PlanDailyResult> {
-  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, invoicesRetried: 0, failures: 0, errorReferences: [] };
+  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, invoicesRetried: 0, invoicesSynced: 0, failures: 0, errorReferences: [] };
   let query = admin.from("organizations").select("id, subscription, settings, units(address)").not("subscription", "is", null);
   // So alguns espacos (testes): a rotina nao mexe nos outros.
   if (options.organizationIds) query = query.in("id", options.organizationIds);
@@ -865,6 +868,7 @@ export async function runPlanDailyTasks(
   if (!options.organizationIds) {
     try {
       result.invoicesRetried = await retryFailedPlanInvoices(admin);
+      result.invoicesSynced = await syncStalePlanInvoices(admin);
     } catch (err) {
       result.errorReferences.push(await reportError("cron.daily.nota-fiscal", err, { source: "cron" }));
     }

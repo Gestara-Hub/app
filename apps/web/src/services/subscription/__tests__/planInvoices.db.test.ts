@@ -138,7 +138,8 @@ describe("nota fiscal do plano", () => {
 });
 
 describe("aviso INVOICE_* do Asaas", () => {
-  it("emitida: grava número e PDF da consulta ao Asaas e registra na Auditoria", async () => {
+  it("emitida: grava número e PDF da consulta ao Asaas, registra na Auditoria e manda o e-mail uma vez", async () => {
+    const owner = await tenant.addUser("owner");
     await invoices.ensurePlanInvoice(admin, request());
     asaas.getInvoice.mockResolvedValue({
       id: "inv_1",
@@ -156,6 +157,71 @@ describe("aviso INVOICE_* do Asaas", () => {
     expect(await rows()).toMatchObject([{ status: "authorized", invoice_number: "345", pdf_url: "https://asaas.test/nota.pdf" }]);
     const { data: audits } = await admin.from("audit_logs").select("summary").eq("organization_id", tenant.organizationId);
     expect(audits?.map((a) => a.summary).join("\n")).toContain("emitiu a nota fiscal nº 345");
+    expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toEmail: owner.email,
+        title: "Nota fiscal do plano emitida",
+        actionUrl: "https://asaas.test/nota.pdf",
+        text: expect.stringContaining("nº 345"),
+      }),
+    );
+
+    // Aviso repetido do Asaas: nada de segundo e-mail.
+    email.sendPlanNoticeEmail.mockClear();
+    await invoices.syncPlanInvoiceFromWebhook(admin, { id: "inv_1", payment: "pay_1" });
+    expect(email.sendPlanNoticeEmail).not.toHaveBeenCalled();
+  });
+
+  it("nota cancelada à mão: o segundo aviso do cartão não emite outra", async () => {
+    await invoices.ensurePlanInvoice(admin, request());
+    asaas.getInvoice.mockResolvedValue({ id: "inv_1", status: "CANCELED", value: 79.9, payment: "pay_1" });
+    await invoices.syncPlanInvoiceFromWebhook(admin, { id: "inv_1", payment: "pay_1" });
+
+    // "Recebido" do cartão semanas depois.
+    await invoices.ensurePlanInvoice(admin, request());
+    expect(asaas.createInvoice).toHaveBeenCalledTimes(1);
+    expect(await rows()).toMatchObject([{ asaas_invoice_id: "inv_1", status: "canceled" }]);
+  });
+
+  it("só nota cancelada no Asaas para a cobrança: não emite outra", async () => {
+    asaas.listPaymentInvoices.mockResolvedValue([{ id: "inv_manual", status: "CANCELED", value: 79.9, payment: "pay_1" }]);
+    await invoices.ensurePlanInvoice(admin, request());
+    expect(asaas.createInvoice).not.toHaveBeenCalled();
+    expect(await rows()).toMatchObject([{ status: "canceled", asaas_invoice_id: null }]);
+    await invoices.ensurePlanInvoice(admin, request());
+    expect(asaas.createInvoice).not.toHaveBeenCalled();
+    expect(await rows()).toHaveLength(1);
+  });
+
+  it("nota refeita à mão pela cobrança depois de cancelada: passa a ser a nota do pagamento", async () => {
+    await invoices.ensurePlanInvoice(admin, request());
+    asaas.getInvoice.mockResolvedValue({ id: "inv_1", status: "CANCELED", value: 79.9, payment: "pay_1" });
+    await invoices.syncPlanInvoiceFromWebhook(admin, { id: "inv_1", payment: "pay_1" });
+
+    asaas.getInvoice.mockResolvedValue({ id: "inv_2", status: "AUTHORIZED", value: 79.9, payment: "pay_1", number: "9", pdfUrl: "https://asaas.test/9.pdf" });
+    expect(await invoices.syncPlanInvoiceFromWebhook(admin, { id: "inv_2", payment: "pay_1" })).toBe(tenant.organizationId);
+    expect(await rows()).toMatchObject([
+      { asaas_invoice_id: "inv_1", status: "canceled" },
+      { asaas_invoice_id: "inv_2", status: "authorized", invoice_number: "9", pdf_url: "https://asaas.test/9.pdf" },
+    ]);
+    expect(email.sendPlanNoticeEmail).toHaveBeenCalledWith(expect.objectContaining({ title: "Nota fiscal do plano emitida" }));
+  });
+
+  it("rotina diária: confere no Asaas só a nota parada há mais de 6 horas", async () => {
+    await invoices.ensurePlanInvoice(admin, request("pay_parada"));
+    asaas.createInvoice.mockResolvedValueOnce({ id: "inv_nova", status: "SCHEDULED", value: 79.9, effectiveDate: asaasToday() });
+    await invoices.ensurePlanInvoice(admin, request("pay_nova"));
+    await admin
+      .from("platform_invoices")
+      .update({ updated_at: new Date(Date.now() - 7 * 60 * 60_000).toISOString() })
+      .eq("asaas_payment_id", "pay_parada");
+    asaas.getInvoice.mockResolvedValue({ id: "inv_1", status: "AUTHORIZED", value: 79.9, payment: "pay_parada", number: "50" });
+
+    expect(await invoices.syncStalePlanInvoices(admin)).toBe(1);
+    expect(asaas.getInvoice).toHaveBeenCalledTimes(1);
+    expect(asaas.getInvoice).toHaveBeenCalledWith("inv_1");
+    const byPayment = Object.fromEntries((await rows()).map((r) => [r.asaas_payment_id, r.status]));
+    expect(byPayment).toEqual({ pay_parada: "authorized", pay_nova: "scheduled" });
   });
 
   it("nota que não é do plano (feita à mão no painel): ignora", async () => {

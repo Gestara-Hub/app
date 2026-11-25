@@ -19,6 +19,7 @@ import { sendPlanNoticeEmail } from "@/lib/email/ses";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
 import { formatCents } from "@gestarahub/core/format";
+import { notifyPlanManagers, planEmailAppUrl, type PlanEmailNotice } from "./planEmails";
 import { recordSystemAudit } from "./systemAudit";
 
 /**
@@ -94,6 +95,17 @@ export async function ensurePlanInvoice(admin: SupabaseClient, input: PlanInvoic
   const config = getAsaasNfseConfig();
   if (!config || !getAsaasConfig().masterApiKey || input.payment.id.startsWith(MOCK_PREFIX)) return;
 
+  // No maximo uma nota automatica por pagamento (25/11/2026): nota cancelada
+  // (estorno ou a mao) nao volta sozinha. O cartao avisa "confirmado" e,
+  // semanas depois, "recebido"; sem esta regra, o segundo aviso emitiria outra.
+  const { data: canceled } = await admin
+    .from("platform_invoices")
+    .select("id")
+    .eq("asaas_payment_id", input.payment.id)
+    .eq("status", "canceled")
+    .limit(1);
+  if (canceled && canceled.length > 0) return;
+
   const { data: reserved, error } = await admin
     .from("platform_invoices")
     .insert({
@@ -121,8 +133,23 @@ async function requestOnAsaas(
   const config = getAsaasNfseConfig();
   if (!config) return;
   try {
-    // Pedido anterior que chegou ao Asaas mas voltou sem resposta: reaproveita.
-    const existing = (await listPaymentInvoices(input.payment.id)).find((inv) => inv.status !== "CANCELED");
+    // Pedido anterior que chegou ao Asaas mas voltou sem resposta, ou nota feita
+    // a mao pela cobranca: reaproveita.
+    const onAsaas = await listPaymentInvoices(input.payment.id);
+    const existing = onAsaas.find((inv) => inv.status !== "CANCELED");
+    if (!existing && onAsaas.length > 0) {
+      // So nota cancelada no Asaas: a cobranca ficou com a equipe, nada de emitir outra.
+      await admin
+        .from("platform_invoices")
+        .update({
+          status: "canceled",
+          status_description: "Nota cancelada no Asaas: a emissão automática não refaz.",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rowId)
+        .throwOnError();
+      return;
+    }
     const invoice =
       existing ??
       (await createInvoice({
@@ -157,6 +184,37 @@ export function queuePlanInvoice(admin: SupabaseClient, input: PlanInvoiceReques
   return afterResponse("plano: nota fiscal", () => ensurePlanInvoice(admin, input));
 }
 
+const STALE_HOURS = 6;
+const SYNC_LIMIT = 50;
+
+/**
+ * Rotina diaria (25/11/2026): notas paradas em emissao ou cancelamento ha mais
+ * de 6 horas sao consultadas no Asaas, pelo mesmo caminho do aviso INVOICE_*.
+ * Cobre o aviso perdido (deploy, falha passageira, fila do Asaas pausada):
+ * sem isso a nota ficaria "Em emissão" sem PDF e a recusa sem alerta.
+ */
+export async function syncStalePlanInvoices(admin: SupabaseClient): Promise<number> {
+  if (!getAsaasNfseConfig()) return 0;
+  const { data } = await admin
+    .from("platform_invoices")
+    .select("asaas_invoice_id, asaas_payment_id")
+    .not("asaas_invoice_id", "is", null)
+    .in("status", ["scheduled", "synchronized", "processing_cancellation"])
+    .lt("updated_at", new Date(Date.now() - STALE_HOURS * 60 * 60_000).toISOString())
+    .order("updated_at", { ascending: true })
+    .limit(SYNC_LIMIT);
+  let synced = 0;
+  for (const row of data ?? []) {
+    try {
+      await syncPlanInvoiceFromWebhook(admin, { id: String(row.asaas_invoice_id), payment: row.asaas_payment_id ?? null });
+      synced += 1;
+    } catch (err) {
+      await reportError("invoice.asaas.sync", err, { source: "cron", context: { invoiceId: row.asaas_invoice_id } });
+    }
+  }
+  return synced;
+}
+
 /** Rotina diaria: pedidos que falharam ao criar (Asaas fora, cadastro incompleto corrigido). */
 export async function retryFailedPlanInvoices(admin: SupabaseClient): Promise<number> {
   if (!getAsaasNfseConfig()) return 0;
@@ -184,6 +242,20 @@ export async function retryFailedPlanInvoices(admin: SupabaseClient): Promise<nu
  * no corpo do aviso) e atualiza a linha. Nota que nao e do plano (feita a mao
  * no painel do Asaas) e ignorada. Devolve o espaco, ou null.
  */
+/** E-mail da nota emitida: numero, valor e o PDF (ou a tela do plano, sem PDF). */
+export function invoiceIssuedNotice(
+  invoice: Pick<AsaasInvoiceResponse, "number" | "value" | "pdfUrl">,
+  appUrl: string,
+): PlanEmailNotice {
+  const number = invoice.number ? ` nº ${invoice.number}` : "";
+  return {
+    title: "Nota fiscal do plano emitida",
+    text: `A nota fiscal${number} do Plano GestaraHub, de ${formatCents(Math.round(invoice.value * 100))}, já está disponível. Ela também fica em Configurações > Plano.`,
+    action: invoice.pdfUrl ? "Baixar a nota (PDF)" : "Ver a nota",
+    actionUrl: invoice.pdfUrl || `${appUrl}/settings?tab=plano`,
+  };
+}
+
 export async function syncPlanInvoiceFromWebhook(
   admin: SupabaseClient,
   webhookInvoice: { id: string; payment?: string | null },
@@ -204,6 +276,34 @@ export async function syncPlanInvoiceFromWebhook(
       .maybeSingle();
     row = byPayment.data;
   }
+  if (!row && verified.payment && verified.status !== "CANCELED") {
+    // Nota refeita a mao pela cobranca depois de uma cancelada: passa a ser a
+    // nota do pagamento (tela, e-mail e conferencia diaria).
+    const { data: previous } = await admin
+      .from("platform_invoices")
+      .select("organization_id, kind, amount_cents, service_description")
+      .eq("asaas_payment_id", verified.payment)
+      .eq("status", "canceled")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (previous) {
+      const { data: tracked } = await admin
+        .from("platform_invoices")
+        .insert({
+          organization_id: previous.organization_id,
+          kind: previous.kind,
+          asaas_payment_id: verified.payment,
+          external_reference: verified.externalReference ?? null,
+          status: "requesting",
+          amount_cents: Math.round(verified.value * 100),
+          service_description: verified.serviceDescription || String(previous.service_description),
+        })
+        .select("id, organization_id, status, invoice_number")
+        .maybeSingle();
+      row = tracked;
+    }
+  }
   if (!row) return null;
 
   const organizationId = String(row.organization_id);
@@ -219,6 +319,11 @@ export async function syncPlanInvoiceFromWebhook(
       target: { type: "subscription", id: organizationId, label: "Plano GestaraHub" },
       predicate: `emitiu a nota fiscal${verified.number ? ` nº ${verified.number}` : ""} do Plano GestaraHub (${formatCents(Math.round(verified.value * 100))})`,
     });
+    // O Asaas nao manda e-mail ao cliente da assinatura (notificationDisabled):
+    // o aviso da nota e nosso, ao dono e ao gerente (25/11/2026).
+    await afterResponse("E-mail da nota fiscal do plano", () =>
+      notifyPlanManagers(admin, organizationId, invoiceIssuedNotice(verified, planEmailAppUrl())),
+    );
   }
   if (next.status === "error" && row.status !== "error") {
     await reportError("invoice.asaas.error", new Error(verified.statusDescription || "Nota fiscal recusada."), {
