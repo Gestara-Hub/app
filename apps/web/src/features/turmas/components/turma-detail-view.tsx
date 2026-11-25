@@ -21,6 +21,7 @@ import {
   Lock,
   MessageSquarePlus,
   Package,
+  Copy,
   Pencil,
   Power,
   ShieldCheck,
@@ -268,6 +269,7 @@ export function TurmaDetailView({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
   const enrollParam = searchParams?.get("enroll") === "true";
   const [enrollOpen, setEnrollOpen] = useState(enrollParam);
   // Ja na turma, o "Fazer agora" do Proximo passo (?enroll=true) abre de novo.
@@ -562,7 +564,11 @@ export function TurmaDetailView({
       ? [{ key: "reactivate", label: "Reativar turma", icon: <Power className="size-4" />, onSelect: () => void reactivateTurma() }]
       : []),
     ...(canEditTurma
-      ? [{ key: "edit", label: "Editar turma", icon: <Pencil className="size-4" />, onSelect: () => setEditOpen(true) }]
+      ? [
+          { key: "edit", label: "Editar turma", icon: <Pencil className="size-4" />, onSelect: () => setEditOpen(true) },
+          // Nova turma com os dados desta, sem alunos nem aulas (25/11/2026).
+          { key: "duplicate", label: "Duplicar turma", icon: <Copy className="size-4" />, onSelect: () => setDuplicateOpen(true) },
+        ]
       : []),
     ...(canManage && enrolledCount > 0
       ? [
@@ -652,7 +658,21 @@ export function TurmaDetailView({
         {isInactive ? null : <NextSessionLink classGroupId={turma.id} canMark={canMark} />}
       </div>
 
-      <TurmaFormDrawer open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      <TurmaFormDrawer
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        turma={turma}
+        onDuplicate={() => {
+          setEditOpen(false);
+          setDuplicateOpen(true);
+        }}
+      />
+      <TurmaFormDrawer
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        template={turma}
+        onCreated={(created) => router.push(`/classes/${created.id}`)}
+      />
       {turma.modalityId ? (
         <GraduateManyDrawer
           open={graduateManyOpen}

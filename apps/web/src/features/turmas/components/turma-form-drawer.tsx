@@ -15,6 +15,10 @@ interface TurmaFormDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   turma?: ClassGroupView;
+  /** Duplicar: nova turma preenchida com esta (sem alunos, aulas nem cobranças). */
+  template?: ClassGroupView;
+  /** Cobrança travada na edição: "Duplicar turma" abre a cópia. */
+  onDuplicate?: (turma: ClassGroupView) => void;
   onCreated?: (created: ClassGroupView) => void;
 }
 
@@ -27,6 +31,8 @@ export function TurmaFormDrawer({
   open,
   onOpenChange,
   turma,
+  template,
+  onDuplicate,
   onCreated,
 }: TurmaFormDrawerProps) {
   const team = useTeamWords();
@@ -41,17 +47,21 @@ export function TurmaFormDrawer({
       >
         <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
           <SheetTitle className="text-lg font-semibold text-foreground">
-            {isEdit ? "Editar turma" : "Nova turma"}
+            {isEdit ? "Editar turma" : template ? "Duplicar turma" : "Nova turma"}
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
             {isEdit
               ? `Atualize os dados, o ${team.lower} e os encontros da turma.`
-              : `Cadastre uma turma, o ${team.lower} e os encontros recorrentes.`}
+              : template
+                ? "Nova turma com os dados desta, sem alunos nem aulas. Ajuste o que precisar."
+                : `Cadastre uma turma, o ${team.lower} e os encontros recorrentes.`}
           </SheetDescription>
         </SheetHeader>
         <TurmaForm
-          key={turma?.id ?? (open ? "open" : "closed")}
+          key={turma?.id ?? (template ? `copy-${template.id}` : open ? "open" : "closed")}
           turma={turma}
+          template={template}
+          onDuplicate={turma && onDuplicate ? () => onDuplicate(turma) : undefined}
           formId="turma-form-drawer"
           onSuccess={(created) => {
             onOpenChange(false);

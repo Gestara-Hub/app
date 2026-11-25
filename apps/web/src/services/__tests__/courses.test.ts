@@ -137,15 +137,15 @@ describe("curso fechado: turma", () => {
     expect(membership.courseMaxInstallments).toBeUndefined();
   });
 
-  it("mudar o valor ou deixar de ser curso não mexe nas parcelas já geradas", async () => {
+  it("com matrícula, mudar o valor ou deixar de ser curso é recusado e as parcelas ficam (25/11/2026)", async () => {
     const g = await courseClass();
     const student = await createStudent("Bia");
     await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice() });
     const before = courseCharges(student.id).map(brief);
 
-    await turmasService.update(g.id, { coursePriceCents: 120000 });
+    await expect(turmasService.update(g.id, { coursePriceCents: 120000 })).rejects.toMatchObject({ code: "VALIDATION" });
     expect(courseCharges(student.id).map(brief)).toEqual(before);
-    await turmasService.update(g.id, { billingMode: "membership" });
+    await expect(turmasService.update(g.id, { billingMode: "membership" })).rejects.toMatchObject({ code: "VALIDATION" });
     expect(courseCharges(student.id).map(brief)).toEqual(before);
     const enrollment = store.enrollments.find((e) => e.studentId === student.id);
     expect(enrollment?.course?.priceCents).toBe(80000);
@@ -389,7 +389,8 @@ describe("curso fechado: cancelar a matrícula (decisão 1)", () => {
 
   it("curso já concluído: cancelar a matrícula não mexe nas parcelas", async () => {
     const { g, student, enrollmentId } = await enrolledWithHistory();
-    await turmasService.update(g.id, { endDate: "2026-09-21" });
+    // O fim do curso nao muda pela edicao depois da matricula: o teste pula para o fim.
+    store.classGroups.find((x) => x.id === g.id)!.endDate = "2026-09-21";
     await turmasService.cancelEnrollment(enrollmentId);
     expect(courseCharges(student.id).map((c) => c.status)).toEqual([
       "paid",
@@ -439,7 +440,8 @@ describe("curso fechado: concluído", () => {
     await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice() });
     expect((await turmasService.listEnrollments(g.id))[0].isCompleted).toBe(false);
 
-    await turmasService.update(g.id, { endDate: "2026-09-21", startDate: "2026-08-03" });
+    // O periodo do curso nao muda pela edicao depois da matricula: o teste pula para o fim.
+    Object.assign(store.classGroups.find((x) => x.id === g.id)!, { endDate: "2026-09-21", startDate: "2026-08-03" });
     const [enrollment] = await turmasService.listEnrollments(g.id);
     expect(enrollment).toMatchObject({ status: "active", isCompleted: true });
     expect((await turmasService.getById(g.id)).isEnded).toBe(true);
@@ -662,5 +664,58 @@ describe("curso fechado: financeiro e professores", () => {
       { kind: "percent_of_memberships", source: "memberships", baseCents: 20000, amountCents: 8000 },
       { kind: "percent_of_memberships", source: "courses", baseCents: 80000, amountCents: 32000 },
     ]);
+  });
+});
+
+describe("cobrança travada e inativar com alunos (25/11/2026)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("antes da 1ª matrícula o valor muda; depois trava, mesmo com a matrícula cancelada", async () => {
+    const g = await courseClass();
+    expect((await turmasService.update(g.id, { coursePriceCents: 25000 })).coursePriceCents).toBe(25000);
+
+    const student = await createStudent("Ana");
+    const enrollment = await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice({ priceCents: 25000 }) });
+    expect((await turmasService.getById(g.id)).hasEnrollments).toBe(true);
+
+    await expect(turmasService.update(g.id, { coursePriceCents: 2000 })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "coursePriceCents", message: "Já há alunos matriculados. Para mudar a cobrança, duplique a turma." }],
+    });
+    await expect(turmasService.update(g.id, { billingMode: "membership" })).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(turmasService.update(g.id, { endDate: "2026-12-31" })).rejects.toMatchObject({ code: "VALIDATION" });
+    // O que nao mexe na cobranca segue livre.
+    expect((await turmasService.update(g.id, { name: "Confeitaria II", capacity: 12 })).name).toBe("Confeitaria II");
+
+    await turmasService.cancelEnrollment(enrollment.id);
+    await expect(turmasService.update(g.id, { courseMaxInstallments: 2 })).rejects.toMatchObject({ code: "VALIDATION" });
+    expect(courseCharges(student.id).every((c) => c.amountCents <= 25000)).toBe(true);
+  });
+
+  it("com alunos ativos não inativa; sem alunos, inativa", async () => {
+    const g = await courseClass();
+    const student = await createStudent("Bia");
+    const enrollment = await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice() });
+
+    await expect(turmasService.deactivate(g.id)).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: "A turma tem 1 aluno ativo. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar.",
+    });
+    expect(store.classGroups.find((x) => x.id === g.id)?.status).toBe("active");
+
+    await turmasService.cancelEnrollment(enrollment.id);
+    expect((await turmasService.deactivate(g.id)).status).toBe("inactive");
+  });
+
+  it("turma que já teve aula diz quantas no bloqueio", async () => {
+    const g = await courseClass();
+    const student = await createStudent("Caio");
+    await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice() });
+    const [slot] = g.meetingSlots;
+    await turmasService.markAttendance({ sessionId: `${g.id}~2026-09-21~${slot.start}`, studentId: student.id, status: "present" });
+
+    await expect(turmasService.deactivate(g.id)).rejects.toMatchObject({
+      message: "A turma já teve 1 aula e tem 1 aluno ativo. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar.",
+    });
   });
 });

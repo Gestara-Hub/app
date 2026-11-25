@@ -362,6 +362,15 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Cancelar matrícula em curso** muda a regra antiga ("a mensalidade não muda"): as parcelas pagas ficam, as futuras são canceladas e as vencidas continuam. Na mensalidade, nada muda.
 - **Lista de espera de curso:** "Promover" abre "Matricular da lista de espera" com o pagamento do curso. Promover passa a entrar na Auditoria como matrícula (vale para toda turma).
 
+### Cobrança travada, inativar e duplicar (25/11/2026)
+
+Antes, mudar o valor do curso depois de matricular deixava as parcelas no valor antigo sem ninguém perceber, e inativar a turma deixava matrículas e cobranças em aberto numa turma parada.
+
+- **Cobrança travada na 1ª matrícula** (de qualquer situação, inclusive cancelada): forma de cobrança, plano da turma, valor e parcelas do curso e, no curso, as datas de início e fim. Nome, instrutor, horários, vagas, modalidade e aula avulsa seguem editáveis. No formulário, os campos ficam desabilitados com o aviso "Já há alunos matriculados. Para mudar a cobrança, duplique a turma." e o botão **Duplicar turma**. O servidor também recusa (`lockedBillingChanges` em `classValidation.ts`; `ClassGroupView.hasEnrollments`).
+- **Inativar com alunos ativos é bloqueado** (decisão do dono: bloquear de vez), com ou sem aulas dadas: "A turma já teve N aulas e tem M alunos ativos. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar." Na lista, a confirmação vira "Ainda não dá para inativar", com "Abrir turma". Curso que já terminou inativa livre (os alunos fizeram o curso). Sem alunos ativos, inativa como antes.
+- **Duplicar turma** (menu ⋮ da lista e do detalhe, ativa ou inativa): abre "Nova turma" preenchida com nome "(cópia)", modalidade, instrutor, horários, vagas, forma de cobrança, valor, parcelas e aula avulsa. Não copia alunos, aulas, chamadas nem cobranças; data de início nova e fim do curso em branco. É o caminho para "mudar o valor": nova turma com o valor novo.
+- **Para depois** (em `docs/pendencias.md`): "Cancelar a turma" que não começou e a devolução do que já foi pago (estorno pelo Asaas no pagamento online, registro no pagamento fora do app), por aluno.
+
 ## Pacote de aulas na turma e na aula (14/10/2026)
 
 Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md); regras completas em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seção "Pacote de aulas".

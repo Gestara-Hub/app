@@ -90,6 +90,8 @@ export interface ClassGroupView extends ClassGroup {
   instructorName: string;
   planName?: string;
   enrolledCount: number; // matriculas ativas
+  /** Ja teve matricula, de qualquer situacao: a cobranca da turma fica travada. */
+  hasEnrollments: boolean;
   availableSpots: number; // capacity - enrolledCount
   /** Ja terminou: `endDate` antes de hoje (derivado na leitura). */
   isEnded: boolean;

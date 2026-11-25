@@ -41,8 +41,9 @@ async function completedEnrollment() {
     studentId: student.id,
     course: { priceCents: 80000, installments: 1, firstDueDate: "2026-09-22" },
   });
-  await turmasService.update(g.id, { endDate: "2026-09-21" });
-  return { g, student, enrollment };
+  // O fim do curso nao muda pela edicao depois da matricula (25/11/2026): o teste pula para o fim.
+  store.classGroups.find((x) => x.id === g.id)!.endDate = "2026-09-21";
+  return { g: { ...g, endDate: "2026-09-21" }, student, enrollment };
 }
 
 function mark(classGroupId: string, studentId: string, date: string, status: AttendanceStatus) {
