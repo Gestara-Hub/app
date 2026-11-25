@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-7",
+    date: "2026-11-25",
+    items: [
+      { text: "Saque avisa quando falta confirmar no Asaas." },
+      { text: "Valor reservado para saque aparece no saldo." },
+      { text: "Botão para abrir sua conta no Asaas e confirmar." },
+    ],
+  },
+  {
     version: "2026.11.25-6",
     date: "2026-11-25",
     items: [
