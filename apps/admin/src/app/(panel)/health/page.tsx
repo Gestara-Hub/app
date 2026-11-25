@@ -184,7 +184,10 @@ async function Errors({ params, page, query }: { params: Record<string, string |
                     {SOURCE_LABEL[row.source] ?? row.source}
                   </Badge>
                   {row.level === "warn" ? (
-                    <Badge variant="outline" className="font-normal">
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/30 bg-amber-500/10 font-normal text-amber-700 dark:text-amber-300"
+                    >
                       Aviso
                     </Badge>
                   ) : null}
