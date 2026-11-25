@@ -25,10 +25,14 @@ export interface PixPayment {
 export const PIX_NOT_READY = "pix_not_ready";
 export const PIX_NOT_READY_MESSAGE = "A conta ainda está liberando o Pix. Tente de novo em alguns minutos.";
 
+/** Conta ainda em analise no Asaas: o Pix so libera com a aprovacao (25/11/2026). */
+export const PIX_ACCOUNT_PENDING_MESSAGE =
+  "O Pix libera quando o Asaas aprovar a sua conta de recebimento. Veja o que falta em Recebimentos online.";
+
 export class PixNotReadyError extends Error {
   readonly reason = PIX_NOT_READY;
-  constructor() {
-    super(PIX_NOT_READY_MESSAGE);
+  constructor(message: string = PIX_NOT_READY_MESSAGE) {
+    super(message);
     this.name = "PixNotReadyError";
   }
 }

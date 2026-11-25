@@ -80,6 +80,19 @@ describe("Asaas: Pix sem QR logo depois de ativar a conta", () => {
     expect(asaas.deletePayment).toHaveBeenCalledWith("pay_1", "chave-da-subconta");
   });
 
+  it("conta ainda em análise no Asaas: cancela a cobrança e diz que o Pix libera com a aprovação", async () => {
+    asaas.getPixQrCode.mockRejectedValue(noPixKey());
+    asaas.createPixAddressKey.mockRejectedValue(
+      new AsaasApiError("A sua conta ainda não está totalmente aprovada para utilizar o Pix.", 400),
+    );
+    const { PIX_ACCOUNT_PENDING_MESSAGE } = await import("../types");
+    await expect(asaasPaymentGateway.createPix(input)).rejects.toMatchObject({
+      reason: PIX_NOT_READY,
+      message: PIX_ACCOUNT_PENDING_MESSAGE,
+    });
+    expect(asaas.deletePayment).toHaveBeenCalledWith("pay_1", "chave-da-subconta");
+  });
+
   it("outro erro do QR também cancela a cobrança, e o erro segue como veio", async () => {
     const other = new AsaasApiError("Falha no parceiro", 500);
     asaas.getPixQrCode.mockRejectedValue(other);

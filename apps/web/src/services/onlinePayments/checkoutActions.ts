@@ -2,6 +2,8 @@
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  PIX_ACCOUNT_PENDING_MESSAGE,
+  PIX_NOT_READY,
   PixNotReadyError,
   type CreateLinkInput,
   type CreatePixInput,
@@ -23,9 +25,13 @@ import { logError, logWarn, withErrorScope } from "@/lib/log";
  * nada na conta principal do GestaraHub. A demonstracao (cobranca fora do banco)
  * so usa o provedor de demonstracao.
  */
-type Checked<T> = { input: T } | { error: string };
+type Checked<T> = { input: T } | { error: string; reason?: string };
 
-async function checkedInput<T extends CreatePixInput | CreateLinkInput>(input: T, realGateway: boolean): Promise<Checked<T>> {
+async function checkedInput<T extends CreatePixInput | CreateLinkInput>(
+  input: T,
+  realGateway: boolean,
+  options: { pix?: boolean } = {},
+): Promise<Checked<T>> {
   const ctx = await requireTenant();
   ctx.require("billing:manage");
   const admin = createSupabaseAdminClient();
@@ -49,9 +55,17 @@ async function checkedInput<T extends CreatePixInput | CreateLinkInput>(input: T
 
   const { data: org } = await admin
     .from("organizations")
-    .select("gateway_api_key, subscription")
+    .select("gateway_api_key, subscription, settings")
     .eq("id", ctx.organizationId)
     .maybeSingle();
+  // Conta ainda em analise no Asaas (25/11/2026): o Asaas recusa a chave Pix ate a
+  // aprovacao. Avisa antes de criar a cobranca la (que seria criada e apagada).
+  // Sem leitura nenhuma (conta antiga), segue como antes.
+  const asaasGeneral = (org?.settings as { onlinePayments?: { asaasStatus?: { general?: string } } } | null)?.onlinePayments
+    ?.asaasStatus?.general;
+  if (options.pix && realGateway && asaasGeneral && asaasGeneral !== "APPROVED") {
+    return { error: PIX_ACCOUNT_PENDING_MESSAGE, reason: PIX_NOT_READY };
+  }
   const tier = (org?.subscription as { tier?: "free" | "pro" | "scale" } | null)?.tier;
   const subaccountApiKey = (org?.gateway_api_key as string | null) ?? undefined;
   if (realGateway && !subaccountApiKey) return { error: "Ative a conta de recebimento em Recebimentos online." };
@@ -76,7 +90,7 @@ export async function createOnlinePixPaymentAction(
   return withErrorScope(async () => {
     try {
       const gateway = getPaymentGateway(provider);
-      const checked = await checkedInput(input, gateway.provider !== "mock");
+      const checked = await checkedInput(input, gateway.provider !== "mock", { pix: true });
       if ("error" in checked) return checked;
       const result = await gateway.createPix(checked.input);
       if (gateway.provider === "mock") {
