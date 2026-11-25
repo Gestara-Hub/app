@@ -95,6 +95,12 @@
   --animate-confetti: confetti 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
+/* Barrinha da abertura do app instalado (app/launch, 25/11/2026). */
+@keyframes launch-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 /* Chama a atencao para um CTA (ex.: "Continuar" do onboarding): cresce, treme e
    solta um anel. `attention-loop` roda 2 ciclos (3,6s) e para; a variante
    `-infinite` repete ate o usuario interagir. */

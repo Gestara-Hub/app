@@ -8,8 +8,8 @@ import { PATHNAME_HEADER } from "@/lib/request-path";
  * `/login` guardando o destino em `?from=`. Estando logado, `/login` redireciona
  * para o Dashboard. Como e mock, mantemos simples.
  */
-// Landing, paginas legais, termo de consentimento publico e aceite de convites sao publicos.
-const PUBLIC_PATHS = ["/login", "/", "/terms", "/privacy", "/consent", "/accept-invite"];
+// Landing, paginas legais, termo de consentimento publico, aceite de convites e a abertura do app instalado (/launch) sao publicos.
+const PUBLIC_PATHS = ["/login", "/", "/terms", "/privacy", "/consent", "/accept-invite", "/launch"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;

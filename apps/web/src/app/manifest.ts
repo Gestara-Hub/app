@@ -6,7 +6,8 @@ import { SITE_NAME, SITE_TAGLINE } from "@/config/site";
  * `assets/icon.svg` pelo gerador da marca: o comum com cantos arredondados, o
  * "maskable" com o G menor para caber no corte em circulo do Android, e o do
  * iPhone (`apple-touch-icon.png`, em `layout.tsx`) em quadrado cheio.
- * Abre no painel; sem sessao, o proxy leva ao login.
+ * Abre na tela de abertura (`/launch`, 25/11/2026): a logo aparece na hora e o
+ * Painel entra quando chegar; sem sessao, o proxy leva ao login.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -14,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: SITE_NAME,
     description: SITE_TAGLINE,
     lang: "pt-BR",
-    start_url: "/dashboard",
+    start_url: "/launch",
     scope: "/",
     display: "standalone",
     background_color: "#18181B",
