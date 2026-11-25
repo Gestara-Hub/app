@@ -44,6 +44,7 @@ import {
   useSubaccountTransfers,
   useSubaccountReceipts,
 } from "../hooks/use-online-payments";
+import { ASAAS_LOGIN_URL } from "./account-readiness-card";
 
 interface SubaccountPanelProps {
   organizationId: string;
@@ -84,6 +85,11 @@ const TRANSFER_STATUS_MAP: Record<
     className:
       "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   },
+  PENDING: {
+    label: "Agendada",
+    className:
+      "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+  },
   BANK_PROCESSING: {
     label: "Em processamento",
     className:
@@ -99,6 +105,12 @@ const TRANSFER_STATUS_MAP: Record<
     className:
       "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400",
   },
+};
+
+/** Saque criado e esperando o codigo no Asaas (evento critico). */
+const TRANSFER_AWAITING_CONFIRMATION_BADGE = {
+  label: "Aguardando sua confirmação",
+  className: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
 };
 
 function ReceiptsTableSkeleton() {
@@ -214,6 +226,10 @@ export function SubaccountPanel({
   const receiptsTotal = receiptsQuery.data?.total ?? 0;
   const summary = receiptsQuery.data?.summary;
   const transfers = transfersQuery.data || [];
+  // O Asaas ja tira do saldo o saque que espera o codigo: a tela diz onde esta.
+  const reservedCents = transfers
+    .filter((t) => t.needsConfirmation)
+    .reduce((total, t) => total + t.valueCents, 0);
 
 
   return (
@@ -238,7 +254,21 @@ export function SubaccountPanel({
 
           {/* Saque: um so botao, no cabecalho da tela ("Sacar via Pix"). */}
           <div className="mt-3 border-t border-emerald-500/15 pt-2 text-[11px] text-muted-foreground">
-            Pix e boleto liberam na hora
+            {reservedCents > 0 ? (
+              <span data-testid="transfer-reserved">
+                {formatCents(reservedCents)} reservado para saque ·{" "}
+                <a
+                  href={ASAAS_LOGIN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-amber-700 hover:underline dark:text-amber-400"
+                >
+                  confirme no Asaas
+                </a>
+              </span>
+            ) : (
+              "Pix e boleto liberam na hora"
+            )}
           </div>
         </div>
 
@@ -596,7 +626,9 @@ export function SubaccountPanel({
                           </td>
                           <td className="px-3.5 py-2.5">
                             {(() => {
-                              const badge = TRANSFER_STATUS_MAP[t.status] || {
+                              const badge = (t.needsConfirmation
+                                ? TRANSFER_AWAITING_CONFIRMATION_BADGE
+                                : TRANSFER_STATUS_MAP[t.status]) || {
                                 label: t.status,
                                 className: "border-border/60 bg-muted/50 text-muted-foreground",
                               };
@@ -613,7 +645,17 @@ export function SubaccountPanel({
                             })()}
                           </td>
                           <td className="px-3.5 py-2.5 text-right">
-                            {t.receiptUrl ? (
+                            {t.needsConfirmation ? (
+                              <a
+                                href={ASAAS_LOGIN_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+                              >
+                                Confirmar no Asaas
+                                <ExternalLink className="size-3" />
+                              </a>
+                            ) : t.receiptUrl ? (
                               <a
                                 href={t.receiptUrl}
                                 target="_blank"

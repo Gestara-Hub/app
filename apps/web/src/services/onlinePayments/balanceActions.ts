@@ -143,6 +143,12 @@ export interface TransferActionResult {
   success: boolean;
   transferId?: string;
   status?: string;
+  /**
+   * `false`: o Asaas criou o saque, mas ele so sai depois que o dono confirma
+   * com o codigo no site ou no app do Asaas (evento critico, padrao em saque
+   * pedido por integracao). O valor ja sai do saldo disponivel ate la.
+   */
+  needsConfirmation?: boolean;
   error?: string;
 }
 
@@ -216,6 +222,7 @@ export async function requestSubaccountTransferAction(input: {
           success: true,
           transferId: res.id,
           status: res.status,
+          needsConfirmation: awaitsConfirmation(res),
         };
       } catch (err: unknown) {
         logError("[requestSubaccountTransferAction] Erro no Asaas:", err);
@@ -241,7 +248,14 @@ export interface SubaccountTransferItem {
   dateCreated: string;
   valueCents: number;
   status: string;
+  /** Esperando a confirmacao por codigo no Asaas (valor ja reservado). */
+  needsConfirmation: boolean;
   receiptUrl?: string;
+}
+
+/** Saque criado e ainda sem a confirmacao por codigo no Asaas. */
+function awaitsConfirmation(t: { status: string; authorized?: boolean }): boolean {
+  return t.status === "PENDING" && t.authorized === false;
 }
 
 /**
@@ -267,6 +281,7 @@ export async function listSubaccountTransfersAction(
           dateCreated: t.dateCreated,
           valueCents: Math.round(t.value * 100),
           status: t.status,
+          needsConfirmation: awaitsConfirmation(t),
           receiptUrl: t.transactionReceiptUrl,
         }));
       } catch (err) {

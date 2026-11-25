@@ -82,14 +82,15 @@ export function useSubaccountOnboarding(enabled: boolean) {
 }
 
 /**
- * Consulta o saldo financeiro da subconta. Sem atualizacao automatica: recarrega
- * pelo botao "Atualizar" da tela (ou ao abrir de novo).
+ * Consulta o saldo financeiro da subconta. Recarrega pelo botao "Atualizar", ao
+ * abrir de novo e ao voltar para a aba (a pessoa foi ao Asaas confirmar um saque).
  */
 export function useSubaccountBalance(organizationId?: string) {
   return useQuery({
     queryKey: [...queryKeys.onlinePayments.all, "balance", organizationId],
     queryFn: () => getSubaccountBalanceAction(organizationId!),
     enabled: Boolean(organizationId),
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -101,6 +102,8 @@ export function useSubaccountTransfers(organizationId?: string) {
     queryKey: [...queryKeys.onlinePayments.all, "transfers", organizationId],
     queryFn: () => listSubaccountTransfersAction(organizationId!),
     enabled: Boolean(organizationId),
+    // Volta do Asaas depois de confirmar o saque: o selo muda sem recarregar.
+    refetchOnWindowFocus: true,
   });
 }
 
