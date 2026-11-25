@@ -13,6 +13,7 @@ Desde v2026.11.25-5.
 
 ### Correções
 
+- online-payments: webhook das subcontas sem os avisos de Pix Automático, lista essencial se o Asaas recusar e nova tentativa só depois de 6 horas
 - onboarding: Entendi visível na faixa Comece por aqui no tema escuro
 
 ## 2026.11.25-5 (2026-11-25)
