@@ -580,11 +580,14 @@ function DialogFooter({
   saving?: boolean
 }) {
   useReportDialogSaving(saving)
+  // Celular: dois botoes lado a lado em partes iguais; um texto que nao cabe na
+  // metade (o botao nao quebra linha) desce sozinho para uma linha inteira, com
+  // o botao principal por cima (25/11/2026: "Confirmar transferencia Pix" vazava).
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:justify-end max-sm:px-4 max-sm:py-3",
+        "flex flex-wrap-reverse gap-2 max-sm:*:grow max-sm:*:basis-[calc(50%-0.25rem)] sm:flex-row sm:flex-nowrap sm:justify-end max-sm:px-4 max-sm:py-3",
         className
       )}
       {...props}

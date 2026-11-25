@@ -217,7 +217,7 @@ export function SubaccountTransferDialog({
 
             <DialogFormFooter
               isPending={transfer.isPending}
-              createLabel="Confirmar transferência Pix"
+              createLabel="Transferir"
               className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
             />
           </form>
