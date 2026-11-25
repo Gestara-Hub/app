@@ -99,11 +99,16 @@ Escopo fechado para a primeira implementação de NFS-e: **cobrir apenas a contr
 - Emissão pelo **Portal Nacional da NFS-e**, item **01.03** da LC 116 (código de tributação nacional 010301 no Asaas).
 - **Simples Nacional, Anexo V com Fator R.** Só o **ISS, 2,01%**, sem retenção; PIS, COFINS, CSLL, IR e INSS não são destacados (vão 0).
 - Retenção de ISS só se o cliente empresa pedir, pelo regime dele: caso raro, tratado à mão no painel do Asaas.
-- Inscrição municipal habilitada (o CNAE está no CNPJ).
+- Inscrição municipal habilitada (o CNAE está no CNPJ), mas o campo fica **em branco** no Asaas, como nas notas já emitidas: preenchido, costuma dar erro (resposta de 23/11/2026).
 - Descrição livre: "Assinatura do sistema GestaraHub, plano Profissional mensal, período 22/11/2026 a 21/12/2026."
 - Troca de plano: nota só com a diferença, mesmo código.
 - Estorno em até 7 dias: basta cancelar a nota. Se a nota for de um mês e o cancelamento do outro, **avisar a contabilidade** (o imposto pode estar fechado e pedir retificação).
-- NBS e reforma tributária (perguntas 10 e 11): sem resposta; ficam vazios (opcionais no Asaas).
+- Valor da nota: o valor cheio pago pelo assinante (ex.: R$ 79,90), sem deduções. As tarifas do Asaas são despesa; o próprio Asaas emite a nota delas.
+
+**Respostas da contabilidade (23/11/2026):**
+- **NBS:** 1.1506.10.00 ou 1.1506.21.00, ainda não obrigatório. Fica em branco por ora (`ASAAS_NFSE_NBS` vazio); quando passar a ser, preencher a variável e o cadastro do serviço com o código que a contabilidade indicar.
+- **Reforma tributária (IBS/CBS):** ainda não se aplica; campos em branco no serviço do Asaas.
+- **Série da DPS:** não usar a série das notas que a contabilidade emite (evita choque de numeração). A série 1 pode já ter o número 1 no Portal Nacional; usar uma série livre (ex.: 2) começando no 1 e conferir na nota de teste. Se o Portal recusar por DPS repetida, trocar a série e avisar a contabilidade.
 
 **Mudança em relação ao plano abaixo:** a nota não usa o `invoiceSettings` da assinatura. Cada pagamento confirmado pede a própria nota (`POST /v3/invoices`), porque assim cada nota leva o **período pago** na descrição, e há um caminho só para renovação e upgrade.
 
@@ -114,8 +119,12 @@ Escopo fechado para a primeira implementação de NFS-e: **cobrir apenas a contr
   - `queuePlanInvoice` roda depois da resposta; a nota nunca segura nem derruba o pagamento.
   - Chamada em `confirmSubscriptionPayment` (assinatura), `recordSubscriptionPaymentPaid` (renovação, inclusive pela conferência diária) e `applyUpgrade` (diferença).
   - `retryFailedPlanInvoices`: a rotina diária pede de novo, até 5 vezes, o que falhou ao criar.
-  - `syncPlanInvoiceFromWebhook`: aviso `INVOICE_*` reconsultado com `getInvoice`; emitida vai para a Auditoria, recusada para o registro de erros.
+  - No máximo **uma nota automática por pagamento** (25/11/2026): se a cobrança já tem nota cancelada (no banco ou no Asaas), a automação não emite outra. Evita a segunda nota quando o cartão avisa "confirmado" e, semanas depois, "recebido", depois de um cancelamento à mão.
+  - `syncStalePlanInvoices` (rotina diária, 25/11/2026): nota parada há mais de 6 horas em emissão ou cancelamento é consultada no Asaas pelo mesmo caminho do webhook (até 50 por dia). Cobre o aviso `INVOICE_*` perdido.
+  - Trabalho à mão no Asaas: emitir sempre **pela cobrança** (nunca nota avulsa, que a automação não enxerga). Nota refeita à mão pela cobrança depois de uma cancelada passa a ser acompanhada (tela, PDF e e-mail). No estorno, não cancelar a nota à mão: o webhook cancela.
+  - `syncPlanInvoiceFromWebhook`: aviso `INVOICE_*` reconsultado com `getInvoice`; emitida vai para a Auditoria e manda o e-mail "Nota fiscal do plano emitida" ao dono e ao gerente, com o link do PDF (`invoiceIssuedNotice`, 25/11/2026; o Asaas não avisa o cliente da assinatura, que tem as notificações desligadas); recusada vai para o registro de erros.
   - `cancelPlanInvoiceOfPayment`: chamada no estorno do plano; nota de outro mês manda e-mail para `ASAAS_NFSE_NOTIFY_EMAIL` (ou `ERROR_DIGEST_EMAIL`) avisar a contabilidade.
+- Arrependimento em até 7 dias (25/11/2026): "Pedir cancelamento com devolução" na confirmação de "Voltar ao Grátis" e em Configurações → Plano abre o suporte com o pedido já escrito (`requestPlanRefund`, `features/subscription/plan-refund.ts`) e vai direto para a equipe, sem o assistente (`openSupport({ direct: true })`). A equipe estorna no Asaas; o webhook volta o espaço ao Grátis e cancela a nota. A confirmação de "Voltar ao Grátis" diz que o período pago segue até o fim, sem nova cobrança.
 - Tabela `platform_invoices` (migração 108); `asaas_invoice_id` fica vazio enquanto o pedido não volta.
 - Tela: "Notas fiscais" em Configurações → Plano (com PDF e XML), só para quem gerencia o plano e só quando há nota. Recusa aparece como "Em análise". No painel admin, a aba Plano do espaço lista as notas com o motivo da recusa.
 - Teste: `services/subscription/__tests__/planInvoices.db.test.ts`.
@@ -129,7 +138,7 @@ Escopo fechado para a primeira implementação de NFS-e: **cobrir apenas a contr
 **Falta:**
 - O endereço na troca de plano (item B.4).
 - Completar no Asaas o endereço dos assinantes atuais: sem endereço, a nota volta recusada e aparece no painel.
-- Botão de "reemitir" no painel (a rotina diária já pede de novo).
+- Botão de "reemitir" no painel (a rotina diária já pede de novo e confere as notas paradas).
 
  (antes do deploy em produção)
 1. **Conta principal PJ no Asaas:** habilitar certificado digital A1 / emissão de NFS-e na Prefeitura ou Portal Nacional (`GET /v3/fiscalInfo/municipalOptions`, `POST /v3/fiscalInfo`).
