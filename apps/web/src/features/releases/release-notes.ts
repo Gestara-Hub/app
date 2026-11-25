@@ -24,6 +24,9 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       { text: "Saque avisa quando falta confirmar no Asaas." },
       { text: "Valor reservado para saque aparece no saldo." },
       { text: "Botão para abrir sua conta no Asaas e confirmar." },
+      { text: "Sessão vencida leva ao login, sem tela vazia." },
+      { text: "App instalado abre com a primeira tela pronta." },
+      { text: "Novidades agrupadas por dia." },
     ],
   },
   {

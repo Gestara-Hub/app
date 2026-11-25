@@ -13,6 +13,13 @@ Desde v2026.11.25-6.
 ### Novo
 
 - online-payments: saque à espera do código do Asaas avisa, mostra o valor reservado e leva à conta
+- pwa: abertura cobre a primeira tela até as leituras terminarem
+- releases: novidades agrupadas por dia
+
+### Correções
+
+- auth: proxy renova a sessão do banco e sessão vencida leva ao login com aviso
+- ui: botão do rodapé que não cabe desce para uma linha inteira no celular e saque com Transferir
 
 ## 2026.11.25-6 (2026-11-25)
 
