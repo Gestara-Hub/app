@@ -2,6 +2,25 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-5 (2026-11-25)
+
+Desde v2026.11.25-4.
+
+### Correções
+
+- admin: selo Aviso em âmbar na tela de erros
+- online-payments: chave Pix só com a conta aprovada no Asaas e aviso claro antes disso
+- tour: tour só começa sem janela aberta, depois de Conta criada e do pedido de proteger o acesso
+- online-payments: ativar sem o aceite leva o foco e a rolagem até a caixa dos termos
+
+### Documentação
+
+- online-payments: análise da conta no Asaas e avisos marcados para depois
+
+### Novo
+
+- online-payments: situação real da conta no Asaas, cartão Deixe sua conta pronta e avisos das subcontas
+
 ## 2026.11.25-4 (2026-11-25)
 
 Desde v2026.11.25-3.
