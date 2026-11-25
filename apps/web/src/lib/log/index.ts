@@ -46,12 +46,31 @@ type ScopeRunner = <T>(fn: () => Promise<T>) => Promise<T>;
 interface LogGlobals {
   sink?: ErrorSink;
   scopeRunner?: ScopeRunner;
+  /** Segura a funcao viva ate o registro terminar (servidor: `after` do Next). */
+  keepAlive?: (pending: Promise<unknown>) => void;
 }
 const globals = ((globalThis as { __gestarahubLog?: LogGlobals }).__gestarahubLog ??= {});
 
 /** Liga o destino (servidor: banco; navegador: acao do servidor). */
 export function setErrorSink(next: ErrorSink | undefined): void {
   globals.sink = next;
+}
+
+/**
+ * Liga o "segurar viva" (so no servidor; `server-sink.ts`, 25/11/2026): o
+ * `logError` nao espera o registro, e a acao respondia antes; a Vercel
+ * congelava a funcao e o alerta de erro novo por e-mail nao saia.
+ */
+export function setErrorKeepAlive(next: ((pending: Promise<unknown>) => void) | undefined): void {
+  globals.keepAlive = next;
+}
+
+/**
+ * Tarefa disparada sem esperar no servidor (`void tarefa()`): segura a funcao
+ * viva ate ela terminar, com os registros de erro dela. No navegador, nada.
+ */
+export function keepTaskAlive(pending: Promise<unknown>): void {
+  globals.keepAlive?.(pending);
 }
 
 /** Liga o escopo por requisicao (so no servidor; `server-sink.ts`). */
@@ -93,7 +112,10 @@ async function report(entry: ErrorEntry): Promise<string> {
   const sink = globals.sink;
   if (sink) {
     try {
-      await Promise.race([sink(entry), new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
+      const pending = sink(entry);
+      // Registrado ainda dentro da requisicao: o resto (alerta) termina depois da resposta.
+      globals.keepAlive?.(pending);
+      await Promise.race([pending, new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
     } catch {
       // O destino falhou (banco fora, rede): a linha do console ja ficou.
     }

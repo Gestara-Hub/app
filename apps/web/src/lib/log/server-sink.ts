@@ -53,6 +53,15 @@ export function setErrorScope(values: ErrorScope): void {
   if (current) Object.assign(current, values);
 }
 
+/** Segura a funcao viva ate o registro e o alerta terminarem (fora de requisicao, nada a fazer). */
+export function keepRequestAlive(pending: Promise<unknown>): void {
+  try {
+    after(pending.catch(() => undefined));
+  } catch {
+    // Fora de uma requisicao (rotina, teste): o processo segue vivo.
+  }
+}
+
 export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
   const current = scope.getStore();
   const { data: isNew, error } = await createSupabaseAdminClient().rpc("record_error", {
@@ -79,13 +88,9 @@ export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
   // Sem logError aqui: falhar ao gravar o erro nao pode gerar outro registro.
   if (error) console.error(`[log] erro não gravado no banco (código ${entry.reference}): ${error.message}`);
   else if (isNew === true && entry.level === "error") {
-    // Alerta por e-mail depois da resposta (19/11/2026: a resposta de erro
-    // esperava o envio). Fora de uma requisicao, envia na hora.
-    try {
-      after(() => alertNewError(entry, current?.organizationId));
-    } catch {
-      await alertNewError(entry, current?.organizationId);
-    }
+    // O alerta sai aqui mesmo; quem segura a funcao viva depois da resposta e o
+    // `keepRequestAlive` (o `after` chamado tarde aqui ja nao valia, 25/11/2026).
+    await alertNewError(entry, current?.organizationId);
   }
 }
 

@@ -1,3 +1,4 @@
+import { keepTaskAlive } from "@/lib/log";
 import {
   type ApiErrorField,
   type MessageCategory,
@@ -226,7 +227,8 @@ export function dispatchOfficial(log: MessageLog): void {
   } else if (deliver && inServerWorld()) {
     // Sem efeito depois da gravacao (nao deveria acontecer no servidor): envia agora.
     log.status = "sent";
-    void deliver(job);
+    // Sem esperar, mas com a funcao viva ate o envio (e o registro de erro dele) terminar.
+    keepTaskAlive(deliver(job));
   } else {
     log.status = "delivered";
   }

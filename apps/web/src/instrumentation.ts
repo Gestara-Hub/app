@@ -8,11 +8,12 @@ export async function register(): Promise<void> {
   if (!process.env.TZ) process.env.TZ = "America/Sao_Paulo";
   // Erros do servidor vao para a tabela error_logs (doc technical/21).
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const [{ setErrorScopeRunner, setErrorSink }, { recordErrorToDb, runWithErrorScope }] = await Promise.all([
+    const [{ setErrorKeepAlive, setErrorScopeRunner, setErrorSink }, { keepRequestAlive, recordErrorToDb, runWithErrorScope }] = await Promise.all([
       import("./lib/log"),
       import("./lib/log/server-sink"),
     ]);
     setErrorSink(recordErrorToDb);
+    setErrorKeepAlive(keepRequestAlive);
     setErrorScopeRunner(runWithErrorScope);
   }
   // Servidor dos testes do navegador: mesma data fixa do navegador.
