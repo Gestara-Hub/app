@@ -4,7 +4,7 @@ import type { UserPreferences } from "@gestarahub/contracts";
 import { isApiError, mergeUserPreferences } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireTenant } from "@/services/server/tenant";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 
 /**
  * Preferencias do usuario da sessao. O usuario vem da sessao do Supabase
@@ -39,13 +39,15 @@ async function readPreferences(userId: string): Promise<UserPreferences | null> 
 }
 
 export async function getMyPreferencesAction(): Promise<UserPreferences | null> {
-  try {
-    const userId = await sessionUserId();
-    return userId ? await readPreferences(userId) : null;
-  } catch (err) {
-    logError("[preferencesBackend] Falha ao consultar preferências:", err);
-    return null;
-  }
+  return withErrorScope(async () => {
+    try {
+      const userId = await sessionUserId();
+      return userId ? await readPreferences(userId) : null;
+    } catch (err) {
+      logError("[preferencesBackend] Falha ao consultar preferências:", err);
+      return null;
+    }
+  });
 }
 
 /**
@@ -80,21 +82,23 @@ const MAX_PREFERENCES_BYTES = 64 * 1024;
 
 /** Sem sessao do banco: `null` (as preferencias ficam so no navegador). */
 export async function saveMyPreferencesAction(preferences: Partial<UserPreferences>): Promise<UserPreferences | null> {
-  const userId = await sessionUserId();
-  if (!userId) return null;
-  if (JSON.stringify(preferences ?? {}).length > MAX_PREFERENCES_BYTES) {
-    throw new Error("Preferências grandes demais.");
-  }
-  const known = Object.fromEntries(
-    Object.entries(preferences ?? {}).filter(([key]) => PREFERENCE_KEYS.has(key)),
-  ) as Partial<UserPreferences>;
-  const updated = mergeUserPreferences(await readPreferences(userId), known);
-  const { error } = await createSupabaseAdminClient()
-    .from("user_preferences")
-    .upsert({ user_id: userId, preferences: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-  if (error) {
-    logError("[preferencesBackend] Erro ao salvar preferências do usuário:", error);
-    throw new Error("Erro ao salvar preferências no banco de dados.");
-  }
-  return updated;
+  return withErrorScope(async () => {
+    const userId = await sessionUserId();
+    if (!userId) return null;
+    if (JSON.stringify(preferences ?? {}).length > MAX_PREFERENCES_BYTES) {
+      throw new Error("Preferências grandes demais.");
+    }
+    const known = Object.fromEntries(
+      Object.entries(preferences ?? {}).filter(([key]) => PREFERENCE_KEYS.has(key)),
+    ) as Partial<UserPreferences>;
+    const updated = mergeUserPreferences(await readPreferences(userId), known);
+    const { error } = await createSupabaseAdminClient()
+      .from("user_preferences")
+      .upsert({ user_id: userId, preferences: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) {
+      logError("[preferencesBackend] Erro ao salvar preferências do usuário:", error);
+      throw new Error("Erro ao salvar preferências no banco de dados.");
+    }
+    return updated;
+  });
 }

@@ -11,7 +11,7 @@ import {
 import { getPaymentGateway } from "../payments/registry";
 import { effectivePlatformSplitCents } from "../payments/platformSplit";
 import { requireTenant } from "../server/tenant";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, withErrorScope } from "@/lib/log";
 
 /**
  * Gera o Pix ou o link de pagamento de uma cobranca no gateway ativo.
@@ -73,31 +73,33 @@ export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
 ): Promise<PixPayment | { error: string; reason?: string }> {
-  try {
-    const gateway = getPaymentGateway(provider);
-    const checked = await checkedInput(input, gateway.provider !== "mock");
-    if ("error" in checked) return checked;
-    const result = await gateway.createPix(checked.input);
-    if (gateway.provider === "mock") {
-      return {
-        ...result,
-        provider: "mock",
-        fallbackReason: process.env.ASAAS_API_KEY
-          ? "Provedor de demonstração selecionado no servidor."
-          : "ASAAS_API_KEY não configurada no servidor.",
-      };
+  return withErrorScope(async () => {
+    try {
+      const gateway = getPaymentGateway(provider);
+      const checked = await checkedInput(input, gateway.provider !== "mock");
+      if ("error" in checked) return checked;
+      const result = await gateway.createPix(checked.input);
+      if (gateway.provider === "mock") {
+        return {
+          ...result,
+          provider: "mock",
+          fallbackReason: process.env.ASAAS_API_KEY
+            ? "Provedor de demonstração selecionado no servidor."
+            : "ASAAS_API_KEY não configurada no servidor.",
+        };
+      }
+      return { ...result, provider: gateway.provider };
+    } catch (error) {
+      // Conta recem-ativada sem chave Pix: esperado nos primeiros minutos.
+      if (error instanceof PixNotReadyError) {
+        logWarn("[createOnlinePixPaymentAction] Pix ainda não liberado na conta de recebimento.");
+        return { error: error.message, reason: error.reason };
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      logError("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
+      return { error: message };
     }
-    return { ...result, provider: gateway.provider };
-  } catch (error) {
-    // Conta recem-ativada sem chave Pix: esperado nos primeiros minutos.
-    if (error instanceof PixNotReadyError) {
-      logWarn("[createOnlinePixPaymentAction] Pix ainda não liberado na conta de recebimento.");
-      return { error: error.message, reason: error.reason };
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    logError("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
-    return { error: message };
-  }
+  });
 }
 
 /** Link de pagamento da cobranca no gateway ativo, com a subconta e a taxa conferidas no servidor. */
@@ -105,24 +107,26 @@ export async function createOnlineLinkPaymentAction(
   input: CreateLinkInput,
   provider?: string,
 ): Promise<PaymentLinkPayment | { error: string }> {
-  try {
-    const gateway = getPaymentGateway(provider);
-    const checked = await checkedInput(input, gateway.provider !== "mock");
-    if ("error" in checked) return checked;
-    const result = await gateway.createLink(checked.input);
-    if (gateway.provider === "mock") {
-      return {
-        ...result,
-        provider: "mock",
-        fallbackReason: process.env.ASAAS_API_KEY
-          ? "Provedor de demonstração selecionado no servidor."
-          : "ASAAS_API_KEY não configurada no servidor.",
-      };
+  return withErrorScope(async () => {
+    try {
+      const gateway = getPaymentGateway(provider);
+      const checked = await checkedInput(input, gateway.provider !== "mock");
+      if ("error" in checked) return checked;
+      const result = await gateway.createLink(checked.input);
+      if (gateway.provider === "mock") {
+        return {
+          ...result,
+          provider: "mock",
+          fallbackReason: process.env.ASAAS_API_KEY
+            ? "Provedor de demonstração selecionado no servidor."
+            : "ASAAS_API_KEY não configurada no servidor.",
+        };
+      }
+      return { ...result, provider: gateway.provider };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logError("[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:", error);
+      return { error: message };
     }
-    return { ...result, provider: gateway.provider };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logError("[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:", error);
-    return { error: message };
-  }
+  });
 }

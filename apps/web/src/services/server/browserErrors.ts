@@ -1,8 +1,8 @@
 "use server";
 
-import { reportError } from "@/lib/log";
+import { reportError, withErrorScope } from "@/lib/log";
 import { maskStack, maskText, maskValue } from "@/lib/log/mask";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { requireTenant } from "./tenant";
 
 /**
@@ -11,6 +11,10 @@ import { requireTenant } from "./tenant";
  * nunca do que o navegador mandou. Sem sessao (pagina publica), so o console do
  * navegador. Limite: 30 por usuario a cada 10 minutos (um erro em laco nao
  * enche a tabela; o mesmo erro tambem agrupa numa linha so).
+ *
+ * Sem login (25/11/2026: entrada, cadastro, inscricao publica em evento,
+ * consentimento): entra sem espaco nem usuario, so com a tela. Limite por IP
+ * (10 a cada 10 min) e um teto geral (200 a cada 10 min): a rota e aberta.
  */
 export interface BrowserErrorInput {
   event: string;
@@ -25,22 +29,27 @@ export interface BrowserErrorInput {
 const REFERENCE = /^[A-HJ-NP-Z2-9]{8}$/;
 
 export async function reportBrowserErrorAction(input: BrowserErrorInput): Promise<void> {
-  try {
-    const ctx = await requireTenant().catch(() => null);
-    if (!ctx || typeof input?.message !== "string") return;
-    const allowed = await checkRateLimit({ key: `browser-error:${ctx.userId}`, maxRequests: 30, windowSeconds: 600 });
-    if (!allowed) return;
-    const error = new Error(maskText(input.message.slice(0, 2000)));
-    error.stack = typeof input.stack === "string" ? maskStack(input.stack.slice(0, 8000)) : undefined;
-    await reportError(`browser.${String(input.event ?? "erro").slice(0, 80)}`, error, {
-      source: "browser",
-      level: input.level === "warn" ? "warn" : "error",
-      organizationId: ctx.organizationId,
-      userId: ctx.userId,
-      context: maskValue(input.context ?? {}) as Record<string, unknown>,
-      reference: typeof input.reference === "string" && REFERENCE.test(input.reference) ? input.reference : undefined,
-    });
-  } catch {
-    // Registrar erro do navegador nunca falha para quem mandou.
-  }
+  return withErrorScope(async () => {
+    try {
+      if (typeof input?.message !== "string") return;
+      const ctx = await requireTenant().catch(() => null);
+      const allowed = ctx
+        ? await checkRateLimit({ key: `browser-error:${ctx.userId}`, maxRequests: 30, windowSeconds: 600 })
+        : (await checkRateLimit({ key: `browser-error-ip:${await getClientIp()}`, maxRequests: 10, windowSeconds: 600 })) &&
+          (await checkRateLimit({ key: "browser-error-anon", maxRequests: 200, windowSeconds: 600 }));
+      if (!allowed) return;
+      const error = new Error(maskText(input.message.slice(0, 2000)));
+      error.stack = typeof input.stack === "string" ? maskStack(input.stack.slice(0, 8000)) : undefined;
+      await reportError(`browser.${String(input.event ?? "erro").slice(0, 80)}`, error, {
+        source: "browser",
+        level: input.level === "warn" ? "warn" : "error",
+        organizationId: ctx?.organizationId,
+        userId: ctx?.userId,
+        context: maskValue(input.context ?? {}) as Record<string, unknown>,
+        reference: typeof input.reference === "string" && REFERENCE.test(input.reference) ? input.reference : undefined,
+      });
+    } catch {
+      // Registrar erro do navegador nunca falha para quem mandou.
+    }
+  });
 }

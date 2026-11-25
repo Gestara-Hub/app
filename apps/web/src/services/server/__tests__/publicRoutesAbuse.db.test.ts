@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
+import { adminClient, createTestTenant, signOut, type TestTenant } from "@/test/db";
 import { confirmMinorConsentAction } from "@/services/legalConsent/minorConsentActions";
 import { createPublicChargePaymentAction } from "../chargeInvoiceActions";
+import { reportBrowserErrorAction } from "../browserErrors";
+import { setErrorSink } from "@/lib/log";
+import { recordErrorToDb } from "@/lib/log/server-sink";
 
 /**
  * Paginas publicas (auditoria de 30/10/2026): a autorizacao do menor nao
@@ -64,5 +67,30 @@ describe("fatura pública", () => {
       ok: false,
       error: "Muitas tentativas. Aguarde alguns minutos e tente de novo.",
     });
+  });
+});
+
+describe("erro do navegador sem login (25/11/2026)", () => {
+  const event = `browser.teste.publico-${ip}`;
+  const rows = async () => (await admin.from("error_logs").select("*").eq("event", event)).data ?? [];
+
+  it("entra sem espaço, com a tela, e o mesmo IP tem limite de 10 a cada 10 minutos", async () => {
+    signOut();
+    setErrorSink(recordErrorToDb);
+    try {
+      await reportBrowserErrorAction({ event: `teste.publico-${ip}`, message: "Falha na inscrição", context: { path: "/p/e/ABC123" } });
+      const [row] = await rows();
+      expect(row).toMatchObject({ source: "browser", organization_id: null, count: 1 });
+      expect(row.context).toMatchObject({ path: "/p/e/ABC123" });
+
+      for (let i = 0; i < 12; i++) {
+        await reportBrowserErrorAction({ event: `teste.publico-${ip}`, message: "Falha na inscrição" });
+      }
+      const [after] = await rows();
+      expect(after.count).toBe(10);
+    } finally {
+      setErrorSink(undefined);
+      await admin.from("error_logs").delete().eq("event", event);
+    }
   });
 });

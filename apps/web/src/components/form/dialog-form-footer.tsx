@@ -7,6 +7,8 @@ export interface DialogFormFooterProps {
   isPending: boolean;
   isEdit?: boolean;
   createLabel?: string;
+  /** Texto do botao enquanto salva (padrao "Salvando..."). */
+  pendingLabel?: string;
   editLabel?: string;
   cancelLabel?: string;
   className?: string;
@@ -17,6 +19,7 @@ export function DialogFormFooter({
   isPending,
   isEdit = false,
   createLabel = "Adicionar",
+  pendingLabel = "Salvando...",
   editLabel = "Salvar",
   cancelLabel = "Cancelar",
   className,
@@ -43,7 +46,7 @@ export function DialogFormFooter({
         </DialogClose>
       )}
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Salvando..." : isEdit ? editLabel : createLabel}
+        {isPending ? pendingLabel : isEdit ? editLabel : createLabel}
       </Button>
     </DialogFooter>
   );

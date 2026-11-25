@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isApiError } from "@gestarahub/contracts";
-import { dbError, logError, reportError, setErrorSink, type ErrorEntry } from "../index";
+import { dbError, logError, reportError, setErrorKeepAlive, setErrorSink, type ErrorEntry } from "../index";
 import { fingerprintOf, maskStack, maskText, maskValue } from "../mask";
 
 /** Registro de erros (doc technical/21): mascara, agrupamento e a porta unica. */
 
 afterEach(() => {
   setErrorSink(undefined);
+  setErrorKeepAlive(undefined);
   vi.restoreAllMocks();
 });
 
@@ -154,3 +155,17 @@ describe("máscara da pilha", () => {
   });
 });
 
+describe("segurar a função viva", () => {
+  it("logError entrega o registro ao keepAlive na hora, antes de a ação responder", async () => {
+    let finish!: () => void;
+    setErrorSink(() => new Promise<void>((resolve) => (finish = resolve)));
+    const kept: Promise<unknown>[] = [];
+    setErrorKeepAlive((pending) => kept.push(pending));
+
+    logError("[teste] falhou sem esperar");
+    // Sincrono: a acao ainda nao respondeu e o registro (com o alerta) ja esta seguro.
+    expect(kept).toHaveLength(1);
+    finish();
+    await expect(kept[0]).resolves.toBeUndefined();
+  });
+});

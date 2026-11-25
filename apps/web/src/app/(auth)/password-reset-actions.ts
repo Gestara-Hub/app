@@ -11,7 +11,7 @@ import {
   discardPasswordResetToken,
   resetPasswordWithToken,
 } from "@/services/server/passwordReset";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 
 async function resolveAppBaseUrl(): Promise<string> {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
@@ -30,38 +30,40 @@ async function resolveAppBaseUrl(): Promise<string> {
 export async function requestPasswordResetAction(input: {
   email: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
-  const email = input.email.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, message: "Informe um e-mail válido." };
-  }
-
-  const ip = await getClientIp();
-  const allowedIp = await checkRateLimit({ key: `password_reset_ip:${ip}`, maxRequests: 5, windowSeconds: 600 });
-  const allowedEmail = await checkRateLimit({
-    key: `password_reset_email:${email}`,
-    maxRequests: 3,
-    windowSeconds: 900,
-  });
-  if (!allowedIp || !allowedEmail) {
-    return { ok: false, message: "Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo." };
-  }
-
-  // Link e e-mail depois da resposta (19/11/2026): a resposta sai no mesmo
-  // tempo com ou sem conta, e o tempo nao revela se o e-mail esta cadastrado.
-  // Falha no envio descarta o link e fica no registro de erros.
-  const baseUrl = await resolveAppBaseUrl();
-  await afterResponse("Link de troca de senha", async () => {
-    const admin = createSupabaseAdminClient();
-    const created = await createPasswordResetToken(admin, email);
-    if (!created) return;
-    const resetUrl = `${baseUrl}/reset-password?token=${created.token}`;
-    const sent = await sendPasswordResetEmail({ toEmail: created.email, toName: created.name, resetUrl });
-    if (!sent.ok) {
-      await discardPasswordResetToken(admin, created.token);
-      logError("[password-reset] E-mail do link não saiu:", sent.error);
+  return withErrorScope(async () => {
+    const email = input.email.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, message: "Informe um e-mail válido." };
     }
+
+    const ip = await getClientIp();
+    const allowedIp = await checkRateLimit({ key: `password_reset_ip:${ip}`, maxRequests: 5, windowSeconds: 600 });
+    const allowedEmail = await checkRateLimit({
+      key: `password_reset_email:${email}`,
+      maxRequests: 3,
+      windowSeconds: 900,
+    });
+    if (!allowedIp || !allowedEmail) {
+      return { ok: false, message: "Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo." };
+    }
+
+    // Link e e-mail depois da resposta (19/11/2026): a resposta sai no mesmo
+    // tempo com ou sem conta, e o tempo nao revela se o e-mail esta cadastrado.
+    // Falha no envio descarta o link e fica no registro de erros.
+    const baseUrl = await resolveAppBaseUrl();
+    await afterResponse("Link de troca de senha", async () => {
+      const admin = createSupabaseAdminClient();
+      const created = await createPasswordResetToken(admin, email);
+      if (!created) return;
+      const resetUrl = `${baseUrl}/reset-password?token=${created.token}`;
+      const sent = await sendPasswordResetEmail({ toEmail: created.email, toName: created.name, resetUrl });
+      if (!sent.ok) {
+        await discardPasswordResetToken(admin, created.token);
+        logError("[password-reset] E-mail do link não saiu:", sent.error);
+      }
+    });
+    return { ok: true };
   });
-  return { ok: true };
 }
 
 /** Troca a senha pelo link do e-mail; depois a pessoa entra com a nova senha. */
@@ -69,19 +71,21 @@ export async function completePasswordResetAction(input: {
   token: string;
   password: string;
 }): Promise<{ ok: true; email: string } | { ok: false; message: string; expired?: boolean }> {
-  const ip = await getClientIp();
-  if (!(await checkRateLimit({ key: `password_reset_complete:${ip}`, maxRequests: 10, windowSeconds: 600 }))) {
-    return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
-  }
-  const result = await resetPasswordWithToken(createSupabaseAdminClient(), input.token, input.password);
-  if (result.ok) return { ok: true, email: result.email };
-  switch (result.code) {
-    case "weak":
-      return { ok: false, message: `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
-    case "expired":
-    case "invalid":
-      return { ok: false, message: "Este link venceu ou já foi usado. Peça outro.", expired: true };
-    default:
-      return { ok: false, message: "Não foi possível trocar a senha. Tente novamente." };
-  }
+  return withErrorScope(async () => {
+    const ip = await getClientIp();
+    if (!(await checkRateLimit({ key: `password_reset_complete:${ip}`, maxRequests: 10, windowSeconds: 600 }))) {
+      return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+    }
+    const result = await resetPasswordWithToken(createSupabaseAdminClient(), input.token, input.password);
+    if (result.ok) return { ok: true, email: result.email };
+    switch (result.code) {
+      case "weak":
+        return { ok: false, message: `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
+      case "expired":
+      case "invalid":
+        return { ok: false, message: "Este link venceu ou já foi usado. Peça outro.", expired: true };
+      default:
+        return { ok: false, message: "Não foi possível trocar a senha. Tente novamente." };
+    }
+  });
 }

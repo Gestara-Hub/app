@@ -30,7 +30,7 @@ import {
 import { notifyPlanPaid } from "../server/planEmails";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
 import { userActor } from "../server/systemAudit";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, withErrorScope } from "@/lib/log";
 
 /**
  * Pagamento do plano no Asaas: gerar o checkout, conferir e simular o pago.
@@ -173,41 +173,14 @@ async function firstPixOf(subscriptionId: string) {
 export async function createAsaasSubscriptionCheckoutAction(
   input: CreateSubscriptionInput,
 ): Promise<SubscriptionCheckoutResult> {
-  const ctx = await requireSameOrganization(input.organizationId, { permissions: ["subscription:manage"] });
-  // Quem assinou (historico do plano e Auditoria).
-  const author = async () => ({ actor: await userActor(createSupabaseAdminClient(), ctx) });
-  const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
-  const config = getAsaasConfig();
+  return withErrorScope(async () => {
+    const ctx = await requireSameOrganization(input.organizationId, { permissions: ["subscription:manage"] });
+    // Quem assinou (historico do plano e Auditoria).
+    const author = async () => ({ actor: await userActor(createSupabaseAdminClient(), ctx) });
+    const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
+    const config = getAsaasConfig();
 
-  if (input.tier === "scale" && !SCALE_PLAN_ON_SALE) {
-    return {
-      success: false,
-      subscriptionId: "",
-      customerId: "",
-      billingType: input.billingType,
-      status: "pending",
-      value: priceConfig.value,
-      error: "O plano Expansão ainda não está disponível.",
-    };
-  }
-
-  const addressError = checkoutAddressError(input.customer.address);
-  if (addressError) {
-    return {
-      success: false,
-      subscriptionId: "",
-      customerId: "",
-      billingType: input.billingType,
-      status: "pending",
-      value: priceConfig.value,
-      error: addressError,
-    };
-  }
-  await saveAddressOnSpaceWithout(input.organizationId, input.customer.address);
-
-  // Modo Simulado se não houver chave Master real
-  if (!config.masterApiKey) {
-    if (!mockCheckoutAllowed()) {
+    if (input.tier === "scale" && !SCALE_PLAN_ON_SALE) {
       return {
         success: false,
         subscriptionId: "",
@@ -215,166 +188,221 @@ export async function createAsaasSubscriptionCheckoutAction(
         billingType: input.billingType,
         status: "pending",
         value: priceConfig.value,
-        error: "O pagamento do plano está indisponível no momento.",
+        error: "O plano Expansão ainda não está disponível.",
       };
     }
-    const mockSubId = `sub_mock_${Date.now()}`;
-    const mockPayId = `pay_mock_${Date.now()}`;
 
-    if (input.billingType === "CREDIT_CARD") {
-      const subscription: Subscription = {
-        tier: input.tier,
-        interval: input.interval,
-        status: "active",
-        paymentMethod: "credit_card",
-        priceCents: priceConfig.priceCents,
-        asaasSubscriptionId: mockSubId,
-        asaasCustomerId: "cus_mock_local",
-        renewsOn: addPlanCycle(asaasToday(), input.interval),
-        changedAt: new Date().toISOString(),
+    const addressError = checkoutAddressError(input.customer.address);
+    if (addressError) {
+      return {
+        success: false,
+        subscriptionId: "",
+        customerId: "",
+        billingType: input.billingType,
+        status: "pending",
+        value: priceConfig.value,
+        error: addressError,
       };
-      await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
-      await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
+    }
+    await saveAddressOnSpaceWithout(input.organizationId, input.customer.address);
+
+    // Modo Simulado se não houver chave Master real
+    if (!config.masterApiKey) {
+      if (!mockCheckoutAllowed()) {
+        return {
+          success: false,
+          subscriptionId: "",
+          customerId: "",
+          billingType: input.billingType,
+          status: "pending",
+          value: priceConfig.value,
+          error: "O pagamento do plano está indisponível no momento.",
+        };
+      }
+      const mockSubId = `sub_mock_${Date.now()}`;
+      const mockPayId = `pay_mock_${Date.now()}`;
+
+      if (input.billingType === "CREDIT_CARD") {
+        const subscription: Subscription = {
+          tier: input.tier,
+          interval: input.interval,
+          status: "active",
+          paymentMethod: "credit_card",
+          priceCents: priceConfig.priceCents,
+          asaasSubscriptionId: mockSubId,
+          asaasCustomerId: "cus_mock_local",
+          renewsOn: addPlanCycle(asaasToday(), input.interval),
+          changedAt: new Date().toISOString(),
+        };
+        await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+        await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
+
+        return {
+          success: true,
+          subscriptionId: mockSubId,
+          customerId: "cus_mock_local",
+          billingType: "CREDIT_CARD",
+          status: "active",
+          value: priceConfig.value,
+          subscription,
+        };
+      }
 
       return {
         success: true,
         subscriptionId: mockSubId,
         customerId: "cus_mock_local",
-        billingType: "CREDIT_CARD",
-        status: "active",
-        value: priceConfig.value,
-        subscription,
-      };
-    }
-
-    return {
-      success: true,
-      subscriptionId: mockSubId,
-      customerId: "cus_mock_local",
-      paymentId: mockPayId,
-      billingType: "PIX",
-      status: "pending",
-      value: priceConfig.value,
-      pixQrCode: {
-        encodedImage:
-          "iVBORw0KGgoAAAANSUhEUgAAAcIAAAHCAQAAAABUY/ToAAADFElEQVR4Xu2UQbLbMAxDs/P9b9RjeecaD6SctNNRp5syM2DyZRHEQxaS/+v6x/rx+lX52wq5q5C7CrmrkLsKuav/Rp4v6kC5m+O8t+ehz9Pe41t4nCHnkjC2yrF86jDXhozyhxxMlsoXtlAgpo5bzpBfQMJ0L6UWkio65PeQMrxtu3ry4Qw5mbysynHAaK2koxb6coYcTa4T337KGfKPnwHkKgY+eZ8396JP39egK+RYsgF58PpWoGrqhUB/Qo4mL3dl0Uq1isDQ9yHkcFIqgsd2Q3hTpDO0kRByLNlnjl6vs8feSPS8dqqQc0kDBV116I9feF+EFRpyMFkGzYBMnJDSQEx5GnIwiRkK4lxXQr71LEaJEkPOJSWj48Fupp5Y3fUPhBxNNu8dV4FVeU7UhzFCyMHkYstOU/2Kq2iy1IWcS3LIp5CyfbTsWMWIlyfkWFI+tHppa3GeH0VyT5weci5JoxGQ/DKwFuEEEfaFHEyCgi1ImibydX8qZk1CDif7pV1bP7ALWyajIQeTCMvCUKseYrGUEnI86Tme09dBoFdJAK13VsjBZP+xlsEAEWw6wmDIwSRy/19maUVPhXixwK+EHExKQ2mMVUmk4dRSfyHHkzhlwl6ENWWSQ7hnISeTdcJwt0qQVneleN7TkIPJ045FleV3UDrzkJNJ4L4MTNVJU/dMnkfIyaR2fRGIkV9YbWmrJy3kbFKDmrMzzred1fo2aB5yLGm9YLlMt6dW5rcDPuRgUpwaVMZYyug0D8njt0LOJS98ntgABqCGqcrBTgo5mbR0eHv4xCXVZXj6moYcTl592raj1uXAzNgkWsjJpDy92sa5O0aq3Y4JOZx8B2kN+17Qcgs+L0rIsWRX+XXU2ipNinzqrAiVOeRYEv+Lsy5Zc5+5094e5IUcTdrNDSieJGf2FdCMTJlDjiZxg0mnd1VbiShqQ34H6Xnzl1bTlBN1YUJ+B6lvmbwY532u0enckJPJd8l7myVJ7VS3+ELOJV+URoaODycxvOAg9a6HHEv+U4XcVchdhdxVyF2F3NWXkT8BJ/TIZEYhdiAAAAAASUVORK5CYII=",
-        payload:
-          "00020101021226820014br.gov.bcb.pix2560pix-h.asaas.com/qr/cobv/simuladogestarahub5204000053039865802BR5925GESTARAHUB ASSINATURA6009Sao Paulo62070503***6304E8A1",
-        expirationDate: new Date(Date.now() + 86400000).toISOString(),
-      },
-    };
-  }
-
-  try {
-    // Uma assinatura por espaco (doc product/13 §6): plano pago troca pela
-    // troca de plano; a que ficou de quem voltou ao Gratis sai do Asaas antes.
-    const admin = createSupabaseAdminClient();
-    const previous = await readOrganizationSubscription(admin, input.organizationId);
-    // Cortesia do GestaraHub nao e assinatura: quem esta nela pode assinar (o pagamento a substitui).
-    if (previous && previous.tier !== "free" && !previous.courtesyUntil) {
-      return {
-        success: false,
-        subscriptionId: "",
-        customerId: "",
-        billingType: input.billingType,
+        paymentId: mockPayId,
+        billingType: "PIX",
         status: "pending",
         value: priceConfig.value,
-        error: "Você já tem um plano pago. Troque de plano em Planos.",
+        pixQrCode: {
+          encodedImage:
+            "iVBORw0KGgoAAAANSUhEUgAAAcIAAAHCAQAAAABUY/ToAAADFElEQVR4Xu2UQbLbMAxDs/P9b9RjeecaD6SctNNRp5syM2DyZRHEQxaS/+v6x/rx+lX52wq5q5C7CrmrkLsKuav/Rp4v6kC5m+O8t+ehz9Pe41t4nCHnkjC2yrF86jDXhozyhxxMlsoXtlAgpo5bzpBfQMJ0L6UWkio65PeQMrxtu3ry4Qw5mbysynHAaK2koxb6coYcTa4T337KGfKPnwHkKgY+eZ8396JP39egK+RYsgF58PpWoGrqhUB/Qo4mL3dl0Uq1isDQ9yHkcFIqgsd2Q3hTpDO0kRByLNlnjl6vs8feSPS8dqqQc0kDBV116I9feF+EFRpyMFkGzYBMnJDSQEx5GnIwiRkK4lxXQr71LEaJEkPOJSWj48Fupp5Y3fUPhBxNNu8dV4FVeU7UhzFCyMHkYstOU/2Kq2iy1IWcS3LIp5CyfbTsWMWIlyfkWFI+tHppa3GeH0VyT5weci5JoxGQ/DKwFuEEEfaFHEyCgi1ImibydX8qZk1CDif7pV1bP7ALWyajIQeTCMvCUKseYrGUEnI86Tme09dBoFdJAK13VsjBZP+xlsEAEWw6wmDIwSRy/19maUVPhXixwK+EHExKQ2mMVUmk4dRSfyHHkzhlwl6ENWWSQ7hnISeTdcJwt0qQVneleN7TkIPJ045FleV3UDrzkJNJ4L4MTNVJU/dMnkfIyaR2fRGIkV9YbWmrJy3kbFKDmrMzzred1fo2aB5yLGm9YLlMt6dW5rcDPuRgUpwaVMZYyug0D8njt0LOJS98ntgABqCGqcrBTgo5mbR0eHv4xCXVZXj6moYcTl592raj1uXAzNgkWsjJpDy92sa5O0aq3Y4JOZx8B2kN+17Qcgs+L0rIsWRX+XXU2ipNinzqrAiVOeRYEv+Lsy5Zc5+5094e5IUcTdrNDSieJGf2FdCMTJlDjiZxg0mnd1VbiShqQ34H6Xnzl1bTlBN1YUJ+B6lvmbwY532u0enckJPJd8l7myVJ7VS3+ELOJV+URoaODycxvOAg9a6HHEv+U4XcVchdhdxVyF2F3NWXkT8BJ/TIZEYhdiAAAAAASUVORK5CYII=",
+          payload:
+            "00020101021226820014br.gov.bcb.pix2560pix-h.asaas.com/qr/cobv/simuladogestarahub5204000053039865802BR5925GESTARAHUB ASSINATURA6009Sao Paulo62070503***6304E8A1",
+          expirationDate: new Date(Date.now() + 86400000).toISOString(),
+        },
       };
     }
-    if (previous?.asaasSubscriptionId && !previous.asaasSubscriptionId.startsWith("sub_mock_")) {
-      await cancelSubscription(previous.asaasSubscriptionId).catch((error: unknown) => {
-        if (!(error instanceof AsaasApiError && error.status === 404)) throw error;
+
+    try {
+      // Uma assinatura por espaco (doc product/13 §6): plano pago troca pela
+      // troca de plano; a que ficou de quem voltou ao Gratis sai do Asaas antes.
+      const admin = createSupabaseAdminClient();
+      const previous = await readOrganizationSubscription(admin, input.organizationId);
+      // Cortesia do GestaraHub nao e assinatura: quem esta nela pode assinar (o pagamento a substitui).
+      if (previous && previous.tier !== "free" && !previous.courtesyUntil) {
+        return {
+          success: false,
+          subscriptionId: "",
+          customerId: "",
+          billingType: input.billingType,
+          status: "pending",
+          value: priceConfig.value,
+          error: "Você já tem um plano pago. Troque de plano em Planos.",
+        };
+      }
+      if (previous?.asaasSubscriptionId && !previous.asaasSubscriptionId.startsWith("sub_mock_")) {
+        await cancelSubscription(previous.asaasSubscriptionId).catch((error: unknown) => {
+          if (!(error instanceof AsaasApiError && error.status === 404)) throw error;
+        });
+      }
+
+      // 1. Cria ou localiza o cliente da plataforma GestaraHub no Asaas
+      const customer = await createOrFindCustomer({
+        name: input.customer.name,
+        email: input.customer.email,
+        cpfCnpj: input.customer.cpfCnpj,
+        mobilePhone: brazilNationalDigits(input.customer.phone),
+        // Endereco no cadastro do cliente: a prefeitura recusa a nota sem ele.
+        postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
+        address: input.customer.address.street.trim(),
+        addressNumber: input.customer.address.number.trim(),
+        complement: input.customer.address.complement?.trim() || undefined,
+        province: input.customer.address.neighborhood.trim(),
+        externalReference: input.organizationId,
+        // E-mails da cobranca e do pagamento sao os do GestaraHub (planEmails), nao os do Asaas.
+        notificationDisabled: true,
       });
-    }
 
-    // 1. Cria ou localiza o cliente da plataforma GestaraHub no Asaas
-    const customer = await createOrFindCustomer({
-      name: input.customer.name,
-      email: input.customer.email,
-      cpfCnpj: input.customer.cpfCnpj,
-      mobilePhone: brazilNationalDigits(input.customer.phone),
-      // Endereco no cadastro do cliente: a prefeitura recusa a nota sem ele.
-      postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
-      address: input.customer.address.street.trim(),
-      addressNumber: input.customer.address.number.trim(),
-      complement: input.customer.address.complement?.trim() || undefined,
-      province: input.customer.address.neighborhood.trim(),
-      externalReference: input.organizationId,
-      // E-mails da cobranca e do pagamento sao os do GestaraHub (planEmails), nao os do Asaas.
-      notificationDisabled: true,
-    });
+      // Primeiro vencimento: hoje, no calendario do Asaas.
+      const todayIso = asaasToday();
 
-    // Primeiro vencimento: hoje, no calendario do Asaas.
-    const todayIso = asaasToday();
-
-    // 2. Prepara o payload da assinatura
-    const subscriptionPayload = {
-      customer: customer.id,
-      billingType: input.billingType,
-      value: priceConfig.value,
-      nextDueDate: todayIso,
-      cycle: (input.interval === "yearly" ? "YEARLY" : "MONTHLY") as "MONTHLY" | "YEARLY",
-      description: priceConfig.description,
-      externalReference: encodeSubscriptionReference(input.organizationId, input.tier, input.interval),
-      creditCard: input.creditCard,
-      creditCardHolderInfo: input.creditCard
-        ? {
-            name: input.creditCard.holderName,
-            email: input.customer.email,
-            cpfCnpj: input.customer.cpfCnpj,
-            // CEP, numero e telefone do titular: obrigatorios no cartao pelo Asaas.
-            postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
-            addressNumber: input.customer.address.number.trim(),
-            phone: brazilNationalDigits(input.customer.phone),
-            mobilePhone: brazilNationalDigits(input.customer.phone),
-          }
-        : undefined,
-    };
-
-    const asaasSub = await createSubscription(subscriptionPayload);
-
-    // Se for Cartão de Crédito: o Asaas cobra ao criar; a assinatura so
-    // nasce com o cartao aprovado (recusado da erro acima).
-    if (input.billingType === "CREDIT_CARD") {
-      const subscription: Subscription = {
-        tier: input.tier,
-        interval: input.interval,
-        status: "active",
-        paymentMethod: "credit_card",
-        priceCents: priceConfig.priceCents,
-        asaasSubscriptionId: asaasSub.id,
-        asaasCustomerId: customer.id,
-        renewsOn: addPlanCycle(asaasToday(), input.interval),
-        changedAt: new Date().toISOString(),
+      // 2. Prepara o payload da assinatura
+      const subscriptionPayload = {
+        customer: customer.id,
+        billingType: input.billingType,
+        value: priceConfig.value,
+        nextDueDate: todayIso,
+        cycle: (input.interval === "yearly" ? "YEARLY" : "MONTHLY") as "MONTHLY" | "YEARLY",
+        description: priceConfig.description,
+        externalReference: encodeSubscriptionReference(input.organizationId, input.tier, input.interval),
+        creditCard: input.creditCard,
+        creditCardHolderInfo: input.creditCard
+          ? {
+              name: input.creditCard.holderName,
+              email: input.customer.email,
+              cpfCnpj: input.customer.cpfCnpj,
+              // CEP, numero e telefone do titular: obrigatorios no cartao pelo Asaas.
+              postalCode: input.customer.address.postalCode.replace(/\D/g, ""),
+              addressNumber: input.customer.address.number.trim(),
+              phone: brazilNationalDigits(input.customer.phone),
+              mobilePhone: brazilNationalDigits(input.customer.phone),
+            }
+          : undefined,
       };
-      await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
-      await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
-      await notifyPlanPaid(createSupabaseAdminClient(), input.organizationId, "activated", subscription);
+
+      const asaasSub = await createSubscription(subscriptionPayload);
+
+      // Se for Cartão de Crédito: o Asaas cobra ao criar; a assinatura so
+      // nasce com o cartao aprovado (recusado da erro acima).
+      if (input.billingType === "CREDIT_CARD") {
+        const subscription: Subscription = {
+          tier: input.tier,
+          interval: input.interval,
+          status: "active",
+          paymentMethod: "credit_card",
+          priceCents: priceConfig.priceCents,
+          asaasSubscriptionId: asaasSub.id,
+          asaasCustomerId: customer.id,
+          renewsOn: addPlanCycle(asaasToday(), input.interval),
+          changedAt: new Date().toISOString(),
+        };
+        await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+        await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
+        await notifyPlanPaid(createSupabaseAdminClient(), input.organizationId, "activated", subscription);
+
+        return {
+          success: true,
+          subscriptionId: asaasSub.id,
+          customerId: customer.id,
+          billingType: "CREDIT_CARD",
+          status: "active",
+          value: priceConfig.value,
+          subscription,
+        };
+      }
+
+      // Se for Pix: busca a cobrança gerada para obter o QR Code. Sem o Pix, a
+      // assinatura recem-criada sai do Asaas: senao fica cobrando todo mes
+      // (19/11/2026: conta sem chave Pix virou assinatura no boleto).
+      let firstPayment: { id: string };
+      let pixQr: Awaited<ReturnType<typeof getPixQrCode>>;
+      try {
+        ({ payment: firstPayment, qr: pixQr } = await firstPixOf(asaasSub.id));
+      } catch (pixError) {
+        logError("[createAsaasSubscriptionCheckoutAction] Pix não gerado:", pixError);
+        await cancelSubscription(asaasSub.id).catch((cancelError: unknown) =>
+          logWarn(`[createAsaasSubscriptionCheckoutAction] Assinatura ${asaasSub.id} sem Pix não cancelada:`, cancelError),
+        );
+        return {
+          success: false,
+          subscriptionId: "",
+          customerId: "",
+          billingType: input.billingType,
+          status: "pending",
+          value: priceConfig.value,
+          error: PIX_UNAVAILABLE,
+        };
+      }
 
       return {
         success: true,
         subscriptionId: asaasSub.id,
         customerId: customer.id,
-        billingType: "CREDIT_CARD",
-        status: "active",
+        paymentId: firstPayment.id,
+        billingType: "PIX",
+        status: "pending",
         value: priceConfig.value,
-        subscription,
+        pixQrCode: {
+          encodedImage: pixQr.encodedImage,
+          payload: pixQr.payload,
+          expirationDate: pixQr.expirationDate,
+        },
       };
-    }
-
-    // Se for Pix: busca a cobrança gerada para obter o QR Code. Sem o Pix, a
-    // assinatura recem-criada sai do Asaas: senao fica cobrando todo mes
-    // (19/11/2026: conta sem chave Pix virou assinatura no boleto).
-    let firstPayment: { id: string };
-    let pixQr: Awaited<ReturnType<typeof getPixQrCode>>;
-    try {
-      ({ payment: firstPayment, qr: pixQr } = await firstPixOf(asaasSub.id));
-    } catch (pixError) {
-      logError("[createAsaasSubscriptionCheckoutAction] Pix não gerado:", pixError);
-      await cancelSubscription(asaasSub.id).catch((cancelError: unknown) =>
-        logWarn(`[createAsaasSubscriptionCheckoutAction] Assinatura ${asaasSub.id} sem Pix não cancelada:`, cancelError),
-      );
+    } catch (err: unknown) {
+      logError("[createAsaasSubscriptionCheckoutAction] Erro:", err);
       return {
         success: false,
         subscriptionId: "",
@@ -382,37 +410,11 @@ export async function createAsaasSubscriptionCheckoutAction(
         billingType: input.billingType,
         status: "pending",
         value: priceConfig.value,
-        error: PIX_UNAVAILABLE,
+        // Detalhe tecnico (chave recusada, Asaas fora) so no registro de erros.
+        error: customerFixableMessage(err) ?? CHECKOUT_UNAVAILABLE,
       };
     }
-
-    return {
-      success: true,
-      subscriptionId: asaasSub.id,
-      customerId: customer.id,
-      paymentId: firstPayment.id,
-      billingType: "PIX",
-      status: "pending",
-      value: priceConfig.value,
-      pixQrCode: {
-        encodedImage: pixQr.encodedImage,
-        payload: pixQr.payload,
-        expirationDate: pixQr.expirationDate,
-      },
-    };
-  } catch (err: unknown) {
-    logError("[createAsaasSubscriptionCheckoutAction] Erro:", err);
-    return {
-      success: false,
-      subscriptionId: "",
-      customerId: "",
-      billingType: input.billingType,
-      status: "pending",
-      value: priceConfig.value,
-      // Detalhe tecnico (chave recusada, Asaas fora) so no registro de erros.
-      error: customerFixableMessage(err) ?? CHECKOUT_UNAVAILABLE,
-    };
-  }
+  });
 }
 
 /** QR Code da fatura do plano, por cobranca: o mesmo ate vencer (19/11/2026). */
@@ -441,27 +443,29 @@ async function cachedPixQrCode(paymentId: string): Promise<Awaited<ReturnType<ty
 export async function checkAsaasSubscriptionPaymentAction(
   paymentId: string,
 ): Promise<SubscriptionPaymentCheck> {
-  const ctx = await requireTenant();
-  ctx.require("subscription:manage");
-  const config = getAsaasConfig();
-  if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
-    return { status: "PENDING", isPaid: false };
-  }
-
-  try {
-    const admin = createSupabaseAdminClient();
-    // O webhook pode ja ter ligado o plano: o banco responde sem ir ao Asaas
-    // (19/11/2026: cada conferencia fazia duas chamadas). So o checkout chama
-    // isto, e ele so abre sem plano pago (cortesia nao conta).
-    const current = await readOrganizationSubscription(admin, ctx.organizationId);
-    if (current && current.tier !== "free" && current.status === "active" && current.asaasSubscriptionId && !current.courtesyUntil) {
-      return { status: "RECEIVED", isPaid: true, subscription: current };
+  return withErrorScope(async () => {
+    const ctx = await requireTenant();
+    ctx.require("subscription:manage");
+    const config = getAsaasConfig();
+    if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
+      return { status: "PENDING", isPaid: false };
     }
-    return await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
-  } catch (err) {
-    logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
-    return { status: "ERROR", isPaid: false };
-  }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      // O webhook pode ja ter ligado o plano: o banco responde sem ir ao Asaas
+      // (19/11/2026: cada conferencia fazia duas chamadas). So o checkout chama
+      // isto, e ele so abre sem plano pago (cortesia nao conta).
+      const current = await readOrganizationSubscription(admin, ctx.organizationId);
+      if (current && current.tier !== "free" && current.status === "active" && current.asaasSubscriptionId && !current.courtesyUntil) {
+        return { status: "RECEIVED", isPaid: true, subscription: current };
+      }
+      return await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
+    } catch (err) {
+      logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
+      return { status: "ERROR", isPaid: false };
+    }
+  });
 }
 
 /**
@@ -475,46 +479,48 @@ export async function simulateAsaasSubscriptionPaymentAction(
   interval: "monthly" | "yearly",
   subscriptionId?: string,
 ): Promise<{ success: boolean; error?: string; subscription?: Subscription }> {
-  const ctx = await requireTenant();
-  ctx.require("subscription:manage");
-  if (!serverPaymentsTestMode()) {
-    return { success: false, error: "A simulação só funciona no ambiente de testes." };
-  }
-  const config = getAsaasConfig();
-  const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
-  const admin = createSupabaseAdminClient();
-
-  try {
-    if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
-      if (!mockCheckoutAllowed()) return { success: false, error: "A simulação só funciona no ambiente de testes." };
-      const subscription: Subscription = {
-        tier,
-        interval,
-        status: "active",
-        paymentMethod: "pix",
-        priceCents: priceConfig.priceCents,
-        asaasSubscriptionId: subscriptionId,
-        renewsOn: addPlanCycle(asaasToday(), interval),
-        changedAt: new Date().toISOString(),
-      };
-      await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
-      await recordActivation(admin, ctx.organizationId, { actor: await userActor(admin, ctx) }, undefined, subscription);
-      return { success: true, subscription };
+  return withErrorScope(async () => {
+    const ctx = await requireTenant();
+    ctx.require("subscription:manage");
+    if (!serverPaymentsTestMode()) {
+      return { success: false, error: "A simulação só funciona no ambiente de testes." };
     }
+    const config = getAsaasConfig();
+    const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
+    const admin = createSupabaseAdminClient();
 
-    await receiveInCash(paymentId, notAfterAsaasToday(dateInSpace()), priceConfig.value);
-    const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
-    return check.isPaid
-      ? { success: true, subscription: check.subscription }
-      : { success: false, error: "O Asaas ainda não confirmou o pagamento." };
-  } catch (err) {
-    logError("[simulateAsaasSubscriptionPaymentAction] Erro:", err);
-    return {
-      success: false,
-      error:
-        err instanceof Error ? err.message : "Erro ao simular liquidação.",
-    };
-  }
+    try {
+      if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
+        if (!mockCheckoutAllowed()) return { success: false, error: "A simulação só funciona no ambiente de testes." };
+        const subscription: Subscription = {
+          tier,
+          interval,
+          status: "active",
+          paymentMethod: "pix",
+          priceCents: priceConfig.priceCents,
+          asaasSubscriptionId: subscriptionId,
+          renewsOn: addPlanCycle(asaasToday(), interval),
+          changedAt: new Date().toISOString(),
+        };
+        await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
+        await recordActivation(admin, ctx.organizationId, { actor: await userActor(admin, ctx) }, undefined, subscription);
+        return { success: true, subscription };
+      }
+
+      await receiveInCash(paymentId, notAfterAsaasToday(dateInSpace()), priceConfig.value);
+      const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
+      return check.isPaid
+        ? { success: true, subscription: check.subscription }
+        : { success: false, error: "O Asaas ainda não confirmou o pagamento." };
+    } catch (err) {
+      logError("[simulateAsaasSubscriptionPaymentAction] Erro:", err);
+      return {
+        success: false,
+        error:
+          err instanceof Error ? err.message : "Erro ao simular liquidação.",
+      };
+    }
+  });
 }
 
 export interface SubscriptionPendingPixResult {
@@ -535,67 +541,69 @@ export interface SubscriptionPendingPixResult {
  * Obtém os dados do Pix (QR Code e Copia e Cola) da fatura atual ou próxima renovação do Plano GestaraHub.
  */
 export async function getPendingSubscriptionPixAction(): Promise<SubscriptionPendingPixResult> {
-  const ctx = await requireTenant();
-  ctx.require("subscription:manage");
-  const admin = createSupabaseAdminClient();
-  const subscription = await readOrganizationSubscription(admin, ctx.organizationId);
+  return withErrorScope(async () => {
+    const ctx = await requireTenant();
+    ctx.require("subscription:manage");
+    const admin = createSupabaseAdminClient();
+    const subscription = await readOrganizationSubscription(admin, ctx.organizationId);
 
-  if (!subscription || subscription.tier === "free") {
-    return { ok: false, error: "A organização está no Plano Grátis." };
-  }
-
-  const tier = subscription.tier;
-  const interval = subscription.interval ?? "monthly";
-  const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
-  const amountCents = subscription.priceCents ?? priceConfig.priceCents;
-  const dueDate = subscription.pendingPayment?.dueDate ?? subscription.renewsOn ?? asaasToday();
-  const invoiceUrl = subscription.pendingPayment?.invoiceUrl;
-  const paymentId = subscription.pendingPayment?.id;
-
-  // Se houver cobrança ativa gerada no Asaas, busca o QR Code oficial
-  if (paymentId && !paymentId.startsWith("pay_mock_")) {
-    try {
-      const pixRes = await cachedPixQrCode(paymentId);
-      if (pixRes?.payload) {
-        return {
-          ok: true,
-          paymentId,
-          pixQrCode: {
-            encodedImage: pixRes.encodedImage,
-            payload: pixRes.payload,
-            expirationDate: pixRes.expirationDate,
-          },
-          invoiceUrl,
-          dueDate,
-          amountCents,
-        };
-      }
-    } catch (err) {
-      logError("[getPendingSubscriptionPixAction] Erro ao buscar QR Code no Asaas:", err);
+    if (!subscription || subscription.tier === "free") {
+      return { ok: false, error: "A organização está no Plano Grátis." };
     }
-    // Sem o QR: so a fatura do parceiro (Pix ou cartao), nunca um Pix inventado.
-    return invoiceUrl
-      ? { ok: true, paymentId, invoiceUrl, dueDate, amountCents }
-      : { ok: false, error: "Não foi possível carregar o Pix agora. Tente de novo em instantes." };
-  }
 
-  // Conta real sem cobranca em aberto: nada a pagar agora (o Pix de exemplo e so do checkout simulado).
-  if (getAsaasConfig().masterApiKey || !mockCheckoutAllowed()) {
-    return { ok: false, error: "Nenhuma cobrança do plano em aberto agora." };
-  }
+    const tier = subscription.tier;
+    const interval = subscription.interval ?? "monthly";
+    const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
+    const amountCents = subscription.priceCents ?? priceConfig.priceCents;
+    const dueDate = subscription.pendingPayment?.dueDate ?? subscription.renewsOn ?? asaasToday();
+    const invoiceUrl = subscription.pendingPayment?.invoiceUrl;
+    const paymentId = subscription.pendingPayment?.id;
 
-  const effectivePaymentId = paymentId || `pay_mock_${ctx.organizationId.slice(0, 8)}`;
-  const mockPixPayload = `00020126580014br.gov.bcb.pix0136${effectivePaymentId}520400005303986540${(amountCents / 100).toFixed(2)}5802BR5910GESTARAHUB6009SAO PAULO62070503***6304`;
+    // Se houver cobrança ativa gerada no Asaas, busca o QR Code oficial
+    if (paymentId && !paymentId.startsWith("pay_mock_")) {
+      try {
+        const pixRes = await cachedPixQrCode(paymentId);
+        if (pixRes?.payload) {
+          return {
+            ok: true,
+            paymentId,
+            pixQrCode: {
+              encodedImage: pixRes.encodedImage,
+              payload: pixRes.payload,
+              expirationDate: pixRes.expirationDate,
+            },
+            invoiceUrl,
+            dueDate,
+            amountCents,
+          };
+        }
+      } catch (err) {
+        logError("[getPendingSubscriptionPixAction] Erro ao buscar QR Code no Asaas:", err);
+      }
+      // Sem o QR: so a fatura do parceiro (Pix ou cartao), nunca um Pix inventado.
+      return invoiceUrl
+        ? { ok: true, paymentId, invoiceUrl, dueDate, amountCents }
+        : { ok: false, error: "Não foi possível carregar o Pix agora. Tente de novo em instantes." };
+    }
 
-  return {
-    ok: true,
-    paymentId: effectivePaymentId,
-    pixQrCode: {
-      payload: mockPixPayload,
-      expirationDate: dueDate,
-    },
-    invoiceUrl,
-    dueDate,
-    amountCents,
-  };
+    // Conta real sem cobranca em aberto: nada a pagar agora (o Pix de exemplo e so do checkout simulado).
+    if (getAsaasConfig().masterApiKey || !mockCheckoutAllowed()) {
+      return { ok: false, error: "Nenhuma cobrança do plano em aberto agora." };
+    }
+
+    const effectivePaymentId = paymentId || `pay_mock_${ctx.organizationId.slice(0, 8)}`;
+    const mockPixPayload = `00020126580014br.gov.bcb.pix0136${effectivePaymentId}520400005303986540${(amountCents / 100).toFixed(2)}5802BR5910GESTARAHUB6009SAO PAULO62070503***6304`;
+
+    return {
+      ok: true,
+      paymentId: effectivePaymentId,
+      pixQrCode: {
+        payload: mockPixPayload,
+        expirationDate: dueDate,
+      },
+      invoiceUrl,
+      dueDate,
+      amountCents,
+    };
+  });
 }

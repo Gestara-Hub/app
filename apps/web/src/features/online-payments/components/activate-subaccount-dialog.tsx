@@ -142,6 +142,18 @@ export function ActivateSubaccountDialog({
 }: ActivateSubaccountDialogProps) {
   const [showLegalTerms, setShowLegalTerms] = useState(false);
   const setup = useSetupGatewaySubaccount();
+  // Abrir a conta no Asaas pode levar ate 2 minutos (25/11/2026): passados 5 s,
+  // o aviso pede para nao fechar a tela (a pessoa achava que tinha travado).
+  const [slowFlag, setSlowFlag] = useState(false);
+  useEffect(() => {
+    if (!setup.isPending) return;
+    const timer = setTimeout(() => setSlowFlag(true), 5_000);
+    return () => {
+      clearTimeout(timer);
+      setSlowFlag(false);
+    };
+  }, [setup.isPending]);
+  const slow = setup.isPending && slowFlag;
   const { data: unit } = useUnit();
 
   const form = useForm<FormValues>({
@@ -421,9 +433,18 @@ export function ActivateSubaccountDialog({
                 </div>
               </DialogBody>
 
+              {slow ? (
+                <p
+                  role="status"
+                  className="shrink-0 border-t border-border/40 bg-muted/40 px-6 py-3 text-sm text-muted-foreground"
+                >
+                  O Asaas pode levar até 2 minutos para abrir a conta. Não feche esta tela.
+                </p>
+              ) : null}
               <DialogFormFooter
                 isPending={setup.isPending}
                 createLabel="Ativar recebimentos"
+                pendingLabel="Abrindo sua conta..."
                 className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
               />
             </form>

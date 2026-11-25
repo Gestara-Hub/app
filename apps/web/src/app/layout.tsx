@@ -7,6 +7,7 @@ import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { AnalyticsConsentBanner } from "@/components/shared/analytics-consent-banner";
+import { BrowserErrorReporter } from "@/features/auth/components/browser-error-reporter";
 import appIcon from "@/assets/icon.svg";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/config/site";
 import { PRE_PAINT_VIEW_MODE_SCRIPT } from "@/components/shared/list/view-mode-script";
@@ -104,6 +105,8 @@ export default function RootLayout({
           <AnalyticsConsentBanner />
         </Providers>
         <Toaster position="top-center" richColors closeButton />
+        {/* Erros do navegador em todas as telas, com ou sem login (25/11/2026; antes so no app logado). */}
+        <BrowserErrorReporter />
       </body>
     </html>
   );

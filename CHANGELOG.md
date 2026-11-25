@@ -2,6 +2,25 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-3 (2026-11-25)
+
+Desde v2026.11.25-2.
+
+### Novo
+
+- log: erros do navegador também nas telas sem login, com limite por IP
+
+### Correções
+
+- admin: leitura das notas fiscais do plano pelo painel (migração 109), a aba Assinatura do espaço quebrava
+- log: toda ação do servidor registra o erro com o espaço e o usuário
+- log: alerta de erro novo sai mesmo quando a ação já respondeu
+- online-payments: abertura da subconta espera até 2 minutos e conta aberta sem chave avisa a equipe
+
+### Documentação
+
+- online-payments: passos de acesso ao Asaas com o e-mail de boas-vindas e o prazo do link
+
 ## 2026.11.25-2 (2026-11-25)
 
 Desde v2026.11.25.

@@ -18,6 +18,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-3",
+    date: "2026-11-25",
+    items: [
+      { text: "Ativar recebimentos espera o Asaas abrir a conta, até 2 minutos." },
+      { text: "Passos de acesso ao Asaas citam o e-mail e o prazo do link." },
+    ],
+  },
+  {
     version: "2026.11.25-2",
     date: "2026-11-25",
     items: [

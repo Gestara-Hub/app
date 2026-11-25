@@ -5,7 +5,7 @@ import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSubaccountBalance, createTransfer, listTransfers } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
-import { logError } from "@/lib/log";
+import { logError, withErrorScope } from "@/lib/log";
 
 /**
  * Saldo da subconta e saques via Pix.
@@ -66,50 +66,52 @@ async function pendingRelease(
 export async function getSubaccountBalanceAction(
   organizationId: string,
 ): Promise<SubaccountBalanceResult> {
-  await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
-  const adminClient = createSupabaseAdminClient();
-  const { data: org } = await adminClient
-    .from("organizations")
-    .select("gateway_api_key")
-    .eq("id", organizationId)
-    .maybeSingle();
+  return withErrorScope(async () => {
+    await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
+    const adminClient = createSupabaseAdminClient();
+    const { data: org } = await adminClient
+      .from("organizations")
+      .select("gateway_api_key")
+      .eq("id", organizationId)
+      .maybeSingle();
 
-  const pending = await pendingRelease(adminClient, organizationId);
+    const pending = await pendingRelease(adminClient, organizationId);
 
-  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
-    try {
-      const res = await getSubaccountBalance(org.gateway_api_key);
-      const balanceCents = Math.round((res.balance || 0) * 100);
-      return {
-        balanceCents,
-        ...pending,
-        availableForTransferCents: Math.max(0, balanceCents),
-      };
-    } catch (err) {
-      logError("[getSubaccountBalanceAction] Erro no Asaas:", err);
+    if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+      try {
+        const res = await getSubaccountBalance(org.gateway_api_key);
+        const balanceCents = Math.round((res.balance || 0) * 100);
+        return {
+          balanceCents,
+          ...pending,
+          availableForTransferCents: Math.max(0, balanceCents),
+        };
+      } catch (err) {
+        logError("[getSubaccountBalanceAction] Erro no Asaas:", err);
+      }
     }
-  }
 
-  // Fallback: calcula a partir dos pagamentos online pagos no banco
-  const { data: payments } = await selectAllRows(() =>
-    adminClient
-      .from("online_payments")
-      .select("net_amount_cents, status")
-      .eq("organization_id", organizationId)
-      .eq("status", "paid")
-      .eq("funds_released", true),
-  );
+    // Fallback: calcula a partir dos pagamentos online pagos no banco
+    const { data: payments } = await selectAllRows(() =>
+      adminClient
+        .from("online_payments")
+        .select("net_amount_cents, status")
+        .eq("organization_id", organizationId)
+        .eq("status", "paid")
+        .eq("funds_released", true),
+    );
 
-  const totalNet = (payments || []).reduce(
-    (acc, p) => acc + (p.net_amount_cents || 0),
-    0,
-  );
+    const totalNet = (payments || []).reduce(
+      (acc, p) => acc + (p.net_amount_cents || 0),
+      0,
+    );
 
-  return {
-    balanceCents: totalNet,
-    ...pending,
-    availableForTransferCents: totalNet,
-  };
+    return {
+      balanceCents: totalNet,
+      ...pending,
+      availableForTransferCents: totalNet,
+    };
+  });
 }
 
 /** Saque igual (valor e chave) de novo so depois deste prazo. */
@@ -154,82 +156,84 @@ export async function requestSubaccountTransferAction(input: {
   /** Id do pedido, gerado pela tela: o mesmo pedido nunca vira dois saques. */
   requestId: string;
 }): Promise<TransferActionResult> {
-  // Tirar dinheiro da subconta: so o dono do espaco.
-  await requireSameOrganization(input.organizationId, { profiles: ["owner"] });
-  if (input.amountCents <= 0) {
-    return { success: false, error: "O valor deve ser maior que zero." };
-  }
-  if (!/^[A-Za-z0-9_-]{8,64}$/.test(input.requestId ?? "")) {
-    return { success: false, error: "Pedido de saque inválido. Abra a tela de novo." };
-  }
-
-  // Saque em dobro (19/11/2026): o mesmo pedido (clique duplo, nova tentativa)
-  // so passa uma vez; e o mesmo valor para a mesma chave, de outra aba, espera
-  // alguns segundos. Sem o banco para conferir, nao saca.
-  const sameKey = `transfer_same:${input.organizationId}:${input.amountCents}:${input.pixKey.trim().toLowerCase()}`;
-  const requestClaim = await claimOnce(`transfer_request:${input.organizationId}:${input.requestId}`, 24 * 60 * 60);
-  if (requestClaim !== "claimed") {
-    return {
-      success: false,
-      error:
-        requestClaim === "taken"
-          ? "Este saque já foi pedido. Confira em Saques antes de pedir de novo."
-          : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
-    };
-  }
-  const sameClaim = await claimOnce(sameKey, SAME_TRANSFER_WINDOW_SECONDS);
-  if (sameClaim !== "claimed") {
-    return {
-      success: false,
-      error:
-        sameClaim === "taken"
-          ? "Um saque igual acabou de ser pedido. Confira em Saques antes de pedir de novo."
-          : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
-    };
-  }
-
-  const adminClient = createSupabaseAdminClient();
-  const { data: org } = await adminClient
-    .from("organizations")
-    .select("gateway_api_key")
-    .eq("id", input.organizationId)
-    .maybeSingle();
-
-  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
-    try {
-      const keyType = detectPixKeyType(input.pixKey);
-      const res = await createTransfer(
-        {
-          value: input.amountCents / 100,
-          operationType: "PIX",
-          pixAddressKey: input.pixKey.trim(),
-          pixAddressKeyType: keyType,
-          description: "Saque GestaraHub",
-        },
-        org.gateway_api_key,
-      );
-
-      return {
-        success: true,
-        transferId: res.id,
-        status: res.status,
-      };
-    } catch (err: unknown) {
-      logError("[requestSubaccountTransferAction] Erro no Asaas:", err);
-      // Recusado: libera o mesmo valor para tentar de novo (a tela gera outro id).
-      await resetRateLimit(sameKey);
-      const msg =
-        err instanceof Error ? err.message : "Erro ao realizar transferência.";
-      return { success: false, error: msg };
+  return withErrorScope(async () => {
+    // Tirar dinheiro da subconta: so o dono do espaco.
+    await requireSameOrganization(input.organizationId, { profiles: ["owner"] });
+    if (input.amountCents <= 0) {
+      return { success: false, error: "O valor deve ser maior que zero." };
     }
-  }
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(input.requestId ?? "")) {
+      return { success: false, error: "Pedido de saque inválido. Abra a tela de novo." };
+    }
 
-  // Mock transfer
-  return {
-    success: true,
-    transferId: `mock_tr_${Date.now()}`,
-    status: "DONE",
-  };
+    // Saque em dobro (19/11/2026): o mesmo pedido (clique duplo, nova tentativa)
+    // so passa uma vez; e o mesmo valor para a mesma chave, de outra aba, espera
+    // alguns segundos. Sem o banco para conferir, nao saca.
+    const sameKey = `transfer_same:${input.organizationId}:${input.amountCents}:${input.pixKey.trim().toLowerCase()}`;
+    const requestClaim = await claimOnce(`transfer_request:${input.organizationId}:${input.requestId}`, 24 * 60 * 60);
+    if (requestClaim !== "claimed") {
+      return {
+        success: false,
+        error:
+          requestClaim === "taken"
+            ? "Este saque já foi pedido. Confira em Saques antes de pedir de novo."
+            : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
+      };
+    }
+    const sameClaim = await claimOnce(sameKey, SAME_TRANSFER_WINDOW_SECONDS);
+    if (sameClaim !== "claimed") {
+      return {
+        success: false,
+        error:
+          sameClaim === "taken"
+            ? "Um saque igual acabou de ser pedido. Confira em Saques antes de pedir de novo."
+            : "Não foi possível conferir o saque agora. Tente de novo em instantes.",
+      };
+    }
+
+    const adminClient = createSupabaseAdminClient();
+    const { data: org } = await adminClient
+      .from("organizations")
+      .select("gateway_api_key")
+      .eq("id", input.organizationId)
+      .maybeSingle();
+
+    if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+      try {
+        const keyType = detectPixKeyType(input.pixKey);
+        const res = await createTransfer(
+          {
+            value: input.amountCents / 100,
+            operationType: "PIX",
+            pixAddressKey: input.pixKey.trim(),
+            pixAddressKeyType: keyType,
+            description: "Saque GestaraHub",
+          },
+          org.gateway_api_key,
+        );
+
+        return {
+          success: true,
+          transferId: res.id,
+          status: res.status,
+        };
+      } catch (err: unknown) {
+        logError("[requestSubaccountTransferAction] Erro no Asaas:", err);
+        // Recusado: libera o mesmo valor para tentar de novo (a tela gera outro id).
+        await resetRateLimit(sameKey);
+        const msg =
+          err instanceof Error ? err.message : "Erro ao realizar transferência.";
+        return { success: false, error: msg };
+      }
+    }
+
+    // Mock transfer
+    return {
+      success: true,
+      transferId: `mock_tr_${Date.now()}`,
+      status: "DONE",
+    };
+  });
 }
 
 export interface SubaccountTransferItem {
@@ -246,28 +250,30 @@ export interface SubaccountTransferItem {
 export async function listSubaccountTransfersAction(
   organizationId: string,
 ): Promise<SubaccountTransferItem[]> {
-  await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
-  const adminClient = createSupabaseAdminClient();
-  const { data: org } = await adminClient
-    .from("organizations")
-    .select("gateway_api_key")
-    .eq("id", organizationId)
-    .maybeSingle();
+  return withErrorScope(async () => {
+    await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
+    const adminClient = createSupabaseAdminClient();
+    const { data: org } = await adminClient
+      .from("organizations")
+      .select("gateway_api_key")
+      .eq("id", organizationId)
+      .maybeSingle();
 
-  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
-    try {
-      const res = await listTransfers(org.gateway_api_key);
-      return (res.data || []).map((t) => ({
-        id: t.id,
-        dateCreated: t.dateCreated,
-        valueCents: Math.round(t.value * 100),
-        status: t.status,
-        receiptUrl: t.transactionReceiptUrl,
-      }));
-    } catch (err) {
-      logError("[listSubaccountTransfersAction] Erro no Asaas:", err);
+    if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+      try {
+        const res = await listTransfers(org.gateway_api_key);
+        return (res.data || []).map((t) => ({
+          id: t.id,
+          dateCreated: t.dateCreated,
+          valueCents: Math.round(t.value * 100),
+          status: t.status,
+          receiptUrl: t.transactionReceiptUrl,
+        }));
+      } catch (err) {
+        logError("[listSubaccountTransfersAction] Erro no Asaas:", err);
+      }
     }
-  }
 
-  return [];
+    return [];
+  });
 }

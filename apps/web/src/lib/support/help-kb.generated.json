@@ -2678,7 +2678,7 @@
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Entrar na sua conta no Asaas",
     "route": "/online-payments",
-    "text": "1. Logo depois de ativar, o Asaas manda um e-mail para o e-mail financeiro. Veja também o spam.\n2. Pelo link do e-mail, crie sua senha. Se o e-mail não chegou, use \"Esqueci minha senha\" na entrada do Asaas, com o e-mail financeiro.\n3. Entre em asaas.com ou no app Asaas com o e-mail financeiro e a senha.\n4. Envie os documentos que o Asaas pedir. Ele aprova a conta e libera os saques.",
+    "text": "1. Logo depois de ativar, o Asaas manda um e-mail para o e-mail financeiro. Veja também o spam.\n2. No e-mail \"Bem-vindo ao Asaas\", toque em \"Definir senha de acesso\" e crie sua senha. O link vale 10 minutos. Se passou o prazo ou o e-mail não chegou, use \"Esqueci minha senha\" na entrada do Asaas, com o e-mail financeiro.\n3. Entre em asaas.com ou no app Asaas com o e-mail financeiro e a senha.\n4. Envie os documentos que o Asaas pedir. Ele aprova a conta e libera os saques.",
     "summary": "A conta de recebimento é sua, no Asaas. Entre com o e-mail financeiro para aprovar a conta e ver o extrato completo.",
     "guide": {
       "route": "/online-payments",
