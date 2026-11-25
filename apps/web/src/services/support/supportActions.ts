@@ -204,6 +204,8 @@ export async function sendSupportMessageAction(input: {
   errorReference?: string;
   /** Só vale ao abrir a conversa; sem tipo é uma dúvida. */
   kind?: SupportKind;
+  /** Só ao abrir: vai direto para a equipe, sem o assistente (pedido de cancelamento do plano). */
+  direct?: boolean;
   /** Passos antes do relato (telas e ações); só entram no problema, ao abrir a conversa. */
   breadcrumbs?: Crumb[];
 }): Promise<ActionResult<SupportThreadView>> {
@@ -253,7 +255,7 @@ export async function sendSupportMessageAction(input: {
     }
 
     let needsHuman = false;
-    if ((!input.threadId && input.kind && input.kind !== "question") || (before === "bot" && !botEnabled())) {
+    if ((!input.threadId && ((input.kind && input.kind !== "question") || input.direct)) || (before === "bot" && !botEnabled())) {
       // Sem assistente de IA ligado (ou problema/sugestao): abre direto como chamado para a equipe.
       await escalate(c, threadId);
       needsHuman = true;

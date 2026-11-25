@@ -81,7 +81,7 @@ function useSyncThread() {
 export function useSendSupportMessage() {
   const sync = useSyncThread();
   return useMutation({
-    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string; kind?: SupportKind; breadcrumbs?: Crumb[] }) =>
+    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string; kind?: SupportKind; direct?: boolean; breadcrumbs?: Crumb[] }) =>
       unwrap(sendSupportMessageAction(input)),
     onSuccess: sync,
   });

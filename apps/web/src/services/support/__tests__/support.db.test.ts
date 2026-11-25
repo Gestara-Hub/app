@@ -207,6 +207,17 @@ describe("problema e sugestão", () => {
     expect(list.find((t) => t.id === view.threadId)?.kind).toBe("suggestion");
   });
 
+  it("pedido direto (cancelamento do plano) vai à equipe sem o assistente, como dúvida", async () => {
+    modelReplies("não deveria chamar");
+    const view = await unwrap(
+      actions.sendSupportMessageAction({ message: "Quero cancelar o Plano Profissional e receber o valor de volta (até 7 dias do pagamento).", direct: true }),
+    );
+    expect(claudeCalls).toHaveLength(0);
+    expect(view.kind).toBe("question");
+    expect(view.status).toBe("waiting_us");
+    expect(mail.sendSupportNotice).toHaveBeenCalledWith(expect.objectContaining({ kind: "new" }), expect.anything());
+  });
+
   it("sem tipo, continua sendo dúvida e passa pelo assistente", async () => {
     modelReplies("Confira em Cobranças.");
     const view = await unwrap(actions.sendSupportMessageAction({ message: "Como vejo as cobranças do mês?" }));
