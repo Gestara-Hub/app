@@ -9,7 +9,6 @@ import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploa
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser, getSessionGoogleOnly, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
-import { BrowserErrorReporter } from "@/features/auth/components/browser-error-reporter";
 import { SecurityPromptHost } from "@/features/auth/components/security-prompt-host";
 import { ScheduleNoticeHost } from "@/features/turmas/components/schedule-notice-host";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
@@ -89,7 +88,6 @@ export default async function AppLayout({
             <SupportHost />
             <CrumbTracker />
             <HelpHost />
-            <BrowserErrorReporter />
             <SecurityPromptHost />
             <InstallAppPrompt />
             <ScheduleNoticeHost />
