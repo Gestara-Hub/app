@@ -275,6 +275,9 @@ export interface AsaasTransferResponse {
   netValue: number;
   transferFee: number;
   effectiveDate?: string;
+  scheduleDate?: string;
+  /** `false` enquanto espera a confirmacao por codigo (evento critico do Asaas). */
+  authorized?: boolean;
   transactionReceiptUrl?: string;
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { LaunchSplashContent, markLaunchSplash } from "@/components/layout/launch-splash";
 
 const HOME = "/dashboard";
 
@@ -16,22 +17,20 @@ export function LaunchRedirect() {
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
+    // O painel segue com a logo ate a primeira tela ter os dados.
+    markLaunchSplash();
     router.replace(HOME);
     const timer = setTimeout(() => setSlow(true), 8_000);
     return () => clearTimeout(timer);
   }, [router]);
 
   return (
-    <div className="flex h-10 flex-col items-center gap-3" role="status" aria-live="polite">
-      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted" aria-hidden>
-        <div className="h-full w-1/3 rounded-full bg-primary motion-safe:animate-[launch-bar_1.2s_ease-in-out_infinite]" />
-      </div>
-      <span className="sr-only">Abrindo o GestaraHub</span>
+    <LaunchSplashContent>
       {slow ? (
         <Link href={HOME} replace className="text-sm text-muted-foreground underline-offset-4 hover:underline">
           Demorando? Toque para abrir
         </Link>
       ) : null}
-    </div>
+    </LaunchSplashContent>
   );
 }

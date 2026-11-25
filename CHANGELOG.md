@@ -2,6 +2,25 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-7 (2026-11-25)
+
+Desde v2026.11.25-6.
+
+### Documentação
+
+- pendencias: saque sem o código do Asaas para depois
+
+### Novo
+
+- online-payments: saque à espera do código do Asaas avisa, mostra o valor reservado e leva à conta
+- pwa: abertura cobre a primeira tela até as leituras terminarem
+- releases: novidades agrupadas por dia
+
+### Correções
+
+- auth: proxy renova a sessão do banco e sessão vencida leva ao login com aviso
+- ui: botão do rodapé que não cabe desce para uma linha inteira no celular e saque com Transferir
+
 ## 2026.11.25-6 (2026-11-25)
 
 Desde v2026.11.25-5.

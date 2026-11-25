@@ -17,6 +17,7 @@ import {
 } from "@tanstack/react-query";
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { identifyUser } from "@/lib/analytics";
+import { setInAppSession } from "@/lib/session-expired";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
 import { createQueryClient } from "@/lib/providers";
@@ -126,6 +127,11 @@ export function SessionProvider({
     setCurrentActor({ userId: user.id, name: user.name, profile: user.profile });
     return () => setCurrentActor(null);
   }, [user]);
+  // Telas logadas: "sessão expirou" leva ao login (paginas publicas nao).
+  useEffect(() => {
+    setInAppSession(true);
+    return () => setInAppSession(false);
+  }, []);
   // Analise de uso: so id, perfil e organizacao (lib/analytics).
   useEffect(() => {
     identifyUser({ id: user.id, profile: user.profile, organizationId: user.organizationId });

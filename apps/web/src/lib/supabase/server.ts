@@ -20,8 +20,8 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Called from a Server Component where setting cookies is not allowed;
-          // route guard (proxy.ts) handles token refresh.
+          // Server Component: nao grava cookie. O `proxy.ts` renova a sessao antes
+          // da tela, entao aqui o token ja chega valido.
         }
       },
     },
