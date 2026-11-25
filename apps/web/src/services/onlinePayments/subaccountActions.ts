@@ -7,11 +7,11 @@ import { isApiError, type OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ensureSubaccountPixKey, ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "./gateway";
-import { createSubAccount } from "@/lib/asaas";
+import { createSubAccount, findSubAccountsByEmail } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { CURRENT_SUBACCOUNT_TERMS_VERSION } from "@gestarahub/contracts";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, reportError } from "@/lib/log";
 
 /**
  * Subconta do espaco no parceiro: abertura, status e configuracao de Recebimentos online.
@@ -238,7 +238,36 @@ export async function setupSubaccountAction(
     // A frase do parceiro fica so no registro de erros: para a tela vai uma mensagem
     // neutra, que nao confirma se um e-mail ou documento ja tem conta (01/11/2026).
     logError("[setupSubaccountAction] Erro:", err);
+    // Conta aberta sem a resposta (demora ou nova tentativa depois dela): a chave
+    // se perdeu e outra tentativa so acusaria o e-mail. A equipe conclui.
+    if (process.env.ASAAS_API_KEY && (isTimeout(err) || (await openedWithoutKey(input.email, input.cpfCnpj)))) {
+      await reportError("subaccount.opened-without-key", err, {
+        source: "server",
+        organizationId: input.organizationId,
+        context: { timeout: isTimeout(err) },
+      });
+      return { success: false, error: OPENED_WITHOUT_KEY };
+    }
     return { success: false, ...safeActivationError(err) };
+  }
+}
+
+const OPENED_WITHOUT_KEY =
+  "O parceiro demorou para confirmar e a conta pode já ter sido aberta. Não tente de novo: avisamos a equipe, que conclui a ativação e te avisa.";
+
+function isTimeout(err: unknown): boolean {
+  const name = err instanceof Error ? err.name : "";
+  return name === "TimeoutError" || name === "AbortError";
+}
+
+/** Ja existe subconta nossa com este e-mail e documento (aberta numa tentativa que perdeu a resposta)? */
+async function openedWithoutKey(email: string, cpfCnpj: string): Promise<boolean> {
+  try {
+    const digits = cpfCnpj.replace(/\D/g, "");
+    const found = await findSubAccountsByEmail(email);
+    return found.some((account) => (account.cpfCnpj ?? "").replace(/\D/g, "") === digits);
+  } catch {
+    return false;
   }
 }
 

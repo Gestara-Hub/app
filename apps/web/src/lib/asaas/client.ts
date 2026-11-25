@@ -78,6 +78,8 @@ async function asaasFetch<T>(
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: unknown;
     apiKey?: string;
+    /** Chamada que o Asaas demora para concluir (abrir subconta): espera mais. */
+    timeoutMs?: number;
   } = {},
 ): Promise<T> {
   const config = getAsaasConfig();
@@ -104,7 +106,7 @@ async function asaasFetch<T>(
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
-      signal: AbortSignal.timeout(ASAAS_TIMEOUT_MS),
+      signal: AbortSignal.timeout(options.timeoutMs ?? ASAAS_TIMEOUT_MS),
     });
 
   // Consulta (GET) tenta de novo em falha de rede, limite (429) ou Asaas fora
@@ -200,7 +202,21 @@ export async function createSubAccount(
   return asaasFetch<AsaasAccountResponse>("/accounts", {
     method: "POST",
     body: accountData,
+    // Abrir a subconta passou de 20 s em producao (25/11/2026): o Asaas criou a
+    // conta, mas a resposta com a chave chegou depois do corte e se perdeu.
+    timeoutMs: SUBACCOUNT_TIMEOUT_MS,
   });
+}
+
+/** Espera da abertura da subconta: ate 2 minutos (a rota de Recebimentos online aguenta 150 s). */
+export const SUBACCOUNT_TIMEOUT_MS = 120_000;
+
+/** Subcontas da conta principal com este e-mail (a chave nao vem: so id e carteira). */
+export async function findSubAccountsByEmail(email: string): Promise<Pick<AsaasAccountResponse, "id" | "walletId" | "email" | "cpfCnpj">[]> {
+  const res = await asaasFetch<{ data?: Pick<AsaasAccountResponse, "id" | "walletId" | "email" | "cpfCnpj">[] }>(
+    `/accounts?email=${encodeURIComponent(email.trim())}`,
+  );
+  return res.data ?? [];
 }
 
 /** Campos que so comparam os digitos (o Asaas devolve sem mascara). */
