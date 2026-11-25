@@ -2,6 +2,19 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-4 (2026-11-25)
+
+Desde v2026.11.25-3.
+
+### Documentação
+
+- pwa: abertura, aviso de versão e recursos do app instalado para depois
+
+### Novo
+
+- pwa: aviso de nova versão ao voltar para o app
+- pwa: tela de abertura do app instalado com a logo enquanto o painel carrega
+
 ## 2026.11.25-3 (2026-11-25)
 
 Desde v2026.11.25-2.
