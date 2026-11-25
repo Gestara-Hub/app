@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { InstallAppPrompt } from "@/components/layout/install-app-prompt";
+import { LaunchSplashOverlay } from "@/components/layout/launch-splash";
 import { NewVersionNotice } from "@/features/releases";
 import { AttachmentUploaderProvider } from "@/components/layout/attachment-uploader-provider";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
@@ -95,6 +96,7 @@ export default async function AppLayout({
             <CrumbTracker />
             <HelpHost />
             <SecurityPromptHost />
+            <LaunchSplashOverlay />
             <InstallAppPrompt />
             <NewVersionNotice />
             <ScheduleNoticeHost />
