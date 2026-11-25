@@ -23,8 +23,9 @@ export const NEW_ASAAS_ACCOUNT_NOTICE =
 export const FINANCE_EMAIL_HINT = "Use um e-mail que ainda não tenha conta no Asaas.";
 
 const STEPS: { title: string; text: string }[] = [
-  { title: "Abra o e-mail do Asaas", text: "Chega no e-mail financeiro. Veja também o spam." },
-  { title: "Crie sua senha", text: "Pelo link do e-mail. Sem o e-mail, use \"Esqueci minha senha\" no Asaas." },
+  { title: "Abra o e-mail do Asaas", text: "\"Bem-vindo ao Asaas\", no e-mail financeiro. Veja também o spam." },
+  // O link do e-mail vale 10 minutos (e-mail do Asaas, 25/11/2026).
+  { title: "Crie sua senha", text: "Em \"Definir senha de acesso\". O link vale 10 minutos; depois, use \"Esqueci minha senha\" no Asaas." },
   { title: "Entre no site ou no app", text: "Em asaas.com ou no app Asaas, com o e-mail financeiro." },
   { title: "Envie os documentos", text: "O Asaas pede para aprovar a conta e liberar os saques." },
 ];

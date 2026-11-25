@@ -19,7 +19,7 @@ Resumo: A conta de recebimento é sua, no Asaas. Entre com o e-mail financeiro p
 Guia: /online-payments
 + aba "Configurações": Os passos de acesso ficam no card "Acesso à sua conta no Asaas".
 1. Logo depois de ativar, o Asaas manda um e-mail para o e-mail financeiro. Veja também o spam.
-2. Pelo link do e-mail, crie sua senha. Se o e-mail não chegou, use "Esqueci minha senha" na entrada do Asaas, com o e-mail financeiro.
+2. No e-mail "Bem-vindo ao Asaas", toque em "Definir senha de acesso" e crie sua senha. O link vale 10 minutos. Se passou o prazo ou o e-mail não chegou, use "Esqueci minha senha" na entrada do Asaas, com o e-mail financeiro.
 3. Entre em asaas.com ou no app Asaas com o e-mail financeiro e a senha.
 4. Envie os documentos que o Asaas pedir. Ele aprova a conta e libera os saques.
 
