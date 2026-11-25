@@ -35,6 +35,13 @@ interface Tone {
  * (`installAudioUnlock`) e reaproveitado por todos os sons.
  */
 let sharedContext: AudioContext | null = null;
+/**
+ * App instalado no iPhone (25/11/2026): ao sair do app e voltar, o tocador fica
+ * "interrupted" e o `resume()` nao o traz de volta; no navegador ele volta. A
+ * chamada e o sino ficavam mudos no app instalado. Tocador parado na volta e
+ * trocado por um novo no proximo toque.
+ */
+let replaceOnNextGesture = false;
 
 function audioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -45,23 +52,26 @@ function audioContext(): AudioContext | null {
   return sharedContext;
 }
 
-let unlockInstalled = false;
+/** "interrupted" so existe no Safari (fora do tipo do TypeScript). */
+function isInterrupted(ctx: AudioContext): boolean {
+  return (ctx.state as string) === "interrupted";
+}
 
-/** Libera o tocador no primeiro toque, clique ou tecla da pagina (uma vez; depois some). */
-export function installAudioUnlock(): void {
-  if (unlockInstalled || typeof window === "undefined") return;
-  unlockInstalled = true;
-  const events = ["pointerdown", "keydown", "touchend"] as const;
-  const unlock = () => {
-    const ctx = audioContext();
-    if (!ctx) return;
-    void ctx
-      .resume()
-      .then(() => {
-        if (ctx.state !== "running") return;
-        for (const name of events) window.removeEventListener(name, unlock, true);
-      })
-      .catch(() => {});
+/**
+ * Dentro de um toque: tocador pronto para tocar. Interrompido (ou parado na
+ * volta ao app) vira um novo, criado no gesto, que o iOS deixa tocar.
+ */
+function contextInGesture(): AudioContext | null {
+  const current = sharedContext;
+  if (current && current.state !== "running" && (replaceOnNextGesture || isInterrupted(current))) {
+    void current.close().catch(() => {});
+    sharedContext = null;
+  }
+  replaceOnNextGesture = false;
+  const ctx = audioContext();
+  if (!ctx) return null;
+  if (ctx.state !== "running") {
+    void ctx.resume().catch(() => {});
     // iOS: um som mudo dentro do gesto termina de liberar o audio.
     try {
       const source = ctx.createBufferSource();
@@ -71,8 +81,31 @@ export function installAudioUnlock(): void {
     } catch {
       // sem audio: segue sem som
     }
+  }
+  return ctx;
+}
+
+let unlockInstalled = false;
+
+/**
+ * Libera o tocador nos toques, cliques e teclas da pagina. Fica ligado o tempo
+ * todo (antes saia depois do primeiro): no iPhone o tocador para sempre que o
+ * app vai para o fundo, e precisa de outro toque para voltar.
+ */
+export function installAudioUnlock(): void {
+  if (unlockInstalled || typeof window === "undefined") return;
+  unlockInstalled = true;
+  const unlock = () => {
+    if (sharedContext?.state === "running" && !replaceOnNextGesture) return;
+    contextInGesture();
   };
-  for (const name of events) window.addEventListener(name, unlock, { capture: true, passive: true });
+  for (const name of ["pointerdown", "keydown", "touchend"] as const) {
+    window.addEventListener(name, unlock, { capture: true, passive: true });
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !sharedContext) return;
+    if (sharedContext.state !== "running") replaceOnNextGesture = true;
+  });
 }
 
 /**
@@ -81,7 +114,8 @@ export function installAudioUnlock(): void {
  * fila e soaria fora de hora no proximo toque.
  */
 function playTones(tones: Tone[], options: { requireRunning?: boolean } = {}) {
-  const ctx = audioContext();
+  // Som de um toque (chamada, Testar) pode trocar o tocador parado; o do sino nao.
+  const ctx = options.requireRunning ? audioContext() : contextInGesture();
   if (!ctx) return;
   const schedule = () => {
     const now = ctx.currentTime;
@@ -107,6 +141,7 @@ function playTones(tones: Tone[], options: { requireRunning?: boolean } = {}) {
   }
   if (options.requireRunning) return;
   // Dentro de um clique (presenca, Testar): liga o tocador e toca.
+  // (`contextInGesture` ja pediu o resume; aqui toca quando ele responder.)
   void ctx
     .resume()
     .then(() => {

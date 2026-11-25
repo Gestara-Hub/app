@@ -18,6 +18,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-9",
+    date: "2026-11-25",
+    items: [
+      { text: "App instalado reabre na última tela que você viu." },
+      { text: "Logo pulsando enquanto o app abre." },
+      { text: "Som da chamada e do sino volta no app instalado do iPhone." },
+    ],
+  },
+  {
     version: "2026.11.25-8",
     date: "2026-11-25",
     items: [{ text: "Abertura do app com a barrinha animada e sem barra no topo." }],

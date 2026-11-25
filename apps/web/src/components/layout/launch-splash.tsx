@@ -69,19 +69,19 @@ export function useLaunchSplashVisible(): boolean {
   return useSyncExternalStore(subscribeSplash, () => splashVisible, () => false);
 }
 
-/** Logo no fundo do tema e a barrinha: a mesma na `/launch` e no painel. */
+/**
+ * Logo no fundo do tema, pulsando enquanto carrega (25/11/2026: a logo e o
+ * indicador; a barrinha embaixo saiu). A mesma na `/launch` e no painel.
+ */
 export function LaunchSplashContent({ children }: { children?: React.ReactNode }) {
   return (
     <>
-      <Image src={logoLightImage} alt={SITE_NAME} className="h-16 w-auto dark:hidden" priority />
-      <Image src={logoDarkImage} alt={SITE_NAME} className="hidden h-16 w-auto dark:block" priority />
-      <div className="flex h-10 flex-col items-center gap-3" role="status" aria-live="polite">
-        <div className="h-1 w-24 overflow-hidden rounded-full bg-muted" aria-hidden>
-          <div className="launch-bar h-full w-1/3 rounded-full bg-primary" />
-        </div>
+      <div className="launch-logo-pulse" role="status" aria-live="polite">
+        <Image src={logoLightImage} alt={SITE_NAME} className="h-16 w-auto dark:hidden" priority />
+        <Image src={logoDarkImage} alt={SITE_NAME} className="hidden h-16 w-auto dark:block" priority />
         <span className="sr-only">Abrindo o GestaraHub</span>
-        {children}
       </div>
+      {children ? <div className="flex h-10 items-center">{children}</div> : <div className="h-10" aria-hidden />}
     </>
   );
 }
