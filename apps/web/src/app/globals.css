@@ -95,10 +95,27 @@
   --animate-confetti: confetti 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-/* Barrinha da abertura do app instalado (app/launch, 25/11/2026). */
+/* Barrinha da abertura do app instalado (app/launch, 25/11/2026). Classe
+   propria, sem o `motion-safe:` da utilidade: a barra ficava parada no celular.
+   Com "reduzir movimento", pisca em vez de correr (segue mostrando que carrega). */
 @keyframes launch-bar {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
+}
+@keyframes launch-bar-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.launch-bar {
+  animation: launch-bar 1.2s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .launch-bar {
+    animation: launch-bar-pulse 1.4s ease-in-out infinite;
+    width: 100%;
+    transform: none;
+  }
 }
 
 /* Chama a atencao para um CTA (ex.: "Continuar" do onboarding): cresce, treme e

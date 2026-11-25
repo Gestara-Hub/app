@@ -49,6 +49,26 @@ function clearLaunch(): void {
 
 const subscribeNever = () => () => {};
 
+// Abertura na tela: a barra fina do topo (`NavigationProgress`) fica escondida.
+let splashVisible = false;
+const splashListeners = new Set<() => void>();
+function setSplashVisible(value: boolean): void {
+  if (splashVisible === value) return;
+  splashVisible = value;
+  splashListeners.forEach((notify) => notify());
+}
+function subscribeSplash(onChange: () => void) {
+  splashListeners.add(onChange);
+  return () => {
+    splashListeners.delete(onChange);
+  };
+}
+
+/** A abertura cobre a tela agora? So uma barra de carregamento por vez. */
+export function useLaunchSplashVisible(): boolean {
+  return useSyncExternalStore(subscribeSplash, () => splashVisible, () => false);
+}
+
 /** Logo no fundo do tema e a barrinha: a mesma na `/launch` e no painel. */
 export function LaunchSplashContent({ children }: { children?: React.ReactNode }) {
   return (
@@ -57,7 +77,7 @@ export function LaunchSplashContent({ children }: { children?: React.ReactNode }
       <Image src={logoDarkImage} alt={SITE_NAME} className="hidden h-16 w-auto dark:block" priority />
       <div className="flex h-10 flex-col items-center gap-3" role="status" aria-live="polite">
         <div className="h-1 w-24 overflow-hidden rounded-full bg-muted" aria-hidden>
-          <div className="h-full w-1/3 rounded-full bg-primary motion-safe:animate-[launch-bar_1.2s_ease-in-out_infinite]" />
+          <div className="launch-bar h-full w-1/3 rounded-full bg-primary" />
         </div>
         <span className="sr-only">Abrindo o GestaraHub</span>
         {children}
@@ -72,6 +92,11 @@ export function LaunchSplashOverlay() {
   const [phase, setPhase] = useState<"open" | "leaving" | "done">("open");
   const fetching = useIsFetching();
   const active = pending && phase !== "done";
+
+  useEffect(() => {
+    setSplashVisible(active);
+    return () => setSplashVisible(false);
+  }, [active]);
 
   useEffect(() => {
     if (!pending || phase !== "open") return;
