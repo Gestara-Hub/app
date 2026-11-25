@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { APP_VERSION_LABEL } from "@/config/release";
 import { formatDate } from "@gestarahub/core/format";
-import { RELEASE_NOTES } from "../release-notes";
+import { releaseNotesByDay } from "../release-notes";
+
+// As notas sao fixas no pacote: agrupa uma vez.
+const RELEASE_DAYS = releaseNotesByDay();
 
 interface ReleaseNotesSheetProps {
   open: boolean;
@@ -15,7 +18,7 @@ interface ReleaseNotesSheetProps {
   onSeen: () => void;
 }
 
-/** Novidades do GestaraHub, da versao mais nova para a mais antiga (doc technical/27). */
+/** Novidades do GestaraHub por dia, do mais novo para o mais antigo (doc technical/27). */
 export function ReleaseNotesSheet({ open, onOpenChange, onSeen }: ReleaseNotesSheetProps) {
   useEffect(() => {
     if (open) onSeen();
@@ -32,16 +35,16 @@ export function ReleaseNotesSheet({ open, onOpenChange, onSeen }: ReleaseNotesSh
           <SheetDescription>O que mudou no GestaraHub.</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
-          {RELEASE_NOTES.map((note) => (
-            <section key={note.version} className="space-y-2">
+          {RELEASE_DAYS.map((day) => (
+            <section key={day.date} className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-semibold">{formatDate(note.date)}</h3>
+                <h3 className="text-sm font-semibold">{formatDate(day.date)}</h3>
                 <Badge variant="secondary" className="font-mono text-[11px]">
-                  v{note.version}
+                  v{day.latestVersion}
                 </Badge>
               </div>
               <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground marker:text-primary">
-                {note.items.map((item) => (
+                {day.items.map((item) => (
                   <li key={item.text} className="break-words">
                     {item.text}
                   </li>

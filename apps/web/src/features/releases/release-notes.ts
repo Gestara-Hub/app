@@ -164,3 +164,31 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
 
 /** Versao mais nova com novidades (o ponto no menu compara com esta). */
 export const LATEST_RELEASE_VERSION: string | undefined = RELEASE_NOTES[0]?.version;
+
+/** Um dia na tela de Novidades: todas as versoes do dia juntas. */
+export interface ReleaseDay {
+  date: string;
+  /** Versao mais nova do dia (o selo do dia). */
+  latestVersion: string;
+  items: ReleaseNoteItem[];
+}
+
+/**
+ * Agrupa as versoes por dia (25/11/2026: sete versoes no mesmo dia repetiam a
+ * data sete vezes). Mantem a ordem, da mais nova para a mais antiga, e tira o
+ * item repetido entre versoes do mesmo dia.
+ */
+export function releaseNotesByDay(notes: readonly ReleaseNote[] = RELEASE_NOTES): ReleaseDay[] {
+  const days: ReleaseDay[] = [];
+  for (const note of notes) {
+    let day = days.find((d) => d.date === note.date);
+    if (!day) {
+      day = { date: note.date, latestVersion: note.version, items: [] };
+      days.push(day);
+    }
+    for (const item of note.items) {
+      if (!day.items.some((existing) => existing.text === item.text)) day.items.push(item);
+    }
+  }
+  return days;
+}
