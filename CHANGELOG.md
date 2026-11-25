@@ -12,6 +12,7 @@ Desde v2026.11.25-2.
 
 ### Correções
 
+- admin: leitura das notas fiscais do plano pelo painel (migração 109), a aba Assinatura do espaço quebrava
 - log: toda ação do servidor registra o erro com o espaço e o usuário
 - log: alerta de erro novo sai mesmo quando a ação já respondeu
 - online-payments: abertura da subconta espera até 2 minutos e conta aberta sem chave avisa a equipe
