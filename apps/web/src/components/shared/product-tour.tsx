@@ -52,7 +52,49 @@ function isSidebarTarget(target: string): boolean {
  * 2. Abre automaticamente a gaveta lateral nos passos de menu para destacar cada secao ao vivo;
  * 3. Fecha a gaveta automaticamente ao focar no checklist da pagina ou ao encerrar o tour.
  */
-export function ProductTour({
+/** Janela aberta por cima da tela (Radix), fora o proprio balao do tour. */
+function hasOpenDialog(): boolean {
+  return Boolean(
+    document.querySelector(
+      '[role="dialog"][data-state="open"]:not([data-product-tour]), [role="alertdialog"][data-state="open"]',
+    ),
+  );
+}
+
+/**
+ * O tour so comeca sem janela aberta (25/11/2026): depois de ativar os
+ * recebimentos, ele abria por cima de "Conta criada" e do pedido de proteger o
+ * acesso. Espera as janelas fecharem e entao comeca; dai em diante segue.
+ */
+function useNoDialogOpen(): boolean {
+  const [free, setFree] = useState(false);
+  useEffect(() => {
+    if (free) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Uma pausa curta: a janela seguinte (ex.: proteger o acesso) abre logo depois da anterior.
+    const check = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!hasOpenDialog()) setFree(true);
+      }, 400);
+    };
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-state"] });
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [free]);
+  return free;
+}
+
+export function ProductTour(props: Parameters<typeof ProductTourSteps>[0]) {
+  const free = useNoDialogOpen();
+  return free ? <ProductTourSteps {...props} /> : null;
+}
+
+function ProductTourSteps({
   steps,
   onClose,
   mobileMenuStep = true,
@@ -272,6 +314,7 @@ export function ProductTour({
       <div
         ref={tooltipRef}
         role="dialog"
+        data-product-tour=""
         aria-label={step.title}
         className={
           placedOnce
