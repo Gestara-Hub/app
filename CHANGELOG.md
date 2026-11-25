@@ -2,6 +2,14 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.25-8 (2026-11-25)
+
+Desde v2026.11.25-7.
+
+### Correções
+
+- pwa: barrinha da abertura animada e sem a barra fina do topo por cima
+
 ## 2026.11.25-7 (2026-11-25)
 
 Desde v2026.11.25-6.

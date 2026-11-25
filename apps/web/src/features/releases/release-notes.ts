@@ -18,6 +18,11 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.25-8",
+    date: "2026-11-25",
+    items: [{ text: "Abertura do app com a barrinha animada e sem barra no topo." }],
+  },
+  {
     version: "2026.11.25-7",
     date: "2026-11-25",
     items: [
