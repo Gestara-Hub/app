@@ -85,7 +85,7 @@ export default async function AppLayout({
 
   return (
     <SessionProvider user={user} model={model} tier={tier} timeZone={timeZone} googleOnly={googleOnly}>
-      <UserPreferencesProvider>
+      <UserPreferencesProvider ownerId={user.id}>
         <AttachmentUploaderProvider>
         <ViewModeProvider initialModes={initialViewModes}>
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>

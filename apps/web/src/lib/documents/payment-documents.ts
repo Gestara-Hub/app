@@ -252,8 +252,10 @@ export interface OnlineStatementRow {
   amountCents: number;
   feeCents: number;
   netCents: number;
-  /** "Disponível" ou "Libera em 21/11/2026" (cartao). */
+  /** "Disponível", "Libera em 21/11/2026" (cartao) ou "Estornado". */
   availability: string;
+  /** Pago e depois estornado: fica na lista, fora dos totais (doc product/15). */
+  refunded?: boolean;
 }
 
 export interface OnlineStatementInput {
@@ -267,7 +269,8 @@ export interface OnlineStatementInput {
 
 /** Extrato da conta de recebimento: pagamentos online do mes, taxas e liquido. */
 export function onlineStatementDocument(input: OnlineStatementInput): DocumentModel {
-  const sum = (pick: (row: OnlineStatementRow) => number) => input.rows.reduce((total, row) => total + pick(row), 0);
+  const sum = (pick: (row: OnlineStatementRow) => number) =>
+    input.rows.reduce((total, row) => (row.refunded ? total : total + pick(row)), 0);
   const paid = sum((r) => r.amountCents);
   const fees = sum((r) => r.feeCents);
   const net = sum((r) => r.netCents);

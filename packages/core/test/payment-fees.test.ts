@@ -15,6 +15,7 @@ import {
   onlinePaymentMethodLabel,
   pixWithdrawalRuleText,
   parseAsaasAccountFees,
+  platformFeeRuleText,
   platformSplitCents,
   type GatewayFeeTable,
 } from "../src/payment-fees.ts";
@@ -50,11 +51,25 @@ const ASAAS_RESPONSE = {
 };
 
 describe("tarifas da cobrança online (doc 19 §4, decisão A)", () => {
-  it("split do GestaraHub por plano: R$ 1,99 no Grátis, R$ 1,29 no Profissional e no Expansão", () => {
-    assert.equal(platformSplitCents(undefined), 199);
-    assert.equal(platformSplitCents("free"), 199);
-    assert.equal(platformSplitCents("pro"), 129);
-    assert.equal(platformSplitCents("scale"), 129);
+  it("taxa do GestaraHub (26/11/2026): 1,5% no Grátis (R$ 0,99 a R$ 9,90), 1% nos pagos (R$ 0,69 a R$ 6,90)", () => {
+    // Grátis
+    assert.equal(platformSplitCents(undefined, 3000), 99); // 0,45 -> mínimo
+    assert.equal(platformSplitCents("free", 10000), 150);
+    assert.equal(platformSplitCents("free", 15000), 225);
+    assert.equal(platformSplitCents("free", 50000), 750);
+    assert.equal(platformSplitCents("free", 200000), 990); // teto
+    // Profissional e Expansão
+    assert.equal(platformSplitCents("pro", 3000), 69); // mínimo
+    assert.equal(platformSplitCents("pro", 12500), 125);
+    assert.equal(platformSplitCents("pro", 50000), 500);
+    assert.equal(platformSplitCents("scale", 200000), 690); // teto
+    // Arredondamento ao centavo: 1,5% de R$ 99,99 = 1,49985 -> 1,50
+    assert.equal(platformSplitCents("free", 9999), 150);
+  });
+
+  it("frases da taxa nas telas", () => {
+    assert.equal(platformFeeRuleText("free"), "1,5% por cobrança, de R$ 0,99 a R$ 9,90");
+    assert.equal(platformFeeRuleText("pro"), "1% por cobrança, de R$ 0,69 a R$ 6,90");
   });
 
   it("tarifa por meio: Pix fixa, cartão percentual + fixo, nada sobre zero", () => {
@@ -288,6 +303,8 @@ describe("rótulos do pagamento online (achado 62)", () => {
     assert.equal(onlinePaymentMethodLabel("link"), "Cartão");
     assert.equal(onlinePaymentMethodLabel("link", "creditCard"), "Cartão · Crédito");
     assert.equal(onlinePaymentMethodLabel("boleto"), "Boleto");
+    // Sem repetir (26/11/2026): "Boleto · Boleto" vira "Boleto".
+    assert.equal(onlinePaymentMethodLabel("boleto", "boleto"), "Boleto");
   });
 
   it("o saldo diz Disponível, a data prevista ou A liberar", () => {

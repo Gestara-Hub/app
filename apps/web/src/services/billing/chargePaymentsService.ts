@@ -1,10 +1,11 @@
-import type { ChargeView, Id, ManualPaymentDetails, PaymentMethod } from "@gestarahub/contracts";
+import type { ChargeRefund, ChargeView, Id, ManualPaymentDetails, PaymentMethod, RefundChargeInput } from "@gestarahub/contracts";
 import { confirmPaidReservation } from "../events/eventShared";
 import { coversPeriod } from "@gestarahub/core/membership-generation";
 import { store } from "@/services/world/store";
-import { apiError, notFoundError, nowIso, writeOp } from "@/services/world/ops";
+import { isSupabaseOrganization } from "@/lib/session";
+import { apiError, newId, notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
-import { paidAtFromDate, paidOnNote } from "./payment-date";
+import { paidAtFromDate, paidOnNote, refundedOnDate } from "./payment-date";
 import { clone } from "./billingHelpers";
 import { assertNotPaidOnline, assertNotWaived } from "./billingValidation";
 import { recordChargeEvent, toChargeView } from "./billingViews";
@@ -61,6 +62,87 @@ export const chargePaymentsService = {
       c.attachments = undefined;
       c.updatedAt = nowIso();
       recordChargeEvent(c, "status_changed", "desfez o pagamento da");
+      return clone(toChargeView(c));
+    });
+  },
+
+  /**
+   * Devolve o pagamento da cobranca (doc product/15, "Estorno de pagamento").
+   * Pago online: o estorno no parceiro ja foi pedido pelo GestaraHub
+   * (`refundOnlinePaymentAction`) ou feito no painel do Asaas; aqui so registra
+   * e resolve o aviso. Pago fora do app: so registra (dia, forma, comprovante).
+   * A cobranca reabre (pagar de outra forma) ou fica "Devolvida" (encerrada).
+   */
+  refundCharge(input: RefundChargeInput): Promise<ChargeView> {
+    return writeOp(async () => {
+      const c = store.charges.find((x) => x.id === input.chargeId);
+      if (!c) throw notFoundError("Cobrança não encontrada.");
+      if (c.status !== "paid") {
+        throw apiError("VALIDATION", "Só dá para estornar uma cobrança paga.", { httpStatus: 409 });
+      }
+      if (input.outcome !== "reopened" && input.outcome !== "closed") {
+        throw apiError("VALIDATION", "Escolha o que fazer com a cobrança.", { httpStatus: 422 });
+      }
+      const refundedOn = refundedOnDate(input.refundedOn);
+      const online = c.paidVia === "online" || c.paidVia === "recurring";
+      let onlinePaymentId: Id | undefined;
+      let amountCents = c.amountCents;
+      if (online) {
+        // O estorno precisa ter sido pedido (ou feito no Asaas) antes: sem isso a
+        // cobranca sairia do Recebido com o dinheiro ainda na conta do espaco.
+        let payment = store.onlinePayments.find(
+          (p) =>
+            p.chargeId === c.id &&
+            p.status === "paid" &&
+            (p.disputeStatus === "refunded" || p.disputeStatus === "refund_in_progress") &&
+            !p.refundHandledAt,
+        );
+        // Demonstracao (sem parceiro de verdade): o estorno acontece aqui mesmo.
+        if (!payment && !isSupabaseOrganization(c.organizationId)) {
+          payment = store.onlinePayments.find((p) => p.chargeId === c.id && p.status === "paid" && !p.refundHandledAt);
+          if (payment) {
+            payment.disputeStatus = "refunded";
+            payment.disputedAt = nowIso();
+          }
+        }
+        if (!payment) {
+          throw apiError("VALIDATION", "O estorno deste pagamento ainda não foi pedido ao parceiro.", { httpStatus: 409 });
+        }
+        payment.refundHandledAt = nowIso();
+        onlinePaymentId = payment.id;
+        amountCents = payment.amountCents || c.amountCents;
+      }
+      const reason = input.reason?.trim() || undefined;
+      const refund: ChargeRefund = {
+        id: newId(),
+        refundedAt: nowIso(),
+        refundedOn,
+        amountCents,
+        via: online ? "online" : "manual",
+        method: online ? undefined : input.method,
+        onlinePaymentId,
+        paidAt: c.paidAt,
+        paidMethod: c.method,
+        paidVia: c.paidVia,
+        paidReceipts: c.attachments?.length ? c.attachments : undefined,
+        receipts: !online && input.receipts?.length ? input.receipts : undefined,
+        outcome: input.outcome,
+        reason,
+      };
+      c.refunds = [...(c.refunds ?? []), refund];
+      // O pagamento devolvido sai da cobranca (fica no registro da devolucao).
+      c.status = input.outcome === "reopened" ? "pending" : "refunded";
+      c.paidAt = undefined;
+      c.method = undefined;
+      c.paidVia = undefined;
+      c.attachments = undefined;
+      c.updatedAt = nowIso();
+      recordChargeEvent(
+        c,
+        "status_changed",
+        input.outcome === "reopened" ? "estornou o pagamento e reabriu a" : "estornou o pagamento e encerrou a",
+        reason,
+      );
       return clone(toChargeView(c));
     });
   },

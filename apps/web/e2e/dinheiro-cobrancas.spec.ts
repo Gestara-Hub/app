@@ -363,7 +363,7 @@ test.describe("Pro", () => {
     await expect(dialog).toBeHidden();
     // O aluno abriu a pagina: a linha da cobranca e o Cobrar online mostram.
     await page.reload();
-    await expect(rowOf(page, "Aluna Kimono")).toContainText("link aberto");
+    await expect(rowOf(page, "Aluna Kimono")).toContainText("Pix gerado · aberto");
     const reminder = await openedWhatsApp(page, () => menuAction(page, "Aluna Kimono", "Lembrar no WhatsApp"));
     expect(reminder.text).toMatch(/Pague pelo link: \S+/);
     await menuAction(page, "Aluna Kimono", "Cobrar online");

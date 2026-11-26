@@ -7,7 +7,8 @@ import { platformSplitCents, type PlatformTier } from "@gestarahub/core/payment-
  * valor do aluno nem descontada do liquido do espaco. Sem o Asaas (demonstracao
  * no navegador e e2e), o provedor de demonstracao simula o split.
  */
-export function effectivePlatformSplitCents(tier: PlatformTier | undefined): number {
+export function effectivePlatformSplitCents(tier: PlatformTier | undefined, amountCents: number): number {
   const splitActive = !process.env.ASAAS_API_KEY || Boolean(process.env.ASAAS_MASTER_WALLET_ID);
-  return splitActive ? platformSplitCents(tier) : 0;
+  // Percentual do valor da cobranca, com minimo e teto (doc 13, 26/11/2026).
+  return splitActive ? platformSplitCents(tier, amountCents) : 0;
 }

@@ -35,12 +35,12 @@ export function chargeStatus(c: Charge): FinancialEntryDisplayStatus {
     return c.dueDate < todayISO() ? "overdue" : "pending";
   }
   // Isento (bolsa integral) nunca chega aqui: `isCashCharge` o deixa de fora.
-  return c.status === "waived" ? "canceled" : c.status;
+  return c.status === "waived" || c.status === "refunded" ? "canceled" : c.status;
 }
 
-/** Cobranca que conta no caixa: nem cancelada nem isenta (bolsa integral). */
+/** Cobranca que conta no caixa: nem cancelada, nem isenta (bolsa integral), nem devolvida (sai do Recebido). */
 export function isCashCharge(c: Charge): boolean {
-  return c.status !== "canceled" && c.status !== "waived";
+  return c.status !== "canceled" && c.status !== "waived" && c.status !== "refunded";
 }
 
 export function chargeCompetence(c: Charge): string {
@@ -80,6 +80,13 @@ export function professionalName(id: Id): string {
  */
 export function onlineFeeCents(payment: OnlinePayment, charge: Charge | undefined): number {
   if (payment.status !== "paid") return 0;
+  // Estornado (26/11/2026, doc product/15 "Estorno de pagamento"): no cartao, a
+  // tarifa do parceiro e a taxa do GestaraHub voltam; no Pix, so a taxa do
+  // GestaraHub volta e a tarifa do parceiro fica com o espaco.
+  if (payment.disputeStatus === "refunded" || payment.disputeStatus === "refund_in_progress") {
+    const card = payment.paidMethod === "creditCard" || payment.paidMethod === "debitCard";
+    return card ? 0 : Math.max(0, payment.gatewayFeeCents ?? 0);
+  }
   const chargeAmount = charge?.amountCents ?? payment.amountCents;
   if (typeof payment.netAmountCents === "number") return Math.max(0, chargeAmount - payment.netAmountCents);
   // Sem liquido gravado (codigo antigo): tarifa + taxa, menos o que o aluno pagou a mais.

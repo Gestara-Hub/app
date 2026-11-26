@@ -454,6 +454,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "text",
         "nullable": true,
         "hasDefault": false
+      },
+      "refunds": {
+        "type": "jsonb",
+        "nullable": false,
+        "hasDefault": true
       }
     }
   },
@@ -1921,6 +1926,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "hasDefault": false
       },
       "disputed_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "refund_handled_at": {
         "type": "timestamptz",
         "nullable": true,
         "hasDefault": false

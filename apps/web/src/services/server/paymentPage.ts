@@ -373,7 +373,7 @@ export async function loadChargeInvoice(
   // Available methods & amounts calculation
   const acceptedMethods = availableOnlineMethods(onlineSettings).filter((m) => m !== "choice");
   const tier = ((org?.subscription as Record<string, unknown> | null)?.tier as PlatformTier | undefined) ?? "free";
-  const splitAmountCents = effectivePlatformSplitCents(tier);
+  const splitAmountCents = effectivePlatformSplitCents(tier, Number(charge.amount_cents) || 0);
   const fees = effectiveGatewayFees(onlineSettings?.gatewayFees, todayISO());
 
   const amountsByMethod: Partial<Record<OnlinePaymentMethod, number>> = {};

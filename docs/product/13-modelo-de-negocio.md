@@ -35,11 +35,11 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 - **Módulo Financeiro Básico:** Entradas, saídas manuais, despesas recorrentes, categorias, fluxo de caixa e cálculo do repasse de professores (com fechamento e quitação manual).
 - **Apps do Aluno e do Professor:** Acesso liberado (histórico de treinos, chamadas, graduações e avisos).
 - **WhatsApp assistido:** cobrança, lembrete e parabéns com a mensagem pronta; o botão abre o WhatsApp do próprio espaço e a pessoa só toca em enviar (seção 5).
-- **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa do GestaraHub de R$ 1,99 por cobrança online recebida, além da tarifa do Asaas da subconta do espaço (doc 19, seção 4).
+- **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa do GestaraHub de 1,5% por cobrança online recebida, de R$ 0,99 a R$ 9,90 (até 25/11/2026 era R$ 1,99 fixo), além da tarifa do Asaas da subconta do espaço (doc 19, seção 4).
 
 ### 2.2 Plano Pro (O "Piloto Automático" — R$ 79,90/mês ou R$ 799,00/ano)
 - **`messaging`:** Envio 100% automático pelo WhatsApp, pela API oficial da Meta e com o **número do próprio espaço**: lembretes de vencimento (antes, no dia e após), boas-vindas e recuperação de alunos ausentes (franquia mensal de 300 mensagens/mês inclusa; excedente via pacotes pré-pagos ou retorno ao assistido).
-- **Taxas transacionais reduzidas ⚡:** Taxa do GestaraHub de R$ 1,29 por cobrança online recebida (R$ 1,99 no Grátis); a tarifa do Asaas não muda. Para academias com mais de 70 alunos, a economia na taxa paga a própria assinatura do Pro.
+- **Taxas transacionais reduzidas ⚡:** Taxa do GestaraHub de 1% por cobrança online recebida, de R$ 0,69 a R$ 6,90 (no Grátis, 1,5%, de R$ 0,99 a R$ 9,90); a tarifa do Asaas não muda. Com mensalidade de R$ 125, a economia é de uns R$ 0,63 por aluno: o plano se paga a partir de uns 130 alunos pagando online, e o argumento principal do Profissional é a automação.
 - **`reports_advanced`:** Relatórios avançados gerenciais (DRE completa do negócio com lucro líquido real, faturamento previsto vs. realizado, evolução da inadimplência e taxa de retenção por faixa).
 - **`certificates`:** Emissão de certificados de conclusão de curso e graduação prontos para imprimir ou exportar em PDF.
 
@@ -221,3 +221,19 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 ## Tela de Planos (decisão de 24/10/2026)
 
 A tela mostra só o que existe: Grátis e Profissional (WhatsApp automático, relatórios de resultado e retenção, certificado, taxa menor). Sem preço nos cards (o valor aparece no checkout antes de cobrar) e sem Expansão à venda até existir multiunidade. A taxa do Pix tem uma frase única (`platformFeeSentence`). O botão "Fale com a gente" depende do canal de atendimento (ver `docs/pendencias.md`).
+
+
+## Taxa do GestaraHub em percentual (26/11/2026)
+
+Decidido com o dono: a taxa fixa (R$ 1,99 no Grátis, R$ 1,29 nos pagos) pesava nas cobranças pequenas (6,6% numa de R$ 30) e rendia quase nada nas grandes (0,1% numa de R$ 2.000). Agora é **percentual do valor da cobrança, com mínimo e teto**:
+
+| Plano | Percentual | Mínimo | Teto |
+|---|---|---|---|
+| Grátis | 1,5% | R$ 0,99 | R$ 9,90 |
+| Profissional e Expansão | 1% | R$ 0,69 | R$ 6,90 |
+
+- Calibrado para a faixa esperada (mensalidade de R$ 100 a R$ 150): média de R$ 1,88 (Grátis) e R$ 1,25 (pagos), perto da taxa fixa de antes; abaixo de uns R$ 66 fica mais barato que antes; o teto entra a partir de uns R$ 660 e R$ 690.
+- Exemplos (Grátis / Profissional): R$ 30 → 0,99 / 0,69; R$ 150 → 2,25 / 1,50; R$ 500 → 7,50 / 5,00; R$ 2.000 → 9,90 / 6,90.
+- Mesma regra para Pix e cartão; a base é o valor da cobrança, sem a taxa repassada ao aluno. Vai ao Asaas como valor fixo do split, já calculado (`platformSplitCents` em `@gestarahub/core/payment-fees`).
+- Vale para as cobranças online geradas depois da mudança; Pix e links já gerados mantêm a taxa de quando foram criados.
+- Contrato de ativação e termos: a mudança precisa de nova versão (ver `docs/pendencias.md`, Jurídico).

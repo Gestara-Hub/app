@@ -71,7 +71,7 @@ function tourSteps(options: { canWithdraw: boolean; canStatement: boolean }): To
     {
       target: '[data-tour="op-pending"]',
       title: "A liberar",
-      body: "Cartão de crédito espera cerca de 32 dias e cai aqui antes.",
+      body: "Cartão de crédito cai em até 32 dias e aparece aqui antes.",
     },
     {
       target: '[data-tour="op-received"]',

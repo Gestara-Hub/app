@@ -18,6 +18,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.26",
+    date: "2026-11-26",
+    items: [
+      { text: "Estorne pagamentos pelo app e escolha reabrir ou encerrar a cobrança." },
+      { text: "Recebimentos online mostra o aluno, tem busca e ações em cada linha." },
+      { text: "Cobranças mostram quando o Pix ou o link já foi gerado." },
+      { text: "Botão Atualizar na tela de Cobranças." },
+      { text: "Taxa do GestaraHub em percentual: 1,5% no Grátis e 1% nos planos pagos." },
+    ],
+  },
+  {
     version: "2026.11.25-9",
     date: "2026-11-25",
     items: [

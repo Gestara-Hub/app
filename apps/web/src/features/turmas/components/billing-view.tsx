@@ -6,6 +6,9 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { RefreshStatus } from "@/components/shared/refresh-status";
+import { toast } from "@/lib/toast";
+import { queryKeys } from "@/lib/queryKeys";
 import { SectionBar } from "@/components/form";
 import { StatCard } from "@/components/shared/stat-card";
 import {
@@ -42,6 +45,7 @@ import {
   ChargeAmount,
   ChargeStatusBadge,
   KIND_FILTER_LABEL,
+  OnlineCodeBadge,
   PaidViaBadge,
   REPLACED_CLASS,
   RecurringLimitBadge,
@@ -118,7 +122,10 @@ function groupByStudent(charges: ChargeView[]): StudentConsolidatedGroup[] {
     const g = map.get(c.studentId)!;
     g.charges.push(c);
 
-    if (c.status === "canceled") {
+    if (c.status === "refunded") {
+      // Devolvida e encerrada: fora do total, como a cancelada (sem contar como perda).
+      g.closedCount += 1;
+    } else if (c.status === "canceled") {
       g.canceledCents += c.amountCents;
       g.closedCount += 1;
     } else if (c.status === "waived") {
@@ -145,6 +152,7 @@ function groupByStudent(charges: ChargeView[]): StudentConsolidatedGroup[] {
     paid: 2,
     waived: 3,
     canceled: 4,
+    refunded: 5,
   };
 
   for (const g of map.values()) {
@@ -168,6 +176,9 @@ function studentGroupBadge(g: StudentConsolidatedGroup): {
   if (activeCount === 0) {
     if (g.waivedCount > 0 && g.closedCount === 0) {
       return { label: "Bolsista", className: STATUS_CLASS.waived };
+    }
+    if (g.charges.every((c) => c.status === "refunded")) {
+      return { label: STATUS_LABEL.refunded, className: STATUS_CLASS.refunded };
     }
     const allSystem = g.charges.every((c) => isSystemCanceled(c) || isReplaced(c));
     return {
@@ -217,7 +228,7 @@ function cleanGroupSubtitle(g: StudentConsolidatedGroup): SubtitlePart[] {
   const extras = countByKind.get("extra") ?? 0;
   if (extras > 0) items.push(plural(extras, "cobrança avulsa", "cobranças avulsas"));
 
-  const shown = g.charges.filter((c) => c.status !== "canceled" && c.status !== "waived");
+  const shown = g.charges.filter((c) => c.status !== "canceled" && c.status !== "waived" && c.status !== "refunded");
   // Vencidas e por vencer separadas (11/11/2026): "venceu 04/11" em vermelho e
   // "vence 25/11" normal. Antes um "vence" so cobria as duas e escondia o atraso.
   const datesOf = (list: ChargeView[]) => Array.from(new Set(list.map((c) => shortDate(c.dueDate))));
@@ -281,6 +292,8 @@ function useBillingFilters() {
   const kindParam = searchParams.get("kind");
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
   const allOverdue = searchParams.get("overdue") === "all";
+  // Aviso de estorno ("Resolver", 26/11/2026): abre a devolucao desta cobranca.
+  const refundParam = searchParams.get("refund");
   // So os meses anteriores a este (link "+ R$ X de meses anteriores" do Financeiro).
   const beforeParam = searchParams.get("before");
   const overdueBefore = allOverdue && beforeParam && /^\d{4}-\d{2}$/.test(beforeParam) ? beforeParam : null;
@@ -304,6 +317,7 @@ function useBillingFilters() {
     update({ status: next === "open" ? null : next });
   const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
   const clearFilters = () => update({ status: null, kind: null });
+  const clearRefund = () => update({ refund: null });
 
   return {
     competence,
@@ -316,6 +330,8 @@ function useBillingFilters() {
     setStatusFilter,
     setKindFilter,
     clearFilters,
+    refundParam,
+    clearRefund,
   };
 }
 
@@ -380,6 +396,8 @@ export function BillingView() {
     setStatusFilter,
     setKindFilter,
     clearFilters,
+    refundParam,
+    clearRefund,
   } = useBillingFilters();
   const statusFilter: StatusFilterValue = allOverdue ? "overdue" : monthStatusFilter;
   const [newChargeOpen, setNewChargeOpen] = useState(false);
@@ -426,6 +444,17 @@ export function BillingView() {
   const isLoading = chargesLoading || (!isError && chargeActions.isOrgPending);
   const { canManage, overRecurringLimit } = chargeActions;
   const withChargeContextMenu = chargeActions.withContextMenu;
+  // "Resolver" do aviso de estorno: abre a devolucao da cobranca uma vez e tira o parametro.
+  const [handledRefund, setHandledRefund] = useState<string | null>(null);
+  if (refundParam && charges && handledRefund !== refundParam) {
+    setHandledRefund(refundParam);
+    const target = charges.find((c) => c.id === refundParam);
+    if (target?.status === "paid") chargeActions.openRefund(target);
+    else toast.info("Este estorno já foi resolvido.");
+  }
+  useEffect(() => {
+    if (refundParam && handledRefund === refundParam) clearRefund();
+  }, [refundParam, handledRefund, clearRefund]);
   const renderChargeActions = chargeActions.renderActions;
 
   const refMonth = (c: ChargeView) => c.competence ?? c.dueDate.slice(0, 7);
@@ -476,7 +505,7 @@ export function BillingView() {
   };
 
   // Totais dos cartoes de resumo do mes (sempre sobre o mes inteiro).
-  const activeList = list.filter((c) => c.status !== "canceled" && c.status !== "waived");
+  const activeList = list.filter((c) => c.status !== "canceled" && c.status !== "waived" && c.status !== "refunded");
   const activeTotalCents = activeList.reduce((s, c) => s + c.amountCents, 0);
 
   const waivedCount = list.filter((c) => c.status === "waived").length;
@@ -734,17 +763,24 @@ export function BillingView() {
                     Limpar filtros
                   </button>
                 ) : null}
+                {/* Pagamento online chega pelo aviso do Asaas; a tela recarrega aqui. */}
+                <RefreshStatus queryKey={queryKeys.billing.all} />
               </div>
             </div>
           ) : (
-            <ListSummaryBar
-              count={filteredList.length}
-              singularLabel="cobrança"
-              pluralLabel="cobranças"
-              isLoading={isLoading}
-              hasFilters={hasListFilters}
-              onClearFilters={clearListFilters}
-            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <ListSummaryBar
+                  count={filteredList.length}
+                  singularLabel="cobrança"
+                  pluralLabel="cobranças"
+                  isLoading={isLoading}
+                  hasFilters={hasListFilters}
+                  onClearFilters={clearListFilters}
+                />
+              </div>
+              <RefreshStatus queryKey={queryKeys.billing.all} />
+            </div>
           )}
 
           {statusFilter === "all" && replacedCount > 0 ? (
@@ -886,6 +922,7 @@ export function BillingView() {
                             {c.studentPaused ? <PausedTag /> : null}
                             {c.status === "waived" || statusRepeatsTab(statusLabelOf(c), statusFilter) ? null : <ChargeStatusBadge charge={c} />}
                             <PaidViaBadge charge={c} />
+                            <OnlineCodeBadge charge={c} />
                             <ScholarshipBadge charge={c} />
                             <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                             <WhatsAppSentBadge charge={c} />
@@ -1036,12 +1073,12 @@ export function BillingView() {
                                         `${dueVerb(c.dueDate, c.status)} ${shortDate(c.dueDate)}`
                                       )}
                                       {c.status === "paid" && c.method ? ` · ${paymentMethodLabel(c.method)}` : ""}
-                                      {c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue") ? " · link aberto" : ""}
                                     </span>
                                     {c.status === "waived" || statusRepeatsTab(statusLabelOf(c), statusFilter) ? null : (
                                       <ChargeStatusBadge charge={c} size="sm" />
                                     )}
                                     <PaidViaBadge charge={c} />
+                                    <OnlineCodeBadge charge={c} />
                                     <ScholarshipBadge charge={c} />
                                     <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                                     <WhatsAppSentBadge charge={c} size="sm" />

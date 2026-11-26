@@ -180,32 +180,67 @@ export function isGatewayFeeDivergent(
   return Math.abs(gatewayFeeCents(table[method], chargedCents) - realFeeCents) > 1;
 }
 
-/** Taxa do GestaraHub por cobranca online recebida (doc 13). */
-export const PLATFORM_SPLIT_CENTS: Record<PlatformTier, number> = {
-  free: 199,
-  pro: 129,
-  scale: 129,
+/**
+ * Taxa do GestaraHub por cobranca online recebida (doc 13, decidido em
+ * 26/11/2026): percentual do valor da cobranca, com minimo e teto. Mais leve
+ * que a taxa fixa nas cobrancas pequenas, parecida na faixa de R$ 100 a R$ 150 e
+ * maior nas grandes. Antes: R$ 1,99 (Gratis) e R$ 1,29 (planos pagos) fixos.
+ */
+export interface PlatformFeeRule {
+  /** Percentual sobre o valor da cobranca (1,5 = 1,5%). */
+  percent: number;
+  minCents: number;
+  maxCents: number;
+}
+
+export const PLATFORM_FEE_RULES: Record<PlatformTier, PlatformFeeRule> = {
+  free: { percent: 1.5, minCents: 99, maxCents: 990 },
+  pro: { percent: 1, minCents: 69, maxCents: 690 },
+  scale: { percent: 1, minCents: 69, maxCents: 690 },
 };
 
-export function platformSplitCents(tier: PlatformTier | undefined): number {
-  return PLATFORM_SPLIT_CENTS[tier ?? "free"];
+/**
+ * Taxa do GestaraHub sobre uma cobranca (centavos): o percentual do valor da
+ * cobranca (o que o espaco cobra, sem a taxa repassada ao aluno), arredondado,
+ * entre o minimo e o teto do plano.
+ */
+export function platformSplitCents(tier: PlatformTier | undefined, amountCents: number): number {
+  const rule = PLATFORM_FEE_RULES[tier ?? "free"];
+  const percentCents = Math.round((Math.max(0, amountCents) * rule.percent) / 100);
+  return Math.min(rule.maxCents, Math.max(rule.minCents, percentCents));
 }
 
 const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+const percentLabel = (percent: number) => `${String(percent).replace(".", ",")}%`;
+
+/** So o percentual do plano: "1,5%". */
+export function platformFeePercentText(tier: PlatformTier | undefined): string {
+  return percentLabel(PLATFORM_FEE_RULES[tier ?? "free"].percent);
+}
+
+/** Minimo e teto do plano: "de R$ 0,99 a R$ 9,90". */
+export function platformFeeRangeText(tier: PlatformTier | undefined): string {
+  const rule = PLATFORM_FEE_RULES[tier ?? "free"];
+  return `de ${brl(rule.minCents)} a ${brl(rule.maxCents)}`;
+}
+
+/** A regra do plano numa frase curta: "1,5% por cobrança, de R$ 0,99 a R$ 9,90". */
+export function platformFeeRuleText(tier: PlatformTier | undefined): string {
+  const rule = PLATFORM_FEE_RULES[tier ?? "free"];
+  return `${percentLabel(rule.percent)} por cobrança, de ${brl(rule.minCents)} a ${brl(rule.maxCents)}`;
+}
 
 /**
  * A frase da taxa do GestaraHub, a mesma em Planos, Recebimentos online e no
- * checkout (achado 18, decisao de 24/10). Os valores vem de `PLATFORM_SPLIT_CENTS`.
+ * checkout (achado 18, decisao de 24/10). Os valores vem de `PLATFORM_FEE_RULES`.
  */
 export function platformFeeSentence(): string {
-  // Frase curta (17/11/2026): o valor do Grátis e o que vem junto; o valor do
-  // Profissional fica no card dele (`proPlatformFeeLabel`).
-  return `Cada Pix recebido online: ${brl(PLATFORM_SPLIT_CENTS.free)} do GestaraHub, mais a tarifa do parceiro de pagamentos.`;
+  return `Cada pagamento recebido online: ${platformFeeRuleText("free")} do GestaraHub, mais a tarifa do parceiro de pagamentos.`;
 }
 
-/** O item do Profissional na tela de planos: a taxa menor, com o valor. */
+/** O item do Profissional na tela de planos: a taxa menor, com a regra. */
 export function proPlatformFeeLabel(): string {
-  return `Taxa menor por Pix recebido: ${brl(PLATFORM_SPLIT_CENTS.pro)}`;
+  return `Taxa menor por pagamento online: ${platformFeeRuleText("pro")}`;
 }
 
 /**
@@ -365,7 +400,9 @@ export function pixWithdrawalRuleText(rule: { freePerMonth: number; feeCents: nu
 export function onlinePaymentMethodLabel(method: string, paidMethod?: LinkPaymentMethod | null): string {
   if (method === "pix") return "Pix";
   const base = (ONLINE_METHOD_LABEL as Record<string, string>)[method] ?? "Link";
-  return paidMethod ? `${base} · ${LINK_PAYMENT_METHOD_LABEL[paidMethod]}` : base;
+  const used = paidMethod ? LINK_PAYMENT_METHOD_LABEL[paidMethod] : undefined;
+  // "Boleto · Boleto" repetia (26/11/2026): o meio usado so entra quando diz algo a mais.
+  return used && used !== base ? `${base} · ${used}` : base;
 }
 
 /**

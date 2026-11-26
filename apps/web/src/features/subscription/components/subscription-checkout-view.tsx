@@ -22,7 +22,6 @@ import {
   Smartphone,
   Sparkles,
   Ticket,
-  Info,
   Zap,
 } from "lucide-react";
 import { META_COST_SHORT } from "@/lib/whatsapp/meta-cost";
@@ -343,7 +342,7 @@ export function SubscriptionCheckoutView() {
   if (step === "success") {
     return (
       <div className="max-w-2xl mx-auto py-4 sm:py-8">
-        <Card className="rounded-2xl border bg-card shadow-xl p-4 sm:p-6 md:p-8 space-y-6">
+        <Card className="border bg-card shadow-xl p-4 sm:p-6 md:p-8 space-y-6">
           {/* Header de celebração */}
           <div className="text-center space-y-3">
             <div className="relative mx-auto flex size-16 items-center justify-center rounded-2xl bg-linear-to-b from-emerald-500/20 to-emerald-500/5 text-emerald-500 border border-emerald-500/30 ring-8 ring-emerald-500/5 shadow-inner">
@@ -405,9 +404,9 @@ export function SubscriptionCheckoutView() {
                 <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <Zap className="size-4" />
                 </div>
-                <p className="text-xs font-bold text-foreground">Taxa de R$ 1,29 no Pix</p>
+                <p className="text-xs font-bold text-foreground">Taxa online de 1%</p>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Economia direta em todas as mensalidades e cobranças pagas online.
+                  No lugar de 1,5% do Grátis, de R$ 0,69 a R$ 6,90 por cobrança paga online.
                 </p>
               </div>
 
@@ -473,7 +472,7 @@ export function SubscriptionCheckoutView() {
   if (isAlreadyActive && step === "config") {
     return (
       <div className="max-w-xl mx-auto py-4 sm:py-8 text-center">
-        <Card className="rounded-2xl border bg-card p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
+        <Card className="border bg-card p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 className="size-7" />
           </div>
@@ -537,7 +536,7 @@ export function SubscriptionCheckoutView() {
         {/* COLUNA ESQUERDA: FORMULÁRIO DE CHECKOUT OU PIX (lg:col-span-7) */}
         <div className="lg:col-span-7 space-y-6">
           {step === "config" && (
-            <Card className="rounded-2xl border bg-card shadow-sm">
+            <Card className="border bg-card shadow-sm">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-2 pb-1">
                   <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
@@ -620,7 +619,8 @@ export function SubscriptionCheckoutView() {
                     ) : null}
 
                     {/* Seletor Mensal / Anual */}
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-4 space-y-3">
+                    {/* Sem cartao dentro do cartao (26/11/2026): secoes separadas por linhas. */}
+                    <div className="space-y-3 border-b border-border/60 pb-5">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -754,8 +754,8 @@ export function SubscriptionCheckoutView() {
                     </div>
 
                     {/* Dados de Faturamento */}
-                    <div className="space-y-3.5 rounded-xl border border-border/70 p-4 bg-muted/10">
-                      <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <div className="space-y-3.5 border-t border-border/60 pt-5">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <ShieldCheck className="size-4 text-primary" />
                         <span>Dados de cobrança</span>
                       </p>
@@ -879,9 +879,9 @@ export function SubscriptionCheckoutView() {
 
                     {/* Campos de Cartão de Crédito */}
                     {billingType === "CREDIT_CARD" && (
-                      <div className="space-y-3.5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                      <div className="space-y-3.5 border-t border-border/60 pt-5">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                             <Lock className="size-3.5 text-primary" />
                             <span>Dados do Cartão de Crédito</span>
                           </p>
@@ -1047,7 +1047,7 @@ export function SubscriptionCheckoutView() {
 
           {/* MODO PIX: AGUARDANDO PAGAMENTO */}
           {step === "pix_awaiting" && pixData && (
-            <Card className="rounded-2xl border bg-card shadow-sm p-6 sm:p-8 space-y-6">
+            <Card className="border bg-card shadow-sm p-6 sm:p-8 space-y-6">
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3">
                 <Clock className="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1 text-xs">
@@ -1177,7 +1177,7 @@ export function SubscriptionCheckoutView() {
 
         {/* COLUNA DIREITA: RESUMO DO PEDIDO STICKY (lg:col-span-5) */}
         <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-4">
-          <Card className="rounded-2xl border bg-card shadow-sm">
+          <Card className="border bg-card shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -1259,15 +1259,16 @@ export function SubscriptionCheckoutView() {
                     <>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                        <span>Taxa menor no Pix</span>
+                        <span>Taxa online menor: 1% por cobrança</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                        <span>WhatsApp automático (lembretes e avisos)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Info className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                        <span>{META_COST_SHORT}</span>
+                        {/* O custo da Meta vai como detalhe do proprio item (26/11/2026: o
+                            icone amarelo solto destoava da lista). */}
+                        <span>
+                          WhatsApp automático (lembretes e avisos)
+                          <span className="block text-[11px] text-muted-foreground/80">{META_COST_SHORT}</span>
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
@@ -1310,7 +1311,7 @@ export function SubscriptionCheckoutView() {
               </div>
 
               {/* Garantias */}
-              <div className="rounded-xl bg-muted/40 p-3 space-y-1.5 border border-border/60 text-[11px] text-muted-foreground">
+              <div className="space-y-1.5 border-t border-border/60 pt-4 text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-1.5 font-medium text-foreground">
                   <ShieldCheck className="size-3.5 text-emerald-600" />
                   <span>Sem fidelidade: cancele quando quiser</span>

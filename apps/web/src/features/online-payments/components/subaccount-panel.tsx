@@ -7,7 +7,12 @@ import {
   PeriodRangePicker,
   type PeriodRange,
 } from "@/components/shared/period-range-picker";
-import { PaginationBar } from "@/components/shared/list";
+import { PaginationBar, SearchInput } from "@/components/shared/list";
+import { ListItemActionsMenu, ListItemContextMenu, type ListItemAction } from "@/components/shared/list-item-actions-menu";
+import { useRouter } from "next/navigation";
+import { useCan } from "@/features/auth";
+import { paymentPageUrl } from "@/lib/payment-page";
+import { toast } from "@/lib/toast";
 import {
   Select,
   SelectContent,
@@ -18,17 +23,22 @@ import {
 import type { ReceiptStatusFilter, SubaccountReceiptItem } from "@/services/onlinePayments/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LINK_PAYMENT_METHOD_LABEL, onlineFundsLabel, onlinePaymentMethodLabel } from "@gestarahub/core/payment-fees";
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import Link from "next/link";
+import { dateInSpace } from "@gestarahub/core/date";
 import {
   ArrowDownLeft,
   Clock,
   ExternalLink,
+  FileText,
   History,
+  Link2,
   QrCode,
   Receipt,
   RotateCw,
+  Undo2,
 } from "lucide-react";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,6 +59,18 @@ import { ASAAS_LOGIN_URL } from "./account-readiness-card";
 interface SubaccountPanelProps {
   organizationId: string;
 }
+
+/** Pago e depois estornado (doc product/15, "Estorno de pagamento"). */
+const RECEIPT_REFUND_BADGE: Record<"refunded" | "refund_in_progress", { label: string; className: string }> = {
+  refunded: {
+    label: "Estornado",
+    className: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  },
+  refund_in_progress: {
+    label: "Estorno em andamento",
+    className: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  },
+};
 
 const RECEIPT_STATUS_MAP: Record<
   string,
@@ -118,31 +140,35 @@ function ReceiptsTableSkeleton() {
     <table className="w-full text-left text-xs">
       <thead className="border-b bg-muted/40 text-muted-foreground">
         <tr>
-          <th className="px-3.5 py-2.5 font-medium">Data / Hora</th>
-          <th className="px-3.5 py-2.5 font-medium">Método</th>
-          <th className="px-3.5 py-2.5 font-medium">Valor Bruto</th>
-          <th className="px-3.5 py-2.5 font-medium">Taxas</th>
-          <th className="px-3.5 py-2.5 font-medium">Valor Líquido</th>
-          <th className="px-3.5 py-2.5 font-medium">Status</th>
+          <th className="px-3.5 py-2.5 font-medium">Hora</th>
+          <th className="px-3.5 py-2.5 font-medium">Aluno</th>
+          <th className="px-3.5 py-2.5 font-medium">Forma</th>
+          <th className="px-3.5 py-2.5 text-right font-medium">Valor bruto</th>
+          <th className="px-3.5 py-2.5 text-right font-medium">Taxas</th>
+          <th className="px-3.5 py-2.5 text-right font-medium">Valor líquido</th>
+          <th className="px-3.5 py-2.5 font-medium">Situação</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/60">
         {Array.from({ length: 5 }).map((_, i) => (
           <tr key={i}>
             <td className="px-3.5 py-3">
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-10" />
+            </td>
+            <td className="px-3.5 py-3">
+              <Skeleton className="h-4 w-28" />
             </td>
             <td className="px-3.5 py-3">
               <Skeleton className="h-5 w-12 rounded-full" />
             </td>
             <td className="px-3.5 py-3">
-              <Skeleton className="h-4 w-16" />
+              <Skeleton className="ml-auto h-4 w-16" />
             </td>
             <td className="px-3.5 py-3">
-              <Skeleton className="h-4 w-14" />
+              <Skeleton className="ml-auto h-4 w-14" />
             </td>
             <td className="px-3.5 py-3">
-              <Skeleton className="h-4 w-16" />
+              <Skeleton className="ml-auto h-4 w-16" />
             </td>
             <td className="px-3.5 py-3">
               <Skeleton className="h-5 w-20 rounded-full" />
@@ -201,17 +227,31 @@ export function SubaccountPanel({
   const [methodFilter, setMethodFilter] = useState<"all" | OnlinePaymentMethod>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  // Busca pelo aluno (26/11/2026): espera a pessoa parar de digitar antes de ir ao servidor.
+  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(search.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
   const receiptsQuery = useSubaccountReceipts({
     organizationId,
     from: period.from,
     to: period.to,
     status: statusFilter,
     method: methodFilter,
+    search: searchQuery || undefined,
     page,
     pageSize,
   });
-  const hasFilters = statusFilter !== "open" || methodFilter !== "all" || period.preset !== "this_month";
+  const hasFilters =
+    statusFilter !== "open" || methodFilter !== "all" || period.preset !== "this_month" || searchQuery !== "";
   const clearFilters = () => {
+    setSearch("");
+    setSearchQuery("");
     setPeriod(periodFromPreset("this_month"));
     setStatusFilter("open");
     setMethodFilter("all");
@@ -232,10 +272,76 @@ export function SubaccountPanel({
     .reduce((total, t) => total + t.valueCents, 0);
 
 
+  const router = useRouter();
+  const canManageBilling = useCan()("billing:manage");
+  const copy = (text: string, done: string) =>
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success(done))
+      .catch(() => toast.error("Não foi possível copiar."));
+  // Acoes da linha (26/11/2026), as mesmas no menu e no clique direito.
+  const receiptActions = (r: SubaccountReceiptItem): ListItemAction[] => {
+    const billingUrl = (extra = "") =>
+      `/classes/billing?status=all${r.chargeMonth ? `&month=${r.chargeMonth}` : ""}${extra}`;
+    const pageUrl = r.publicCode ? paymentPageUrl(r.publicCode) : r.linkUrl;
+    const actions: ListItemAction[] = [
+      {
+        key: "charge",
+        label: "Ver cobrança",
+        icon: <Receipt className="size-4" />,
+        onSelect: () => router.push(billingUrl()),
+      },
+    ];
+    if (r.status === "awaiting") {
+      if (pageUrl) {
+        actions.push(
+          {
+            key: "open-page",
+            label: "Abrir página de pagamento",
+            icon: <ExternalLink className="size-4" />,
+            onSelect: () => window.open(pageUrl, "_blank", "noopener"),
+          },
+          {
+            key: "copy-link",
+            label: "Copiar link de pagamento",
+            icon: <Link2 className="size-4" />,
+            onSelect: () => copy(pageUrl, "Link copiado."),
+          },
+        );
+      }
+      if (r.pixCopyPaste) {
+        actions.push({
+          key: "copy-pix",
+          label: "Copiar Pix copia e cola",
+          icon: <QrCode className="size-4" />,
+          onSelect: () => copy(r.pixCopyPaste!, "Pix copiado."),
+        });
+      }
+    }
+    if (r.status === "paid" && r.receiptUrl) {
+      actions.push({
+        key: "receipt",
+        label: "Ver comprovante",
+        icon: <FileText className="size-4" />,
+        onSelect: () => window.open(r.receiptUrl, "_blank", "noopener"),
+      });
+    }
+    if (r.status === "paid" && !r.refundStatus && canManageBilling) {
+      actions.push({
+        key: "refund",
+        label: "Estornar pagamento",
+        icon: <Undo2 className="size-4" />,
+        onSelect: () => router.push(billingUrl(`&refund=${r.chargeId}`)),
+      });
+    }
+    return actions;
+  };
+
   return (
     <div className="space-y-6">
       {/* Métricas Principais (Cards limpos) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Estorno no periodo (26/11/2026): um quarto cartao proprio, so quando houve. */}
+      <div className={cn("grid grid-cols-1 gap-3", summary?.refundedCount ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3")}>
         {/* Saldo Disponível */}
         <div data-tour="op-available" className="flex flex-col justify-between rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
           <div>
@@ -290,8 +396,8 @@ export function SubaccountPanel({
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
             {nextCreditDate
-              ? `Pago pelo aluno · próxima liberação em ${formatDayMonth(nextCreditDate)}`
-              : "Cartão de crédito libera cerca de 32 dias após o pagamento"}
+              ? `Próxima liberação em ${formatDayMonth(nextCreditDate)}`
+              : "Cartão libera em até 32 dias"}
           </div>
         </div>
 
@@ -312,10 +418,43 @@ export function SubaccountPanel({
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
-            Líquido já disponível · taxas {formatCents(summary?.feeCents ?? 0)}
+            Líquido · taxas {formatCents(summary?.feeCents ?? 0)}
             {summary?.pendingNetCents ? ` · a liberar ${formatCents(summary.pendingNetCents)}` : ""}
           </div>
         </div>
+
+        {summary?.refundedCount ? (
+          <div className="flex flex-col justify-between rounded-xl border border-violet-500/25 bg-violet-500/5 p-4" data-testid="op-refunded">
+            <div>
+              <div className="flex items-center justify-between text-xs font-medium text-violet-700 dark:text-violet-300">
+                <span>{period.preset === "this_month" ? "Estornado no mês" : "Estornado no período"}</span>
+                <Undo2 className="size-4" />
+              </div>
+              <div className="mt-2 text-2xl font-bold tracking-tight text-violet-900 dark:text-violet-100">
+                {formatCents(summary.refundedCents)}
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
+              <span>
+                {summary.refundedCount === 1 ? "1 devolvido" : `${summary.refundedCount} devolvidos`}
+                {" · "}
+                {summary.refundCostCents ? `custou ${formatCents(summary.refundCostCents)}` : "sem custo"}
+              </span>
+              {statusFilter !== "refunded" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter("refunded");
+                    setPage(1);
+                  }}
+                  className="shrink-0 font-medium text-violet-700 hover:underline dark:text-violet-300"
+                >
+                  Ver
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Extrato e Movimentações */}
@@ -375,7 +514,15 @@ export function SubaccountPanel({
           {tab === "receipts" ? (
             <div className="space-y-3">
               {/* Filtros: mes, situacao e forma */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Buscar aluno..."
+                  aria-label="Buscar aluno"
+                  className="sm:w-64"
+                />
                 <PeriodRangePicker
                   value={period}
                   onChange={(next) => {
@@ -384,6 +531,7 @@ export function SubaccountPanel({
                   }}
                   className="sm:min-w-56"
                 />
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:flex">
                   <Select
                     value={statusFilter}
@@ -425,13 +573,27 @@ export function SubaccountPanel({
                 </div>
               </div>
 
-              {hasFilters ? (
-                <div className="flex justify-end px-1 text-xs">
-                  <button type="button" onClick={clearFilters} className="cursor-pointer font-medium text-foreground hover:underline">
+              {/* Resumo do que a lista mostra (26/11/2026): contagem e totais do filtro. */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground" data-testid="receipts-summary">
+                {receiptsQuery.isLoading ? (
+                  <Skeleton className="h-4 w-48 rounded-sm" />
+                ) : (
+                  <span>
+                    {plural(receiptsTotal, "movimentação", "movimentações")}
+                    {receiptsQuery.data?.listTotals.receivedNetCents
+                      ? ` · recebido ${formatCents(receiptsQuery.data.listTotals.receivedNetCents)}`
+                      : ""}
+                    {receiptsQuery.data?.listTotals.awaitingCents
+                      ? ` · aguardando ${formatCents(receiptsQuery.data.listTotals.awaitingCents)}`
+                      : ""}
+                  </span>
+                )}
+                {hasFilters ? (
+                  <button type="button" onClick={clearFilters} className="cursor-pointer font-medium text-primary hover:underline">
                     Limpar filtros
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
 
             <div className={cn("overflow-x-auto rounded-lg border border-border/60 transition-opacity", receiptsQuery.isFetching && !receiptsQuery.isLoading && "opacity-60")}>
               {receiptsQuery.isLoading ? (
@@ -457,38 +619,62 @@ export function SubaccountPanel({
                     : "Nenhuma movimentação neste período."}
                 </div>
               ) : (
-                <table className="w-full text-left text-xs">
+                <>
+                <table className="hidden w-full text-left text-xs md:table">
                   <thead className="border-b bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-3.5 py-2.5 font-medium">Data / Hora</th>
-                      <th className="px-3.5 py-2.5 font-medium">Método</th>
-                      <th className="px-3.5 py-2.5 font-medium">Valor Bruto</th>
-                      <th className="px-3.5 py-2.5 font-medium">Taxas</th>
-                      <th className="px-3.5 py-2.5 font-medium">Valor Líquido</th>
-                      <th className="px-3.5 py-2.5 font-medium">Status</th>
+                      <th className="px-3.5 py-2.5 font-medium">Hora</th>
+                      <th className="px-3.5 py-2.5 font-medium">Aluno</th>
+                      <th className="px-3.5 py-2.5 font-medium">Forma</th>
+                      <th className="px-3.5 py-2.5 text-right font-medium">Valor bruto</th>
+                      <th className="px-3.5 py-2.5 text-right font-medium">Taxas</th>
+                      <th className="px-3.5 py-2.5 text-right font-medium">Valor líquido</th>
+                      <th className="px-3.5 py-2.5 font-medium">Situação</th>
+                      <th className="w-10 px-2 py-2.5" aria-label="Ações" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {receipts.map((r) => {
-                      const dateFormatted = new Date(
-                        r.paidAt || r.createdAt,
-                      ).toLocaleString("pt-BR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      });
+                    {receipts.map((r, index) => {
+                      // Por dia (26/11/2026): um titulo quando o dia muda; na linha, so a hora
+                      // do ultimo acontecimento (estorno, pagamento ou criacao do codigo).
+                      const day = dateInSpace(r.eventAt);
+                      const newDay = index === 0 || dateInSpace(receipts[index - 1].eventAt) !== day;
+                      const time = new Date(r.eventAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
                       return (
-                        <tr key={r.id} className="hover:bg-muted/30">
-                          <td className="px-3.5 py-2.5 text-muted-foreground">
-                            {dateFormatted}
+                        <Fragment key={r.id}>
+                        {newDay ? (
+                          <tr className="bg-muted/20">
+                            <td colSpan={8} className="px-3.5 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                              {dayHeading(day)}
+                            </td>
+                          </tr>
+                        ) : null}
+                        <ListItemContextMenu asChild actions={receiptActions(r)}>
+                        <tr className="hover:bg-muted/30">
+                          <td className="px-3.5 py-2.5 tabular-nums text-muted-foreground">{time}</td>
+                          <td className="px-3.5 py-2.5">
+                            {r.studentName ? (
+                              <Link
+                                href={r.studentId ? `/clients/${r.studentId}` : "#"}
+                                className="block min-w-0 break-words font-medium text-foreground hover:underline"
+                              >
+                                {r.studentName}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            {r.chargeLabel ? (
+                              <span className="block break-words text-[11px] text-muted-foreground">{r.chargeLabel}</span>
+                            ) : null}
                           </td>
                           <td className="px-3.5 py-2.5">
                             <Badge variant="outline" className="text-[10px] font-normal">
                               {onlinePaymentMethodLabel(r.method, r.paidMethod)}
                             </Badge>
                           </td>
-                          <td className="px-3.5 py-2.5 font-medium text-foreground">
-                            <div className="flex items-center gap-1.5">
+                          <td className="px-3.5 py-2.5 text-right font-medium tabular-nums text-foreground">
+                            <div className="flex items-center justify-end gap-1.5">
                               <span>{formatCents(r.amountCents)}</span>
                               {r.feePassedToCustomer ? (
                                 <Badge
@@ -500,61 +686,99 @@ export function SubaccountPanel({
                               ) : null}
                             </div>
                           </td>
-                          <td className="px-3.5 py-2.5 text-muted-foreground">
-                            <FeesPopover receipt={r} />
-                          </td>
-                          <td
-                            className={cn(
-                              "px-3.5 py-2.5 font-medium",
-                              r.status === "paid" && "font-semibold text-emerald-600 dark:text-emerald-400",
-                              r.status === "awaiting" && "text-foreground",
-                              (r.status === "canceled" || r.status === "expired") &&
-                                "text-muted-foreground line-through opacity-70",
+                          <td className="px-3.5 py-2.5 text-right tabular-nums text-muted-foreground">
+                            {r.refundStatus ? (
+                              // Estornado: no cartao as taxas voltaram; no Pix fica a tarifa do parceiro.
+                              r.refundCostCents ? (
+                                <span title="A tarifa do Pix não volta no estorno.">- {formatCents(r.refundCostCents)}</span>
+                              ) : (
+                                <span className="text-xs" title="As taxas voltaram no estorno.">voltaram</span>
+                              )
+                            ) : (
+                              <FeesPopover receipt={r} />
                             )}
-                          >
-                            {r.method !== "pix" && !r.paidMethod && r.status === "awaiting"
-                              ? `a partir de ${formatCents(r.netAmountCents)}`
-                              : formatCents(r.netAmountCents)}
+                          </td>
+                          <td className={cn("px-3.5 py-2.5 text-right tabular-nums", receiptNetClass(r))}>
+                            {receiptNetText(r)}
                           </td>
                           <td className="px-3.5 py-2.5">
-                            {(() => {
-                              const badge = RECEIPT_STATUS_MAP[r.status] || {
-                                label: r.status,
-                                className: "border-border/60 bg-muted/50 text-muted-foreground",
-                              };
-                              return (
-                                <div className="flex flex-col items-start gap-1">
-                                  <span
-                                    title={r.canceledReason}
-                                    className={cn(
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shrink-0",
-                                      badge.className,
-                                    )}
-                                  >
-                                    {badge.label}
-                                  </span>
-                                  {r.status === "paid" && !r.fundsReleased ? (
-                                    <span className="text-[10px] leading-tight text-muted-foreground">
-                                      {onlineFundsLabel(false, r.creditDate, formatDayMonth)}
-                                    </span>
-                                  ) : null}
-                                  {r.canceledReason ? (
-                                    <span
-                                      title={r.canceledReason}
-                                      className="text-[10px] text-muted-foreground whitespace-normal leading-tight max-w-[150px]"
-                                    >
-                                      {r.canceledReason}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              );
-                            })()}
+                            <ReceiptStatus receipt={r} />
+                          </td>
+                          <td className="px-2 py-2.5 text-right">
+                            <ListItemActionsMenu
+                              title="Mais opções"
+                              ariaLabel={`Ações da movimentação de ${r.studentName ?? "aluno"}`}
+                              variant="ghost"
+                              actions={receiptActions(r)}
+                            />
                           </td>
                         </tr>
+                        </ListItemContextMenu>
+                        </Fragment>
                       );
                     })}
                   </tbody>
                 </table>
+                {/* Celular (26/11/2026): uma movimentacao por linha, sem a tabela de 7 colunas. */}
+                <ul className="divide-y divide-border/60 md:hidden" data-testid="receipts-mobile">
+                  {receipts.map((r, index) => {
+                    const day = dateInSpace(r.eventAt);
+                    const newDay = index === 0 || dateInSpace(receipts[index - 1].eventAt) !== day;
+                    const time = new Date(r.eventAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <Fragment key={r.id}>
+                        {newDay ? (
+                          <li className="bg-muted/20 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                            {dayHeading(day)}
+                          </li>
+                        ) : null}
+                        <li>
+                          <ListItemContextMenu actions={receiptActions(r)}>
+                            <div className="flex items-start gap-2 px-3 py-3">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    {r.studentName ? (
+                                      <Link
+                                        href={r.studentId ? `/clients/${r.studentId}` : "#"}
+                                        className="block break-words text-sm font-medium text-foreground hover:underline"
+                                      >
+                                        {r.studentName}
+                                      </Link>
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">—</span>
+                                    )}
+                                    {r.chargeLabel ? (
+                                      <span className="block break-words text-[11px] text-muted-foreground">{r.chargeLabel}</span>
+                                    ) : null}
+                                  </div>
+                                  <span className={cn("shrink-0 text-right text-sm tabular-nums", receiptNetClass(r))}>
+                                    {receiptNetText(r)}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                                  <span className="tabular-nums">{time}</span>
+                                  <span aria-hidden>·</span>
+                                  <span>{onlinePaymentMethodLabel(r.method, r.paidMethod)}</span>
+                                  <span aria-hidden>·</span>
+                                  <span className="tabular-nums">bruto {formatCents(r.amountCents)}</span>
+                                </div>
+                                <ReceiptStatus receipt={r} />
+                              </div>
+                              <ListItemActionsMenu
+                                title="Mais opções"
+                                ariaLabel={`Ações da movimentação de ${r.studentName ?? "aluno"}`}
+                                variant="ghost"
+                                actions={receiptActions(r)}
+                              />
+                            </div>
+                          </ListItemContextMenu>
+                        </li>
+                      </Fragment>
+                    );
+                  })}
+                </ul>
+                </>
               )}
             </div>
 
@@ -688,6 +912,7 @@ const RECEIPT_STATUS_FILTER_LABEL: Record<ReceiptStatusFilter, string> = {
   paid: "Pagas",
   awaiting: "Aguardando",
   canceled: "Canceladas",
+  refunded: "Estornadas",
   all: "Todas",
 };
 
@@ -717,7 +942,7 @@ function FeesPopover({ receipt: r }: { receipt: SubaccountReceiptItem }) {
           className="cursor-pointer text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
           aria-label="Ver o detalhe das taxas"
         >
-          {estimated ? "até " : ""}- {formatCents(total)}
+          {estimated ? `até ${formatCents(total)}` : `- ${formatCents(total)}`}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 space-y-2.5 text-xs">
@@ -737,7 +962,7 @@ function FeesPopover({ receipt: r }: { receipt: SubaccountReceiptItem }) {
           <div className="flex items-start justify-between gap-3">
             <span className="text-muted-foreground">
               Taxa GestaraHub
-              <span className="block text-[11px]">Fixa por cobrança recebida.</span>
+              <span className="block text-[11px]">Percentual da cobrança, com mínimo e máximo do plano.</span>
             </span>
             <span className="shrink-0 font-medium text-foreground">{formatCents(r.splitAmountCents)}</span>
           </div>
@@ -763,6 +988,75 @@ function FeesPopover({ receipt: r }: { receipt: SubaccountReceiptItem }) {
 }
 
 /** "2026-11-24" -> "24/11". */
+/** Cor do valor liquido: pago em verde, estimativa e estorno sem custo em cinza, custo em vermelho. */
+function receiptNetClass(r: SubaccountReceiptItem): string {
+  if (r.refundStatus) return r.refundCostCents ? "font-medium text-red-600 dark:text-red-400" : "font-medium text-muted-foreground";
+  if (r.status === "paid") return "font-semibold text-emerald-600 dark:text-emerald-400";
+  // Codigo em aberto: taxa e liquido ainda sao estimativa.
+  if (r.status === "awaiting") return "text-muted-foreground";
+  return "font-medium text-muted-foreground line-through opacity-70";
+}
+
+/** Liquido: o efeito final no estorno; "a partir de" no link ainda sem o meio escolhido. */
+function receiptNetText(r: SubaccountReceiptItem): string {
+  if (r.refundStatus) return r.refundCostCents ? `- ${formatCents(r.refundCostCents)}` : formatCents(0);
+  if (r.method !== "pix" && !r.paidMethod && r.status === "awaiting") return `a partir de ${formatCents(r.netAmountCents)}`;
+  return formatCents(r.netAmountCents);
+}
+
+/** Situacao com o detalhe embaixo (estorno, validade, liberacao ou motivo). */
+function ReceiptStatus({ receipt: r }: { receipt: SubaccountReceiptItem }) {
+  const badge = (r.refundStatus ? RECEIPT_REFUND_BADGE[r.refundStatus] : RECEIPT_STATUS_MAP[r.status]) || {
+    label: r.status,
+    className: "border-border/60 bg-muted/50 text-muted-foreground",
+  };
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <span
+        title={r.canceledReason}
+        className={cn(
+          "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none",
+          badge.className,
+        )}
+      >
+        {badge.label}
+      </span>
+      {r.refundStatus ? (
+        <span className="text-[10px] leading-tight text-muted-foreground">
+          {`devolvido ao aluno${r.refundedAt ? ` em ${formatDayMonth(r.refundedAt.slice(0, 10))}` : ""}`}
+        </span>
+      ) : null}
+      {r.status === "awaiting" && r.expiresAt ? (
+        <span className="text-[10px] leading-tight text-muted-foreground">
+          {`vale até ${formatDayMonth(dateInSpace(r.expiresAt))}${r.openedAt ? " · aberto pelo aluno" : ""}`}
+        </span>
+      ) : null}
+      {r.status === "paid" && !r.refundStatus && !r.fundsReleased ? (
+        <span className="text-[10px] leading-tight text-muted-foreground">
+          {onlineFundsLabel(false, r.creditDate, formatDayMonth)}
+        </span>
+      ) : null}
+      {r.canceledReason ? (
+        <span title={r.canceledReason} className="max-w-[150px] whitespace-normal text-[10px] leading-tight text-muted-foreground">
+          {r.canceledReason}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** Titulo do dia no historico: "Hoje · 26/11", "Ontem · 25/11" ou "24/11/2026". */
+function dayHeading(day: string): string {
+  const today = dateInSpace();
+  const yesterdayDate = new Date(`${today}T12:00:00Z`);
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterday = yesterdayDate.toISOString().slice(0, 10);
+  const [y, m, d] = day.split("-");
+  if (day === today) return `Hoje · ${d}/${m}`;
+  if (day === yesterday) return `Ontem · ${d}/${m}`;
+  return `${d}/${m}/${y}`;
+}
+
 function formatDayMonth(date: string): string {
   const [, m, d] = date.slice(0, 10).split("-");
   return `${d}/${m}`;

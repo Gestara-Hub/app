@@ -160,7 +160,7 @@ export function PlansView() {
           {/* Plano Grátis */}
           <Card
             className={cn(
-              "flex flex-col justify-between rounded-2xl border transition-all duration-200 relative bg-card shadow-xs",
+              "flex flex-col justify-between rounded-xl border transition-all duration-200 relative bg-card shadow-xs",
               currentTier === "free"
                 ? "border-primary/50 ring-1 ring-primary/20"
                 : "border-border/70 hover:border-border",
@@ -221,7 +221,7 @@ export function PlansView() {
           {/* Plano Profissional (destaque) */}
           <Card
             className={cn(
-              "flex flex-col justify-between rounded-2xl border-2 transition-all duration-200 relative bg-card shadow-md",
+              "flex flex-col justify-between rounded-xl border-2 transition-all duration-200 relative bg-card shadow-md",
               "border-primary ring-2 ring-primary/20",
             )}
           >
@@ -290,7 +290,7 @@ export function PlansView() {
           {showScale ? (
           <Card
             className={cn(
-              "flex flex-col justify-between rounded-2xl border transition-all duration-200 relative bg-card shadow-xs",
+              "flex flex-col justify-between rounded-xl border transition-all duration-200 relative bg-card shadow-xs",
               currentTier === "scale"
                 ? "border-indigo-500/60 ring-2 ring-indigo-500/20"
                 : "border-border/70 hover:border-border",
@@ -505,7 +505,7 @@ export function PlansSkeleton() {
         )}
       >
         {/* Card 1: Grátis */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
+        <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-3.5 w-24 rounded" />
@@ -534,7 +534,7 @@ export function PlansSkeleton() {
         </div>
 
         {/* Card 2: Profissional (Destaque) */}
-        <div className="relative flex flex-col justify-between rounded-2xl border-2 border-primary/40 bg-card p-6 pt-7 shadow-md space-y-6">
+        <div className="relative flex flex-col justify-between rounded-xl border-2 border-primary/40 bg-card p-6 pt-7 shadow-md space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-3.5 w-32 rounded" />
@@ -564,7 +564,7 @@ export function PlansSkeleton() {
 
         {/* Card 3: Expansão */}
         {SCALE_PLAN_ON_SALE ? (
-        <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
+        <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-3.5 w-28 rounded" />

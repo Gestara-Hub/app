@@ -53,6 +53,7 @@ export const billingSlices: Record<string, MethodSlice> = {
     "createExtraCharge",
     "markPaid",
     "markPending",
+    "refundCharge",
     "cancelCharge",
     "reopenCharge",
   ].map((name) => [name, billing]),

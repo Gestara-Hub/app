@@ -2247,7 +2247,7 @@
     "article": "Plano GestaraHub (Grátis e Profissional)",
     "title": "O que o Profissional acrescenta",
     "route": "/plans",
-    "text": "Lembretes e avisos no WhatsApp sem clique, relatório do resultado do mês, retenção de alunos, certificado de conclusão em PDF e taxa menor por Pix pago."
+    "text": "Lembretes e avisos no WhatsApp sem clique, relatório do resultado do mês, retenção de alunos, certificado de conclusão em PDF e taxa online menor (1% por cobrança paga, no lugar de 1,5%)."
   },
   {
     "id": "plano-gestarahub#quem-paga-as-mensagens-automaticas-do-whatsapp",
@@ -2770,7 +2770,7 @@
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Taxas",
     "route": "/online-payments",
-    "text": "Cada Pix recebido online: R$ 1,99 do GestaraHub no plano Grátis (R$ 1,29 no Profissional), mais a tarifa do parceiro de pagamentos. Você pode repassar a taxa ao aluno nas configurações de recebimento.",
+    "text": "Cada pagamento recebido online: 1,5% do valor para o GestaraHub no plano Grátis, de R$ 0,99 a R$ 9,90 (1% no Profissional, de R$ 0,69 a R$ 6,90), mais a tarifa do parceiro de pagamentos. Você pode repassar a taxa ao aluno nas configurações de recebimento.",
     "guide": {
       "route": "/online-payments",
       "steps": [

@@ -77,26 +77,26 @@ describe("cobrança online: gerar Pix ou link", () => {
   });
 
   it("grava tarifa do Asaas, taxa GestaraHub e líquido (doc 19 §4, decisão A)", async () => {
-    // proAcademy: split R$ 1,29. Cobrança de R$ 150,00.
+    // proAcademy: taxa de 1% (R$ 0,69 a R$ 6,90, doc 13 de 26/11/2026). Cobrança de R$ 150,00: R$ 1,50.
     const { charge } = await studentWithCharge();
     const pix = await onlinePaymentsService.createForCharge(charge.id, "pix", false);
     expect(pix.amountCents).toBe(15000);
     expect(pix.gatewayFeeCents).toBe(199);
-    expect(pix.splitAmountCents).toBe(129);
-    expect(pix.netAmountCents).toBe(15000 - 199 - 129);
+    expect(pix.splitAmountCents).toBe(150);
+    expect(pix.netAmountCents).toBe(15000 - 199 - 150);
     expect(pix.feePassedToCustomer).toBe(false);
     // Sem Asaas no teste, o provedor gravado e o de demonstracao, nunca "asaas".
     expect(pix.gatewayProvider).toBe("mock");
 
     const passed = await onlinePaymentsService.createForCharge(charge.id, "pix", true);
-    expect(passed.amountCents).toBe(15000 + 199 + 129);
+    expect(passed.amountCents).toBe(15000 + 199 + 150);
     expect(passed.netAmountCents).toBe(15000);
     expect(passed.feePassedToCustomer).toBe(true);
 
     // Link = cartão: sem tabela da subconta, a reserva usa o crédito cheio (2,99% + R$ 0,49).
     const link = await onlinePaymentsService.createForCharge(charge.id, "link", false);
     expect(link.gatewayFeeCents).toBe(Math.floor(15000 * 0.0299) + 49);
-    expect(link.netAmountCents).toBe(15000 - link.gatewayFeeCents! - 129);
+    expect(link.netAmountCents).toBe(15000 - link.gatewayFeeCents! - 150);
   });
 
   it("usa as tarifas da subconta, com a promoção só até a data de fim", async () => {

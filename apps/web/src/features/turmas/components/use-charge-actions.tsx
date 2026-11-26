@@ -4,7 +4,7 @@ import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { cancelOpenCodeNote, chargeAccessibleLabel } from "../charge-label";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { toast } from "@/lib/toast";
-import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
+import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw, Undo2 } from "lucide-react";
 import {
   ConfirmActionDialog,
   useConfirmAction,
@@ -40,6 +40,7 @@ import {
 import type { PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { RegisterPaymentDialog } from "./register-payment-dialog";
 import { OnlineChargeDialog } from "./online-charge-dialog";
+import { RefundChargeDialog } from "./refund-charge-dialog";
 import {
   CANCEL_REASON_SUGGESTIONS,
   EXTRA_CANCEL_REASON_SUGGESTIONS,
@@ -71,6 +72,8 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
   const shownChargeToCancel = useRetainedValue(chargeToCancel);
   const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
   const [chargeToCollect, setChargeToCollect] = useState<ChargeView | null>(null);
+  // Devolver o pagamento (doc product/15, "Estorno de pagamento").
+  const [chargeToRefund, setChargeToRefund] = useState<ChargeView | null>(null);
 
   const paidMut = useMarkChargePaid();
   const pendingMut = useMarkChargePending();
@@ -233,9 +236,17 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     }))];
   };
 
+  const refundAction = (c: ChargeView): ListItemAction => ({
+    key: "refund",
+    label: "Estornar pagamento",
+    icon: <Undo2 className="size-4" />,
+    onSelect: () => setChargeToRefund(c),
+  });
+
   // Clique direito: espelha o que a linha oferece (menu, desfazer ou reverter).
   const contextActions = (c: ChargeView): ListItemAction[] => {
-    if (!canManage || c.status === "waived" || isReplaced(c)) return [];
+    // Devolvida e encerrada: nada a fazer (a devolucao fica no historico).
+    if (!canManage || c.status === "waived" || c.status === "refunded" || isReplaced(c)) return [];
     if (c.status === "canceled") {
       if (isSystemCanceled(c)) return [];
       return [
@@ -249,9 +260,10 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
       ];
     }
     if (c.status === "paid") {
-      if (isPaidOnline(c)) return [];
+      if (isPaidOnline(c)) return [refundAction(c)];
       return [
         ...receiptActions(c),
+        refundAction(c),
         {
           key: "undo-payment",
           label: "Desfazer pagamento",
@@ -279,8 +291,8 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     if (!canManage) return null;
     const iconCls = compact ? "size-3.5" : "size-4";
 
-    // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
-    if (c.status === "waived") return null;
+    // Isento (bolsa integral) ou devolvida e encerrada: nada a pagar, cobrar ou cancelar.
+    if (c.status === "waived" || c.status === "refunded") return null;
 
     // Substituida ou encerrada pelo sistema: nao reabre; nada a fazer nela.
     if (isReplaced(c) || (c.status === "canceled" && isSystemCanceled(c))) return null;
@@ -301,9 +313,18 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
 
     if (c.status === "paid") {
       if (isPaidOnline(c)) {
+        const refundMenu = (
+          <ListItemActionsMenu
+            title="Mais opções"
+            ariaLabel={`Ações de ${nameOf(c)}`}
+            variant="ghost"
+            actions={[refundAction(c)]}
+          />
+        );
         // Pago online: o (i) abre o mesmo quadro do selo (quando pagou, valores, saque, comprovante).
         if (c.paidVia === "online") {
           return (
+            <div className="flex items-center gap-0.5">
             <OnlineSettlementPopover charge={c}>
               <Button
                 variant="ghost"
@@ -315,10 +336,13 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
                 <Info className={iconCls} />
               </Button>
             </OnlineSettlementPopover>
+            {refundMenu}
+            </div>
           );
         }
         const hint = PAID_RECURRING_HINT;
         return (
+          <div className="flex items-center gap-0.5">
           <span
             title={hint}
             aria-label={hint}
@@ -330,45 +354,19 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
           >
             <Info className={iconCls} />
           </span>
+          {refundMenu}
+          </div>
         );
       }
-      if (c.attachments?.length) {
-        return (
-          <ListItemActionsMenu
-            title="Mais opções"
-            ariaLabel={`Ações de ${nameOf(c)}`}
-            variant="ghost"
-            actions={contextActions(c)}
-          />
-        );
-      }
-      const undoButton = (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title="Desfazer pagamento"
-          onClick={() => undoPayment(c)}
-        >
-          <RotateCcw className={iconCls} />
-        </Button>
-      );
-      if (!serverDocuments) return undoButton;
+      // Pago na mao: recibo, comprovantes, devolver e desfazer no menu da linha
+      // (26/11/2026: antes eram botoes soltos de recibo e desfazer).
       return (
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-sm" asChild>
-            <a
-              href={`/api/documents/charges/${c.id}/receipt`}
-              target="_blank"
-              rel="noopener"
-              title="Baixar recibo"
-              aria-label={`Baixar recibo de ${nameOf(c)}`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <FileText className={iconCls} />
-            </a>
-          </Button>
-          {undoButton}
-        </div>
+        <ListItemActionsMenu
+          title="Mais opções"
+          ariaLabel={`Ações de ${nameOf(c)}`}
+          variant="ghost"
+          actions={contextActions(c)}
+        />
       );
     }
 
@@ -385,6 +383,12 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
   const dialogs = (
     <>
       {confirmDialog}
+      <RefundChargeDialog
+        charge={chargeToRefund}
+        onOpenChange={(open) => {
+          if (!open) setChargeToRefund(null);
+        }}
+      />
       <OnlineChargeDialog
         charge={chargeToCollect}
         onOpenChange={(open) => {
@@ -477,5 +481,16 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     </>
   );
 
-  return { canManage, isOrgPending, overRecurringLimit, contextActions, withContextMenu, renderActions, dialogs, reminderValues };
+  return {
+    canManage,
+    isOrgPending,
+    overRecurringLimit,
+    contextActions,
+    withContextMenu,
+    renderActions,
+    dialogs,
+    reminderValues,
+    // Aviso de estorno ("Resolver"): abre a devolucao da cobranca.
+    openRefund: setChargeToRefund,
+  };
 }

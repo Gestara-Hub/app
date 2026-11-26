@@ -50,7 +50,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText, platformSplitCents } from "@gestarahub/core/payment-fees";
+import {
+  ASAAS_FEES,
+  PLATFORM_FEE_RULES,
+  pixWithdrawalRuleText,
+  platformFeePercentText,
+  platformFeeRuleText,
+  platformSplitCents,
+} from "@gestarahub/core/payment-fees";
+
 import { formatCents } from "@gestarahub/core/format";
 import { isValidCpfOrCnpj } from "@gestarahub/core/payer";
 import { PERSON_ACCOUNT_NOTICE, showsPersonAccountNotice } from "../account-notice";
@@ -58,6 +66,19 @@ import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
 import { useSubscriptionTier } from "@/features/auth";
 import { FINANCE_EMAIL_HINT, NEW_ASAAS_ACCOUNT_NOTICE, announceAsaasAccess } from "./asaas-access-guide";
 import { todayISO } from "@gestarahub/core/date";
+
+/**
+ * Taxa do GestaraHub no contrato (26/11/2026, doc 13): percentual com minimo e
+ * teto, lida da regra do core para o texto nunca divergir do que e cobrado.
+ */
+const feeClause = (tier: "free" | "pro") => {
+  const rule = PLATFORM_FEE_RULES[tier];
+  return `${String(rule.percent).replace(".", ",")}% do valor de cada cobrança liquidada, com mínimo de ${formatCents(rule.minCents)} e máximo de ${formatCents(rule.maxCents)}`;
+};
+// Exemplo do contrato: mensalidade de R$ 150,00 via Pix no Grátis, tarifa cheia do parceiro.
+const EXAMPLE_CENTS = 15000;
+const EXAMPLE_PLATFORM_CENTS = platformSplitCents("free", EXAMPLE_CENTS);
+const EXAMPLE_NET_CENTS = EXAMPLE_CENTS - ASAAS_FEES.pix.fixedCents - EXAMPLE_PLATFORM_CENTS;
 
 function maskCpfCnpj(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -419,7 +440,7 @@ export function ActivateSubaccountDialog({
                         Declaro que li e concordo com os Termos de Intermediação e Pagamentos do GestaraHub
                       </label>
                       <p className="text-[11px] leading-normal text-muted-foreground">
-                        Autorizo expressamente o GestaraHub a abrir a conta de recebimento na instituição parceira (Asaas I.P. S.A.) e a descontar automaticamente, de cada cobrança paga, a tarifa da instituição parceira e a taxa do GestaraHub (R$ 1,99 no plano grátis ou R$ 1,29 nos pagos).
+                        Autorizo expressamente o GestaraHub a abrir a conta de recebimento na instituição parceira (Asaas I.P. S.A.) e a descontar automaticamente, de cada cobrança paga, a tarifa da instituição parceira e a taxa do GestaraHub ({platformFeeRuleText("free")} no plano grátis; {platformFeeRuleText("pro")} nos pagos).
                       </p>
                       <button
                         type="button"
@@ -502,12 +523,12 @@ export function ActivateSubaccountDialog({
                 2. Como Funciona a Tarifa (Divisão Automática de Valores)
               </p>
               <p className="mt-0.5">
-                O CONTRATANTE autoriza expressamente que, no exato instante em que o pagamento for confirmado pela rede bancária, sejam retidas do valor recebido: (a) a tarifa da instituição parceira, conforme o meio de pagamento e a tabela vigente da sua conta (inclusive valores promocionais, quando houver); e (b) a taxa da plataforma GestaraHub, de R$ 1,99 por cobrança liquidada no plano grátis ou R$ 1,29 nos planos pagos. Ao gerar cada cobrança, o CONTRATANTE pode optar por repassar essas taxas ao aluno, que passa a pagar o valor acrescido.
+                O CONTRATANTE autoriza expressamente que, no exato instante em que o pagamento for confirmado pela rede bancária, sejam retidas do valor recebido: (a) a tarifa da instituição parceira, conforme o meio de pagamento e a tabela vigente da sua conta (inclusive valores promocionais, quando houver); e (b) a taxa da plataforma GestaraHub, de {feeClause("free")} no plano grátis, ou de {feeClause("pro")} nos planos pagos. Ao gerar cada cobrança, o CONTRATANTE pode optar por repassar essas taxas ao aluno, que passa a pagar o valor acrescido.
               </p>
               <div className="mt-1.5 rounded-md bg-muted/60 p-2.5 text-[11px] text-foreground">
                 <p className="font-medium">Exemplo prático de funcionamento:</p>
                 <p className="mt-0.5 text-muted-foreground">
-                  Quando um aluno paga uma mensalidade de R$ 150,00 via Pix no plano grátis, saem na hora a tarifa do parceiro (até R$ 1,99) e a taxa do GestaraHub (R$ 1,99), e pelo menos R$ 146,02 entram no saldo da sua conta, livres para você transferir via Pix quando quiser. Se você repassar as taxas ao aluno, ele paga o valor acrescido e você recebe os R$ 150,00. Você nunca precisará pagar boletos no fim do mês ou calcular tarifas manualmente.
+                  Quando um aluno paga uma mensalidade de R$ 150,00 via Pix no plano grátis, saem na hora a tarifa do parceiro (até {formatCents(ASAAS_FEES.pix.fixedCents)}) e a taxa do GestaraHub ({formatCents(EXAMPLE_PLATFORM_CENTS)}, {platformFeePercentText("free")} de {formatCents(EXAMPLE_CENTS)}), e pelo menos {formatCents(EXAMPLE_NET_CENTS)} entram no saldo da sua conta, livres para você transferir via Pix quando quiser. Se você repassar as taxas ao aluno, ele paga o valor acrescido e você recebe os R$ 150,00. Você nunca precisará pagar boletos no fim do mês ou calcular tarifas manualmente.
                 </p>
               </div>
             </div>
@@ -611,7 +632,8 @@ function percentLabel(fraction: number): string {
  */
 function FeeTable() {
   const tier = useSubscriptionTier();
-  const platformFee = formatCents(platformSplitCents(tier));
+  // Percentual do valor, com minimo e teto (doc 13, 26/11/2026): na tabela so o percentual.
+  const platformFee = platformFeePercentText(tier);
   const rows = [
     {
       icon: <QrCode className="size-4 text-emerald-600 dark:text-emerald-400" />,
@@ -625,7 +647,7 @@ function FeeTable() {
       method: "Cartão de crédito",
       detail: "Pelo link de pagamento",
       partner: `até ${percentLabel(ASAAS_FEES.creditCard.percent)} + ${formatCents(ASAAS_FEES.creditCard.fixedCents)}`,
-      when: "Em 32 dias",
+      when: "Em até 32 dias",
     },
   ];
   return (
@@ -679,8 +701,8 @@ function FeeTable() {
         <li>
           Taxa do GestaraHub do seu plano:{" "}
           {tier === "free"
-            ? `${formatCents(PLATFORM_SPLIT_CENTS.free)} no Grátis; ${formatCents(PLATFORM_SPLIT_CENTS.pro)} nos planos pagos.`
-            : `${platformFee} (no Grátis seria ${formatCents(PLATFORM_SPLIT_CENTS.free)}).`}
+            ? `${platformFeeRuleText("free")} no Grátis; ${platformFeeRuleText("pro")} nos planos pagos.`
+            : `${platformFeeRuleText(tier)} (no Grátis seria ${platformFeeRuleText("free")}).`}
         </li>
         <li>Sem mensalidade nem adesão. Cobrança não paga ou cancelada não custa nada.</li>
         <li>A tarifa do parceiro é a cheia; contas novas costumam ter promoção. A prévia de cada cobrança mostra o líquido, e você pode repassar as taxas ao aluno.</li>

@@ -36,6 +36,7 @@ import {
   ChargeDetails,
   ChargeStatusBadge,
   KIND_FILTER_LABEL,
+  OnlineCodeBadge,
   PaidViaBadge,
   RecurringLimitBadge,
   STATUS_FILTERS,
@@ -262,6 +263,7 @@ export function StudentChargesPanel({ studentId }: { studentId: Id }) {
                     <p className="text-sm font-medium text-foreground">{statementTitle(c)}</p>
                     {c.status === "waived" ? null : <ChargeStatusBadge charge={c} />}
                     <PaidViaBadge charge={c} />
+                    <OnlineCodeBadge charge={c} />
                     <ScholarshipBadge charge={c} />
                     <RecurringLimitBadge limitCents={actions.overRecurringLimit(c)} />
                     <WhatsAppSentBadge charge={c} />

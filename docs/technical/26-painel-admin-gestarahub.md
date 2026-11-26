@@ -208,7 +208,7 @@ A janela do chat diz ao cliente "Respondemos em até 2 dias úteis". **Sem horá
 - **Assinantes:** total por plano, por intervalo e por área.
 - **Movimento:** entradas (novos assinantes), saídas (cancelamentos e reversões ao Grátis) e trocas de plano, por mês.
 - **Conversão:** quantos espaços Grátis viraram Profissional em 30/60/90 dias, e o tempo até a conversão.
-- **Receita recorrente:** soma das assinaturas ativas (mensal e anual dividida por 12) e a taxa do Pix recebida pelo GestaraHub (split de R$ 1,99 e R$ 1,29), conferidas com o Asaas.
+- **Receita recorrente:** soma das assinaturas ativas (mensal e anual dividida por 12) e a taxa do Pix recebida pelo GestaraHub (split percentual por cobrança, doc 13 de 26/11/2026; antes R$ 1,99 e R$ 1,29 fixos), conferidas com o Asaas.
 - **Retenção:** quantos espaços ativos há 30 dias seguem ativos hoje, e os que pararam de usar (sem acesso, sem chamada, sem cobrança).
 - **Funil de ativação:** conta criada, configuração inicial concluída, primeira turma, primeiro aluno, primeira chamada, primeira cobrança, recebimento online ativo (alimenta o "primeiros passos" do app).
 

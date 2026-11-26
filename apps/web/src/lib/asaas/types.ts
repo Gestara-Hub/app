@@ -147,6 +147,7 @@ export interface AsaasPaymentResponse {
     | "REFUNDED"
     | "RECEIVED_IN_CASH"
     | "REFUND_REQUESTED"
+    | "REFUND_IN_PROGRESS"
     | "CHARGEBACK_REQUESTED"
     | "CHARGEBACK_DISPUTE"
     | "AWAITING_CHARGEBACK_REVERSAL"
@@ -163,6 +164,12 @@ export interface AsaasPaymentResponse {
   /** Assinatura que gerou a cobranca (sub_...). */
   subscription?: string;
   deleted?: boolean;
+  /** Estornos (resposta do estorno): `AWAITING_CRITICAL_ACTION_AUTHORIZATION` = falta o codigo no Asaas. */
+  refunds?: Array<{
+    status?: "PENDING" | "AWAITING_CRITICAL_ACTION_AUTHORIZATION" | "AWAITING_CUSTOMER_EXTERNAL_AUTHORIZATION" | "CANCELLED" | "DONE";
+    value?: number;
+    transactionReceiptUrl?: string | null;
+  }>;
 }
 
 export interface AsaasPixQrCodeResponse {

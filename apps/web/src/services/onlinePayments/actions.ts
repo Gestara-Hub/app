@@ -41,3 +41,5 @@ export type {
   SubaccountReceiptsQuery,
   SubaccountReceiptsSummary,
 } from "./receiptsActions";
+export { refundOnlinePaymentAction } from "./refundActions";
+export type { RefundOnlinePaymentResult } from "./refundActions";
