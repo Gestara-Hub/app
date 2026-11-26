@@ -24,6 +24,8 @@ export const STATUS_LABEL: Record<ChargeStatus, string> = {
   overdue: "Atrasado",
   canceled: "Cancelado",
   waived: "Isento",
+  // Pagamento devolvido e cobranca encerrada (doc product/15, 26/11/2026).
+  refunded: "Estornado",
 };
 
 /**
@@ -39,6 +41,7 @@ export const STATUS_CLASS: Record<ChargeStatus, string> = {
   // 10/11/2026 (o ambar passou a ser do pendente).
   canceled: "border-border/60 bg-muted/50 text-muted-foreground",
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  refunded: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
 };
 
 /** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
@@ -70,7 +73,7 @@ export const isPaidOnline = (c: ChargeView) =>
   c.status === "paid" && (c.paidVia === "online" || c.paidVia === "recurring");
 
 export const PAID_RECURRING_HINT =
-  "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+  "Pago pelo Pix Automático: para estornar, use Estornar pagamento no menu.";
 
 const PAID_VIA_CLASS =
   "inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary";
@@ -94,6 +97,30 @@ export function PaidViaBadge({ charge }: { charge: ChargeView }) {
         Pago online
       </button>
     </OnlineSettlementPopover>
+  );
+}
+
+/**
+ * Codigo online em aberto (26/11/2026): "Pix gerado", "Link gerado" ou "Boleto
+ * gerado" na linha, com "· aberto" quando o aluno ja abriu a pagina. Antes so o
+ * "Cobrar online" mostrava que ja havia um codigo.
+ */
+export function OnlineCodeBadge({ charge }: { charge: ChargeView }) {
+  if (!charge.onlineAwaitingMethod || (charge.status !== "pending" && charge.status !== "overdue")) return null;
+  const label =
+    charge.onlineAwaitingMethod === "pix"
+      ? "Pix gerado"
+      : charge.onlineAwaitingMethod === "boleto"
+        ? "Boleto gerado"
+        : "Link gerado";
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium leading-none text-sky-700 dark:text-sky-300"
+      title={charge.onlineOpenedAt ? "O aluno já abriu a página de pagamento." : "Aguardando o aluno pagar."}
+    >
+      {label}
+      {charge.onlineOpenedAt ? " · aberto" : ""}
+    </span>
   );
 }
 
@@ -395,6 +422,17 @@ export const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada",
 /** Avulsa, curso e pacote nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
 export const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
 
+/**
+ * Ultima devolucao do pagamento (doc product/15, "Estorno de pagamento"):
+ * "pagamento devolvido em 26/11 · Trocou para Pix". Na reaberta e na devolvida.
+ */
+export function refundNoteOf(c: ChargeView): string | undefined {
+  const last = c.refunds?.at(-1);
+  if (!last) return undefined;
+  const when = dueDateLabel(last.refundedOn);
+  return `pagamento estornado em ${when}${last.reason ? ` · ${last.reason}` : ""}`;
+}
+
 /** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
 export function cancelReasonOf(c: ChargeView): string | undefined {
   if (c.status !== "canceled") return undefined;
@@ -427,6 +465,7 @@ export const STATUS_FILTERS: { value: StatusFilterValue; label: string }[] = [
   { value: "other", label: "Isentas e encerradas" },
   { value: "canceled", label: "Canceladas e encerradas" },
   { value: "waived", label: "Isentas" },
+  { value: "refunded", label: "Estornadas" },
   { value: "replaced", label: "Substituídas" },
 ];
 
@@ -438,6 +477,7 @@ export function isStatusFilterValue(value: string | null): value is Exclude<Stat
     value === "paid" ||
     value === "canceled" ||
     value === "waived" ||
+    value === "refunded" ||
     value === "other" ||
     value === "replaced"
   );
@@ -448,7 +488,7 @@ export function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): b
   if (filter === "replaced") return isReplaced(c);
   if (isReplaced(c)) return false;
   if (filter === "open") return c.status === "overdue" || c.status === "pending";
-  if (filter === "other") return c.status === "waived" || c.status === "canceled";
+  if (filter === "other") return c.status === "waived" || c.status === "canceled" || c.status === "refunded";
   return filter === "all" || c.status === filter;
 }
 
@@ -505,6 +545,8 @@ export function ChargeDetails({ charge: c, showSubject = true }: { charge: Charg
   if (c.kind === "membership" && ref) parts.push(`referente a ${ref}`);
   const reason = cancelReasonOf(c);
   if (reason) parts.push(reason);
+  const refundNote = c.status === "paid" ? undefined : refundNoteOf(c);
+  if (refundNote) parts.push(refundNote);
   // Paga: quando e como; com comprovante, avisa (abre pelo menu da linha).
   if (c.status === "paid") {
     const when = c.paidAt ? ` em ${dueDateLabel(dateInSpace(c.paidAt))}` : "";
@@ -595,8 +637,9 @@ export function cleanSingleSubtitle(c: ChargeView): SubtitlePart[] {
   }
   const reason = cancelReasonOf(c);
   if (reason) push(reason);
-  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
-  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) push("link aberto");
+  const refundNote = c.status === "paid" ? undefined : refundNoteOf(c);
+  if (refundNote) push(refundNote);
+  // Pix ou link em aberto (e se o aluno ja abriu): o selo `OnlineCodeBadge` mostra.
   if (c.status === "paid") {
     const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
     push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);

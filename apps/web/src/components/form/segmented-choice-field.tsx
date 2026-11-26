@@ -8,6 +8,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Check } from "lucide-react";
+import { FieldShell } from "./field-shell";
 import { cn } from "@/lib/utils";
 
 export interface SegmentedChoiceOption {
@@ -20,6 +21,14 @@ interface SegmentedChoiceFieldProps<T extends FieldValues> {
   name: Path<T>;
   options: SegmentedChoiceOption[];
   ariaLabel: string;
+  /**
+   * Sem valor, nada fica marcado e a pessoa precisa escolher (26/11/2026,
+   * estorno). Sem isto, a 1a opcao aparece marcada quando o valor esta vazio.
+   */
+  allowEmpty?: boolean;
+  /** Rotulo acima das opcoes (com o asterisco quando `required`). */
+  label?: string;
+  required?: boolean;
   disabled?: boolean;
   /**
    * `segmented` (padrao): faixa unica, no estilo "segmented control".
@@ -38,6 +47,9 @@ export function SegmentedChoiceField<T extends FieldValues>({
   name,
   options,
   ariaLabel,
+  allowEmpty,
+  label,
+  required,
   disabled,
   variant = "segmented",
 }: SegmentedChoiceFieldProps<T>) {
@@ -48,11 +60,12 @@ export function SegmentedChoiceField<T extends FieldValues>({
     <Controller
       control={control}
       name={name}
-      render={({ field }) => {
-        const selectedIndex = Math.max(
-          0,
-          options.findIndex((o) => o.value === field.value),
-        );
+      render={({ field, fieldState }) => {
+        const matchIndex = options.findIndex((o) => o.value === field.value);
+        // `allowEmpty`: sem valor, nada marcado (so o foco cai na 1a opcao).
+        const selectedIndex = allowEmpty ? matchIndex : Math.max(0, matchIndex);
+        const focusIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        const error = fieldState.error?.message;
 
         const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
           const step =
@@ -63,18 +76,29 @@ export function SegmentedChoiceField<T extends FieldValues>({
                 : 0;
           if (!step) return;
           event.preventDefault();
-          const next = (selectedIndex + step + options.length) % options.length;
+          const next =
+            selectedIndex < 0
+              ? step > 0
+                ? 0
+                : options.length - 1
+              : (selectedIndex + step + options.length) % options.length;
           field.onChange(options[next].value);
           buttonsRef.current[next]?.focus();
         };
 
+        const shell = (control: React.ReactNode) => (
+          <FieldShell id={String(name)} label={label} required={required} error={error}>
+            {control}
+          </FieldShell>
+        );
         const isCards = variant === "cards";
         const wraps = options.length > 3;
         if (isCards) {
-          return (
+          return shell(
             <div
               role="radiogroup"
               aria-label={ariaLabel}
+              aria-invalid={error ? true : undefined}
               onKeyDown={handleKeyDown}
               className="grid grid-cols-2 gap-2"
             >
@@ -90,7 +114,7 @@ export function SegmentedChoiceField<T extends FieldValues>({
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    tabIndex={selected ? 0 : -1}
+                    tabIndex={index === focusIndex ? 0 : -1}
                     disabled={disabled}
                     onClick={() => field.onChange(option.value)}
                     className={cn(
@@ -99,7 +123,9 @@ export function SegmentedChoiceField<T extends FieldValues>({
                       "disabled:cursor-not-allowed disabled:opacity-60",
                       selected
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border/70 bg-background hover:border-border hover:bg-muted/40",
+                        : error
+                          ? "border-destructive bg-background hover:bg-muted/40"
+                          : "border-border/70 bg-background hover:border-border hover:bg-muted/40",
                     )}
                   >
                     <span
@@ -127,16 +153,18 @@ export function SegmentedChoiceField<T extends FieldValues>({
                   </button>
                 );
               })}
-            </div>
+            </div>,
           );
         }
-        return (
+        return shell(
           <div
             role="radiogroup"
             aria-label={ariaLabel}
+            aria-invalid={error ? true : undefined}
             onKeyDown={handleKeyDown}
             className={cn(
-              "grid gap-1 rounded-lg border border-border/60 bg-muted/40 p-1",
+              "grid gap-1 rounded-lg border bg-muted/40 p-1",
+              error ? "border-destructive" : "border-border/60",
               wraps && "grid-cols-2 sm:[grid-template-columns:repeat(var(--segment-count),minmax(0,1fr))]",
             )}
             style={
@@ -157,7 +185,7 @@ export function SegmentedChoiceField<T extends FieldValues>({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  tabIndex={selected ? 0 : -1}
+                  tabIndex={index === focusIndex ? 0 : -1}
                   disabled={disabled}
                   onClick={() => field.onChange(option.value)}
                   className={cn(
@@ -185,7 +213,7 @@ export function SegmentedChoiceField<T extends FieldValues>({
                 </button>
               );
             })}
-          </div>
+          </div>,
         );
       }}
     />

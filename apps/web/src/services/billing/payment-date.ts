@@ -27,3 +27,19 @@ export function paidOnNote(paidOn?: DateISO): string {
   const today = dateInSpace();
   return paidOn && paidOn !== today ? ` em ${format(parseISO(paidOn), "dd/MM/yyyy")}` : "";
 }
+
+/**
+ * Dia da devolucao (doc product/15): padrao hoje, nunca no futuro. Mesmo
+ * formato do dia do pagamento.
+ */
+export function refundedOnDate(refundedOn?: DateISO): DateISO {
+  const today = dateInSpace();
+  if (!refundedOn) return today;
+  if (!DATE_RE.test(refundedOn) || Number.isNaN(parseISO(refundedOn).getTime())) {
+    throw validationError([{ field: "refundedOn", message: "Informe a data do estorno." }]);
+  }
+  if (refundedOn > today) {
+    throw validationError([{ field: "refundedOn", message: "A data do estorno não pode ser futura." }]);
+  }
+  return refundedOn;
+}

@@ -420,6 +420,23 @@ export async function getSubaccountBalance(
 }
 
 /**
+ * Estorna uma cobranca paga (26/11/2026, doc product/15 "Devolução de
+ * pagamento"). Sem `value`: o total (cobranca com split nao aceita parcial).
+ * O Asaas exige o valor cheio de saldo disponivel na subconta.
+ */
+export async function refundPayment(
+  paymentId: string,
+  subaccountApiKey: string,
+  description?: string,
+): Promise<AsaasPaymentResponse> {
+  return asaasFetch<AsaasPaymentResponse>(`/payments/${paymentId}/refund`, {
+    method: "POST",
+    body: description ? { description } : {},
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
  * Confirma recebimento manual/em dinheiro de uma cobrança no Asaas (útil para testes em homologação/Sandbox).
  */
 export async function receiveInCash(

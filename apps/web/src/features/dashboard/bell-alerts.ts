@@ -131,29 +131,59 @@ export const DISPUTE_TITLE: Record<NonNullable<OnlinePayment["disputeStatus"]>, 
   chargeback_reversal_pending: "Reversão de contestação pendente",
 };
 
+/** O que o aviso precisa da cobranca: o aluno e o mes (para abrir em Cobrancas). */
+export interface DisputedChargeInfo {
+  studentName?: string;
+  competence?: string;
+}
+
 /**
  * Estorno ou contestacao avisados pelo parceiro (doc product/25, urgencia): a
  * cobranca continua paga no app; o dono decide. Urgente: sino, topo e modal.
+ * Estorno (26/11/2026, doc product/15 "Estorno de pagamento"): "Resolver"
+ * abre a cobranca em Cobrancas para reabrir ou encerrar; resolvido, some.
  */
-export function disputeBellAlerts(payments: OnlinePayment[] | undefined, studentNameOf: (chargeId: string) => string | undefined): BellAlert[] {
+export function disputeBellAlerts(
+  payments: OnlinePayment[] | undefined,
+  chargeOf: (chargeId: string) => DisputedChargeInfo | undefined,
+): BellAlert[] {
   return (payments ?? [])
-    .filter((p) => p.disputeStatus)
+    // Estorno ja resolvido na cobranca (devolvido pelo app ou decidido no "Resolver agora"): some.
+    .filter((p) => p.disputeStatus && !(p.refundHandledAt && isRefundDispute(p.disputeStatus)))
     .sort((a, b) => (b.disputedAt ?? "").localeCompare(a.disputedAt ?? ""))
     .map((p) => {
       const status = p.disputeStatus as NonNullable<OnlinePayment["disputeStatus"]>;
-      const who = studentNameOf(p.chargeId);
-      return {
+      const charge = chargeOf(p.chargeId);
+      const who = charge?.studentName;
+      const base = {
         key: `dispute:${p.id}:${status}`,
-        kind: "payments",
+        kind: "payments" as const,
         title: `${DISPUTE_TITLE[status]}${who ? ` · ${who}` : ""}`,
-        text: `${formatCents(p.amountCents)}. A cobrança continua paga no GestaraHub; veja com o parceiro e decida o que fazer.`,
-        tone: "danger",
-        href: "/online-payments",
-        action: "Ver recebimentos",
+        tone: "danger" as const,
         pinned: true,
         modal: true,
       };
+      if (isRefundDispute(status)) {
+        const query = new URLSearchParams({ status: "all", refund: p.chargeId });
+        if (charge?.competence) query.set("month", charge.competence);
+        return {
+          ...base,
+          text: `${formatCents(p.amountCents)} estornados ao aluno pelo parceiro. Reabra a cobrança ou encerre como estornada.`,
+          href: `/classes/billing?${query.toString()}`,
+          action: "Resolver",
+        };
+      }
+      return {
+        ...base,
+        text: `${formatCents(p.amountCents)}. A cobrança continua paga no GestaraHub; veja com o parceiro e decida o que fazer.`,
+        href: "/online-payments",
+        action: "Ver recebimentos",
+      };
     });
+}
+
+function isRefundDispute(status: NonNullable<OnlinePayment["disputeStatus"]>): boolean {
+  return status === "refunded" || status === "refund_in_progress";
 }
 
 /**

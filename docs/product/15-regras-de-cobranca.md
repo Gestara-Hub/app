@@ -281,3 +281,31 @@ Decisão 3 do diário da noite de 30 para 31/10/2026, escolhida pelo usuário: p
   - **"Desde o início"**: mostra quantas mensalidades vencidas serão geradas e desde quando.
 - **Como fica gravado:** `Client.chargesFrom` (coluna `clients.charges_from`) guarda o dia 1º do mês do cadastro. O motor (`MembershipTerms.chargesFrom`, `@gestarahub/core/billing`) pula os vencimentos anteriores e mantém os períodos alinhados ao início real: quem paga todo dia 15 continua pagando no dia 15. O "Início do plano" fica como a data real de entrada.
 - **Servidor:** aceita a data só com plano, depois do início e até hoje (`validChargesFrom` em `clientBaseService`). A edição do aluno não muda a data, porque a escolha é só do cadastro.
+
+## Estorno de pagamento (26/11/2026)
+
+Termo da tela: **estorno** (decidido em 26/11/2026, no lugar de "devolver"): é a palavra do aviso do app, do Asaas, da fatura do cartão e do comprovante do Pix.
+
+Decisões do dono, depois do teste de estorno no sandbox do Asaas. Fase 1: "Estornar pagamento" na cobrança. Fase 2 (depois): estorno ao encerrar matrícula e "Cancelar turma" que não começou (`docs/pendencias.md`).
+
+**O que o teste mostrou (cartão, sandbox, 26/11/2026)**
+- Toda cobrança online tem split do GestaraHub, e o Asaas **não estorna parte** de cobrança com split: o estorno é sempre do valor total.
+- O Asaas só estorna com **saldo disponível** do valor cheio na subconta ("Para cancelar esta venda, é necessário ter saldo disponível em conta").
+- No cartão, a taxa do Asaas e o split do GestaraHub voltam: a subconta devolve só o líquido que recebeu (cobrança de R$ 56,00: saíram R$ 55,11 = 56,00 − 1,60 − 1,29) e o aluno recebe o valor cheio. Estornar não custa nada ao espaço. Confirmado no extrato da subconta, em três linhas no mesmo dia: "Estorno" (−56,00), "Estorno da taxa de cartão" (+1,60) e "Estorno da comissão transferida para o parceiro" (+1,29, o split volta da conta principal do GestaraHub). O saldo voltou exatamente ao de antes do pagamento.
+- **Pix (produção, 26/11/2026, cobrança de R$ 5,00):** o extrato mostra "Estorno" (−5,00) e "Estorno da comissão transferida para o parceiro" (+1,99), mas **não** devolve a "Taxa do Pix" (0,99). O aluno recebe o valor cheio, o GestaraHub devolve a comissão e **o espaço arca com a taxa do Pix do Asaas** (saldo de 3,55 antes do pagamento, 2,56 depois do estorno). No cartão, a taxa volta; no Pix, não.
+
+**Regras**
+- **Quem:** dono e gerente (`billing:manage`).
+- **Qual cobrança:** paga. Isenta e cancelada não têm o que estornar.
+- **Pagamento online:** o GestaraHub pede o estorno ao Asaas (sempre o total), depois de conferir o saldo disponível; sem saldo, avisa quanto falta e não tenta. Pix volta para a conta que pagou; cartão, na fatura.
+- **Custo do estorno:** cartão, nenhum; Pix, a taxa do Pix que o Asaas cobrou no pagamento (não volta). A janela diz o custo antes de confirmar ("No Pix, a taxa do parceiro (R$ 0,99) não volta...").
+- **Confirmação no Asaas:** o estorno é evento crítico, como o saque: pede a autorização pelo app do Asaas (token) ou o código por SMS. Quando o Asaas responde que espera essa confirmação, a janela mostra "Falta confirmar no Asaas" com o botão para abrir a conta; a cobrança já fica atualizada no GestaraHub.
+- **Motivo:** o motivo vai também para o Asaas (aparece no detalhe da cobrança estornada lá), sempre terminando com "Estorno pelo GestaraHub" (em branco, só essa marca). Assim o estorno feito pelo app se distingue do feito direto no painel do Asaas.
+- **Pagamento fora do app** (dinheiro, Pix direto, cartão na maquininha): só registra o estorno, com o dia, a forma e o comprovante.
+- **"E a cobrança?"**, escolhido a cada estorno:
+  - **Reabrir para pagar de outra forma:** volta para "A receber" (ou "Em atraso", pelo vencimento). Caso típico: pagou no cartão e quer pagar no Pix, ou o contrário, ou pagou errado.
+  - **Encerrar:** o aluno não deve mais nada; a cobrança fica **"Estornada"**. Caso típico: saiu, desistiu ou a turma foi cancelada.
+  - Vindo de "Encerrar matrícula" ou "Cancelar turma" (fase 2), "Encerrar" já vem marcado.
+- **Financeiro:** o estorno **sai do Recebido** (a cobrança deixa de contar como paga); sem lançamento de despesa. O histórico da cobrança guarda cada estorno: quando, quanto, como e o que foi decidido.
+- **Estorno feito direto no painel do Asaas:** o aviso do webhook segue chegando ("Pagamento estornado"); "Resolver agora" abre a mesma pergunta (reabrir ou encerrar), sem pedir outro estorno. Resolvido, o aviso some.
+- **Pagamento em dobro** (Pix e link pagos na mesma cobrança): estorna-se o pagamento a mais e a cobrança segue paga (depois, se aparecer).

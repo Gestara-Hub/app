@@ -39,6 +39,9 @@ export function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayme
     receiptUrl: row.receipt_url ? String(row.receipt_url) : undefined,
     feePassedToCustomer: Boolean(row.fee_passed_to_customer),
     canceledReason: row.canceled_reason ? String(row.canceled_reason) : undefined,
+    disputeStatus: (row.dispute_status as OnlinePayment["disputeStatus"]) ?? undefined,
+    disputedAt: row.disputed_at ? new Date(String(row.disputed_at)).toISOString() : undefined,
+    refundHandledAt: row.refund_handled_at ? new Date(String(row.refund_handled_at)).toISOString() : undefined,
     expiresAt,
     paidAt: row.paid_at
       ? new Date(String(row.paid_at)).toISOString()

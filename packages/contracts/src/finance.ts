@@ -302,6 +302,11 @@ export interface OnlinePayment {
   /** Estorno ou contestacao avisados pelo parceiro (ultimo aviso) e quando. */
   disputeStatus?: OnlinePaymentDisputeStatus;
   disputedAt?: DateTimeISO;
+  /**
+   * Estorno ja resolvido na cobranca (26/11/2026): devolvido pelo GestaraHub ou
+   * decidido no "Resolver agora". O aviso de estorno some.
+   */
+  refundHandledAt?: DateTimeISO;
   feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
   canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
   expiresAt: DateTimeISO;

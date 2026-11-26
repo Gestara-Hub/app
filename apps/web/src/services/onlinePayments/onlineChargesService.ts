@@ -21,7 +21,9 @@ import {
   insertOnlinePaymentInDb,
   lastMessageForChargeFromDb,
   listOnlinePaymentsForChargeFromDb,
+  refundOnlinePaymentAction,
   simulateOnlinePaidAction,
+  type RefundOnlinePaymentResult,
 } from "./actions";
 import {
   clone,
@@ -99,7 +101,7 @@ export const onlineChargesService = {
         amountCents: c.amountCents,
         dueDate: c.dueDate,
         payments,
-        platformSplitCents: effectivePlatformSplitCents(store.organization.subscription?.tier),
+        platformSplitCents: effectivePlatformSplitCents(store.organization.subscription?.tier, c.amountCents),
         payerIssue: payerRequired() ? payerIssueOf(student ? resolveOnlinePayer(student, todayISO()) : null) : undefined,
         lastMessage,
       });
@@ -136,7 +138,7 @@ export const onlineChargesService = {
     const passFee = passFeeOverride !== undefined ? passFeeOverride : defaultPassFeeFor(settings, method);
 
     // Taxa do GestaraHub por plano e tarifa do Asaas por meio (doc 19 §4, decisao A).
-    const splitAmountCents = effectivePlatformSplitCents(store.organization.subscription?.tier);
+    const splitAmountCents = effectivePlatformSplitCents(store.organization.subscription?.tier, charge.amountCents);
     const { chargedAmountCents, netAmountCents, gatewayFeeCents } = calculateOnlineChargeAmounts({
       amountCents: charge.amountCents,
       method,
@@ -254,6 +256,15 @@ export const onlineChargesService = {
       });
       return clone(payment);
     });
+  },
+  /**
+   * Primeiro passo da devolucao de um pagamento online (doc product/15,
+   * "Estorno de pagamento"): na conta real, pede o estorno ao parceiro (com a
+   * conferencia de saldo); na demonstracao, nada a pedir (o registro marca).
+   */
+  async refundOnline(chargeId: Id, reason?: string): Promise<RefundOnlinePaymentResult> {
+    if (!realAccountInBrowser()) return { ok: true };
+    return refundOnlinePaymentAction(chargeId, reason);
   },
   /**
    * Demonstracao: o aluno "pagou". Marca o pagamento online e a cobranca como

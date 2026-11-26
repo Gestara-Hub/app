@@ -19,6 +19,7 @@ import type {
   OnlinePaymentMethod,
   PaymentMethod,
   PlanFilter,
+  RefundChargeInput,
   UpdatePlan,
 } from "@gestarahub/contracts";
 
@@ -134,6 +135,46 @@ export function useMarkChargePending() {
   return useMutation({
     mutationFn: (id: Id) => billingService.markPending(id),
     onSuccess: () => invalidateMoney(qc),
+  });
+}
+
+/**
+ * Devolucao recusada antes de mexer na cobranca (saldo, parceiro): a tela mostra
+ * o motivo. `availableCents`/`neededCents` so quando falta saldo.
+ */
+export class RefundBlockedError extends Error {
+  constructor(
+    message: string,
+    readonly availableCents?: number,
+    readonly neededCents?: number,
+  ) {
+    super(message);
+    this.name = "RefundBlockedError";
+  }
+}
+
+/**
+ * Devolver o pagamento (doc product/15, "Estorno de pagamento"). Pago online:
+ * primeiro o estorno no parceiro (saldo conferido), depois o registro na
+ * cobranca (reabrir ou encerrar). Fora do app: so o registro.
+ */
+export function useRefundCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RefundChargeInput & { online: boolean }) => {
+      const { online, ...refund } = input;
+      let needsConfirmation = false;
+      if (online) {
+        // O motivo vai junto: aparece no detalhe da cobranca estornada no Asaas.
+        const result = await onlinePaymentsService.refundOnline(refund.chargeId, refund.reason);
+        if (!result.ok) throw new RefundBlockedError(result.error, result.availableCents, result.neededCents);
+        needsConfirmation = Boolean(result.needsConfirmation);
+      }
+      const charge = await billingService.refundCharge(refund);
+      return { charge, needsConfirmation };
+    },
+    // Mesmo recusado no meio, o estorno pode ter sido pedido: rele tudo.
+    onSettled: () => invalidateMoney(qc),
   });
 }
 

@@ -45,14 +45,61 @@ export interface PlanFilter {
  */
 /** `event`: inscricao em evento ou seminario (doc product/29). */
 export type ChargeKind = "membership" | "dropin" | "extra" | "course" | "package" | "event";
-/** `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso. */
-export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived";
+/**
+ * `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso.
+ * `refunded` = devolvida e encerrada (26/11/2026, doc product/15 "Devolução de
+ * pagamento"): o pagamento voltou para o aluno e ele nao deve mais nada.
+ */
+export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived" | "refunded";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
 /**
  * Quem cancelou: "user" (acao manual, pode ser reaberta) ou "system" (troca de
  * plano/regra, inativacao, saida da aula; nao pode ser reaberta).
  */
 export type ChargeCanceledBy = "system" | "user";
+
+/** O que fazer com a cobranca ao devolver: reabrir para pagar de outra forma ou encerrar. */
+export type ChargeRefundOutcome = "reopened" | "closed";
+
+/**
+ * Uma devolucao do pagamento da cobranca (doc product/15, "Devolução de
+ * pagamento"). Guarda o pagamento devolvido (quando, como) e o que foi decidido.
+ */
+export interface ChargeRefund {
+  id: Id;
+  /** Quando a devolucao foi registrada. */
+  refundedAt: DateTimeISO;
+  /** Dia em que o dinheiro voltou para o aluno (fora do app; online = o dia do pedido). */
+  refundedOn: DateISO;
+  amountCents: number;
+  /** `online`: estorno pelo parceiro (Asaas); `manual`: devolvido fora do app, so registrado. */
+  via: "online" | "manual";
+  /** Devolucao fora do app: como o dinheiro voltou. */
+  method?: PaymentMethod;
+  /** Estorno online: o pagamento do parceiro devolvido. */
+  onlinePaymentId?: Id;
+  /** O pagamento devolvido: quando e como tinha sido pago. */
+  paidAt?: DateTimeISO;
+  paidMethod?: PaymentMethod;
+  paidVia?: ChargePaidVia;
+  /** Comprovantes do pagamento devolvido (saem da cobranca, ficam aqui). */
+  paidReceipts?: FileAttachment[];
+  /** Comprovantes da devolucao (fora do app). */
+  receipts?: FileAttachment[];
+  outcome: ChargeRefundOutcome;
+  reason?: string;
+}
+
+/** Devolver o pagamento de uma cobranca paga (servico `refundCharge`). */
+export interface RefundChargeInput {
+  chargeId: Id;
+  outcome: ChargeRefundOutcome;
+  reason?: string;
+  /** Fora do app: dia (padrao hoje), forma e comprovantes da devolucao. */
+  refundedOn?: DateISO;
+  method?: PaymentMethod;
+  receipts?: FileAttachment[];
+}
 
 export interface Charge {
   id: Id;
@@ -78,6 +125,8 @@ export interface Charge {
   canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
   /** Motivo do cancelamento manual (texto livre, ex.: "Plano errado"). */
   cancelReason?: string;
+  /** Devolucoes do pagamento (doc product/15, "Estorno de pagamento"), da mais antiga para a mais nova. */
+  refunds?: ChargeRefund[];
   /**
    * Cancelada pelo sistema porque outra cobranca tomou o lugar (troca de plano,
    * regra, desconto ou bolsa). Mostrada como "Substituída", fora do total de
@@ -158,6 +207,11 @@ export interface ChargeView extends Charge {
   className?: string;
   /** Pix ou link em aberto ja aberto pelo aluno na pagina publica (/p/<codigo>). */
   onlineOpenedAt?: string;
+  /**
+   * Codigo de pagamento online em aberto e valido (26/11/2026): a linha da
+   * cobranca mostra "Pix gerado" ou "Link gerado" sem abrir o "Cobrar online".
+   */
+  onlineAwaitingMethod?: "pix" | "link" | "boleto" | "choice";
   /** Ultima mensagem de WhatsApp enviada para a cobranca (data/hora ISO). */
   lastMessageSentAt?: string;
   /** Gatilho do envio (ex: "billing_due_date", "billing_before_due"). */

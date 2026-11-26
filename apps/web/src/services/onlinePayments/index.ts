@@ -20,4 +20,4 @@ export const onlinePaymentsServiceImpl = {
 };
 
 /** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
-export const onlinePaymentsService = delegateAll("onlinePayments", onlinePaymentsServiceImpl, ["getSettings", "syncSubaccountApproved", "updateSettings", "simulatePaid", "getRecurringForStudent", "listActiveRecurring", "requestRecurring", "simulateAuthorize", "revokeRecurring"]);
+export const onlinePaymentsService = delegateAll("onlinePayments", onlinePaymentsServiceImpl, ["getSettings", "syncSubaccountApproved", "updateSettings", "simulatePaid", "refundOnline", "getRecurringForStudent", "listActiveRecurring", "requestRecurring", "simulateAuthorize", "revokeRecurring"]);

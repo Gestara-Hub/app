@@ -52,6 +52,7 @@ export function toChargeView(c: Charge): ChargeView {
     planPeriod: planOf(c.planId)?.period ?? (!c.planId && c.scholarshipPercent ? "monthly" : undefined),
     className: className(c.classGroupId),
     onlineOpenedAt: openedOnlineAt(c.id),
+    onlineAwaitingMethod: awaitingOnline(c.id)?.method,
     lastMessageSentAt: lastMsg?.sentAt,
     lastMessageTrigger: lastMsg?.trigger,
     lastMessageStatus: lastMsg?.status,
@@ -71,11 +72,16 @@ function lastMessageForCharge(chargeId: string): { sentAt: string; trigger: stri
 }
 
 /** Quando o aluno abriu a pagina do Pix ou link ainda valido da cobranca (o mais novo). */
-function openedOnlineAt(chargeId: string): string | undefined {
+/** O codigo online em aberto mais recente da cobranca (Pix, link ou boleto ainda valido). */
+function awaitingOnline(chargeId: string) {
   const now = new Date().toISOString();
   return store.onlinePayments
     .filter((p) => p.chargeId === chargeId && p.status === "awaiting" && p.expiresAt > now)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.openedAt;
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+}
+
+function openedOnlineAt(chargeId: string): string | undefined {
+  return awaitingOnline(chargeId)?.openedAt;
 }
 
 function chargeLabel(c: Charge): string {

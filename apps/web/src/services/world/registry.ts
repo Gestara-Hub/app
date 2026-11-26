@@ -123,7 +123,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     permissions: {
       ...all(["listCharges", "listChargesPaginated", "listOverdueStudentIds"], VIEW_BILLING),
       ...all(
-        ["generateCharges", "createExtraCharge", "markPaid", "markPending", "cancelCharge", "reopenCharge"],
+        ["generateCharges", "createExtraCharge", "markPaid", "markPending", "refundCharge", "cancelCharge", "reopenCharge"],
         MANAGE_BILLING,
       ),
     },
@@ -238,6 +238,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       "syncSubaccountApproved",
       "updateSettings",
       "simulatePaid",
+      "refundOnline",
       "getRecurringForStudent",
       "listActiveRecurring",
       "requestRecurring",

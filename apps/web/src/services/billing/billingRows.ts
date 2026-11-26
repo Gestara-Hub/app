@@ -26,6 +26,7 @@ export function chargeToDbRow(charge: Charge) {
     attachments: charge.attachments ?? [],
     canceled_by: charge.canceledBy ?? null,
     cancel_reason: charge.cancelReason ?? null,
+    refunds: charge.refunds ?? [],
     replaced: charge.replaced ?? false,
     scholarship_percent: charge.scholarshipPercent ?? null,
     list_amount_cents: charge.listAmountCents ?? null,

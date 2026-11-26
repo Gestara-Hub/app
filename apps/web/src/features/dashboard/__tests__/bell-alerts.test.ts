@@ -101,11 +101,25 @@ describe("urgência: estorno, contestação e parceiro", () => {
         { ...PAID, id: "op-2", chargeId: "ch-2", disputeStatus: "chargeback_requested", disputedAt: "2026-09-22T10:00:00.000Z" },
         { ...PAID, id: "op-3" },
       ],
-      (chargeId) => (chargeId === "ch-1" ? "Ana" : undefined),
+      (chargeId) => (chargeId === "ch-1" ? { studentName: "Ana", competence: "2026-09" } : undefined),
     );
     expect(alerts.map((a) => a.title)).toEqual(["Contestação de pagamento", "Pagamento estornado · Ana"]);
-    expect(alerts[1]).toMatchObject({ tone: "danger", pinned: true, modal: true, href: "/online-payments" });
+    expect(alerts[0]).toMatchObject({ tone: "danger", pinned: true, modal: true, href: "/online-payments" });
+    // Estorno (26/11/2026): "Resolver" abre a cobranca em Cobrancas para reabrir ou encerrar.
+    expect(alerts[1]).toMatchObject({ tone: "danger", pinned: true, modal: true, action: "Resolver" });
+    expect(alerts[1].href).toBe("/classes/billing?status=all&refund=ch-1&month=2026-09");
     expect(alerts[1].text).toContain("R$ 150,00".replace(" ", " "));
+  });
+
+  it("estorno já resolvido na cobrança: o aviso some; contestação continua", () => {
+    const alerts = disputeBellAlerts(
+      [
+        { ...PAID, disputeStatus: "refunded", refundHandledAt: "2026-09-21T11:00:00.000Z" },
+        { ...PAID, id: "op-2", disputeStatus: "chargeback_requested", refundHandledAt: "2026-09-21T11:00:00.000Z" },
+      ],
+      () => undefined,
+    );
+    expect(alerts.map((a) => a.key)).toEqual(["dispute:op-2:chargeback_requested"]);
   });
 
   it("pagamento online recusado pelo parceiro: urgente; aprovado ou desligado, nada", () => {

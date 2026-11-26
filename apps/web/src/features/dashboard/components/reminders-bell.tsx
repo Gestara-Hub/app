@@ -67,7 +67,10 @@ export function useBellAlerts(today: string): BellAlert[] {
   const seesPayments = eligible && can("billing:view");
   const { data: disputed } = useDisputedOnlinePayments(seesPayments);
   const { data: charges } = useCharges(undefined, seesPayments && (disputed ?? []).length > 0);
-  const studentNameOf = (chargeId: string) => (charges ?? []).find((c) => c.id === chargeId)?.studentName;
+  const chargeOf = (chargeId: string) => {
+    const charge = (charges ?? []).find((c) => c.id === chargeId);
+    return charge ? { studentName: charge.studentName, competence: charge.competence ?? charge.dueDate.slice(0, 7) } : undefined;
+  };
   const planAlerts = eligible
     ? [
         planBellAlert(subscription, today),
@@ -76,7 +79,7 @@ export function useBellAlerts(today: string): BellAlert[] {
         metaHealthBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)
     : [];
-  return [...(seesPayments ? disputeBellAlerts(disputed, studentNameOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
+  return [...(seesPayments ? disputeBellAlerts(disputed, chargeOf) : []), ...planAlerts, ...documentBellAlerts(seesDocuments ? expiring : undefined)];
 }
 
 function RemindersBellButton() {
