@@ -68,6 +68,8 @@ pnpm tunnel
 
 Sobe um túnel público para `localhost:3200` e grava a URL em `ASAAS_WEBHOOK_URL`. O endereço muda a cada execução: rode o túnel antes do `pnpm dev`, ou reinicie o `pnpm dev` depois. Detalhes no [doc 19](../product/19-levantamento-pagamentos.md), seção 4.
 
+Com o `pnpm dev:https` (26/11/2026): o túnel descobre sozinho se o app responde em https e aponta para `https://localhost:3200` (sem conferir o certificado local, `--no-tls-verify`). Se o túnel subir antes do app, ele não tem como saber: use `pnpm tunnel --https` (ou `--http` para forçar o contrário) e reinicie o `pnpm dev:https` depois.
+
 ## Entrar com Google
 
 1. No Google Cloud, crie um cliente OAuth do tipo **Web application** (tela de consentimento em **Testing**, com o seu e-mail em **Test users**; escopos `openid`, `email` e `profile`):
