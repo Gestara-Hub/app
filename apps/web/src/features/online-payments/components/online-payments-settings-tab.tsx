@@ -11,7 +11,6 @@ import {
   Info,
   Loader2,
   Save,
-  ShieldCheck,
 } from "lucide-react";
 import type { OnlinePaymentSettings, Organization } from "@gestarahub/contracts";
 import { InputText, SelectField, SwitchField } from "@/components/form";
@@ -141,35 +140,25 @@ export function OnlinePaymentsSettingsTab({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="max-w-3xl space-y-4">
+      {/* Largura inteira e sem caixa dentro do cartao, como as outras telas (26/11/2026). */}
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
         <Card className="border-border/70 shadow-xs">
           <CardHeader className="pb-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle className="text-base font-semibold">
-                  Parâmetros de Cobrança Online
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Defina como os códigos Pix e links de pagamento funcionam para seus alunos.
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                <ShieldCheck className="size-4 shrink-0" />
-                <span className="font-medium">Conta ativa</span>
-              </div>
-            </div>
+            {/* "Conta ativa" ja esta no topo da tela: nao repete aqui. */}
+            <CardTitle className="text-base font-semibold">Parâmetros de cobrança online</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-0.5">
+              Defina como os códigos Pix e links de pagamento funcionam para seus alunos.
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-5 pt-0">
             {/* Toggle de Ativação Geral */}
-            <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5">
-              <SwitchField<Values>
-                name="enabled"
-                label="Habilitar cobranças online"
-                hint="Permite que as cobranças ganhem o botão 'Cobrar online' para gerar Pix ou link de cartão."
-                disabled={disabled}
-              />
-            </div>
+            <SwitchField<Values>
+              name="enabled"
+              label="Habilitar cobranças online"
+              hint="Permite que as cobranças ganhem o botão 'Cobrar online' para gerar Pix ou link de cartão."
+              disabled={disabled}
+            />
 
             {/* Campos Principais sem poluição */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -156,9 +156,12 @@ export function ListItemContextMenu({
   actions,
   children,
   onCloseAutoFocus,
+  asChild = false,
 }: {
   actions: ListItemAction[];
   children: ReactNode;
+  /** A propria linha recebe o menu (ex.: `<tr>` de tabela, que nao aceita um `<span>` em volta). */
+  asChild?: boolean;
   /**
    * Repassado ao conteudo do menu. Util quando a acao transforma a propria
    * linha (ex.: edicao inline) e o restore de foco do Radix roubaria o foco do
@@ -169,7 +172,11 @@ export function ListItemContextMenu({
   return (
     <ContextMenu>
       {/* h-full: em grade de cards, o card ocupa a altura da linha (todos iguais) */}
-      <ContextMenuTrigger className="block h-full">{children}</ContextMenuTrigger>
+      {asChild ? (
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      ) : (
+        <ContextMenuTrigger className="block h-full">{children}</ContextMenuTrigger>
+      )}
       <ContextMenuContent className="min-w-48" onCloseAutoFocus={onCloseAutoFocus ?? keepFocusInOpenDialog}>
         <ActionItems actions={actions} kind="context" />
       </ContextMenuContent>

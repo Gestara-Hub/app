@@ -50,7 +50,9 @@ async function pendingRelease(
       .select("net_amount_cents, credit_date")
       .eq("organization_id", organizationId)
       .eq("status", "paid")
-      .eq("funds_released", false),
+      .eq("funds_released", false)
+      // Estornado (cartao antes de liberar): nao vai mais liberar.
+      .or("dispute_status.is.null,dispute_status.not.in.(refunded,refund_in_progress)"),
   );
   const rows = data ?? [];
   const dates = rows.map((r) => (r.credit_date ? String(r.credit_date).slice(0, 10) : "")).filter(Boolean).sort();

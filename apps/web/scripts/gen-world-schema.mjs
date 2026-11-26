@@ -33,6 +33,8 @@ select c.table_name, c.column_name, c.data_type, c.is_nullable, (c.column_defaul
       and k.column_name = c.column_name limit 1), '')
 from information_schema.columns c
 where c.table_schema = 'public' and c.table_name = any(string_to_array('${TABLES.join(",")}', ','))
+  -- Coluna gerada pelo banco (ex.: online_payments.event_at) fica fora: o espaco nunca a grava.
+  and c.is_generated = 'NEVER'
 order by c.table_name, c.ordinal_position`;
 
 const out = execFileSync(

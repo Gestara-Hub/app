@@ -169,6 +169,8 @@ export async function onlineStatementModel(competence: string): Promise<Document
     .map((p) => {
       const charge = store.charges.find((c) => c.id === p.chargeId);
       const student = charge ? store.clients.find((c) => c.id === charge.studentId) : undefined;
+      // Estornado depois do pagamento: aparece, mas fora dos totais.
+      const refunded = p.disputeStatus === "refunded" || p.disputeStatus === "refund_in_progress";
       const fee =
         p.netAmountCents !== undefined
           ? Math.max(0, p.amountCents - p.netAmountCents)
@@ -186,7 +188,8 @@ export async function onlineStatementModel(competence: string): Promise<Document
         amountCents: p.amountCents,
         feeCents: fee,
         netCents: p.netAmountCents ?? p.amountCents - fee,
-        availability: onlineFundsLabel(p.fundsReleased !== false, p.creditDate, documentDate),
+        availability: refunded ? "Estornado" : onlineFundsLabel(p.fundsReleased !== false, p.creditDate, documentDate),
+        refunded,
       };
     });
   return onlineStatementDocument({
