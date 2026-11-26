@@ -50,7 +50,26 @@ function getInitialPreferences(): UserPreferences {
 const DEBOUNCE_DELAY_MS = 60_000; // 1 minuto de inatividade após mudança
 const MAX_WAIT_MS = 180_000; // teto máximo de 3 minutos
 
-export function UserPreferencesProvider({ children }: { children: ReactNode }) {
+/**
+ * Dono da copia local das preferencias (26/11/2026). A copia no navegador e de
+ * uma conta so: entrar com outra conta no mesmo navegador herdava as marcas da
+ * anterior (o aviso da verificacao em duas etapas abria no 1o acesso de uma
+ * conta nova, pelos "7 dias de uso" da conta antiga).
+ */
+const PREFERENCES_OWNER_KEY = "gestarahub_user_preferences_owner";
+
+/** Do aparelho, nao da conta: segue com quem entrar (tema, cores, densidade, menu). */
+function deviceOnly(prefs: UserPreferences): UserPreferences {
+  return mergeUserPreferences(null, {
+    theme: prefs.theme,
+    accentColor: prefs.accentColor,
+    themeStyling: prefs.themeStyling,
+    density: prefs.density,
+    sidebarCollapsed: prefs.sidebarCollapsed,
+  });
+}
+
+export function UserPreferencesProvider({ children, ownerId }: { children: ReactNode; ownerId?: string }) {
   const [preferences, setPreferences] = useState<UserPreferences>(getInitialPreferences);
   const [isDirty, setIsDirty] = useState(false);
   const [remoteLoaded, setRemoteLoaded] = useState(false);
@@ -184,7 +203,36 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         const res = await fetch("/api/preferences");
         if (!res.ok) return;
         const data = await res.json();
-        if (active && data?.preferences) {
+        // Copia local de outra conta: so o que e do aparelho continua. Copia
+        // antiga sem dono vale para quem ja tem preferencias na conta (a mesma
+        // pessoa de sempre); conta nova nao herda nada.
+        let owner: string | null = null;
+        try {
+          owner = window.localStorage.getItem(PREFERENCES_OWNER_KEY);
+        } catch {
+          // sem storage
+        }
+        const sameOwner = !ownerId || owner === ownerId || (!owner && Boolean(data?.preferences));
+        if (active && ownerId) {
+          try {
+            window.localStorage.setItem(PREFERENCES_OWNER_KEY, ownerId);
+          } catch {
+            // sem storage
+          }
+        }
+        if (active && !sameOwner) {
+          setPreferences((prev) => {
+            const base = deviceOnly(prev);
+            const next = data?.preferences ? mergeUserPreferences(base, data.preferences) : base;
+            try {
+              window.localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+            } catch {
+              // ignore
+            }
+            return next;
+          });
+        }
+        if (active && sameOwner && data?.preferences) {
           if (data.preferences.themeStyling?.themeColor) {
             applyThemeColorFromServer(data.preferences.themeStyling.themeColor);
           }
@@ -210,7 +258,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [ownerId]);
 
   // A cor de destaque mudou (nesta tela): guarda nas preferencias da pessoa.
   useEffect(() => {
