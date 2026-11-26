@@ -3,7 +3,8 @@ import { expect, seedAcademy, test } from "./fixtures";
 /**
  * Recebimentos online antes de ativar (01/11/2026): como funciona, quanto o
  * espaco recebe (mesma conta da previa da cobranca) e o botao de ativar.
- * Plano Gratis: taxa do GestaraHub de R$ 1,99 por cobranca paga.
+ * Plano Gratis: taxa do GestaraHub de 1,5% por cobranca paga (R$ 0,99 a R$ 9,90; doc 13,
+ * 26/11/2026): R$ 2,25 numa de R$ 150.
  */
 
 test("Recebimentos online antes de ativar: simulação de R$ 150 no Pix e no cartão, com e sem repasse", async ({ page }) => {
@@ -23,10 +24,10 @@ test("Recebimentos online antes de ativar: simulação de R$ 150 no Pix e no car
   const card = simulation.locator("div.rounded-lg").filter({ hasText: "No cartão de crédito" });
 
   // Sem repasse: as taxas saem do valor.
-  await expect(pix).toContainText("R$ 146,02");
-  await expect(pix).toContainText("Saem R$ 1,99 do parceiro e R$ 1,99 do GestaraHub.");
-  await expect(card).toContainText("R$ 143,04");
-  await expect(card).toContainText("Saem R$ 4,97 do parceiro e R$ 1,99 do GestaraHub.");
+  await expect(pix).toContainText("R$ 145,76");
+  await expect(pix).toContainText("Saem R$ 1,99 do parceiro e R$ 2,25 do GestaraHub.");
+  await expect(card).toContainText("R$ 142,78");
+  await expect(card).toContainText("Saem R$ 4,97 do parceiro e R$ 2,25 do GestaraHub.");
 
   // Com repasse: o aluno paga as taxas e o espaco recebe o valor cheio.
   await simulation.getByLabel("Repassar as taxas ao aluno").click();

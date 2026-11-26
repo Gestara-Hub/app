@@ -5,8 +5,8 @@ import { ArrowRight, Check, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { PaidFeature, Subscription } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { formatCents, formatDateTime } from "@gestarahub/core/format";
-import { platformSplitCents } from "@gestarahub/core/payment-fees";
+import { formatDateTime } from "@gestarahub/core/format";
+import { platformFeeRuleText } from "@gestarahub/core/payment-fees";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -179,10 +179,9 @@ export function SubscriptionPlanCard() {
                   <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
                 )}
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Taxa menor no Pix</p>
+                  <p className="text-sm font-medium">Taxa menor por pagamento online</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatCents(platformSplitCents("pro"))} por pagamento online, em vez de{" "}
-                    {formatCents(platformSplitCents("free"))}.
+                    {platformFeeRuleText("pro")}, em vez de {platformFeeRuleText("free")}.
                   </p>
                 </div>
               </li>

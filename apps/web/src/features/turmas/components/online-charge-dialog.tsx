@@ -209,7 +209,7 @@ export function OnlineChargeDialog({
       ? chosenMethod
       : (methodOptions[0]?.value ?? "pix");
   // A taxa que o parceiro vai reter vem do servidor (zero sem a carteira principal).
-  const splitAmountCents = checkout.data?.platformSplitCents ?? platformSplitCents(org?.subscription?.tier);
+  const splitAmountCents = checkout.data?.platformSplitCents ?? platformSplitCents(org?.subscription?.tier, charge?.amountCents ?? 0);
   const activePassFee = passFee !== null ? passFee : defaultPassFeeFor(onlineSettings, method);
 
   // Tarifa do Asaas + taxa do GestaraHub (doc 19 §4). No link o aluno escolhe
@@ -827,7 +827,7 @@ function FeesPopover({
           </div>
         ))}
         <p className="text-[11px] text-muted-foreground">
-          A tarifa do Asaas é do banco; a taxa GestaraHub é fixa por cobrança recebida.{" "}
+          A tarifa do Asaas é do banco; a taxa GestaraHub é um percentual da cobrança recebida, com mínimo e máximo do seu plano.{" "}
           {passFee ? "Repassadas: somadas ao valor do aluno." : "Absorvidas: saem do que entra na sua subconta."}
         </p>
       </PopoverContent>

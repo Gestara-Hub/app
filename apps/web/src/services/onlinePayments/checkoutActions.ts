@@ -73,7 +73,8 @@ async function checkedInput<T extends CreatePixInput | CreateLinkInput>(
     input: {
       ...input,
       subaccountApiKey,
-      splitAmountCents: effectivePlatformSplitCents(tier),
+      // Sobre o valor da cobranca (sem a taxa repassada ao aluno).
+      splitAmountCents: effectivePlatformSplitCents(tier, Number(charge.amount_cents) || 0),
       chargeDueDate: input.chargeDueDate || (charge.due_date as string),
       competence: input.competence || (charge.competence as string | undefined),
       chargeKind: input.chargeKind || (charge.kind as string),

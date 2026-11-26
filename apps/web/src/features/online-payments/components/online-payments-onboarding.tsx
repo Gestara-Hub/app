@@ -21,8 +21,10 @@ import { ActivateSubaccountDialog } from "./activate-subaccount-dialog";
 import {
   ASAAS_FEES,
   PIX_WITHDRAWAL,
-  PLATFORM_SPLIT_CENTS,
+  PLATFORM_FEE_RULES,
   calculateOnlineChargeAmounts,
+  platformFeePercentText,
+  platformFeeRangeText,
   platformSplitCents,
 } from "@gestarahub/core/payment-fees";
 import { useSubscriptionTier } from "@/features/auth";
@@ -51,7 +53,9 @@ export function OnlinePaymentsOnboarding({
 }: OnlinePaymentsOnboardingProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const tier = useSubscriptionTier();
-  const split = platformSplitCents(tier);
+  // Taxa do GestaraHub: percentual do valor, com minimo e teto (doc 13, 26/11/2026).
+  const fee = platformFeePercentText(tier);
+  const rule = PLATFORM_FEE_RULES[tier];
 
   return (
     <>
@@ -93,7 +97,7 @@ export function OnlinePaymentsOnboarding({
         </section>
 
         {/* Quanto voce recebe: a conta da previa de cobranca, com a taxa do plano */}
-        <Simulation split={split} tier={tier} />
+        <Simulation tier={tier} />
 
         {/* Taxas compactas e garantias */}
         <section className="space-y-3 rounded-xl border border-border/80 bg-card p-5" aria-labelledby="online-fees">
@@ -103,24 +107,67 @@ export function OnlinePaymentsOnboarding({
               Taxas
             </h2>
             <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
-              Seu plano: {TIER_LABEL[tier]} · {formatCents(split)} por cobrança
+              Seu plano: {TIER_LABEL[tier]} · {fee} por cobrança
             </span>
           </div>
-          <dl className="grid grid-cols-1 gap-x-6 text-sm sm:grid-cols-2">
-            <FeeLine label="Pix" value={`até ${formatCents(ASAAS_FEES.pix.fixedCents)} + ${formatCents(split)}`} hint="parceiro + GestaraHub · cai na hora" />
-            <FeeLine
-              label="Cartão de crédito"
-              value={`até 2,99% + ${formatCents(ASAAS_FEES.creditCard.fixedCents)} + ${formatCents(split)}`}
-              hint="parceiro + GestaraHub · cai em 32 dias"
-            />
-            <FeeLine label="Saque via Pix" value={`${PIX_WITHDRAWAL.freePerMonth} grátis por mês`} hint={`depois, ${formatCents(PIX_WITHDRAWAL.feeCents)} cada`} accent />
-            <FeeLine label="Cobrança não paga" value="R$ 0,00" hint="cancelada ou vencida" />
-          </dl>
-          {tier === "free" ? (
-            <p className="text-xs text-muted-foreground">
-              Nos planos pagos a taxa do GestaraHub cai para {formatCents(PLATFORM_SPLIT_CENTS.pro)} por cobrança.
-            </p>
-          ) : null}
+          {/* Tres blocos (26/11/2026): o que o parceiro cobra por forma, a taxa do
+              GestaraHub (percentual, minimo, maximo e exemplos) e o que nao custa. */}
+          {/* Colunas separadas por linhas, sem cartao dentro do cartao (26/11/2026). */}
+          <div className="grid grid-cols-1 divide-y divide-border/60 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+            <FeeBlock title="Tarifa do parceiro" subtitle="Por forma de pagamento">
+              <FeeRow label="Pix" value={`até ${formatCents(ASAAS_FEES.pix.fixedCents)}`} hint="cai na hora" />
+              <FeeRow
+                label="Cartão de crédito"
+                value={`até 2,99% + ${formatCents(ASAAS_FEES.creditCard.fixedCents)}`}
+                hint="cai em até 32 dias"
+              />
+            </FeeBlock>
+
+            <FeeBlock title="Taxa do GestaraHub" subtitle="Igual no Pix e no cartão" highlight>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-2xl font-bold tabular-nums text-foreground">{fee}</span>
+                <span className="text-sm text-muted-foreground">da cobrança</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  mínimo <span className="font-semibold text-foreground">{formatCents(rule.minCents)}</span>
+                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  máximo <span className="font-semibold text-foreground">{formatCents(rule.maxCents)}</span>
+                </span>
+              </div>
+              <ul className="space-y-1 border-t border-border/50 pt-2 text-xs" data-testid="fee-examples">
+                {FEE_EXAMPLES_CENTS.map((amount) => {
+                  const split = platformSplitCents(tier, amount);
+                  const tag = split === rule.minCents ? "mínimo" : split === rule.maxCents ? "máximo" : null;
+                  return (
+                    <li key={amount} className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">Cobrança de {formatCents(amount)}</span>
+                      <span className="tabular-nums font-medium text-foreground">
+                        {formatCents(split)}
+                        {tag ? <span className="ml-1 font-normal text-muted-foreground">({tag})</span> : null}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {tier === "free" ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Nos planos pagos: {platformFeePercentText("pro")}, {platformFeeRangeText("pro")}.
+                </p>
+              ) : null}
+            </FeeBlock>
+
+            <FeeBlock title="Sem surpresa" subtitle="O que não custa nada">
+              <FeeRow label="Cobrança não paga" value="R$ 0,00" hint="cancelada ou vencida" />
+              <FeeRow
+                label="Saque via Pix"
+                value={`${PIX_WITHDRAWAL.freePerMonth} grátis por mês`}
+                hint={`depois, ${formatCents(PIX_WITHDRAWAL.feeCents)} cada`}
+                accent
+              />
+            </FeeBlock>
+          </div>
           <ul className="grid grid-cols-1 gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
             <Guarantee icon={<Zap className="size-3.5" />} text="Baixa automática no Pix e no cartão" />
             <Guarantee icon={<BellRing className="size-3.5" />} text="Lembrete com o link de pagamento" />
@@ -188,14 +235,41 @@ function Step({ n, title, text }: { n: number; title: string; text: string }) {
   );
 }
 
-function FeeLine({ label, value, hint, accent }: { label: string; value: string; hint: string; accent?: boolean }) {
+/** Exemplos da taxa: abaixo do minimo, no meio e acima do teto. */
+const FEE_EXAMPLES_CENTS = [3000, 15000, 100000];
+
+function FeeBlock({
+  title,
+  subtitle,
+  highlight,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  highlight?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-border/40 py-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right">
-        <span className={cn("font-semibold tabular-nums", accent ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>{value}</span>
-        <span className="block text-[11px] text-muted-foreground">{hint}</span>
-      </dd>
+    <div className="space-y-3 py-4 first:pt-0 last:pb-0 lg:px-6 lg:py-0 lg:first:pl-0 lg:last:pr-0">
+      <div>
+        <p className={cn("text-sm font-semibold", highlight ? "text-primary" : "text-foreground")}>{title}</p>
+        <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function FeeRow({ label, value, hint, accent }: { label: string; value: string; hint: string; accent?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm text-foreground">{label}</p>
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      </div>
+      <span className={cn("shrink-0 text-right text-sm font-semibold tabular-nums", accent ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -214,10 +288,11 @@ function Guarantee({ icon, text }: { icon: React.ReactNode; text: string }) {
  * (`calculateOnlineChargeAmounts`), com a tarifa cheia do parceiro e a taxa do
  * plano. A chave "repassar ao aluno" mostra o valor que ele paga.
  */
-function Simulation({ split, tier }: { split: number; tier: "free" | "pro" | "scale" }) {
+function Simulation({ tier }: { tier: "free" | "pro" | "scale" }) {
   const [amount, setAmount] = useState<number | null>(150);
   const [passFee, setPassFee] = useState(false);
   const amountCents = amount && amount > 0 ? Math.round(amount * 100) : 0;
+  const split = platformSplitCents(tier, amountCents);
   const pix = calculateOnlineChargeAmounts({ amountCents, method: "pix", splitAmountCents: split, passFee });
   const card = calculateOnlineChargeAmounts({ amountCents, method: "link", splitAmountCents: split, passFee });
   const valid = amountCents > 0;
@@ -279,7 +354,7 @@ function Simulation({ split, tier }: { split: number; tier: "free" | "pro" | "sc
         <Outcome
           icon={<CreditCard className="size-4 text-sky-600 dark:text-sky-400" />}
           title="No cartão de crédito"
-          when="cai em 32 dias"
+          when="cai em até 32 dias"
           amounts={card}
           passFee={passFee}
           valid={valid}

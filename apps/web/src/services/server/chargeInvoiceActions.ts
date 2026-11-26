@@ -212,7 +212,7 @@ export async function createPublicChargePaymentAction(input: {
 
     // Valores e tarifas (mesma conta do "Cobrar online").
     const tier = ((org?.subscription as Row | null)?.tier as PlatformTier | undefined) ?? "free";
-    const splitAmountCents = effectivePlatformSplitCents(tier);
+    const splitAmountCents = effectivePlatformSplitCents(tier, Number(charge.amount_cents) || 0);
     const passFee = defaultPassFeeFor(onlineSettings, method);
     const { chargedAmountCents, gatewayFeeCents, netAmountCents } = calculateOnlineChargeAmounts({
       amountCents: Number(charge.amount_cents) || 0,

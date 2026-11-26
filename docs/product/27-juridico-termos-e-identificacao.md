@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Termos de Uso (11 seções) e Política de Privacidade (11 seções) | `/terms`, `/privacy` (`features/landing/components/legal-documents.tsx`), versão `LEGAL_UPDATED_AT` em `config/site.ts` | Bons no conteúdo: papéis LGPD (espaço controlador, GestaraHub operador), menores (art. 14), Asaas, Meta, Amazon SES (`us-east-2`), PostHog com banner de cookies, direitos do titular, retenção, Marco Civil. |
 | Aceite dos termos | Caixa no cadastro da landing; diálogo obrigatório no app (`legal-consent-dialog.tsx`, versão `v1.0-2026-10`); `legal_consents` guarda quem, quando, versão | Feito. |
-| Contrato de ativação dos recebimentos (10 cláusulas) | Diálogo "Ativar" em Recebimentos online | Feito: mandato, tarifas (R$ 1,99 grátis, R$ 1,29 pagos), chargeback, PLD, LGPD, NFS-e (espaço emite para o aluno; GestaraHub só sobre a taxa), saques. |
+| Contrato de ativação dos recebimentos (10 cláusulas) | Diálogo "Ativar" em Recebimentos online | Feito: mandato, tarifas (desde 26/11/2026: 1,5% de R$ 0,99 a R$ 9,90 no grátis, 1% de R$ 0,69 a R$ 6,90 nos pagos; antes R$ 1,99 e R$ 1,29 fixos), chargeback, PLD, LGPD, NFS-e (espaço emite para o aluno; GestaraHub só sobre a taxa), saques. |
 | Termo de consentimento do menor (art. 14) | `/consent/minor/<id>` com dados mascarados, nome de quem assina, IP e hora | Feito. |
 | Rodapé da landing | "© {ano} GestaraHub. Todos os direitos reservados." + Termos, Privacidade, Contato | Sem empresa, CNPJ nem endereço. |
 | E-mails | Moldura única (`lib/email/ses.ts`) com motivo do envio | Rodapé com MHMJ, CNPJ e endereço. |
