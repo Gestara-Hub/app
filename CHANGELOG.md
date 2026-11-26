@@ -2,6 +2,25 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.26 (2026-11-26)
+
+Desde v2026.11.25-9.
+
+### Documentação
+
+- pendencias: aviso da taxa nova, estorno fase 2 e telas em tempo real
+
+### Novo
+
+- online-payments: histórico com aluno, busca, ações, estornos e versão de celular
+- billing: estornar pagamento pelo app, botão Atualizar em Cobranças e selo do código gerado
+- plans: taxa do GestaraHub em percentual com mínimo e teto, contrato e telas
+
+### Correções
+
+- preferences: conta nova no mesmo navegador não herda as preferências da anterior
+- dev: túnel do webhook também com o dev em https
+
 ## 2026.11.25-9 (2026-11-25)
 
 Desde v2026.11.25-8.

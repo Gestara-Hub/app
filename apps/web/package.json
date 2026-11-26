@@ -1,6 +1,6 @@
 {
   "name": "@gestarahub/web",
-  "version": "2026.11.25-9",
+  "version": "2026.11.26",
   "private": true,
   "sideEffects": [
     "*.css",
