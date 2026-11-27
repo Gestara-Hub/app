@@ -18,6 +18,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.27",
+    date: "2026-11-27",
+    items: [
+      { text: "Cancelar matrícula pergunta o que fazer com plano e cobranças." },
+      { text: "Estorne o que já foi pago ao cancelar a matrícula." },
+      { text: "Turma sem alunos ativos volta a mudar a cobrança." },
+      { text: "Salvar espera a tela atualizar, com barra de carregamento." },
+      { text: "Sair em um aparelho não desconecta mais os outros." },
+    ],
+  },
+  {
     version: "2026.11.26",
     date: "2026-11-26",
     items: [
