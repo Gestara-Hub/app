@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { useIsMutating } from "@tanstack/react-query";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -44,6 +45,28 @@ export function useRouteLoadingBar(active: boolean) {
       emitDataLoads();
     };
   }, [active]);
+}
+
+/**
+ * Barra fina ligada enquanto uma gravacao termina (27/11/2026, doc 07 §2.11):
+ * a gravacao so acaba com a tela atualizada (lib/mutation-refetch), e o
+ * cancelar matricula, excluir ou marcar pago que fecham a confirmacao na hora
+ * mostram aqui que ainda estao salvando. Gravacao rapida nao pisca a barra.
+ * Montada dentro do QueryClient da sessao.
+ */
+export function MutationProgress() {
+  const saving = useIsMutating() > 0;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!saving) return;
+    const timer = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);
+    return () => {
+      window.clearTimeout(timer);
+      setVisible(false);
+    };
+  }, [saving]);
+  useRouteLoadingBar(saving && visible);
+  return null;
 }
 
 /**

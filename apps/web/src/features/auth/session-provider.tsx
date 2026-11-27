@@ -17,6 +17,7 @@ import {
 } from "@tanstack/react-query";
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { identifyUser } from "@/lib/analytics";
+import { MutationProgress } from "@/components/layout/navigation-progress";
 import { setInAppSession } from "@/lib/session-expired";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
@@ -140,6 +141,7 @@ export function SessionProvider({
     <QueryClientProvider client={queryClient}>
       <SessionContext.Provider value={value}>
         <SessionSync user={user} />
+        <MutationProgress />
         <SubscriptionSync organizationId={user.organizationId} serverTier={tier} />
         <LegalConsentDialog />
         {children}

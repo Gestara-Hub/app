@@ -28,16 +28,19 @@ import type {
  * Financeiro (le as cobrancas como entrada), a previa dos professores, os
  * pagamentos online e a Auditoria.
  */
-function invalidateMoney(qc: QueryClient) {
-  qc.invalidateQueries({ queryKey: queryKeys.billing.all });
-  qc.invalidateQueries({ queryKey: queryKeys.finance.all });
-  qc.invalidateQueries({ queryKey: queryKeys.teacherPay.all });
-  qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
-  qc.invalidateQueries({ queryKey: queryKeys.audit.all });
-  // Parcelas de curso: contagem de pagas e futuras na lista de matriculados.
-  qc.invalidateQueries({ queryKey: ["classes", "enrollments"] });
-  // Saldo em aberto e parcelas na ficha do aluno.
-  qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+function invalidateMoney(qc: QueryClient): Promise<unknown> {
+  // Devolve a promessa: no `onSettled` (estorno) a gravacao espera a tela atualizar.
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    qc.invalidateQueries({ queryKey: queryKeys.finance.all }),
+    qc.invalidateQueries({ queryKey: queryKeys.teacherPay.all }),
+    qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all }),
+    qc.invalidateQueries({ queryKey: queryKeys.audit.all }),
+    // Parcelas de curso: contagem de pagas e futuras na lista de matriculados.
+    qc.invalidateQueries({ queryKey: ["classes", "enrollments"] }),
+    // Saldo em aberto e parcelas na ficha do aluno.
+    qc.invalidateQueries({ queryKey: queryKeys.clients.summaries }),
+  ]);
 }
 
 // --- Planos (Plans) -------------------------------------------------------

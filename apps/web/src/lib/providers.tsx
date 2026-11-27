@@ -11,6 +11,7 @@ import { initAnalytics } from "@/lib/analytics";
 import { reapplySavedTheme } from "@/lib/theme-accent";
 import { toast } from "@/lib/toast";
 import { highlightIdOf, highlightRecord, type HighlightMeta } from "@/lib/record-highlight";
+import { AppQueryClient } from "@/lib/mutation-refetch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
 import { useRefetchOnStoreChange } from "./use-refetch-on-store-change";
@@ -64,7 +65,7 @@ function handleGlobalMutationError(
 const REMINDERS_REFRESH_MS = 60_000;
 
 export function createQueryClient(): QueryClient {
-  const client: QueryClient = new QueryClient({
+  const client: AppQueryClient = new AppQueryClient({
     mutationCache: new MutationCache({
       onSuccess: (data, variables, _context, mutation) => {
         // Item salvo pisca na lista (lib/record-highlight): so as mutacoes marcadas.
@@ -105,7 +106,13 @@ export function createQueryClient(): QueryClient {
         // turma, cobranca): marca tudo como stale SEM refetch imediato; cada
         // tela rebusca ao montar de novo.
         void client.invalidateQueries({ refetchType: "none" });
+        // Daqui ate o `onSettled` do cache: as releituras que o hook pedir no
+        // proprio `onSuccess` seguram a gravacao ate a tela atualizar
+        // (lib/mutation-refetch). As de cima (auditoria, lembretes) ficam em
+        // segundo plano. `meta.backgroundRefetch` deixa a gravacao sem esperar.
+        if (!mutation.meta?.backgroundRefetch) client.startCollecting(mutation);
       },
+      onSettled: (_data, _error, _variables, _context, mutation): Promise<void> => client.waitCollected(mutation),
       onError: (error, _variables, _context, mutation) => {
         handleGlobalMutationError(error, mutation);
       },

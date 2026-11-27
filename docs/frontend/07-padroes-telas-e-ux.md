@@ -254,6 +254,14 @@ Ao salvar com campo obrigatório vazio ou inválido, **o foco vai para o primeir
 - **Formulário fora do RHF** (login, criar e trocar senha, verificação em duas etapas, consentimento, código do certificado, troca de e-mail de acesso, assinatura, adicionar aluno na aula, substituto, notas): `focusField(id)` ou `focusFirstInvalid()` de `@/lib/form-errors`, na ordem da tela. **O erro de um campo fica logo abaixo dele** (como o `FieldShell`), também fora do RHF: login ("Informe seu e-mail." / "Informe sua senha."), criar senha e nova senha (tamanho e "senhas não são iguais"), E-mail de acesso. Só o erro sem campo (senha errada, link vencido, falha do servidor) fica no fim. Senha errada no login volta o foco para a senha, selecionada.
 - No celular o foco abre o teclado, mas só depois do toque em salvar (não é foco automático ao abrir, que continua proibido, §3.2).
 
+### 2.11. Gravação só termina com a tela atualizada (27/11/2026, pedido do dono)
+Antes, a gravação dava por concluída assim que o servidor respondia: o toast aparecia e o botão saía de "Salvando..." com a lista ainda velha (ex.: aluno que seguia na turma alguns segundos depois de "Matrícula cancelada.").
+- **Regra:** o toast de sucesso, o fim do "Salvando..." e o fechamento do diálogo só acontecem depois que as consultas **na tela** releram. Feito uma vez, para o app inteiro: o `AppQueryClient` (`@/lib/mutation-refetch`) guarda as releituras que o hook pede no próprio `onSuccess` e o `MutationCache` espera por elas no `onSettled` (o TanStack espera esse passo antes de dar a gravação por concluída). Hook novo não precisa fazer nada: basta invalidar no `onSuccess`.
+- Só espera as consultas montadas (`refetchType: "active"`, o padrão); as de outras telas ficam marcadas e releem ao abrir. Auditoria e lembretes, invalidados pelo próprio cache, seguem em segundo plano. Teto de 10 s para uma leitura lenta não prender o botão.
+- Invalidação no `onSettled` do hook (fica fora da janela) devolve a promessa (ex.: estorno, `invalidateMoney`). Invalidação dentro do `mutate(v, { onSuccess })` da tela não é esperada: invalide no hook.
+- Gravação que não deve esperar: `meta: { backgroundRefetch: true }`.
+- **Sinal na tela:** a barra fina do topo liga enquanto uma gravação está em andamento (`MutationProgress`, depois de 250 ms, para clique rápido não piscar), também quando a confirmação já fechou.
+
 ## 3. Usabilidade Mobile (iOS Safari & iOS/Android Chrome)
 
 O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As seguintes regras técnicas evitam bugs clássicos de WebKit / WKWebView (Chrome e Safari no iOS):
