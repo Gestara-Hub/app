@@ -676,7 +676,7 @@ export async function signInWithPasswordAction(input: {
       // Conta de administrador da plataforma nao entra no app dos clientes: sai na
       // hora, com a mesma mensagem de senha errada (nao revela que a conta existe).
       if (isPlatformAdminUser(authData.user)) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
         return { ok: false, message: "E-mail ou senha incorretos." };
       }
 

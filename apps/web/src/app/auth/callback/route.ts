@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     url.searchParams.get("invite") ?? undefined,
   );
   if (!result.ok) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     return fail(result.code);
   }
 

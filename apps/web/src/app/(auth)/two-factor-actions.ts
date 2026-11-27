@@ -212,7 +212,7 @@ export async function verifyTwoFactorSignInAction(input: {
 export async function cancelTwoFactorSignInAction(): Promise<void> {
   return withErrorScope(async () => {
     const supabase = await createSupabaseServerClient();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
   });
 }
 
