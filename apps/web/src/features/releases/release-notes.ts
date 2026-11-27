@@ -18,6 +18,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.27-3",
+    date: "2026-11-27",
+    items: [
+      { text: "Barra de carregamento ao abrir turmas, alunos e eventos." },
+      { text: "Telas não mostram mais vazio antes de carregar." },
+      { text: "Abra turmas, alunos e eventos em nova aba com Ctrl+clique." },
+      { text: "Cancelar matrícula com texto mais curto." },
+    ],
+  },
+  {
     version: "2026.11.27-2",
     date: "2026-11-27",
     items: [
