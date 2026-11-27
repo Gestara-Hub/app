@@ -18,6 +18,7 @@ import {
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { identifyUser } from "@/lib/analytics";
 import { MutationProgress } from "@/components/layout/navigation-progress";
+import { isSupabaseOrganization } from "@/lib/session";
 import { setInAppSession } from "@/lib/session-expired";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
@@ -128,11 +129,14 @@ export function SessionProvider({
     setCurrentActor({ userId: user.id, name: user.name, profile: user.profile });
     return () => setCurrentActor(null);
   }, [user]);
-  // Telas logadas: "sessão expirou" leva ao login (paginas publicas nao).
+  // Telas logadas: "sessão expirou" leva ao login (paginas publicas nao). So na
+  // conta real: a demonstracao nao tem sessao do banco, e uma acao que pede essa
+  // sessao (comunicados, suporte) mandava para o login no meio do uso (27/11/2026).
+  const realAccount = isSupabaseOrganization(user.organizationId);
   useEffect(() => {
-    setInAppSession(true);
+    setInAppSession(realAccount);
     return () => setInAppSession(false);
-  }, []);
+  }, [realAccount]);
   // Analise de uso: so id, perfil e organizacao (lib/analytics).
   useEffect(() => {
     identifyUser({ id: user.id, profile: user.profile, organizationId: user.organizationId });
