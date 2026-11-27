@@ -1,7 +1,7 @@
 "use client";
 
 import { openWhatsApp } from "@/lib/whatsapp";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { capacityLabel, promoteWaitlistDescription } from "../turma-copy";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,16 +31,6 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,7 +54,7 @@ import { useModalityVocabulary } from "@/features/settings";
 import { normalizeText, withKind } from "@/lib/text";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { nowTime, todayISO } from "@gestarahub/core/date";
-import { plural, pluralWord } from "@gestarahub/core/format";
+import { plural } from "@gestarahub/core/format";
 import { classBillingMode } from "@gestarahub/core/billing";
 import { packageState, usablePackagesFor } from "@gestarahub/core/packages";
 import {
@@ -88,7 +78,6 @@ import {
 } from "@/features/clients";
 import { ClassAssessmentsTab, StudentGradesDialog, useClassAssessments } from "@/features/grades";
 import {
-  useCancelEnrollment,
   useClassGroup,
   useEnrollments,
   usePromoteWaitlist,
@@ -101,6 +90,7 @@ import {
 import { useCharges } from "../hooks/use-billing";
 import { pickNextSession } from "../next-session";
 import { useStudentPackages } from "../hooks/use-packages";
+import { CancelEnrollmentDrawer, RefundQueue, type RefundTarget } from "./cancel-enrollment-drawer";
 import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
@@ -119,34 +109,7 @@ const LOW_ATTENDANCE = 0.75;
 
 const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
 
-/** Texto do cancelamento da matricula: no curso, explica o que acontece com as parcelas (decisao 1). */
-function cancelEnrollmentText(e: EnrollmentView): string {
-  if (!e.course) {
-    return `${e.studentName} sai da turma e deixa de aparecer na lista de chamada. As cobranças do aluno não mudam.`;
-  }
-  if (e.isCompleted) {
-    return `${e.studentName} sai da turma. O curso já terminou: as parcelas continuam como estão.`;
-  }
-  const future = e.courseInstallments?.future ?? 0;
-  const due = e.courseInstallments?.due ?? 0;
-  return [
-    `${e.studentName} sai do curso.`,
-    "As parcelas pagas ficam.",
-    future === 0
-      ? "Não há parcelas futuras para cancelar."
-      : future === 1
-        ? "A parcela futura será cancelada."
-        : `As ${future} parcelas futuras serão canceladas.`,
-    // "Vencida" errava para a que vence hoje.
-    due > 0
-      ? due === 1
-        ? "A parcela que vence até hoje continua para receber."
-        : `As ${due} parcelas que vencem até hoje continuam para receber.`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
+
 
 function isApiNotFound(error: unknown): boolean {
   return isApiError(error) && error.code === "NOT_FOUND";
@@ -232,7 +195,6 @@ export function TurmaDetailView({
   const { data: waitlist, isPending: waitlistPending } = useWaitlist(id);
   // So o cadastro dos matriculados (faixa, aniversario, evolucao), nao de todos os alunos.
   const { data: clients } = useClientsByIds((enrollments ?? []).map((e) => e.studentId));
-  const cancelMut = useCancelEnrollment();
   const paymentMut = useSetEnrollmentPayment();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
@@ -284,9 +246,15 @@ export function TurmaDetailView({
   const [tab, setTab] = useState<Tab>("enrolled");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
-  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [cancelRows, setCancelRows] = useState<EnrollmentView[]>([]);
+  const [refundQueue, setRefundQueue] = useState<RefundTarget[]>([]);
+  // Estorno feito ou pulado: sai da fila (repetir para o mesmo nao muda nada).
+  const nextRefund = useCallback(
+    (chargeId: Id) =>
+      setRefundQueue((queue) => (queue.some((r) => r.chargeId === chargeId) ? queue.filter((r) => r.chargeId !== chargeId) : queue)),
+    [],
+  );
   const [promoteCourseEntry, setPromoteCourseEntry] = useState<WaitlistEntryView | null>(null);
-  const [bulkPending, setBulkPending] = useState(false);
   // Selecao em lote: so quando pedida em "Selecionar alunos" (menu do cabecalho).
   const [selecting, setSelecting] = useState(false);
   // Mudar de turma (doc product/30 §2): um aluno pelo menu ou os selecionados.
@@ -441,72 +409,23 @@ export function TurmaDetailView({
     );
   };
 
-  const cancelOne = async (enrollment: EnrollmentView) => {
-    const ok = await confirmAction({
-      title: "Cancelar matrícula?",
-      description: cancelEnrollmentText(enrollment),
-      confirmLabel: "Cancelar matrícula",
-      variant: "destructive",
-    });
-    if (!ok) return;
-    cancelMut.mutate(
-      { id: enrollment.id },
-      {
-        onSuccess: () => {
-          toast.success("Matrícula cancelada.");
-          setSelected((prev) => {
-            const next = new Set(prev);
-            next.delete(enrollment.id);
-            return next;
-          });
-        },
-        onError: (err) =>
-          toast.error(getErrorMessage(err, "Não foi possível cancelar a matrícula.")),
-      },
-    );
-  };
-
-  const cancelSelected = async () => {
-    const batch = selectedRows;
-    const done = new Set<Id>();
-    let lastError: unknown;
-    setBulkPending(true);
-    for (const row of batch) {
-      try {
-        await cancelMut.mutateAsync({ id: row.id });
-        done.add(row.id);
-      } catch (err) {
-        // erro individual nao interrompe o lote; o resumo conta o que passou.
-        lastError = err;
-      }
-    }
-    setBulkPending(false);
-    setConfirmBulk(false);
-    // Tira da selecao so o que foi processado; falhas seguem marcadas.
+  // Cancelar matricula (27/11/2026): a gaveta pergunta o que fazer com o plano e
+  // as cobrancas; o estorno escolhido abre depois, um por vez.
+  const cancelOne = (enrollment: EnrollmentView) => setCancelRows([enrollment]);
+  const finishCancel = ({ done, refunds }: { done: Id[]; refunds: RefundTarget[] }) => {
     setSelected((prev) => {
       const next = new Set(prev);
       for (const rowId of done) next.delete(rowId);
       return next;
     });
-    if (done.size > 0) {
-      toast.success(
-        `${plural(done.size, "matrícula cancelada", "matrículas canceladas")}.`,
-      );
-    }
-    const failed = batch.length - done.size;
-    if (failed === 0) setSelecting(false);
-    if (failed > 0) {
-      toast.error(
-        `${plural(failed, "matrícula não foi cancelada", "matrículas não foram canceladas")}. ${getErrorMessage(lastError, "Tente novamente.")}`,
-      );
-    }
+    if (selecting && selectedRows.every((r) => done.includes(r.id))) setSelecting(false);
+    if (refunds.length > 0) setRefundQueue(refunds);
   };
 
   const isCourse = classBillingMode(turma) === "course";
   const isInactive = turma.status !== "active";
   // Turma desativada e curso terminado nao recebem matricula nova (o servico tambem recusa).
   const canEnroll = canManage && !isInactive && !(isCourse && turma.isEnded);
-  const selectedHasCourse = selectedRows.some((e) => e.course && !e.isCompleted);
   // Curso nao muda de turma: o proximo modulo e uma matricula nova (doc product/30 §2).
   const canMove = canManage && !isInactive && !isCourse;
 
@@ -1093,7 +1012,7 @@ export function TurmaDetailView({
                     <Button
                       variant="outline"
                       disabled={selectedRows.length === 0}
-                      onClick={() => setConfirmBulk(true)}
+                      onClick={() => setCancelRows(selectedRows)}
                     >
                       <UserX className="size-4" />
                       Cancelar matrícula
@@ -1214,43 +1133,15 @@ export function TurmaDetailView({
         context={turma ? { date: todayISO(), modalityId: turma.modalityId } : undefined}
       />
 
-      <AlertDialog
-        open={confirmBulk}
+      <CancelEnrollmentDrawer
+        rows={cancelRows}
+        className={turma.name}
         onOpenChange={(open) => {
-          if (!bulkPending) setConfirmBulk(open);
+          if (!open) setCancelRows([]);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Cancelar {plural(selectedRows.length, "matrícula", "matrículas")}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Os alunos saem da turma e deixam de contar nas vagas. O histórico
-              de presença é mantido.
-              {selectedHasCourse
-                ? " No curso, as parcelas pagas ficam e as futuras são canceladas."
-                : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkPending}>Voltar</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={bulkPending || selectedRows.length === 0}
-              onClick={(event) => {
-                // Mantem o dialogo aberto ate o lote terminar.
-                event.preventDefault();
-                void cancelSelected();
-              }}
-            >
-              {bulkPending
-                ? "Cancelando..."
-                : `Cancelar ${pluralWord(selectedRows.length, "matrícula", "matrículas")}`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onDone={finishCancel}
+      />
+      <RefundQueue queue={refundQueue} onDone={nextRefund} />
     </>
   );
 }

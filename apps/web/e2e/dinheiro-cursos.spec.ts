@@ -1,4 +1,4 @@
-import { classGroup, enrollment, expect, expectOverdueRow, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { answerCancel, cancelDrawer, classGroup, enrollment, expect, expectOverdueRow, readAcademy, seedAcademy, student, test } from "./fixtures";
 import {
   TS,
   charge,
@@ -152,11 +152,15 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await page.goto("/classes/cg-c");
   await page.getByRole("button", { name: "Ações de Aluna Meio", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Cancelar matrícula?" });
-  await expect(confirm).toContainText(
-    "Aluna Meio sai do curso. As parcelas pagas ficam. As 2 parcelas futuras serão canceladas. A parcela que vence até hoje continua para receber.",
-  );
-  await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
+  // Gaveta (27/11/2026): as futuras e a vencida sao perguntadas, sem nada marcado.
+  const drawer = cancelDrawer(page);
+  await expect(drawer).toContainText("2 cobranças futuras: o que fazer?");
+  await answerCancel(page, "futuras", "Cancelar");
+  await answerCancel(page, "vencidas", "Manter como dívida");
+  if (await drawer.getByRole("radiogroup", { name: "O que fazer com o que já foi pago" }).count()) {
+    await answerCancel(page, "pago", "Manter, sem estorno");
+  }
+  await drawer.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
   await waitForTenant(page, (t) => t.charges.find((c: { id: string }) => c.id === "k-3")?.status === "canceled");
 

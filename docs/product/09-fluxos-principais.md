@@ -424,7 +424,7 @@ Regras completas: [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md).
 2. Se o aluno ja tem aula no mesmo dia e horario em outra turma, a matricula e recusada (`CLASS_SCHEDULE_CONFLICT`).
 3. Com a turma lotada, o dialogo avisa e oferece "Pôr na lista de espera" ou "Matricular mesmo assim (N)".
 4. A lista de espera fica no detalhe da turma. Ao abrir vaga, a promocao e manual: "Promover da lista de espera?" (matricula mesmo se lotada) ou "Remover da lista de espera?".
-5. "Cancelar matrícula?" tira o aluno da turma e da chamada; a mensalidade do aluno nao muda (o plano e do aluno).
+5. "Cancelar matrícula" tira o aluno da turma e da chamada. Desde 27/11/2026 a gaveta pergunta o que fazer com o plano (aluno sem outra turma), as cobranças futuras, as vencidas e o que já foi pago (doc 11, "Cancelar matrícula: plano e cobranças").
 
 ## Fluxo 16 (M3): Fazer a chamada
 

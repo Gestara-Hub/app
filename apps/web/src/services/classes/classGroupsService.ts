@@ -26,8 +26,8 @@ import { auditLogService } from "../audit/auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { actorTeacherId, teacherSeesClass } from "./teacherScope";
 import { activeEnrollments, clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
-import { BILLING_LOCKED_MESSAGE, lockedBillingChanges, normalizeBilling, validateGroup, sameSlots } from "./classValidation";
-import { toGroupView } from "./classViews";
+import { BILLING_LOCKED_MESSAGE, COURSE_DATES_LOCKED_MESSAGE, lockedBillingChanges, normalizeBilling, validateGroup, sameSlots } from "./classValidation";
+import { billingLocks, toGroupView } from "./classViews";
 
 export const classGroupsService = {
   list(filter?: ClassGroupFilter): Promise<ClassGroupView[]> {
@@ -94,13 +94,20 @@ export const classGroupsService = {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const current = store.classGroups[idx];
-      // Com matricula (de qualquer situacao), a cobranca trava (25/11/2026): mudar
-      // nao mexia nas parcelas ja geradas e ninguem percebia. Para mudar, duplicar.
-      if (store.enrollments.some((e) => e.classGroupId === id)) {
-        const changed = lockedBillingChanges(current, payload);
-        if (changed.length > 0) {
-          throw validationError(changed.map((field) => ({ field, message: BILLING_LOCKED_MESSAGE })));
-        }
+      // Com matricula ativa, a cobranca trava (25/11/2026; so ativa desde 27/11/2026):
+      // mudar nao mexia nas parcelas ja geradas e ninguem percebia. Para mudar,
+      // duplicar. No curso que ja comecou com alunos, as datas seguem travadas.
+      const locks = billingLocks(current);
+      const changed = lockedBillingChanges(current, payload).filter((field) =>
+        field === "startDate" || field === "endDate" ? locks.courseDatesLocked : locks.billingLocked,
+      );
+      if (changed.length > 0) {
+        throw validationError(
+          changed.map((field) => ({
+            field,
+            message: locks.billingLocked ? BILLING_LOCKED_MESSAGE : COURSE_DATES_LOCKED_MESSAGE,
+          })),
+        );
       }
       const next = normalizeBilling({ ...current, ...payload });
       validateGroup(next, id);

@@ -99,14 +99,16 @@ export async function declineTermsAndSignOut(): Promise<void> {
 /**
  * Logout: encerra a sessao do Supabase Auth, limpa o cookie de sessao e volta
  * para o login. A prova do segundo fator desta sessao acaba junto; o
- * dispositivo lembrado continua (doc 17).
+ * dispositivo lembrado continua (doc 17). So a sessao deste aparelho (27/11/2026):
+ * o padrao do Supabase e global e sair no computador derrubava o celular
+ * ("Refresh Token Not Found" no proximo uso).
  */
 export async function signOut(): Promise<void> {
   return withErrorScope(async () => {
     try {
       const supabase = await createSupabaseServerClient();
       await forgetCurrentSessionVerification(supabase);
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
     } catch {
       // Segue limpando os cookies locais
     }

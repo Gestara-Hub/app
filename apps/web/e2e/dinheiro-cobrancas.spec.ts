@@ -384,10 +384,10 @@ test.describe("Pro", () => {
       const row = rowOf(page, name);
       await expect(row).toContainText("Pago online");
       await expect(row).toContainText(via);
-      // Pago online nao se desfaz (seria estorno): sem botao e sem menu de clique direito.
+      // Pago online nao se desfaz: so o estorno (26/11/2026), no menu e no clique direito.
       await expect(row.getByRole("button", { name: "Desfazer pagamento" })).toHaveCount(0);
       await expect(row.getByRole("button", { name: /Ver detalhes do pagamento online/ })).toBeVisible();
-      expect(await contextMenuItems(page, row)).toEqual([]);
+      expect(await contextMenuItems(page, row)).toEqual(["Estornar pagamento"]);
     }
     const card = page.locator("div.rounded-xl.shadow-2xs").filter({ has: page.getByText("Recebido", { exact: true }) });
     await expect(card).toContainText("R$ 880,00");

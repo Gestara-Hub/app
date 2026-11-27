@@ -662,8 +662,10 @@ export function TurmaForm({
   const isEdit = Boolean(turma);
   // Editando ou duplicando: os valores vieram de uma turma, as sugestoes da area nao mexem neles.
   const prefilled = isEdit || Boolean(template);
-  // Turma que ja teve matricula: a cobranca trava (25/11/2026; o servidor tambem recusa).
-  const billingLocked = isEdit && Boolean(turma?.hasEnrollments);
+  // Matricula ativa: a cobranca trava (o servidor tambem recusa). Curso que ja
+  // comecou com alunos: as datas seguem travadas (doc product/11, 27/11/2026).
+  const billingLocked = isEdit && Boolean(turma?.billingLocked);
+  const datesLocked = isEdit && Boolean(turma?.courseDatesLocked);
   const pending = createMut.isPending || updateMut.isPending;
   const { data: unit } = useUnit();
   const { classDefaults, defaultBillingMode } = useBusinessSegment();
@@ -1103,9 +1105,9 @@ export function TurmaForm({
               <DateField<TurmaFormValues>
                 name="startDate"
                 label="Data de início da turma"
-                hint={billingLocked && isCourse ? "As parcelas do curso seguem o período: não muda depois da 1ª matrícula." : startDateHint}
+                hint={datesLocked && isCourse ? "As aulas e as parcelas do curso seguem o período." : startDateHint}
                 required
-                disabled={pending || (billingLocked && isCourse)}
+                disabled={pending || (datesLocked && isCourse)}
               />
             </div>
             <Controller
@@ -1143,14 +1145,18 @@ export function TurmaForm({
             {/* A dica de cada forma fica no proprio cartao (sem repetir abaixo). */}
             <FieldShell label="Cobrança">
               <div className="space-y-3">
-                {billingLocked ? (
+                {billingLocked || (datesLocked && isCourse) ? (
                   <div
                     data-testid="billing-locked"
                     className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
                   >
                     <p className="flex items-start gap-2 text-muted-foreground">
                       <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                      <span>Já há alunos matriculados. Para mudar a cobrança, duplique a turma.</span>
+                      <span>
+                        {billingLocked
+                          ? "Já há alunos matriculados. Para mudar a cobrança, duplique a turma."
+                          : "O curso já teve aulas. Para uma nova turma, duplique."}
+                      </span>
                     </p>
                     {onDuplicate ? (
                       <Button type="button" variant="outline" className="shrink-0" onClick={onDuplicate} disabled={pending}>
@@ -1187,7 +1193,7 @@ export function TurmaForm({
                       label="Termina em"
                       hint="Curso tem data para acabar."
                       required
-                      disabled={pending || billingLocked}
+                      disabled={pending || datesLocked}
                     />
                   </div>
                 ) : null}

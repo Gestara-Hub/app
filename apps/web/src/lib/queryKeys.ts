@@ -118,6 +118,7 @@ export const queryKeys = {
     attendanceSummary: (date: DateISO) =>
       ["classes", "attendanceSummary", date] as const,
     absenceStreaks: ["classes", "absenceStreaks"] as const,
+    cancelPreview: (enrollmentIds: Id[]) => ["classes", "cancelPreview", enrollmentIds] as const,
     enrolledModalities: ["classes", "enrolledModalities"] as const,
     certificates: ["classes", "certificate"] as const,
     certificate: (enrollmentId: Id) => ["classes", "certificate", enrollmentId] as const,

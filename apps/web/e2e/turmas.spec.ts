@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import {
+  answerCancel,
   attendanceAction,
+  cancelDrawer,
   classGroup,
   enrollment,
   expect,
@@ -127,16 +129,22 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
   await expect(row.locator("span[title^='Encerrada automaticamente pelo sistema']")).toHaveCount(1);
 });
 
-test("cancelar matrícula individual pede confirmação", async ({ page }) => {
+test("cancelar matrícula: última turma pergunta o plano, sem nada marcado", async ({ page }) => {
   await seedAcademy(page, { extra: withClass });
   await page.goto("/classes/cg-1");
   // A linha tambem e um botao (abre a ficha) e o nome dela inclui o do menu: exact.
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
-  const confirm = page.getByRole("alertdialog");
-  await expect(confirm).toContainText("As cobranças do aluno não mudam.");
-  await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
+  const drawer = cancelDrawer(page);
+  await expect(drawer).toContainText("Aluno A20 sai da turma e deixa de aparecer na chamada.");
+  await expect(drawer).toContainText("Aluno não fica em nenhuma outra turma.");
+  // Sem resposta, o erro aparece na pergunta (27/11/2026: nada vem marcado).
+  await drawer.getByRole("button", { name: "Cancelar matrícula" }).click();
+  await expect(drawer.getByText("Escolha o que fazer com o plano.")).toBeVisible();
+  await answerCancel(page, "plano", "Manter o plano");
+  await drawer.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
+  await expect(drawer).toBeHidden();
 });
 
 async function createClass(page: Page, name: string, moveToWednesday = false) {
@@ -310,10 +318,11 @@ test("cancelar em lote com busca ativa cancela exatamente os selecionados", asyn
   await expect(page.getByText("2 selecionados")).toBeVisible();
   await page.getByRole("button", { name: "Cancelar matrícula" }).click();
 
-  const confirm = page.getByRole("alertdialog", { name: "Cancelar 2 matrículas?" });
-  await confirm.getByRole("button", { name: "Cancelar matrículas" }).click();
+  const drawer = cancelDrawer(page);
+  await answerCancel(page, "plano", "Manter o plano");
+  await drawer.getByRole("button", { name: "Cancelar matrículas" }).click();
   await expect(page.getByText("2 matrículas canceladas.")).toBeVisible();
-  await expect(confirm).toBeHidden();
+  await expect(drawer).toBeHidden();
   // Lote concluido: a selecao fecha.
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 

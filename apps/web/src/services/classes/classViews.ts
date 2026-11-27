@@ -54,6 +54,22 @@ export function frequencyOf(
   };
 }
 
+/**
+ * Trava da cobranca (27/11/2026, doc product/11 "Cobrança travada"): so com
+ * matricula ativa. Sem aluno ativo, mudar nao afeta ninguem (as cobrancas ja
+ * geradas guardam o proprio valor). No curso, as datas seguem travadas depois
+ * que ele comecou com alunos: as aulas dadas sairiam do periodo.
+ */
+export function billingLocks(g: ClassGroup, enrolledCount = activeEnrollments(g.id).length) {
+  const billingLocked = enrolledCount > 0;
+  const startedWithStudents =
+    g.startDate <= todayISO() && store.enrollments.some((e) => e.classGroupId === g.id);
+  return {
+    billingLocked,
+    courseDatesLocked: classBillingMode(g) === "course" && (billingLocked || startedWithStudents),
+  };
+}
+
 export function toGroupView(g: ClassGroup): ClassGroupView {
   const enrolledCount = activeEnrollments(g.id).length;
   return {
@@ -64,8 +80,7 @@ export function toGroupView(g: ClassGroup): ClassGroupView {
       ? store.plans.find((p) => p.id === g.planId)?.name
       : undefined,
     enrolledCount,
-    // Ja teve matricula (de qualquer situacao): a cobranca da turma trava (25/11/2026).
-    hasEnrollments: enrolledCount > 0 || store.enrollments.some((e) => e.classGroupId === g.id),
+    ...billingLocks(g, enrolledCount),
     availableSpots: g.capacity - enrolledCount,
     isEnded: hasEnded(g, todayISO()),
   };

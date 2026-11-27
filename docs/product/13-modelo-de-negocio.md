@@ -236,4 +236,4 @@ Decidido com o dono: a taxa fixa (R$ 1,99 no Grátis, R$ 1,29 nos pagos) pesava 
 - Exemplos (Grátis / Profissional): R$ 30 → 0,99 / 0,69; R$ 150 → 2,25 / 1,50; R$ 500 → 7,50 / 5,00; R$ 2.000 → 9,90 / 6,90.
 - Mesma regra para Pix e cartão; a base é o valor da cobrança, sem a taxa repassada ao aluno. Vai ao Asaas como valor fixo do split, já calculado (`platformSplitCents` em `@gestarahub/core/payment-fees`).
 - Vale para as cobranças online geradas depois da mudança; Pix e links já gerados mantêm a taxa de quando foram criados.
-- Contrato de ativação e termos: a mudança precisa de nova versão (ver `docs/pendencias.md`, Jurídico).
+- Contrato de ativação já com a regra nova; os Termos não citam valores. Sem aviso a espaços antigos: em 26/11/2026 só o dono usava o sistema em produção.

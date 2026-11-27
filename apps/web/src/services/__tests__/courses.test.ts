@@ -670,13 +670,13 @@ describe("curso fechado: financeiro e professores", () => {
 describe("cobrança travada e inativar com alunos (25/11/2026)", () => {
   beforeEach(() => resetAcademy());
 
-  it("antes da 1ª matrícula o valor muda; depois trava, mesmo com a matrícula cancelada", async () => {
+  it("antes da 1ª matrícula o valor muda; com aluno ativo trava; sem aluno ativo, só as datas do curso iniciado", async () => {
     const g = await courseClass();
     expect((await turmasService.update(g.id, { coursePriceCents: 25000 })).coursePriceCents).toBe(25000);
 
     const student = await createStudent("Ana");
     const enrollment = await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice({ priceCents: 25000 }) });
-    expect((await turmasService.getById(g.id)).hasEnrollments).toBe(true);
+    expect((await turmasService.getById(g.id)).billingLocked).toBe(true);
 
     await expect(turmasService.update(g.id, { coursePriceCents: 2000 })).rejects.toMatchObject({
       code: "VALIDATION",
@@ -687,9 +687,28 @@ describe("cobrança travada e inativar com alunos (25/11/2026)", () => {
     // O que nao mexe na cobranca segue livre.
     expect((await turmasService.update(g.id, { name: "Confeitaria II", capacity: 12 })).name).toBe("Confeitaria II");
 
+    // Sem aluno ativo (27/11/2026): a cobranca libera; o curso ja comecou (14/09)
+    // com aluno, entao as datas seguem travadas (as aulas dadas seguem o periodo).
     await turmasService.cancelEnrollment(enrollment.id);
-    await expect(turmasService.update(g.id, { courseMaxInstallments: 2 })).rejects.toMatchObject({ code: "VALIDATION" });
+    const unlocked = await turmasService.getById(g.id);
+    expect(unlocked).toMatchObject({ billingLocked: false, courseDatesLocked: true });
+    expect((await turmasService.update(g.id, { courseMaxInstallments: 2, coursePriceCents: 30000 })).coursePriceCents).toBe(30000);
+    await expect(turmasService.update(g.id, { endDate: "2026-12-31" })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "endDate", message: "O curso já teve aulas. Para uma nova turma, duplique." }],
+    });
+    // As cobrancas ja geradas guardam o proprio valor.
     expect(courseCharges(student.id).every((c) => c.amountCents <= 25000)).toBe(true);
+  });
+
+  it("curso que ainda não começou: sem aluno ativo, as datas também liberam", async () => {
+    const g = await courseClass({ startDate: "2026-10-05" });
+    const student = await createStudent("Duda");
+    const enrollment = await turmasService.enroll({ classGroupId: g.id, studentId: student.id, course: choice({ firstDueDate: "2026-10-05" }) });
+    expect((await turmasService.getById(g.id)).courseDatesLocked).toBe(true);
+    await turmasService.cancelEnrollment(enrollment.id);
+    expect((await turmasService.getById(g.id)).courseDatesLocked).toBe(false);
+    expect((await turmasService.update(g.id, { endDate: "2026-12-31" })).endDate).toBe("2026-12-31");
   });
 
   it("com alunos ativos não inativa; sem alunos, inativa", async () => {

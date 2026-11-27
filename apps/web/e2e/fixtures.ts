@@ -517,3 +517,26 @@ export async function rowMenuAction(page: Page, name: string, item: string | Reg
     await target.click({ timeout: 2_000 });
   }).toPass({ timeout: 15_000 });
 }
+
+/** Gaveta "Cancelar matrícula" (27/11/2026): plano e cobranças, nada marcado. */
+export function cancelDrawer(page: Page): Locator {
+  return page.getByRole("dialog", { name: /^Cancelar \d* ?matrículas?$/ });
+}
+
+/** Responde uma pergunta da gaveta: o grupo pelo rotulo de leitura e a opcao pelo titulo. */
+export async function answerCancel(
+  page: Page,
+  group: "plano" | "futuras" | "vencidas" | "pago",
+  option: string,
+): Promise<void> {
+  const groups = {
+    plano: "O que fazer com o plano",
+    futuras: "O que fazer com as cobranças futuras",
+    vencidas: "O que fazer com as cobranças vencidas",
+    pago: "O que fazer com o que já foi pago",
+  } as const;
+  await cancelDrawer(page)
+    .getByRole("radiogroup", { name: groups[group] })
+    .getByRole("radio", { name: new RegExp(`^${option}`) })
+    .click();
+}

@@ -90,8 +90,16 @@ export interface ClassGroupView extends ClassGroup {
   instructorName: string;
   planName?: string;
   enrolledCount: number; // matriculas ativas
-  /** Ja teve matricula, de qualquer situacao: a cobranca da turma fica travada. */
-  hasEnrollments: boolean;
+  /**
+   * Tem matricula ativa: forma de cobranca, plano, valor e parcelas ficam
+   * travados (27/11/2026; antes travava com qualquer matricula, ate cancelada).
+   */
+  billingLocked: boolean;
+  /**
+   * Curso com aluno ativo, ou que ja comecou e teve alunos: inicio e fim ficam
+   * travados (as aulas dadas e as chamadas seguem o periodo). Fora do curso, false.
+   */
+  courseDatesLocked: boolean;
   availableSpots: number; // capacity - enrolledCount
   /** Ja terminou: `endDate` antes de hoje (derivado na leitura). */
   isEnded: boolean;
@@ -150,6 +158,68 @@ export interface MoveStudentsResult {
   moved: number;
   /** Quantos subiram de nivel (quem ja esta no ultimo nivel fica como esta). */
   promoted: number;
+}
+
+// --- Cancelar matricula com o dinheiro (27/11/2026, doc product/11) ---------
+
+/** O plano do aluno que nao fica em outra turma: encerrar ou manter. */
+export type CancelEnrollmentPlanChoice = "end" | "keep";
+/** Cobrancas em aberto: cancelar ou manter. */
+export type CancelEnrollmentChargesChoice = "cancel" | "keep";
+/** O que ja foi pago e ainda nao foi usado: manter ou estornar (a tela abre o estorno). */
+export type CancelEnrollmentPaidChoice = "keep" | "refund";
+
+/** Cobranca citada na previa do cancelamento. */
+export interface CancelEnrollmentChargeItem {
+  chargeId: Id;
+  /** "Mensalidade 11/2026", "parcela 2 de 4 do curso Confeitaria"... */
+  label: string;
+  amountCents: number;
+  dueDate: DateISO;
+  /** Pago pelo app (estorno pelo parceiro) ou fora dele (so registra). */
+  paidOnline?: boolean;
+}
+
+/** Cobrancas de uma origem (curso da matricula ou plano do aluno) separadas por situacao. */
+export interface CancelEnrollmentCharges {
+  /** Em aberto de periodo que ainda nao comecou (curso: vence depois de hoje). */
+  future: CancelEnrollmentChargeItem[];
+  /** Em aberto ja vencida ou do periodo em uso. */
+  overdue: CancelEnrollmentChargeItem[];
+  /** Paga de periodo em uso ou futuro (curso: ainda nao terminou). */
+  paid: CancelEnrollmentChargeItem[];
+}
+
+/**
+ * Previa do que o cancelamento mexe no dinheiro. `plan` so vem quando o aluno
+ * nao fica em nenhuma outra turma e o plano dele esta ativo: a tela pergunta.
+ * As cobrancas do plano (`membership`) so valem se o plano for encerrado.
+ */
+export interface CancelEnrollmentPreview {
+  enrollmentId: Id;
+  studentId: Id;
+  studentName: string;
+  plan?: {
+    planId: Id;
+    planName: string;
+    /** "Depois do uso": a mensalidade do periodo em uso sera gerada ao encerrar. */
+    chargesUsedPeriod: boolean;
+  };
+  /** Turmas em que o aluno continua (o plano segue por elas). */
+  otherClassNames: string[];
+  course: CancelEnrollmentCharges;
+  membership: CancelEnrollmentCharges;
+}
+
+/**
+ * Escolhas da janela. Sem escolhas, vale a regra antiga (curso: futuras saem,
+ * vencidas ficam; plano e mensalidades nao mudam). Com escolhas, cada pergunta
+ * que a previa fez precisa de resposta (o servico confere).
+ */
+export interface CancelEnrollmentChoices {
+  plan?: CancelEnrollmentPlanChoice;
+  futureCharges?: CancelEnrollmentChargesChoice;
+  overdueCharges?: CancelEnrollmentChargesChoice;
 }
 
 /**

@@ -248,7 +248,7 @@ Lista de quais acoes confirmam em [`../frontend/06-decisoes-de-interface.md`](..
 | Cancelar cobranca | "Cancelar cobrança" | `billing-view.tsx` |
 | Reabrir cobranca cancelada | "Reabrir cobrança?" | `billing-view.tsx` |
 | Resetar competencia | "Resetar cobranças da competência" (pagas sao mantidas) | `billing-view.tsx` |
-| Cancelar matricula | "Cancelar matrícula?" | `turma-detail-view.tsx` |
+| Cancelar matricula | Gaveta "Cancelar matrícula" com as perguntas do dinheiro (doc 11) | `cancel-enrollment-drawer.tsx` |
 | Promover da espera | "Promover da lista de espera?" | `turma-detail-view.tsx` |
 | Remover da espera | "Remover da lista de espera?" | `turma-detail-view.tsx` |
 | Remover avulso/experimental da aula | "Remover da aula?" | `session-detail-view.tsx` |

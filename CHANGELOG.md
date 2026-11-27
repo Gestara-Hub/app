@@ -2,6 +2,28 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.27 (2026-11-27)
+
+Desde v2026.11.26.
+
+### Novo
+
+- classes: cancelar matrícula pergunta o plano, as cobranças e o estorno; cobrança da turma trava só com aluno ativo
+- ui: gravação só termina com a tela atualizada e barra fina enquanto salva
+
+### Testes
+
+- e2e: linha paga com recibo, estorno e desfazer no menu ⋮
+
+### Correções
+
+- two-factor: prazo da prova do segundo fator no relógio do banco
+- auth: sair encerra só a sessão deste aparelho
+
+### Documentação
+
+- business-model: taxa em percentual sem aviso a espaços antigos
+
 ## 2026.11.26 (2026-11-26)
 
 Desde v2026.11.25-9.
