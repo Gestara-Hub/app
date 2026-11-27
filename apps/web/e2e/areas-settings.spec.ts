@@ -754,6 +754,8 @@ test.describe("Certificados", () => {
     await panel.getByRole("switch", { name: "Mostrar frequência" }).click();
     await panel.locator("#signature-1-role").fill("Diretora");
     await panel.locator("input[type=file]").setInputFiles(files.png);
+    // Salvar com o envio em andamento pede "Aguarde o envio dos arquivos".
+    await expect(panel.getByText(/Enviado/).first()).toBeVisible({ timeout: 20_000 });
     await expect(restore).toBeVisible();
     await save.click();
     await expect(page.getByText("Modelo de certificado salvo.")).toBeVisible();
