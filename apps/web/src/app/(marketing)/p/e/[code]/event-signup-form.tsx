@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -62,7 +62,7 @@ type SignupValues = z.infer<typeof signupSchema>;
  * WhatsApp opcional. Nada vem preenchido (regra das paginas publicas).
  */
 export function EventSignupForm({ event }: { event: PublicEventView }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [result, setResult] = useState<PublicEventSignupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Indo para a pagina do ingresso: o botao segue ocupado ate a troca de pagina.

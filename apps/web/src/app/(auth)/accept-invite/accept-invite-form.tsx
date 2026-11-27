@@ -2,7 +2,7 @@
 
 import { RequiredMark } from "@/components/form";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,7 +46,7 @@ export function AcceptInviteForm({
   organizationName,
   profile,
 }: AcceptInviteFormProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<AcceptInviteFormValues>({

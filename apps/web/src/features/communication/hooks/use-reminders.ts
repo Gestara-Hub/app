@@ -66,6 +66,8 @@ export function useReminderSummary(today: string, enabled = true) {
     // pulsar e tocar (12/11/2026). O resumo e pequeno (so numero e chaves).
     refetchInterval: REMINDER_SUMMARY_REFRESH_MS,
     refetchIntervalInBackground: true,
+    // Leitura periodica em segundo plano: nao liga a barra do topo (27/11/2026).
+    meta: { background: true },
   });
 }
 

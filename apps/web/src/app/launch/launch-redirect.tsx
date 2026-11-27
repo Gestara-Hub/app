@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { LaunchSplashContent, markLaunchSplash } from "@/components/layout/launch-splash";
 import { Button } from "@/components/ui/button";
 import { markRestoredOwner, restorableRoute } from "@/lib/last-route";
@@ -15,7 +15,7 @@ const HOME = "/dashboard";
  * depois de alguns segundos, um botao para tentar de novo.
  */
 export function LaunchRedirect() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [slow, setSlow] = useState(false);
   const targetRef = useRef(HOME);
 

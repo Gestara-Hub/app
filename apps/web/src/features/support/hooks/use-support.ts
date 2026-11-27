@@ -43,6 +43,8 @@ export function useSupportUnread(enabled = true) {
     queryFn: () => unwrap(supportUnreadCountAction()),
     enabled,
     refetchInterval: 2 * 60_000,
+    // Leitura periodica em segundo plano: nao liga a barra do topo (27/11/2026).
+    meta: { background: true },
     refetchOnWindowFocus: true,
     retry: false,
     staleTime: 30_000,
@@ -65,6 +67,8 @@ export function useSupportThread(threadId: string | null, enabled: boolean) {
     queryFn: () => unwrap(getSupportThreadAction(threadId as string)),
     enabled: enabled && Boolean(threadId),
     refetchInterval: 15_000,
+    // Leitura periodica em segundo plano: nao liga a barra do topo (27/11/2026).
+    meta: { background: true },
     retry: false,
   });
 }

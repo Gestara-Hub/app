@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Building2, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { PageTabs } from "@/components/shared/page-tabs";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -58,7 +59,7 @@ function tabDescription(tab: Tab, isClasses: boolean): string | null {
  * andamento ao trocar de aba.
  */
 export function SettingsTabs() {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 

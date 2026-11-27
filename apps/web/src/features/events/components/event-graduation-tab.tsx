@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Award, FileText, GraduationCap } from "lucide-react";
 import type { EventRegistrationView, EventView } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
@@ -28,7 +28,7 @@ import { useEventGraduation } from "../hooks/use-event-graduation";
  * conduz como examinador. Quem ainda deve entra, com aviso na confirmacao.
  */
 export function EventGraduationTab({ event, registrations }: { event: EventView; registrations: EventRegistrationView[] }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const hasCertificates = useHasFeature()("certificates");
   const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const { data, isPending, confirmed, candidates, graduatedHere, graduatedCount } = useEventGraduation(event, registrations);

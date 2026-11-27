@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useIsMutating } from "@tanstack/react-query";
+import { useIsFetching, useIsMutating } from "@tanstack/react-query";
+import { useAnyDialogSaving } from "@/components/ui/dialog";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -55,7 +56,9 @@ export function useRouteLoadingBar(active: boolean) {
  * Montada dentro do QueryClient da sessao.
  */
 export function MutationProgress() {
-  const saving = useIsMutating() > 0;
+  // Gaveta ou janela com a propria barra de gravacao: so ela aparece (27/11/2026).
+  const dialogSaving = useAnyDialogSaving();
+  const saving = useIsMutating() > 0 && !dialogSaving;
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!saving) return;
@@ -66,6 +69,37 @@ export function MutationProgress() {
     };
   }, [saving]);
   useRouteLoadingBar(saving && visible);
+  return null;
+}
+
+/**
+ * Barra fina enquanto a tela aberta rele dados velhos (27/11/2026, doc 07
+ * §1.9): ao voltar a uma tela, o que estava guardado aparece na hora e a busca
+ * nova corre por tras; sem sinal, "Nenhum aluno" aparecia e sumia segundos
+ * depois. So consultas na tela com dado guardado e velho; a leitura periodica
+ * (`meta.background`) e a releitura de uma gravacao (ja tem a propria barra)
+ * ficam de fora. Releitura rapida nao pisca.
+ */
+export function StaleRefetchProgress() {
+  const mutating = useIsMutating() > 0;
+  const refreshing =
+    useIsFetching({
+      predicate: (query) =>
+        query.state.data !== undefined &&
+        query.getObserversCount() > 0 &&
+        !query.meta?.background &&
+        query.isStale(),
+    }) > 0 && !mutating;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!refreshing) return;
+    const timer = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);
+    return () => {
+      window.clearTimeout(timer);
+      setVisible(false);
+    };
+  }, [refreshing]);
+  useRouteLoadingBar(refreshing && visible);
   return null;
 }
 

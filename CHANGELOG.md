@@ -2,6 +2,18 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.27-3 (2026-11-27)
+
+Desde v2026.11.27-2.
+
+### Novo
+
+- ui: sinal de carregamento ao abrir outra tela e ao reler dados guardados
+
+### Correções
+
+- classes: gaveta de cancelar matrícula com o nome do aluno só no cabeçalho
+
 ## 2026.11.27-2 (2026-11-27)
 
 Desde v2026.11.27.

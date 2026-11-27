@@ -136,8 +136,10 @@ test("cancelar matrícula: última turma pergunta o plano, sem nada marcado", as
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const drawer = cancelDrawer(page);
-  await expect(drawer).toContainText("Aluno A20 sai da turma e deixa de aparecer na chamada.");
-  await expect(drawer).toContainText("Aluno não fica em nenhuma outra turma.");
+  // O nome fica so no cabecalho (27/11/2026).
+  await expect(drawer).toContainText("Aluno A20 · Jiu-Jitsu Adulto");
+  await expect(drawer).toContainText("Sai da turma e da chamada.");
+  await expect(drawer).toContainText("Não fica em nenhuma outra turma.");
   // Sem resposta, o erro aparece na pergunta (27/11/2026: nada vem marcado).
   await drawer.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(drawer.getByText("Escolha o que fazer com o plano.")).toBeVisible();

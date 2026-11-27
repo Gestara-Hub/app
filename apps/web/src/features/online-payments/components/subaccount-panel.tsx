@@ -9,7 +9,7 @@ import {
 } from "@/components/shared/period-range-picker";
 import { PaginationBar, SearchInput } from "@/components/shared/list";
 import { ListItemActionsMenu, ListItemContextMenu, type ListItemAction } from "@/components/shared/list-item-actions-menu";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { useCan } from "@/features/auth";
 import { paymentPageUrl } from "@/lib/payment-page";
 import { toast } from "@/lib/toast";
@@ -272,7 +272,7 @@ export function SubaccountPanel({
     .reduce((total, t) => total + t.valueCents, 0);
 
 
-  const router = useRouter();
+  const router = useAppRouter();
   const canManageBilling = useCan()("billing:manage");
   const copy = (text: string, done: string) =>
     void navigator.clipboard

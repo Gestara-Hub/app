@@ -2,7 +2,7 @@
 
 import { useTeamWords } from "@/features/settings";
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
 import { AtSign, Building2, Check, CircleHelp, FileText, Lock, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
@@ -43,7 +43,7 @@ export function AppTopbar() {
   const googleOnly = useGoogleOnlyAccount();
   const { data: unit } = useUnit();
   const { data: organization, isError: orgError } = useOrganization();
-  const router = useRouter();
+  const router = useAppRouter();
   // Demonstracao no banco: troca de perfil entrando como o usuario dele.
   const demo = isDemoOrganization(user.organizationId);
   const [isSwitching, startSwitch] = useTransition();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Award, ExternalLink, GraduationCap, Lock } from "lucide-react";
 import { ListContainer, ListRow } from "@/components/shared/list";
 import {
@@ -77,7 +77,7 @@ function StatusText({ e }: { e: StudentSummaryEnrollment }) {
  * encerradas (concluidas e canceladas) ficam atras de "Mostrar encerradas".
  */
 export function StudentEnrollmentsTab({ enrollments }: { enrollments: StudentSummaryEnrollment[] }) {
-  const router = useRouter();
+  const router = useAppRouter();
   // Certificado de conclusao: Plano Profissional; no gratis o item abre o aviso do plano (como na turma).
   const hasCertificates = useHasFeature()("certificates");
   const [showEnded, setShowEnded] = useState(false);

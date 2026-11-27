@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { firstAllowedRoute } from "@/components/layout/nav";
 import { useRouteLoadingBar } from "@/components/layout/navigation-progress";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export function SetupRouteSkeleton() {
  * mundo semeado).
  */
 export function SetupRouteGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const user = useCurrentUser();
   const model = useModel();
   const { data: organization, isSuccess, isError, refetch } = useOrganization();

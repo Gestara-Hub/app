@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   DEFAULT_FINANCE_TAB,
   currentCompetence,
@@ -16,7 +17,7 @@ import {
  * com `router.replace` (sem empilhar historico).
  */
 export function useFinanceUrlState() {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 

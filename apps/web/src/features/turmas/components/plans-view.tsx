@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   Layers,
   Ticket,
@@ -589,7 +590,7 @@ const PLANS_TABS: PageTab<PlansTab>[] = [
 
 /** Aba na URL (`?tab=packages`); o padrao (planos) fica fora dela. */
 function usePlansTab(): [PlansTab, (tab: PlansTab) => void] {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab: PlansTab = searchParams.get("tab") === "packages" ? "packages" : "plans";

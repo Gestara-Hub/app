@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { markHistoryPop, recordNavigation } from "@/lib/navigation-history";
 import { rememberRoute, takeRestoredOwner } from "@/lib/last-route";
 
@@ -12,7 +13,7 @@ import { rememberRoute, takeRestoredOwner } from "@/lib/last-route";
 export function NavigationTracker({ owner }: { owner: string }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
-  const router = useRouter();
+  const router = useAppRouter();
   useEffect(() => {
     // O popstate chega antes da troca de rota: marca que ela veio do historico.
     window.addEventListener("popstate", markHistoryPop);

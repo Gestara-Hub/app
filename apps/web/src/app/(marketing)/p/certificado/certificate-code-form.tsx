@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { normalizeCertificateCode } from "@gestarahub/core/certificate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { focusField } from "@/lib/form-errors";
 
 /** Campo do codigo: aceita minusculas e sem tracos; vai para a pagina do certificado. */
 export function CertificateCodeForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 

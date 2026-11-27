@@ -4,7 +4,7 @@ import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   AlertTriangle,
   ArrowRight,
@@ -69,7 +69,7 @@ export function LoginForm({
   sessionExpired = false,
   onCreateAccount,
 }: LoginFormProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [tokenState, setTokenState] = useState<ValidateSignupTokenResult | null>(
     initialTokenValidation,
   );

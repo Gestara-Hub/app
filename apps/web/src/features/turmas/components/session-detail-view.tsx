@@ -4,7 +4,7 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import { useTeamWords } from "@/features/settings";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { toast } from "@/lib/toast";
 import {
   AlertCircle,
@@ -165,7 +165,7 @@ function StoredDraftNotice({
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const team = useTeamWords();
-  const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
+  const { data: session, isLoading, isError, error, refetch, isFetching: sessionFetching } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
   // So o cadastro de quem esta na aula (faixa, aniversario, consentimento, evolucao);
@@ -179,7 +179,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const restoreMut = useRestorePrimaryInstructor();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const { playChime } = useAudioFeedback();
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Avulso/experimental sai da aula (cobranca avulsa em aberto e cancelada);
   // quem entrou pelo pacote recebe a aula de volta.
@@ -610,7 +610,13 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         />
       ) : null}
 
-      {total === 0 ? (
+      {total === 0 && sessionFetching ? (
+        // Aula guardada sem alunos relendo (27/11/2026): carregando, nao "Nenhum aluno".
+        <div className="space-y-2 rounded-lg border p-4" aria-busy="true">
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+      ) : total === 0 ? (
         <ListContainer
           emptyState={
             <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">

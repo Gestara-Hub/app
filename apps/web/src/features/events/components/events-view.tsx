@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
+import { rowLinkProps, useRowLink } from "@/lib/use-row-link";
 import Link from "next/link";
 import { CalendarDays, CalendarRange, Clock, Pencil, Plus, Ticket, User, XCircle } from "lucide-react";
 import type { EventStage, EventView } from "@gestarahub/contracts";
@@ -99,13 +100,11 @@ function EventRow({
   onEdit: (event: EventView) => void;
   onCancel: (event: EventView) => void;
 }) {
-  const router = useRouter();
   const actions = eventActions(event, canManage, onEdit, onCancel);
   const row = (
     <ListRow
       data-record-id={event.id}
-      onClick={() => router.push(`/events/${event.id}`)}
-      canClick
+      href={`/events/${event.id}`}
       actions={actions.length > 0 ? <ListItemActionsMenu actions={actions} title={`Ações de ${event.name}`} variant="ghost" /> : null}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -149,13 +148,14 @@ function EventCard({
   onEdit: (event: EventView) => void;
   onCancel: (event: EventView) => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const actions = eventActions(event, canManage, onEdit, onCancel);
   const open = () => router.push(`/events/${event.id}`);
+  const cardLink = useRowLink(`/events/${event.id}`);
   const card = (
     <div
       data-record-id={event.id}
-      onClick={open}
+      {...rowLinkProps(cardLink)}
       className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
     >
       <div className="space-y-2.5">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { startNavigationProgress } from "@/lib/unsaved-changes";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
@@ -13,7 +14,7 @@ import { useOrganization } from "@/features/settings";
  * impedindo o acesso ao painel principal até a conclusão das etapas.
  */
 export function SetupGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const user = useCurrentUser();
   const { data: organization, isSuccess } = useOrganization();

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { AlertCircle, ArrowDownLeft, ArrowUpRight, ExternalLink, Plus, Receipt, Wallet } from "lucide-react";
 import type { EventView, FinancialEntry } from "@gestarahub/contracts";
@@ -59,7 +59,7 @@ function entrySubtitle(e: FinancialEntry, today: string): { text: string; overdu
 }
 
 export function EventFinanceTab({ event }: { event: EventView }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const can = useCan();
   const canManageFinance = can("finance:manage");
   const { data, isPending, isError } = useEventFinance(event.id);

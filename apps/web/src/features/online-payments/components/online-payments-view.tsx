@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { setSeenMark, useSeenMark, useSeenMarksReady } from "@/lib/seen-marks";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -108,7 +109,7 @@ function tourSteps(options: { canWithdraw: boolean; canStatement: boolean }): To
 }
 
 export function OnlinePaymentsView() {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const rawTab = searchParams.get("tab");

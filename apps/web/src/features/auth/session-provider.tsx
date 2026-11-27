@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   QueryClientProvider,
   useQuery,
@@ -17,7 +17,7 @@ import {
 } from "@tanstack/react-query";
 import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { identifyUser } from "@/lib/analytics";
-import { MutationProgress } from "@/components/layout/navigation-progress";
+import { MutationProgress, StaleRefetchProgress } from "@/components/layout/navigation-progress";
 import { isSupabaseOrganization } from "@/lib/session";
 import { setInAppSession } from "@/lib/session-expired";
 import { can as canFn } from "@/lib/permissions";
@@ -146,6 +146,7 @@ export function SessionProvider({
       <SessionContext.Provider value={value}>
         <SessionSync user={user} />
         <MutationProgress />
+        <StaleRefetchProgress />
         <SubscriptionSync organizationId={user.organizationId} serverTier={tier} />
         <LegalConsentDialog />
         {children}
@@ -174,7 +175,7 @@ function sessionSignature(u: UserView): string {
  * claims velhas. Refaz a checagem sempre que `users` e invalidado.
  */
 function SessionSync({ user }: { user: UserView }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const handledRef = useRef<string | null>(null);
   const { data, error } = useQuery({
     queryKey: queryKeys.users.detail(user.id),
@@ -221,7 +222,7 @@ function SubscriptionSync({
   organizationId: string;
   serverTier: SubscriptionTier;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const handledRef = useRef<string | null>(null);
   const { data } = useOrganizationQuery();
 

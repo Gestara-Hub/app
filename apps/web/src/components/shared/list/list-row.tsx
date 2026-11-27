@@ -1,12 +1,18 @@
 "use client";
 
 import { forwardRef, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useRowLink } from "@/lib/use-row-link";
 import { cn } from "@/lib/utils";
 
 export interface ListRowProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   actions?: ReactNode;
   onClick?: () => void;
+  /**
+   * Abre outra tela (27/11/2026): busca antes ao passar o mouse, liga a barra do
+   * topo e abre em nova aba com Ctrl/Cmd+clique ou o botao do meio (`useRowLink`).
+   */
+  href?: string;
   canClick?: boolean;
   /**
    * A linha ja tem um link para o mesmo destino (o nome): o clique do mouse na
@@ -23,7 +29,8 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
     children,
     actions,
     onClick,
-    canClick = Boolean(onClick),
+    href,
+    canClick = Boolean(onClick || href),
     mouseOnly = false,
     className,
     "aria-label": ariaLabel,
@@ -33,13 +40,15 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
   },
   ref,
 ) {
-  const isClickable = Boolean(canClick && onClick);
+  const link = useRowLink(href);
+  const isClickable = Boolean(canClick && (onClick || link));
+  const activate = () => (link ? link.open() : onClick?.());
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);
     if (!event.defaultPrevented && isClickable && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();
-      onClick?.();
+      activate();
     }
   };
 
@@ -56,7 +65,10 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
   return (
     <div
       ref={ref}
-      onClick={isClickable ? onClick : undefined}
+      onClick={isClickable ? (link ? link.onClick : onClick) : undefined}
+      {...(isClickable && link
+        ? { onAuxClick: link.onAuxClick, onMouseEnter: link.onMouseEnter, onTouchStart: link.onTouchStart, onFocus: link.onFocus }
+        : {})}
       {...(isClickable ? (actions ? {} : buttonProps) : { "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy })}
       className={cn(
         // Entra com fade + deslize ao substituir o skeleton; o atraso em cascata vem

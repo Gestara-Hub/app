@@ -4,7 +4,7 @@ import { RequiredMark } from "@/components/form";
 import { useState, useTransition } from "react";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { focusField } from "@/lib/form-errors";
 
 /** Nova senha pelo link do e-mail; depois, o login ja vem com o e-mail preenchido. */
 export function ResetPasswordForm({ token, email }: { token: string; email: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
