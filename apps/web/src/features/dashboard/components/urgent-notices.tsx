@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { todayISO } from "@gestarahub/core/date";
 import { planNoticeFor } from "@gestarahub/core/subscription-plan";
@@ -67,7 +68,7 @@ export function UrgentNoticesHost() {
   const alerts = useBellAlerts(today);
   const planModal = usePlanModalAlert(today);
   const { preferences, updatePreferences } = useUserPreferences();
-  const router = useRouter();
+  const router = useAppRouter();
   const [dismissedNow, setDismissedNow] = useState<string[]>([]);
 
   const pathname = usePathname();

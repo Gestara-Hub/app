@@ -5,7 +5,8 @@ import { format, parseISO } from "date-fns";
 import { EventSignupLink } from "./event-signup-link";
 import { useWhatsAppSend } from "@/features/communication";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   ArrowUpCircle,
   Award,
@@ -61,7 +62,7 @@ type Tab = "registered" | "waitlist" | "days" | "graduation" | "finance";
 const paymentLabel = registrationPaymentLabel;
 
 export function EventDetailView({ id }: { id: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const whatsapp = useWhatsAppSend();
   const can = useCan();
   const canManage = can("events:manage");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { CheckCircle2, Clock, CreditCard, XCircle } from "lucide-react";
 import type { PublicTicketView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
@@ -39,7 +39,7 @@ const TONE = {
  * e o endereco fica, entao atualizar a pagina nao perde o ingresso.
  */
 export function TicketStatus({ ticket, isNew, emailSent }: { ticket: PublicTicketView; isNew: boolean; emailSent: boolean }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const countdown = useCountdown(ticket.state === "reserved" ? ticket.holdUntil : undefined);
   const pending = ticket.pendingCents ?? 0;
   const waitingPayment = (ticket.state === "reserved" || ticket.state === "payment_pending") && pending > 0;

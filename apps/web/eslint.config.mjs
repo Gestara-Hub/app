@@ -107,6 +107,21 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Navegacao por codigo liga a barra do topo (27/11/2026, doc 07 §1.9): use
+    // `useAppRouter` de @/lib/use-app-router, nao o `useRouter` do Next.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/use-app-router.ts", "src/lib/unsaved-changes.ts", "src/**/__tests__/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value='next/navigation'] ImportSpecifier[imported.name='useRouter']",
+          message: "Use useAppRouter de @/lib/use-app-router: liga a barra de carregamento ao trocar de tela.",
+        },
+      ],
+    },
+  },
+  {
     // Excecao: a resolucao de sessao (auth server-side) usa o mock store como
     // "DB" transitorio (vira auth/API real depois). Mantem so a regra cross-feature.
     files: ["src/features/auth/**"],

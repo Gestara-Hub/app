@@ -3,7 +3,8 @@
 import { RequiredMark } from "@/components/form";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { toast } from "@/lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -131,7 +132,7 @@ function progressionConfirmation(preset: BusinessSegmentPreset): string {
 }
 
 export function BusinessSetupWizard() {
-  const router = useRouter();
+  const router = useAppRouter();
   const qc = useQueryClient();
   const { data: organization } = useOrganization();
   const [, updateOnboardingState] = useOnboardingState();

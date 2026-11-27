@@ -3,7 +3,9 @@
 import { useCan } from "@/features/auth";
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
+import { rowLinkProps, useRowLink } from "@/lib/use-row-link";
 import {
   AlertTriangle,
   ClipboardList,
@@ -307,7 +309,7 @@ function ClientRow({
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
-  const router = useRouter();
+  const router = useAppRouter();
   const openProfile = () => router.push(`/clients/${client.id}`);
   const followUpActions = buildFollowUpActions(client, vocabulary.levelsTitle, isClasses, {
     onOpenRecords,
@@ -377,7 +379,7 @@ function ClientRow({
   const content = (
     <ListRow
       data-record-id={client.id}
-      onClick={openProfile}
+      href={`/clients/${client.id}`}
       mouseOnly
       actions={
         canManage ? (
@@ -483,7 +485,7 @@ function ClientCard({
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
-  const router = useRouter();
+  const router = useAppRouter();
   const openProfile = () => router.push(`/clients/${client.id}`);
   const followUpActions = buildFollowUpActions(client, vocabulary.levelsTitle, isClasses, {
     onOpenRecords,
@@ -550,10 +552,11 @@ function ClientCard({
       ]
     : [];
 
+  const cardLink = useRowLink(`/clients/${client.id}`);
   const card = (
     <div
       data-record-id={client.id}
-      onClick={openProfile}
+      {...rowLinkProps(cardLink)}
       className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
     >
       <div className="space-y-3">
@@ -746,7 +749,9 @@ export function ClientsList({
     [search, status, trialFilter, page, pageSize],
   );
 
-  const { data: paginatedData, isPending: clientsPending, isError, refetch } = usePaginatedClients(filter);
+  const { data: paginatedData, isPending: clientsFirstLoad, isFetching: clientsFetching, isError, refetch } = usePaginatedClients(filter);
+  // Lista guardada vazia relendo (27/11/2026): carregando, nao "Nenhum aluno" que some depois.
+  const clientsPending = clientsFirstLoad || (clientsFetching && (paginatedData?.items.length ?? 0) === 0);
   const { data: categories, isPending: categoriesPending } = useCategories();
   const isPending = clientsPending || (!isError && categoriesPending);
   const { data: trialStudents } = useTrialStudents(isClasses);

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -98,7 +99,7 @@ function maskCardExpiry(value: string): string {
 }
 
 export function SubscriptionCheckoutView() {
-  const router = useRouter();
+  const router = useAppRouter();
   const searchParams = useSearchParams();
 
   // Lê parâmetros da URL (?tier=pro|scale & ?interval=monthly|yearly)

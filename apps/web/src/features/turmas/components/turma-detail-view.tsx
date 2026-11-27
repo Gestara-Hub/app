@@ -4,7 +4,8 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { capacityLabel, promoteWaitlistDescription } from "../turma-copy";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { toast } from "@/lib/toast";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -190,9 +191,15 @@ export function TurmaDetailView({
 }) {
   const [celebrateEnroll, setCelebrateEnroll] = useState(false);
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
-  const { data: enrollments, isPending: enrollmentsPending } = useEnrollments(id);
+  const enrollmentsQuery = useEnrollments(id);
+  const { data: enrollments } = enrollmentsQuery;
+  // Lista guardada vazia relendo (27/11/2026): carregando, nao "Nenhum aluno" que some depois.
+  const enrollmentsPending =
+    enrollmentsQuery.isPending || (enrollmentsQuery.isFetching && (enrollments?.length ?? 0) === 0);
   const { data: categories } = useCategories();
-  const { data: waitlist, isPending: waitlistPending } = useWaitlist(id);
+  const waitlistQuery = useWaitlist(id);
+  const { data: waitlist } = waitlistQuery;
+  const waitlistPending = waitlistQuery.isPending || (waitlistQuery.isFetching && (waitlist?.length ?? 0) === 0);
   // So o cadastro dos matriculados (faixa, aniversario, evolucao), nao de todos os alunos.
   const { data: clients } = useClientsByIds((enrollments ?? []).map((e) => e.studentId));
   const paymentMut = useSetEnrollmentPayment();
@@ -229,7 +236,7 @@ export function TurmaDetailView({
   }, [overdueCharges, turma]);
 
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const router = useAppRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const enrollParam = searchParams?.get("enroll") === "true";

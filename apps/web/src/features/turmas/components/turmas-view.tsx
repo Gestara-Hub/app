@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
+import { rowLinkProps, useRowLink } from "@/lib/use-row-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
@@ -383,7 +384,7 @@ function TurmaRow({
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const mode = classBillingMode(turma);
   const schedule = slotsSummary(turma.meetingSlots) || "Sem horário";
   const courseRange = mode === "course" ? formatShortDateRange(turma.startDate, turma.endDate) : undefined;
@@ -409,8 +410,7 @@ function TurmaRow({
     <ListItemContextMenu actions={actions}>
       <ListRow
         data-record-id={turma.id}
-        onClick={() => router.push(`/classes/${turma.id}`)}
-        canClick
+        href={`/classes/${turma.id}`}
         actions={
           <ListItemActionsMenu
             actions={actions}
@@ -483,7 +483,7 @@ function TurmaCard({
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const mode = classBillingMode(turma);
   const schedule = slotsSummary(turma.meetingSlots) || "Sem horário";
   const courseRange = mode === "course" ? formatShortDateRange(turma.startDate, turma.endDate) : undefined;
@@ -493,6 +493,7 @@ function TurmaCard({
       ? `Avulsa: ${formatCents(turma.sessionPriceCents)}`
       : undefined;
 
+  const cardLink = useRowLink(`/classes/${turma.id}`);
   const actions = buildTurmaActions({
     turma,
     canManage,
@@ -509,7 +510,7 @@ function TurmaCard({
     <ListItemContextMenu actions={actions}>
       <div
         data-record-id={turma.id}
-        onClick={() => router.push(`/classes/${turma.id}`)}
+        {...rowLinkProps(cardLink)}
         className={cn(
           "group relative flex h-full flex-col justify-between overflow-hidden rounded-xl border bg-card p-4 shadow-2xs transition-all cursor-pointer hover:border-primary/40 hover:shadow-xs",
           turma.modalityName && "pl-5",
@@ -655,7 +656,7 @@ export function TurmasView({
    */
   createCompletesSetup?: boolean | ((created: ClassGroupView) => boolean);
 } = {}) {
-  const router = useRouter();
+  const router = useAppRouter();
   const team = useTeamWords();
   const [search, setSearch] = useState("");
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.

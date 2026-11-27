@@ -3,7 +3,8 @@
 import { PausedTag } from "@/features/clients";
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { RefreshStatus } from "@/components/shared/refresh-status";
@@ -275,7 +276,7 @@ const currentCompetence = () => dateInSpace().slice(0, 7);
  * Padrao inicial sem `?status=` na URL: `"open"` (A receber: pendentes + em atraso).
  */
 function useBillingFilters() {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
@@ -428,10 +429,13 @@ export function BillingView() {
 
   const {
     data: charges,
-    isLoading: chargesLoading,
+    isLoading: chargesFirstLoad,
+    isFetching: chargesFetching,
     isError,
     refetch,
   } = useCharges(chargesFilter);
+  // Mes guardado vazio relendo (27/11/2026): carregando, nao "Nenhuma cobranca" que some depois.
+  const chargesLoading = chargesFirstLoad || (chargesFetching && (charges?.length ?? 0) === 0);
   const isCurrentMonth = !allOverdue && competence === currentCompetence();
   const overdueOnlyFilter = useMemo<ChargeFilter>(() => ({ status: "overdue" }), []);
   const { data: allOverdueCharges } = useCharges(overdueOnlyFilter, isCurrentMonth);

@@ -2,7 +2,7 @@
 
 import { isPossiblePhone } from "@gestarahub/core/phone";
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { BRAZIL_TIME_ZONES, resolveSpaceTimeZone, timeZoneForState } from "@gestarahub/core/date";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -130,7 +130,7 @@ function GeneralForm({
 }) {
   const updateOrg = useUpdateOrganization();
   const updateUnit = useUpdateUnit();
-  const router = useRouter();
+  const router = useAppRouter();
   const pending = updateOrg.isPending || updateUnit.isPending;
 
   const form = useForm<GeneralValues>({

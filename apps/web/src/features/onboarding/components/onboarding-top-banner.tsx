@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -240,7 +241,7 @@ export function OnboardingTopBanner() {
   }, [reviewButtonShown]);
   // Confirmar a revisao conclui o passo e segue para o proximo, como o
   // "Continuar" (o passo seguinte so e conhecido depois que os passos recarregam).
-  const router = useRouter();
+  const router = useAppRouter();
   const advanceFromRef = useRef<string | null>(null);
   // Reavalia ao confirmar, caso os passos ja tenham recarregado antes.
   const [advanceTick, setAdvanceTick] = useState(0);

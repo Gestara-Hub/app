@@ -67,6 +67,33 @@ export function useDialogSavingState() {
   return React.useContext(DialogSavingContext)?.saving ?? false
 }
 
+// Gravacoes mostradas na barra de algum Dialog/Sheet aberto (27/11/2026): a barra
+// global de gravacao (`MutationProgress`) cede a vez e nao aparecem duas.
+const dialogsSaving = new Set<object>()
+const dialogsSavingListeners = new Set<() => void>()
+function setDialogSavingGlobally(source: object, saving: boolean) {
+  const had = dialogsSaving.has(source)
+  if (saving === had) return
+  if (saving) dialogsSaving.add(source)
+  else dialogsSaving.delete(source)
+  dialogsSavingListeners.forEach((notify) => notify())
+}
+function subscribeDialogsSaving(onChange: () => void) {
+  dialogsSavingListeners.add(onChange)
+  return () => {
+    dialogsSavingListeners.delete(onChange)
+  }
+}
+
+/** Algum Dialog/Sheet ja mostra a propria barra de gravacao. */
+export function useAnyDialogSaving(): boolean {
+  return React.useSyncExternalStore(
+    subscribeDialogsSaving,
+    () => dialogsSaving.size > 0,
+    () => false,
+  )
+}
+
 /**
  * Avisa o Dialog/Sheet pai que o formulario filho esta gravando no servidor:
  * liga a barra fina no topo, cobre o corpo para impedir edicoes e segura Esc/X.
@@ -78,11 +105,15 @@ export function useReportDialogSaving(saving: boolean) {
   React.useEffect(() => {
     if (!ctx) return
     ctx.setSaving(source, saving)
+    setDialogSavingGlobally(source, saving)
   }, [ctx, source, saving])
 
   React.useEffect(() => {
     if (!ctx) return
-    return () => ctx.setSaving(source, false)
+    return () => {
+      ctx.setSaving(source, false)
+      setDialogSavingGlobally(source, false)
+    }
   }, [ctx, source])
 }
 

@@ -4,7 +4,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { AlertTriangle, Award, Check, GraduationCap, History, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type {
@@ -359,7 +359,7 @@ function GraduationContent({
   const { isPending, items, active, select } = useStudentModalities(client.id, initialModalityId);
   const saveMut = useSaveModalityProgression();
   const promoteMut = usePromoteStudent();
-  const router = useRouter();
+  const router = useAppRouter();
   // Certificado de graduacao (doc 21 §1.6): so no plano com o recurso.
   const hasCertificates = useHasFeature()("certificates");
   const [panel, setPanel] = useState<"graduate" | "start" | null>(null);

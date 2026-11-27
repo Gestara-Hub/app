@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -51,7 +52,7 @@ type StepStatus = "searching" | "found" | "notFound";
  */
 export function GuidePanel({ chunk, onClose }: { chunk: HelpChunk; onClose: () => void }) {
   const guide = chunk.guide!;
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const [index, setIndex] = useState(0);

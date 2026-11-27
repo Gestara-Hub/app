@@ -2,7 +2,7 @@
 
 import { RequiredMark } from "@/components/form";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,7 +36,7 @@ export function TwoFactorForm({
   hasApp: boolean;
   hasEmail: boolean;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [method, setMethod] = useState<"app" | "email" | "recovery">(hasApp ? "app" : "email");
   // Para voltar do codigo de recuperacao ao metodo que a pessoa tinha.
   const mainMethod: "app" | "email" = hasApp ? "app" : "email";

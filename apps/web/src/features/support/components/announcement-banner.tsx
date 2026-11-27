@@ -23,6 +23,8 @@ export function AnnouncementBanner() {
     queryKey: ["announcements"],
     queryFn: () => unwrap(listAnnouncementsAction()),
     refetchInterval: 5 * 60_000,
+    // Leitura periodica em segundo plano: nao liga a barra do topo (27/11/2026).
+    meta: { background: true },
     retry: false,
     staleTime: 60_000,
   });

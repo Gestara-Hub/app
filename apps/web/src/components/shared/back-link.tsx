@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import { ChevronLeft } from "lucide-react";
 import { hasPreviousRoute } from "@/lib/navigation-history";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
  * foco nao pega e o link nao aparece com a moldura de foco.
  */
 export function BackLink({ fallbackHref, className }: { fallbackHref: string; className?: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   return (
     <nav aria-label="Navegação" className={cn("mb-3", className)}>
       <Link

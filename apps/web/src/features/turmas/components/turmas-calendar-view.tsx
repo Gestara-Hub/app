@@ -3,7 +3,8 @@
 import { useTeamWords } from "@/features/settings";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/lib/use-app-router";
 import {
   addWeeks,
   eachDayOfInterval,
@@ -73,7 +74,7 @@ function useIsMobile(): boolean {
  * escolhida vai sempre na URL, e sem escolha o padrao e grade (lista no celular).
  */
 function useCalendarFilters() {
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
