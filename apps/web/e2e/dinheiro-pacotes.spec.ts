@@ -547,7 +547,7 @@ test("Cobranças > Pacotes: compra à vista com a linha, pagar e desfazer", asyn
   await pay.getByRole("radio", { name: "Pix" }).click();
   await pay.getByRole("button", { name: "Registrar pagamento" }).click();
   await expect(row).toContainText("pago via Pix");
-  await row.getByRole("button", { name: "Desfazer pagamento" }).click();
+  await menuAction(page, "Aluna Vista", "Desfazer pagamento");
   await page.getByRole("alertdialog", { name: "Desfazer pagamento?" }).getByRole("button", { name: "Desfazer pagamento" }).click();
   await expectOverdueRow(row, "20/09");
   // Cancelar a cobranca nao cancela o pacote (o saldo continua).

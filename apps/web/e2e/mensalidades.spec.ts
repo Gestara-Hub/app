@@ -66,7 +66,8 @@ test.describe("operações de cobrança", () => {
     await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();
     await expect(row).toContainText("pago via Pix");
 
-    await row.getByTitle("Desfazer pagamento").click();
+    // Pago na mao: desfazer fica no menu ⋮ da linha (26/11/2026).
+    await rowAction(page, "Aluno A20", "Desfazer pagamento");
     const confirm = page.getByRole("alertdialog");
     await expect(confirm).toContainText("Desfazer pagamento?");
     await confirm.getByRole("button", { name: "Desfazer pagamento" }).click();

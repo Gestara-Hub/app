@@ -184,10 +184,13 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
   await expect(paid).toContainText("Pago");
   await expect(paid).toContainText("pago via Dinheiro");
   await expect(card("Recebido")).toContainText("R$ 120,00");
-  expect(await contextMenuItems(page, paid)).toEqual(["Baixar recibo", "Desfazer pagamento"]);
+  // Pago na mao (26/11/2026): recibo, estorno e desfazer no menu ⋮, igual ao clique direito.
+  const paidActions = ["Baixar recibo", "Estornar pagamento", "Desfazer pagamento"];
+  expect(await openMenuItems(page, "Aluno Pago")).toEqual(paidActions);
+  expect(await contextMenuItems(page, paid)).toEqual(paidActions);
 
-  // Desfazer pelo botao da linha.
-  await paid.getByRole("button", { name: "Desfazer pagamento" }).click();
+  // Desfazer pelo menu da linha.
+  await menuAction(page, "Aluno Pago", "Desfazer pagamento");
   const undo = page.getByRole("alertdialog", { name: "Desfazer pagamento?" });
   await expect(undo).toContainText("A cobrança de Aluno Pago (R$ 120,00) volta a ficar em aberto e o registro via Dinheiro é apagado.");
   await undo.getByRole("button", { name: "Desfazer pagamento" }).click();

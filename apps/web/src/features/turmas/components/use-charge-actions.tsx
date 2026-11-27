@@ -358,7 +358,7 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
           </div>
         );
       }
-      // Pago na mao: recibo, comprovantes, devolver e desfazer no menu da linha
+      // Pago na mao: recibo, comprovantes, estorno e desfazer no menu da linha
       // (26/11/2026: antes eram botoes soltos de recibo e desfazer).
       return (
         <ListItemActionsMenu

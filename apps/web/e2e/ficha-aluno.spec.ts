@@ -683,7 +683,9 @@ test.describe("seções", () => {
     await page.getByLabel("Buscar cobrança").fill("08/2026");
     await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
     // Desfazer o pagamento de agosto pede confirmacao.
-    await rowOf(page, "Mensalidade 08/2026").getByTitle("Desfazer pagamento").click();
+    // Pago na mao: desfazer fica no menu ⋮ da linha (26/11/2026).
+    await rowOf(page, "Mensalidade 08/2026").getByRole("button", { name: /^Ações de/ }).click();
+    await page.getByRole("menuitem", { name: "Desfazer pagamento", exact: true }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Desfazer pagamento" }).click();
     await expect(page.getByText("Pagamento desfeito.")).toBeVisible();
     await expect(rowOf(page, "Mensalidade 08/2026")).toContainText("Atrasado");
