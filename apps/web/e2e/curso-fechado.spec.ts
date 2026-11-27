@@ -232,7 +232,7 @@ test("curso terminado: Encerrado na lista, Concluído no detalhe e sem matrícul
   await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   // Curso ja terminado: nada de parcelas na gaveta (o curso foi dado).
-  await expect(cancelDrawer(page)).toContainText("Aluna Formada sai da turma");
+  await expect(cancelDrawer(page)).toContainText("Sai da turma e da chamada.");
   await expect(cancelDrawer(page)).not.toContainText("cobranças futuras");
 });
 

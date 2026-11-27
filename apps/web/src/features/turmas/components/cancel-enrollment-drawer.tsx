@@ -228,9 +228,8 @@ function CancelEnrollmentForm({ rows, className, onClose, onDone }: FormProps) {
     if (failed === 0) onClose();
   });
 
-  const intro = single
-    ? `${rows[0].studentName} sai da turma e deixa de aparecer na chamada.`
-    : `${plural(rows.length, "aluno sai", "alunos saem")} da turma e deixam de aparecer na chamada.`;
+  // O nome fica so no cabecalho (27/11/2026: repetia em cada frase).
+  const intro = single ? "Sai da turma e da chamada." : "Saem da turma e da chamada.";
 
   return (
     <>
@@ -269,14 +268,16 @@ function CancelEnrollmentForm({ rows, className, onClose, onDone }: FormProps) {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {intro} O histórico de presença é mantido.
-                  {asksSomething ? "" : " Nada muda nas cobranças."}
+                  {intro} O histórico de presença fica.
+                  {asksSomething || continuing.length > 0 ? "" : " Nada muda nas cobranças."}
                 </p>
 
                 {continuing.length > 0 ? (
                   <p className="text-sm text-muted-foreground">
                     {single
-                      ? `O plano continua: ${continuing[0].studentName.split(" ")[0]} segue em ${continuing[0].otherClassNames.join(", ")}.`
+                      ? `${asksSomething ? "O plano" : "Nada muda nas cobranças: o plano"} continua pela${
+                          continuing[0].otherClassNames.length > 1 ? "s turmas" : " turma"
+                        } ${continuing[0].otherClassNames.join(", ")}.`
                       : `O plano de quem segue em outra turma continua (${continuing.map((p) => p.studentName).join(", ")}).`}
                   </p>
                 ) : null}
@@ -299,7 +300,7 @@ function CancelEnrollmentForm({ rows, className, onClose, onDone }: FormProps) {
                     />
                     <p className="text-xs text-muted-foreground">
                       {single
-                        ? `${rows[0].studentName.split(" ")[0]} não fica em nenhuma outra turma.`
+                        ? "Não fica em nenhuma outra turma."
                         : "Esses alunos não ficam em nenhuma outra turma."}
                     </p>
                   </div>
