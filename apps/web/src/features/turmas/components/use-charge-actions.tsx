@@ -96,7 +96,9 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     ? "Plano Profissional"
     : !onlineEnabled
       ? "ative em Recebimentos online"
-      : null;
+      : org?.settings?.onlinePayments?.apiKeyStatus?.state === "invalid"
+        ? "indisponível no momento"
+        : null;
 
   // Codigo em aberto da cobranca (Pix ou link): o lembrete manda o link junto.
   const { data: awaitingOnline } = useAwaitingOnlinePayments(hasOnlineFeature && onlineEnabled && can("billing:view"));

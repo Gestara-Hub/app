@@ -34,6 +34,8 @@ vi.mock("next/server", async (importOriginal) => ({
 vi.mock("@/services/onlinePayments/onlinePaymentAudit", () => audit);
 const accountStatus = vi.hoisted(() => ({ recordAccountStatusFromWebhook: vi.fn() }));
 vi.mock("@/services/onlinePayments/accountStatus", () => accountStatus);
+const apiKey = vi.hoisted(() => ({ recordApiKeyEvent: vi.fn() }));
+vi.mock("@/services/onlinePayments/apiKeyHealth", () => apiKey);
 vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),
   reportError: vi.fn(async () => "CODIGO01"),
@@ -145,7 +147,7 @@ describe("webhook do Asaas e o Plano GestaraHub", () => {
     );
   });
 
-  it("aviso que a rota ainda não trata (saque, chave de API): 200 e registrado como ignorado, sem pausar a fila", async () => {
+  it("aviso que a rota ainda não trata (saque): 200 e registrado como ignorado, sem pausar a fila", async () => {
     const res = await post({ id: "evt_1", event: "TRANSFER_DONE", transfer: { id: "tra_1", status: "DONE" } });
     expect(res.status).toBe(200);
     expect(runs.finishWebhookEvent).toHaveBeenCalledWith(
@@ -153,8 +155,14 @@ describe("webhook do Asaas e o Plano GestaraHub", () => {
       "linha-1",
       expect.objectContaining({ status: "ignored", outcome: "TRANSFER_DONE: ainda não tratado" }),
     );
-    const token = await post({ id: "evt_2", event: "ACCESS_TOKEN_EXPIRING_SOON", account: { id: "acc_1" }, accessToken: { id: "tok_1" } });
+  });
+
+  it("chave de API da subconta (27/11/2026): vai para a situação da chave do espaço", async () => {
+    apiKey.recordApiKeyEvent.mockResolvedValue({ organizationId: "org_1", outcome: "chave da subconta expirou" });
+    const token = await post({ id: "evt_2", event: "ACCESS_TOKEN_EXPIRED", account: { id: "acc_1" }, accessToken: { id: "tok_1" } });
     expect(token.status).toBe(200);
+    expect(await token.json()).toMatchObject({ processed: true });
+    expect(apiKey.recordApiKeyEvent).toHaveBeenCalledWith(expect.anything(), "acc_1", "ACCESS_TOKEN_EXPIRED", { id: "tok_1" });
     expect(accountStatus.recordAccountStatusFromWebhook).not.toHaveBeenCalled();
   });
 

@@ -165,6 +165,8 @@ export async function setupSubaccountAction(
               gatewayStatus: "approved",
               termsAcceptedAt: new Date().toISOString(),
               termsVersion: CURRENT_SUBACCOUNT_TERMS_VERSION,
+              // Chave nova: a situacao da anterior nao vale mais (27/11/2026).
+              apiKeyStatus: { state: "valid", lastKeepAliveAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
             },
           },
         })
@@ -360,6 +362,9 @@ export async function updateOrganizationOnlineSettingsAction(
       const currentSettings = (orgData?.settings as Record<string, unknown>) || {};
       const currentOnline =
         (currentSettings.onlinePayments as Record<string, unknown>) || {};
+      // So o servidor grava a analise da conta e a situacao da chave (avisos do parceiro e rotina).
+      const { asaasStatus: _asaasStatus, apiKeyStatus: _apiKeyStatus, ...safeUpdates } = updates;
+      void [_asaasStatus, _apiKeyStatus];
 
       const { error } = await adminClient
         .from("organizations")
@@ -368,7 +373,7 @@ export async function updateOrganizationOnlineSettingsAction(
             ...currentSettings,
             onlinePayments: stripGatewayFees({
               ...currentOnline,
-              ...updates,
+              ...safeUpdates,
             }),
           },
         })
