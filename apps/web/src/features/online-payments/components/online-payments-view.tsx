@@ -37,6 +37,7 @@ import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
 import { OnlinePaymentsRefresh } from "./online-payments-refresh";
 import { useSubaccountBalance, useSubaccountOnboarding } from "../hooks/use-online-payments";
 import { AccountReadinessCard } from "./account-readiness-card";
+import { ApiKeyInvalidCard } from "./api-key-invalid-card";
 
 const BENEFITS = [
   "Pix copia e cola e QR Code dinâmico com baixa automática",
@@ -276,6 +277,8 @@ export function OnlinePaymentsView() {
         />
       ) : (
         <div className="space-y-5">
+          {/* Chave da conta sem valer (27/11/2026): o Pix e o link param ate a troca. */}
+          {org.settings?.onlinePayments?.apiKeyStatus?.state === "invalid" ? <ApiKeyInvalidCard canManage={canManage} /> : null}
           {onboarding && onboarding.status.general !== "APPROVED" ? (
             <AccountReadinessCard
               organizationId={org.id}

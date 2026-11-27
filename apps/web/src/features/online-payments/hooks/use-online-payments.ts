@@ -13,6 +13,7 @@ import {
   listSubaccountTransfersAction,
   listSubaccountReceiptsAction,
   getSubaccountOnboardingAction,
+  replaceSubaccountApiKeyAction,
   type SetupSubaccountInput,
   type SubaccountReceiptsQuery,
 } from "@/services/onlinePayments/actions";
@@ -132,6 +133,25 @@ export function useRequestSubaccountTransfer() {
       requestId: string;
     }) => requestSubaccountTransferAction(input),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
+    },
+  });
+}
+
+/**
+ * Ultimo recurso com a chave da subconta sem valer (27/11/2026): o dono cola a
+ * chave nova gerada no Asaas. O servidor confere que e da mesma conta.
+ */
+export function useReplaceSubaccountKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (apiKey: string) => {
+      const result = await replaceSubaccountApiKeyAction(apiKey);
+      if (!result.ok) throw new Error(result.message);
+    },
+    meta: { silentError: true },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.organization.detail });
       qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
     },
   });

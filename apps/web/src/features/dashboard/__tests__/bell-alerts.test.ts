@@ -80,7 +80,7 @@ describe("aviso da situação na Meta no sino (doc technical/07 §1.6)", () => {
 
 // Niveis e urgencia (doc product/25, "Níveis, urgência e novos lembretes", 09/11/2026).
 import type { ExpiringPersonDocument, OnlinePayment } from "@gestarahub/contracts";
-import { disputeBellAlerts, documentBellAlerts, gatewayRejectedBellAlert } from "../bell-alerts";
+import { apiKeyInvalidBellAlert, disputeBellAlerts, documentBellAlerts, gatewayRejectedBellAlert } from "../bell-alerts";
 import { keysToRing, newAttentionKeys, seenKeysAfterOpening } from "../bell-pulse";
 
 const PAID: OnlinePayment = {
@@ -126,6 +126,13 @@ describe("urgência: estorno, contestação e parceiro", () => {
     expect(gatewayRejectedBellAlert({ enabled: true, gatewayStatus: "rejected" } as never)).toMatchObject({ tone: "danger", pinned: true, modal: true });
     expect(gatewayRejectedBellAlert({ enabled: true, gatewayStatus: "approved" } as never)).toBeNull();
     expect(gatewayRejectedBellAlert({ enabled: false, gatewayStatus: "rejected" } as never)).toBeNull();
+  });
+
+  it("chave da conta de recebimento sem valer: urgente, fixo e com modal; valendo ou desligado, nada (27/11/2026)", () => {
+    const invalid = { enabled: true, apiKeyStatus: { state: "invalid", reason: "expired", updatedAt: "2026-09-22T10:00:00.000Z" } } as never;
+    expect(apiKeyInvalidBellAlert(invalid)).toMatchObject({ title: "Recebimento online parado", tone: "danger", pinned: true, modal: true });
+    expect(apiKeyInvalidBellAlert({ enabled: true, apiKeyStatus: { state: "valid", updatedAt: "x" } } as never)).toBeNull();
+    expect(apiKeyInvalidBellAlert({ enabled: false, apiKeyStatus: { state: "invalid", updatedAt: "x" } } as never)).toBeNull();
   });
 
   it("documento de saúde vencido de aluno: urgente e fixo; os demais, atenção", () => {
