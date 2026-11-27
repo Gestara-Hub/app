@@ -190,8 +190,10 @@ export function normalizeBilling<T extends Partial<CreateClassGroup>>(payload: T
   };
 }
 
-/** Mensagem dos campos de cobranca travados (turma com matricula). */
+/** Mensagem dos campos de cobranca travados (turma com matricula ativa). */
 export const BILLING_LOCKED_MESSAGE = "Já há alunos matriculados. Para mudar a cobrança, duplique a turma.";
+/** Datas do curso travadas sem aluno ativo: o curso ja comecou com alunos. */
+export const COURSE_DATES_LOCKED_MESSAGE = "O curso já teve aulas. Para uma nova turma, duplique.";
 
 /**
  * Campos de cobranca que travam depois da primeira matricula (25/11/2026): a

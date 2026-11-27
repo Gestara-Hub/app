@@ -1,5 +1,7 @@
 import { teacherSeesClassRoster } from "./teacherScope";
 import type {
+  CancelEnrollmentChoices,
+  CancelEnrollmentPreview,
   ClassGroup,
   CreateEnrollment,
   Enrollment,
@@ -8,7 +10,7 @@ import type {
   MoveStudentsInput,
   MoveStudentsResult,
 } from "@gestarahub/contracts";
-import { classBillingMode, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
+import { classBillingMode } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
 import { ageAt, currentLevelOf, nextLevelFor, resolveModalityTrack } from "@/lib/progression-tracks";
 import { withKind } from "@/lib/text";
@@ -29,6 +31,7 @@ import { validateStudentScheduleConflict, resolveCourseChoice } from "./classVal
 import { toEnrollmentView } from "./classViews";
 import { assertCanManageProgression } from "./teacherScope";
 import { createEnrollment, resolvePaysWithPackage } from "./enrollmentCreation";
+import { applyCancelChoices, buildCancelPreview, enrollmentsToCancel } from "./enrollmentCancellation";
 
 export const enrollmentsService = {
   // --- Matriculas ---------------------------------------------------------
@@ -149,41 +152,51 @@ export const enrollmentsService = {
     });
   },
 
-  cancelEnrollment(id: Id, reason?: string): Promise<void> {
+  /**
+   * O que cancelar a matricula mexe no dinheiro (27/11/2026, doc product/11
+   * "Cancelar matrícula: plano e cobranças"): a janela pergunta a partir daqui.
+   */
+  previewCancelEnrollments(ids: Id[]): Promise<CancelEnrollmentPreview[]> {
+    return readOp(async () => {
+      const today = todayISO();
+      return clone(enrollmentsToCancel(ids).map((e) => buildCancelPreview(e, today)));
+    });
+  },
+
+  cancelEnrollment(id: Id, reason?: string, choices?: CancelEnrollmentChoices): Promise<void> {
     return writeOp(async () => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e) throw notFoundError("Matrícula não encontrada.");
       if (e.status === "canceled") {
         throw apiError("VALIDATION", "Esta matrícula já foi cancelada.", { httpStatus: 409 });
       }
+      const today = todayISO();
+      // Escolhas antes de mexer na matricula: a previa olha as outras turmas do aluno.
+      const money = applyCancelChoices(e, today, choices);
       e.status = "canceled";
       e.canceledAt = nowIso();
       e.cancellationReason = reason?.trim() || undefined;
 
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
       const turma = g?.name ?? "";
-      // Curso (decisao 1 do doc 20): pagas ficam, as futuras saem e as que ja
-      // venceram seguem como divida. Curso ja concluido nao cancela nada (foi dado).
-      let canceledInstallments = 0;
-      if (e.course && !(g && isCourseEnded(g, todayISO()))) {
-        const today = todayISO();
-        const ts = nowIso();
-        for (const c of store.charges) {
-          if (c.kind !== "course" || c.enrollmentId !== e.id || !isFutureOpenInstallment(c, today)) continue;
-          c.status = "canceled";
-          c.canceledBy = "system";
-          c.cancelReason = "Matrícula cancelada";
-          c.updatedAt = ts;
-          cancelOnlinePaymentsForCharge(c.id);
-          canceledInstallments += 1;
-        }
-      }
+      const name = studentName(e.studentId);
+      // Sem escolhas (regra antiga), o texto de sempre: "... e 2 parcelas futuras".
+      const extras = choices
+        ? [
+            money.planEnded ? "encerrou o plano" : "",
+            money.canceledCharges > 0 ? `cancelou ${plural(money.canceledCharges, "cobrança", "cobranças")}` : "",
+          ].filter(Boolean)
+        : [];
+      const legacyTail =
+        !choices && e.course && money.canceledCharges > 0
+          ? ` e ${plural(money.canceledCharges, "parcela futura", "parcelas futuras")}`
+          : "";
       auditLogService.record({
         action: "cancelled",
-        target: { type: "enrollment", id, label: `${studentName(e.studentId)} em ${turma}` },
-        predicate: e.course
-          ? `cancelou a matrícula de ${studentName(e.studentId)} no ${withKind("curso", turma)}${canceledInstallments > 0 ? ` e ${plural(canceledInstallments, "parcela futura", "parcelas futuras")}` : ""}`
-          : `cancelou a matrícula de ${studentName(e.studentId)} na turma ${turma}`,
+        target: { type: "enrollment", id, label: `${name} em ${turma}` },
+        predicate: `cancelou a matrícula de ${name} ${e.course ? `no ${withKind("curso", turma)}` : `na turma ${turma}`}${legacyTail}${
+          extras.length > 0 ? ` (${extras.join(" e ")})` : ""
+        }`,
       });
     });
   },

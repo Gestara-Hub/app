@@ -62,8 +62,11 @@ Guia: /classes
 + lista "turma cadastrada|turmas cadastradas": Escolha a turma na lista e clique nela para abrir.
 + botão "Ações de": Abra o menu do aluno dentro da turma.
 + item "Cancelar matrícula": Escolha esta opção para tirar o aluno da turma.
-+ botão "Cancelar matrícula": Confirme para cancelar de vez.
-No menu ⋮ do aluno dentro da turma, escolha "Cancelar matrícula". Parcelas de curso que vencem depois de hoje saem; o que já venceu continua como dívida.
++ botão "Cancelar matrícula": Responda as perguntas e confirme.
+No menu ⋮ do aluno dentro da turma, escolha "Cancelar matrícula". A janela pergunta o que fazer com o dinheiro, sem nada marcado:
+- **O plano**, se o aluno não fica em outra turma: encerrar (para de gerar mensalidades) ou manter.
+- **Cobranças futuras e vencidas**: cancelar ou manter como dívida.
+- **O que já foi pago** e ainda não foi usado: manter ou estornar. O estorno abre em seguida, um pagamento por vez.
 
 ## Cancelar várias matrículas de uma vez
 Resumo: Selecione vários alunos da turma e cancele juntos.
@@ -72,8 +75,8 @@ Guia: /classes
 + botão "Mais ações da turma": Abra o menu da turma.
 + item "Selecionar alunos": Ligue a seleção para marcar vários alunos.
 + botão "Todos": Marque todos, ou toque nos alunos um a um.
-+ botão "Cancelar matrícula": Confirme o cancelamento dos selecionados.
-Use "Sair da seleção" para desistir sem cancelar nada.
++ botão "Cancelar matrícula": Responda as perguntas e confirme.
+As respostas valem para todos os selecionados. Use "Sair da seleção" para desistir sem cancelar nada.
 
 ## Trocar a pessoa de uma aula
 Guia: /classes

@@ -79,6 +79,8 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
         ["list", "getById", "listSessions", "getSession", "listEnrollments", "listEnrolledModalities", "listWaitlist", "getAttendanceSummary", "listAbsenceStreaks"],
         VIEW_CLASSES,
       ),
+      // Previa do cancelamento com o dinheiro (27/11/2026): quem cancela a matricula.
+      previewCancelEnrollments: MANAGE_ENROLLMENT,
       ...all(["listCompletedEnrollments", "previewCourseCertificate", "getCourseCertificate", "issueCourseCertificates"], ["classes:view", "classes:manage"]),
       ...all(["create", "update", "deactivate", "reactivate", "substituteInstructor", "restorePrimaryInstructor"], MANAGE_CLASSES),
       // Cancelar um certificado emitido (doc 21 §1.3): quem gere as turmas.

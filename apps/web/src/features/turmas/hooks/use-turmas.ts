@@ -11,6 +11,7 @@ import { turmasService } from "@/services/classes";
 import { eventsService } from "@/services/events";
 import type {
   AttendanceChange,
+  CancelEnrollmentChoices,
   ClassGroupFilter,
   CreateClassGroup,
   CreateEnrollment,
@@ -186,12 +187,30 @@ export function useSetEnrollmentPayment() {
   });
 }
 
+/**
+ * Cancelar com as escolhas do dinheiro (27/11/2026): plano e cobrancas. Sem
+ * `choices`, a regra antiga. O plano encerrado muda a ficha do aluno.
+ */
 export function useCancelEnrollment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: Id; reason?: string }) =>
-      turmasService.cancelEnrollment(id, reason),
-    onSuccess: () => invalidateEnrollmentMoney(qc),
+    mutationFn: ({ id, reason, choices }: { id: Id; reason?: string; choices?: CancelEnrollmentChoices }) =>
+      turmasService.cancelEnrollment(id, reason, choices),
+    onSuccess: (_data, { choices }) => {
+      invalidateEnrollmentMoney(qc);
+      if (choices?.plan === "end") qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+    },
+  });
+}
+
+/** O que cancelar as matriculas mexe no dinheiro (a janela pergunta a partir daqui). */
+export function useCancelEnrollmentPreview(enrollmentIds: Id[], enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.classes.cancelPreview(enrollmentIds),
+    queryFn: () => turmasService.previewCancelEnrollments(enrollmentIds),
+    enabled: enabled && enrollmentIds.length > 0,
+    // Sempre a situacao de agora: um pagamento feito ha pouco muda as perguntas.
+    staleTime: 0,
   });
 }
 

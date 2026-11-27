@@ -366,10 +366,28 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 
 Antes, mudar o valor do curso depois de matricular deixava as parcelas no valor antigo sem ninguém perceber, e inativar a turma deixava matrículas e cobranças em aberto numa turma parada.
 
-- **Cobrança travada na 1ª matrícula** (de qualquer situação, inclusive cancelada): forma de cobrança, plano da turma, valor e parcelas do curso e, no curso, as datas de início e fim. Nome, instrutor, horários, vagas, modalidade e aula avulsa seguem editáveis. No formulário, os campos ficam desabilitados com o aviso "Já há alunos matriculados. Para mudar a cobrança, duplique a turma." e o botão **Duplicar turma**. O servidor também recusa (`lockedBillingChanges` em `classValidation.ts`; `ClassGroupView.hasEnrollments`).
+- **Cobrança travada com matrícula ativa** (27/11/2026; até então travava na 1ª matrícula, mesmo cancelada): forma de cobrança, plano da turma, valor e parcelas do curso e, no curso, as datas de início e fim. Nome, instrutor, horários, vagas, modalidade e aula avulsa seguem editáveis. No formulário, os campos ficam desabilitados com o aviso "Já há alunos matriculados. Para mudar a cobrança, duplique a turma." e o botão **Duplicar turma**. O servidor também recusa (`lockedBillingChanges` em `classValidation.ts`; `billingLocks` em `classViews.ts`; `ClassGroupView.billingLocked`).
+- **Sem aluno ativo, a cobrança libera** (27/11/2026, decidido com o dono): mudar não afeta ninguém. As cobranças já geradas guardam o próprio valor, as aulas passadas e as chamadas ficam como estão (as aulas saem dos horários e datas da turma; o horário antigo segue guardado em `scheduleHistory`), e o pacote já gasto continua gasto.
+- **Datas do curso** seguem travadas depois que o curso começou com alunos (`ClassGroupView.courseDatesLocked`): mudar o início ou o fim tiraria do período as aulas que já tiveram chamada. Aviso: "O curso já teve aulas. Para uma nova turma, duplique." Curso que ainda não começou libera as datas também.
 - **Inativar com alunos ativos é bloqueado** (decisão do dono: bloquear de vez), com ou sem aulas dadas: "A turma já teve N aulas e tem M alunos ativos. Mude os alunos de turma ou encerre a matrícula de cada um antes de inativar." Na lista, a confirmação vira "Ainda não dá para inativar", com "Abrir turma". Curso que já terminou inativa livre (os alunos fizeram o curso). Sem alunos ativos, inativa como antes.
 - **Duplicar turma** (menu ⋮ da lista e do detalhe, ativa ou inativa): abre "Nova turma" preenchida com nome "(cópia)", modalidade, instrutor, horários, vagas, forma de cobrança, valor, parcelas e aula avulsa. Não copia alunos, aulas, chamadas nem cobranças; data de início nova e fim do curso em branco. É o caminho para "mudar o valor": nova turma com o valor novo.
-- **Para depois** (em `docs/pendencias.md`): "Cancelar a turma" que não começou e a devolução do que já foi pago (estorno pelo Asaas no pagamento online, registro no pagamento fora do app), por aluno.
+- **Para depois** (em `docs/pendencias.md`): "Cancelar a turma" que não começou. A devolução por aluno ao cancelar a matrícula saiu em 27/11/2026 (abaixo).
+
+### Cancelar matrícula: plano e cobranças (27/11/2026, decidido com o dono)
+
+Antes, cancelar a matrícula numa turma de mensalidade não mexia em nada: a mensalidade é do **plano do aluno**, não da turma (um plano pode cobrir várias turmas), e o aluno sem nenhuma turma seguia cobrado todo mês. Pago, nada era tratado.
+
+- **Gaveta "Cancelar matrícula"** (um aluno pelo menu ⋮ ou vários pela seleção), para quem cuida das cobranças (`billing:manage`). As perguntas aparecem só quando se aplicam e **nenhuma vem marcada**: cada uma é obrigatória, com o erro embaixo dela em vermelho e o foco na primeira sem resposta (padrão de doc 07 §2.10).
+  1. **"E o plano {nome}?"**, só quando o aluno não fica em nenhuma outra turma ativa e o plano está ativo: **Encerrar o plano** (para de gerar mensalidades; é o cancelamento da assinatura, `membershipStatus: "canceled"`) ou **Manter o plano** (continua cobrando, mesmo sem turma). Se o aluno segue em outra turma, a gaveta só avisa: "O plano continua: segue em {turma}."
+  2. **Cobranças futuras** (curso: vencem depois de hoje; plano encerrado: período que ainda não começou): **Cancelar** ou **Manter**.
+  3. **Cobranças vencidas ou em uso** (curso: vencem até hoje; plano encerrado: período já começou): **Cancelar** ou **Manter como dívida**. Plano "depois do uso": a mensalidade do período em uso é gerada ao encerrar e entra aqui.
+  4. **Já pago** e ainda não usado (curso que não terminou; plano encerrado: mensalidade do período em uso ou futuro): **Manter, sem estorno** ou **Estornar**. O estorno abre em seguida, um pagamento por vez, na janela do estorno (doc 15 "Estorno de pagamento"): saldo, custo do Pix e "E a cobrança?" ficam lá.
+- As cobranças do plano só entram nas perguntas 2 a 4 com o plano encerrado. Cobrança avulsa e de outros planos não mudam.
+- Cobrança cancelada aqui sai como **"Encerrado"** pelo sistema, com o motivo "Matrícula cancelada" (sem reverter, como antes), e o Pix ou link em aberto dela também.
+- Vários alunos: as respostas valem para todos; o plano é perguntado se algum deles não fica em outra turma (só o desses muda).
+- Quem cancela matrícula sem cuidar das cobranças vê o aviso de antes e o dinheiro não muda (no curso, as futuras saem pela regra antiga). O servidor recusa escolhas de quem não tem `billing:manage`.
+- **Auditoria:** "cancelou a matrícula de Pedro na turma Judô (encerrou o plano e cancelou 2 cobranças)".
+- Código: `previewCancelEnrollments` e `cancelEnrollment(id, motivo, escolhas)` em `enrollmentsService.ts`, regra em `services/classes/enrollmentCancellation.ts`, perguntas em `cancelEnrollmentQuestions` (`@gestarahub/core/billing`), gaveta `cancel-enrollment-drawer.tsx`.
 
 ## Pacote de aulas na turma e na aula (14/10/2026)
 

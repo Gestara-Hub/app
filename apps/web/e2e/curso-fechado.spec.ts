@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { stepMonth } from "./dinheiro-fixtures";
-import { academyJson, classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { academyJson, answerCancel, cancelDrawer, classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 
 /** Curso fechado (doc 20, fase B). Relogio fixo em 22/09/2026 (terca). */
 
@@ -153,9 +153,11 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await page.goto(classUrl);
   await page.getByRole("button", { name: "Ações de Aluna Curso", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
-  const confirm = page.getByRole("alertdialog");
-  await expect(confirm).toContainText("As parcelas pagas ficam. As 3 parcelas futuras serão canceladas.");
-  await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
+  const drawer = cancelDrawer(page);
+  await expect(drawer).toContainText("3 cobranças futuras: o que fazer?");
+  await answerCancel(page, "futuras", "Cancelar");
+  await answerCancel(page, "pago", "Manter, sem estorno");
+  await drawer.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
   await waitForStore(page, (raw) => raw.includes("Matrícula cancelada"));
   // No banco: a 1a parcela segue paga e as 3 seguintes ficam canceladas.
@@ -229,7 +231,9 @@ test("curso terminado: Encerrado na lista, Concluído no detalhe e sem matrícul
   // Cancelar depois do fim não mexe nas parcelas.
   await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
-  await expect(page.getByRole("alertdialog")).toContainText("O curso já terminou: as parcelas continuam como estão.");
+  // Curso ja terminado: nada de parcelas na gaveta (o curso foi dado).
+  await expect(cancelDrawer(page)).toContainText("Aluna Formada sai da turma");
+  await expect(cancelDrawer(page)).not.toContainText("cobranças futuras");
 });
 
 test("lista de espera do curso: promover pede o pagamento", async ({ page }) => {

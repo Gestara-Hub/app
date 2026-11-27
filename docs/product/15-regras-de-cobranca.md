@@ -286,7 +286,7 @@ Decisão 3 do diário da noite de 30 para 31/10/2026, escolhida pelo usuário: p
 
 Termo da tela: **estorno** (decidido em 26/11/2026, no lugar de "devolver"): é a palavra do aviso do app, do Asaas, da fatura do cartão e do comprovante do Pix.
 
-Decisões do dono, depois do teste de estorno no sandbox do Asaas. Fase 1: "Estornar pagamento" na cobrança. Fase 2 (depois): estorno ao encerrar matrícula e "Cancelar turma" que não começou (`docs/pendencias.md`).
+Decisões do dono, depois do teste de estorno no sandbox do Asaas. Fase 1: "Estornar pagamento" na cobrança. Fase 2: estorno ao cancelar a matrícula (feito em 27/11/2026, doc 11) e "Cancelar turma" que não começou (`docs/pendencias.md`).
 
 **O que o teste mostrou (cartão, sandbox, 26/11/2026)**
 - Toda cobrança online tem split do GestaraHub, e o Asaas **não estorna parte** de cobrança com split: o estorno é sempre do valor total.
@@ -305,7 +305,7 @@ Decisões do dono, depois do teste de estorno no sandbox do Asaas. Fase 1: "Esto
 - **"E a cobrança?"**, escolhido a cada estorno:
   - **Reabrir para pagar de outra forma:** volta para "A receber" (ou "Em atraso", pelo vencimento). Caso típico: pagou no cartão e quer pagar no Pix, ou o contrário, ou pagou errado.
   - **Encerrar:** o aluno não deve mais nada; a cobrança fica **"Estornada"**. Caso típico: saiu, desistiu ou a turma foi cancelada.
-  - Vindo de "Encerrar matrícula" ou "Cancelar turma" (fase 2), "Encerrar" já vem marcado.
+  - Vindo de "Cancelar matrícula" (fase 2, 27/11/2026): a gaveta do cancelamento pergunta "Já pago: manter ou estornar" e abre esta janela para cada pagamento; "E a cobrança?" também vem sem nada marcado (doc 11, "Cancelar matrícula: plano e cobranças").
 - **Financeiro:** o estorno **sai do Recebido** (a cobrança deixa de contar como paga); sem lançamento de despesa. O histórico da cobrança guarda cada estorno: quando, quanto, como e o que foi decidido.
 - **Estorno feito direto no painel do Asaas:** o aviso do webhook segue chegando ("Pagamento estornado"); "Resolver agora" abre a mesma pergunta (reabrir ou encerrar), sem pedir outro estorno. Resolvido, o aviso some.
 - **Pagamento em dobro** (Pix e link pagos na mesma cobrança): estorna-se o pagamento a mais e a cobrança segue paga (depois, se aparecer).

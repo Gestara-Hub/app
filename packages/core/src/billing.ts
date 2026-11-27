@@ -1,5 +1,7 @@
 import { addDays, addMonths, format, parseISO } from "date-fns";
 import type {
+  CancelEnrollmentPlanChoice,
+  CancelEnrollmentPreview,
   ChargeKind,
   ChargeStatus,
   ClassBillingMode,
@@ -472,4 +474,26 @@ export function isCurrentOpenMembershipCharge(
   if (charge.status !== "pending" && charge.status !== "overdue") return false;
   if (charge.periodStart) return charge.periodStart <= today && (charge.periodEnd ?? charge.dueDate) >= today;
   return charge.dueDate.slice(0, 7) === today.slice(0, 7);
+}
+
+// --- Cancelar matricula com o dinheiro (27/11/2026, doc product/11) ----------
+
+/**
+ * Perguntas da janela de cancelar matricula, dada a escolha do plano. O
+ * servico confere as mesmas (cada uma precisa de resposta). As cobrancas do
+ * plano so entram com o plano encerrado; "depois do uso" gera a do periodo em
+ * uso, que entra nas vencidas.
+ */
+export function cancelEnrollmentQuestions(
+  preview: Pick<CancelEnrollmentPreview, "plan" | "course" | "membership">,
+  plan?: CancelEnrollmentPlanChoice,
+): { plan: boolean; future: boolean; overdue: boolean } {
+  const withPlan = plan === "end";
+  return {
+    plan: Boolean(preview.plan),
+    future: preview.course.future.length > 0 || (withPlan && preview.membership.future.length > 0),
+    overdue:
+      preview.course.overdue.length > 0 ||
+      (withPlan && (preview.membership.overdue.length > 0 || Boolean(preview.plan?.chargesUsedPeriod))),
+  };
 }

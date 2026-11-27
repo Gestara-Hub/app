@@ -3213,7 +3213,7 @@
     "article": "Turmas e matrículas",
     "title": "Cancelar a matrícula",
     "route": "/classes",
-    "text": "No menu ⋮ do aluno dentro da turma, escolha \"Cancelar matrícula\". Parcelas de curso que vencem depois de hoje saem; o que já venceu continua como dívida.",
+    "text": "No menu ⋮ do aluno dentro da turma, escolha \"Cancelar matrícula\". A janela pergunta o que fazer com o dinheiro, sem nada marcado:\n- **O plano**, se o aluno não fica em outra turma: encerrar (para de gerar mensalidades) ou manter.\n- **Cobranças futuras e vencidas**: cancelar ou manter como dívida.\n- **O que já foi pago** e ainda não foi usado: manter ou estornar. O estorno abre em seguida, um pagamento por vez.",
     "guide": {
       "route": "/classes",
       "steps": [
@@ -3235,7 +3235,7 @@
         {
           "kind": "botão",
           "label": "Cancelar matrícula",
-          "text": "Confirme para cancelar de vez."
+          "text": "Responda as perguntas e confirme."
         }
       ]
     }
@@ -3245,7 +3245,7 @@
     "article": "Turmas e matrículas",
     "title": "Cancelar várias matrículas de uma vez",
     "route": "/classes",
-    "text": "Use \"Sair da seleção\" para desistir sem cancelar nada.",
+    "text": "As respostas valem para todos os selecionados. Use \"Sair da seleção\" para desistir sem cancelar nada.",
     "summary": "Selecione vários alunos da turma e cancele juntos.",
     "guide": {
       "route": "/classes",
@@ -3273,7 +3273,7 @@
         {
           "kind": "botão",
           "label": "Cancelar matrícula",
-          "text": "Confirme o cancelamento dos selecionados."
+          "text": "Responda as perguntas e confirme."
         }
       ]
     }
