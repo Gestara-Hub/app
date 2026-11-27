@@ -1,5 +1,6 @@
 "use server";
 
+import { API_KEY_INVALID_MESSAGE, isApiKeyInvalid } from "./apiKeyHealth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PIX_ACCOUNT_PENDING_MESSAGE,
@@ -58,6 +59,8 @@ async function checkedInput<T extends CreatePixInput | CreateLinkInput>(
     .select("gateway_api_key, subscription, settings")
     .eq("id", ctx.organizationId)
     .maybeSingle();
+  // Chave da subconta expirada ou desligada no Asaas (27/11/2026): nada sai ate a troca.
+  if (realGateway && isApiKeyInvalid(org?.settings)) return { error: API_KEY_INVALID_MESSAGE };
   // Conta ainda em analise no Asaas (25/11/2026): o Asaas recusa a chave Pix ate a
   // aprovacao. Avisa antes de criar a cobranca la (que seria criada e apagada).
   // Sem leitura nenhuma (conta antiga), segue como antes.

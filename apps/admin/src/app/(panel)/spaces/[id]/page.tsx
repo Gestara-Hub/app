@@ -344,6 +344,34 @@ function asaasLabel(settings: Record<string, unknown> | null): React.ReactNode {
   );
 }
 
+const API_KEY_LABEL: Record<string, string> = {
+  expired: "Expirou: o Cobrar online está travado",
+  disabled: "Desligada no Asaas: o Cobrar online está travado",
+  deleted: "Apagada no Asaas: o Cobrar online está travado",
+  unauthorized: "Recusada pelo Asaas: o Cobrar online está travado",
+};
+
+/** Chave da subconta (27/11/2026): uso semanal da rotina e avisos ACCESS_TOKEN_*. */
+function apiKeyLabel(settings: Record<string, unknown> | null): React.ReactNode {
+  const status = (settings?.onlinePayments as { apiKeyStatus?: { state?: string; reason?: string; lastKeepAliveAt?: string } } | undefined)
+    ?.apiKeyStatus;
+  if (!status?.state) return "Sem conferência ainda";
+  if (status.state === "invalid") {
+    return <span className="text-destructive">{API_KEY_LABEL[status.reason ?? ""] ?? "Sem valer"}</span>;
+  }
+  return (
+    <span>
+      Em uso
+      {status.lastKeepAliveAt ? (
+        <>
+          {" · conferida "}
+          <RelativeTime date={new Date(status.lastKeepAliveAt)} />
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 function Online({ space }: { space: Space }) {
   return (
     <div className="space-y-4">
@@ -357,6 +385,7 @@ function Online({ space }: { space: Space }) {
       <FactCard title="Conta de recebimento">
         <Fact label="Situação" value={GATEWAY_LABEL[space.gatewayStatus ?? "not_configured"] ?? space.gatewayStatus} />
         <Fact label="Análise no Asaas" value={asaasLabel(space.settings)} />
+        <Fact label="Chave de API" value={apiKeyLabel(space.settings)} />
         <Fact label="Parceiro" value={space.gatewayProvider ?? "—"} />
         <Fact label="Tarifas sincronizadas" value={<RelativeTime date={space.gatewayFeesSyncedAt} empty="Nunca" />} />
       </FactCard>

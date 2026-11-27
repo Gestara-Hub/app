@@ -211,6 +211,11 @@ export async function createSubAccount(
 /** Espera da abertura da subconta: ate 2 minutos (a rota de Recebimentos online aguenta 150 s). */
 export const SUBACCOUNT_TIMEOUT_MS = 120_000;
 
+/** Carteira da conta dona da chave: confere que uma chave colada e da subconta do espaco. */
+export async function listWallets(apiKey: string): Promise<{ data?: { id: string }[] }> {
+  return asaasFetch("/wallets/", { apiKey });
+}
+
 /** Situacao cadastral da conta dona da chave (subconta): a aprovacao geral e as partes. */
 export async function getAccountStatus(apiKey: string): Promise<{
   general?: string;

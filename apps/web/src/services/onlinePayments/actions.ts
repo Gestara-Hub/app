@@ -42,4 +42,5 @@ export type {
   SubaccountReceiptsSummary,
 } from "./receiptsActions";
 export { refundOnlinePaymentAction } from "./refundActions";
+export { replaceSubaccountApiKeyAction } from "./subaccountKeyActions";
 export type { RefundOnlinePaymentResult } from "./refundActions";

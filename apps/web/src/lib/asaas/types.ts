@@ -220,7 +220,13 @@ export interface AsaasWebhookPayload {
     | "INVOICE_PROCESSING_CANCELLATION"
     | "INVOICE_CANCELED"
     | "INVOICE_CANCELLATION_DENIED"
-    | "INVOICE_ERROR";
+    | "INVOICE_ERROR"
+    | "ACCESS_TOKEN_CREATED"
+    | "ACCESS_TOKEN_ENABLED"
+    | "ACCESS_TOKEN_DISABLED"
+    | "ACCESS_TOKEN_DELETED"
+    | "ACCESS_TOKEN_EXPIRING_SOON"
+    | "ACCESS_TOKEN_EXPIRED";
   /** Eventos de cobranca (PAYMENT_*). */
   payment?: AsaasPaymentResponse;
   /** Eventos de assinatura (SUBSCRIPTION_*). */
@@ -236,6 +242,14 @@ export interface AsaasWebhookPayload {
     documentation?: string;
     commercialInfo?: string;
     bankAccountInfo?: string;
+  };
+  /** Avisos ACCESS_TOKEN_* (chave de API da subconta). O valor da chave nunca vem. */
+  accessToken?: {
+    id?: string;
+    enabled?: boolean;
+    disableReason?: "MANUAL" | "LACK_OF_USE" | string | null;
+    expirationDate?: string | null;
+    projectedExpirationDateByLackOfUse?: string | null;
   };
 }
 

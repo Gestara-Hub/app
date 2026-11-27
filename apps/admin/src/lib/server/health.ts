@@ -337,3 +337,30 @@ export async function gatewayOverview(): Promise<{ status: string; count: number
   return sql()<{ status: string; count: number }[]>`
     select coalesce(gateway_status, 'not_configured') as status, count(*)::int as count from public.organizations group by 1 order by 2 desc`;
 }
+
+/**
+ * Espacos com a chave de API da subconta invalida (expirou, desligada, apagada
+ * ou recusada; 27/11/2026). O "Cobrar online" deles esta travado ate a troca.
+ */
+export interface ApiKeyIssue {
+  organizationId: string;
+  organizationName: string;
+  reason: string | null;
+  updatedAt: Date | null;
+}
+
+export async function apiKeyIssues(): Promise<ApiKeyIssue[]> {
+  const rows = await sql()<{ id: string; name: string; reason: string | null; updated_at: string | null }[]>`
+    select id, name,
+           settings #>> '{onlinePayments,apiKeyStatus,reason}' as reason,
+           settings #>> '{onlinePayments,apiKeyStatus,updatedAt}' as updated_at
+      from public.organizations
+     where settings #>> '{onlinePayments,apiKeyStatus,state}' = 'invalid'
+     order by name`;
+  return rows.map((r) => ({
+    organizationId: r.id,
+    organizationName: r.name,
+    reason: r.reason,
+    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+  }));
+}

@@ -376,6 +376,25 @@ export interface OnlinePaymentSettings {
   gatewayFees?: GatewayAccountFees; // tarifas da subconta (lidas da coluna gateway_fees, nunca gravadas em settings)
   /** Analise da conta no Asaas (25/11/2026): so `general` APPROVED e conta pronta de verdade. */
   asaasStatus?: AsaasAccountStatus;
+  /** Chave de API da subconta (27/11/2026): so o servidor grava (avisos ACCESS_TOKEN_* e rotina diaria). */
+  apiKeyStatus?: GatewayApiKeyStatus;
+}
+
+/**
+ * Situacao da chave de API da subconta. O Asaas expira de vez a chave parada
+ * por 6 meses; a rotina diaria usa a chave uma vez por semana para ela nao
+ * parar, e os avisos ACCESS_TOKEN_* contam o resto. `invalid` trava o
+ * "Cobrar online" ate a chave ser trocada (roteiro no painel admin).
+ */
+export interface GatewayApiKeyStatus {
+  state: "valid" | "invalid";
+  /** Por que ficou invalida: expirou, desligada ou apagada no Asaas, ou recusada numa chamada. */
+  reason?: "expired" | "disabled" | "deleted" | "unauthorized";
+  /** Ultimo aviso de que ia expirar por falta de uso (o uso na hora renova). */
+  expiringNoticeAt?: string;
+  /** Ultimo uso da rotina para manter a chave viva. */
+  lastKeepAliveAt?: string;
+  updatedAt: string;
 }
 
 /** Situacao de cada parte da analise da conta no Asaas. */

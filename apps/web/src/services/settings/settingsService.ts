@@ -201,6 +201,8 @@ async function mergeGatewayIntoCache(): Promise<void> {
               (remoteOnline.acceptedMethods as OnlinePaymentSettings["acceptedMethods"] | undefined),
             // Tarifas da subconta: sempre as do banco (coluna gateway_fees).
             gatewayFees: remote.gatewayFees ?? currentOnline?.gatewayFees,
+            // Chave da subconta (27/11/2026): so o servidor sabe; "Cobrar online" trava se invalida.
+            apiKeyStatus: remoteOnline.apiKeyStatus as OnlinePaymentSettings["apiKeyStatus"],
           },
         },
         ...(remote.subscription && typeof remote.subscription === "object" && "tier" in remote.subscription

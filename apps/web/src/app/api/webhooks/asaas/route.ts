@@ -25,6 +25,7 @@ import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgro
 import { auditOnlinePaymentConflict, auditOnlinePaymentDispute, auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
 import { safeEqual } from "@/lib/security/webhook-signature";
 import { recordAccountStatusFromWebhook } from "@/services/onlinePayments/accountStatus";
+import { recordApiKeyEvent } from "@/services/onlinePayments/apiKeyHealth";
 
 export async function POST(req: Request) {
   // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
   }
-  const { event, payment, subscription, authorization, invoice, account, accountStatus } = payload ?? {};
+  const { event, payment, subscription, authorization, invoice, account, accountStatus, accessToken } = payload ?? {};
   // So o nome do evento e obrigatorio (25/11/2026). Aviso de um tipo que a rota
   // ainda nao trata (saque, chave de API...) e reconhecido e guardado: recusar
   // fazia o Asaas tentar de novo e pausar a fila inteira da subconta, com os
@@ -75,7 +76,9 @@ export async function POST(req: Request) {
       ? { status: "ignored", outcome: `${event}: ainda não tratado` }
       : event.startsWith("ACCOUNT_STATUS_") && account?.id
         ? await handleAccountStatus(admin, account.id, accountStatus ?? {})
-        : await handleEvent(admin, event, payment, subscription, authorization, invoice);
+        : event.startsWith("ACCESS_TOKEN_") && account?.id
+          ? await handleApiKey(admin, account.id, event, accessToken)
+          : await handleEvent(admin, event, payment, subscription, authorization, invoice);
     await finishWebhookEvent(admin, record.id, handled);
     return NextResponse.json({ success: true, processed: handled.status === "processed" });
   } catch (error) {
@@ -97,6 +100,19 @@ async function handleAccountStatus(
   return organizationId
     ? { status: "processed", organizationId, outcome: `conta de recebimento: ${status.general ?? "situação"}` }
     : { status: "ignored", outcome: "conta de recebimento não encontrada" };
+}
+
+/** Chave de API da subconta (27/11/2026): expirou, desligou, vai expirar. */
+async function handleApiKey(
+  admin: SupabaseClient,
+  accountId: string,
+  event: string,
+  accessToken: AsaasWebhookPayload["accessToken"],
+): Promise<Handled> {
+  const result = await recordApiKeyEvent(admin, accountId, event, accessToken);
+  return result
+    ? { status: "processed", organizationId: result.organizationId, outcome: result.outcome }
+    : { status: "ignored", outcome: "chave de API de conta que não é de espaço" };
 }
 
 async function handleEvent(

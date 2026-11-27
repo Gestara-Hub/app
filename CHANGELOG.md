@@ -2,6 +2,16 @@
 
 Gerado por `pnpm release:prepare` a partir dos commits (doc technical/27). As novidades para quem usa ficam em `apps/web/src/features/releases/release-notes.ts`.
 
+## 2026.11.27-2 (2026-11-27)
+
+Desde v2026.11.27.
+
+### Novo
+
+- admin: chave da conta de recebimento sem valer em Saúde e no espaço
+- online-payments: aviso de recebimento parado e cadastro da chave nova pelo espaço
+- online-payments: chave da subconta em uso semanal e avisos ACCESS_TOKEN_* do Asaas
+
 ## 2026.11.27 (2026-11-27)
 
 Desde v2026.11.26.

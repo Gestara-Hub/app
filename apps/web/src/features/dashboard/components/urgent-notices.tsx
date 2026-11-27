@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { todayISO } from "@gestarahub/core/date";
 import { planNoticeFor } from "@gestarahub/core/subscription-plan";
@@ -70,7 +70,9 @@ export function UrgentNoticesHost() {
   const router = useRouter();
   const [dismissedNow, setDismissedNow] = useState<string[]>([]);
 
-  const pinned = alerts.filter((a) => a.pinned && a.tone === "danger");
+  const pathname = usePathname();
+  // Na tela que ja mostra o problema com a acao, o aviso fixo nao se repete.
+  const pinned = alerts.filter((a) => a.pinned && a.tone === "danger" && a.hidePinnedOn !== pathname);
   const seen = useMemo(() => new Set([...(preferences.urgentSeenKeys ?? []), ...dismissedNow]), [preferences.urgentSeenKeys, dismissedNow]);
   // Modal: so dono e gerente, uma vez por item e por pessoa; o aviso fixo continua ate resolver.
   const eligible = seesPlanNotices(user.profile);

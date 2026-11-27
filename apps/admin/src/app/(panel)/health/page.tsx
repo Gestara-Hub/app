@@ -19,6 +19,7 @@ import {
   PERIODS,
   errorTotals,
   findErrorByReference,
+  apiKeyIssues,
   gatewayOverview,
   isPeriod,
   lastRunPerJob,
@@ -371,11 +372,46 @@ async function Webhooks({ params, page, query }: { params: Record<string, string
   );
 }
 
+const API_KEY_REASON: Record<string, string> = {
+  expired: "Expirou",
+  disabled: "Desligada",
+  deleted: "Apagada",
+  unauthorized: "Recusada",
+};
+
 async function Integrations() {
-  const [gateway, stats] = await Promise.all([gatewayOverview(), webhookStats()]);
+  const [gateway, stats, keyIssues] = await Promise.all([gatewayOverview(), webhookStats(), apiKeyIssues()]);
   const failed = stats.byStatus.find((s) => s.status === "failed")?.count ?? 0;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {/* Chave da subconta sem valer (27/11/2026): o "Cobrar online" do espaco esta travado. */}
+      {keyIssues.length > 0 ? (
+        <Card className="border-destructive/50 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-destructive">
+              <AlertTriangle className="size-4" />
+              Chave da conta de recebimento sem valer
+            </CardTitle>
+            <CardDescription>
+              O &quot;Cobrar online&quot; destes espaços está travado. Troque a chave pelo roteiro (doc product/19, &quot;Chave de API da subconta&quot;).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y text-sm">
+              {keyIssues.map((k) => (
+                <li key={k.organizationId} className="flex items-center justify-between gap-3 py-2">
+                  <Link href={`/spaces/${k.organizationId}?tab=recebimentos`} className="min-w-0 break-words font-medium hover:underline">
+                    {k.organizationName}
+                  </Link>
+                  <span className="shrink-0 text-muted-foreground">
+                    {API_KEY_REASON[k.reason ?? ""] ?? "Sem valer"} · <RelativeTime date={k.updatedAt} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Contas de recebimento dos espaços</CardTitle>

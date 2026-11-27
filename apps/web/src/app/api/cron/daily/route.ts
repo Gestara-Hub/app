@@ -9,6 +9,7 @@ import { sendDailyErrorDigest } from "@/services/server/errorDigest";
 import { runPlanDailyTasks } from "@/services/server/subscriptionPlan";
 import { safeEqual } from "@/lib/security/webhook-signature";
 import { cleanupUnusedAttachments } from "@/services/attachments/attachmentsCleanup";
+import { keepSpaceApiKeyAlive } from "@/services/onlinePayments/apiKeyHealth";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas
@@ -70,6 +71,28 @@ export async function POST(req: Request) {
     totals.errorReferences.push(...plan.errorReferences);
   } catch (err) {
     totals.errorReferences.push(await reportError("cron.daily.plano", err, { source: "cron" }));
+    totals.failures += 1;
+  }
+
+  // Chave de API das subcontas (27/11/2026, doc product/19): uso semanal para o
+  // Asaas nao expirar a chave parada; recusada vira "chave invalida" e alerta.
+  try {
+    const { data: gatewayOrgs, error: gatewayError } = await selectAllRows(() =>
+      admin.from("organizations").select("id").eq("status", "active").not("gateway_api_key", "is", null),
+    );
+    if (gatewayError) throw gatewayError;
+    const keys = { alive: 0, invalid: 0, failed: 0, skipped: 0 };
+    await mapWithConcurrency(
+      gatewayOrgs,
+      CONCURRENCY,
+      async (org) => {
+        keys[await keepSpaceApiKeyAlive(admin, String(org.id))] += 1;
+      },
+      { deadline: Date.now() + 30_000 },
+    );
+    Object.assign(result, { subaccountKeys: keys });
+  } catch (err) {
+    totals.errorReferences.push(await reportError("cron.daily.chaves-das-subcontas", err, { source: "cron" }));
     totals.failures += 1;
   }
 

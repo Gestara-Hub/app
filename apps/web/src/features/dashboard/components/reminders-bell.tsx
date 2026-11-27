@@ -19,6 +19,7 @@ import { seesPlanNotices } from "@/lib/plan-notice-copy";
 import {
   disputeBellAlerts,
   documentBellAlerts,
+  apiKeyInvalidBellAlert,
   gatewayRejectedBellAlert,
   planBellAlert,
   whatsappPendingConnectionBellAlert,
@@ -75,6 +76,7 @@ export function useBellAlerts(today: string): BellAlert[] {
     ? [
         planBellAlert(subscription, today),
         gatewayRejectedBellAlert(organization?.settings?.onlinePayments),
+        apiKeyInvalidBellAlert(organization?.settings?.onlinePayments),
         whatsappPendingConnectionBellAlert(connection),
         metaHealthBellAlert(connection),
       ].filter((alert): alert is BellAlert => alert !== null)

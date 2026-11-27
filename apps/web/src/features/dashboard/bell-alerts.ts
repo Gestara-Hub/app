@@ -25,6 +25,11 @@ export interface BellAlert {
   pinned?: boolean;
   /** Afeta o funcionamento do espaco: modal uma vez por item (dono e gerente). */
   modal?: boolean;
+  /**
+   * Tela que ja mostra o mesmo problema com a acao (27/11/2026): nela o aviso
+   * fixo do topo some, para nao repetir (ex.: Recebimentos online com o cartao).
+   */
+  hidePinnedOn?: string;
 }
 
 /**
@@ -192,6 +197,26 @@ function isRefundDispute(status: NonNullable<OnlinePayment["disputeStatus"]>): b
  */
 type OnlinePaymentsSettings = NonNullable<NonNullable<Organization["settings"]>["onlinePayments"]>;
 
+/**
+ * Chave da conta de recebimento sem valer (27/11/2026, doc product/19): o Pix e
+ * o link param. Urgente, fixo no topo e com modal, como a conta recusada.
+ */
+export function apiKeyInvalidBellAlert(settings: OnlinePaymentsSettings | undefined): BellAlert | null {
+  if (!settings?.enabled || settings.apiKeyStatus?.state !== "invalid") return null;
+  return {
+    key: "payments:gateway:api-key",
+    kind: "payments",
+    title: "Recebimento online parado",
+    text: "O Pix e o link de pagamento estão parados. Já estamos resolvendo; registre os pagamentos à mão.",
+    tone: "danger",
+    href: "/online-payments",
+    action: "Ver recebimentos",
+    pinned: true,
+    modal: true,
+    hidePinnedOn: "/online-payments",
+  };
+}
+
 export function gatewayRejectedBellAlert(settings: OnlinePaymentsSettings | undefined): BellAlert | null {
   if (!settings?.enabled || settings.gatewayStatus !== "rejected") return null;
   return {
@@ -204,5 +229,6 @@ export function gatewayRejectedBellAlert(settings: OnlinePaymentsSettings | unde
     action: "Ver recebimentos",
     pinned: true,
     modal: true,
+    hidePinnedOn: "/online-payments",
   };
 }
