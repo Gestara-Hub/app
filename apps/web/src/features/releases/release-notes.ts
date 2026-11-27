@@ -18,6 +18,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: "2026.11.27-2",
+    date: "2026-11-27",
+    items: [
+      { text: "Aviso quando o recebimento online parar." },
+      { text: "Cadastre uma chave nova do Asaas em Recebimentos online." },
+    ],
+  },
+  {
     version: "2026.11.27",
     date: "2026-11-27",
     items: [
