@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { databaseNow } from "@/lib/e2e-clock";
 import { SESSION_MAX_AGE } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readSessionClaims } from "@/lib/supabase/session-claims";
@@ -61,14 +62,18 @@ export async function markSessionVerified(
   authUserId: string,
   sessionId: string,
   method: SecondFactorMethod,
-  now = new Date(),
+  now?: Date,
 ): Promise<boolean> {
+  // O RLS confere o prazo com o `now()` do banco: sem data informada, o prazo
+  // sai do relogio do banco (no e2e o do servidor e fixo em 22/09/2026).
+  const verifiedAt = now ?? new Date();
+  const base = now ? now.getTime() : databaseNow();
   const { error } = await admin.from("two_factor_sessions").upsert({
     session_id: sessionId,
     auth_user_id: authUserId,
     method,
-    verified_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + SESSION_MAX_AGE * 1000).toISOString(),
+    verified_at: verifiedAt.toISOString(),
+    expires_at: new Date(base + SESSION_MAX_AGE * 1000).toISOString(),
   });
   return !error;
 }
